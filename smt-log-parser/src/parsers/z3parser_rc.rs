@@ -39,7 +39,7 @@ impl LogParser for Z3ParserRc {
         Z3ParserRc::default()
     }
     
-    fn should_continue(&self, line_no: u32) -> bool {
+    fn should_continue(&self, _line_no: u32) -> bool {
         true    // stub
     }
 

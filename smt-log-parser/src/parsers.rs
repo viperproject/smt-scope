@@ -60,6 +60,7 @@ pub enum Log {
 pub struct ParserSettings {
     pub max_line_nr: u32,
     pub max_instantiations: u32,
+    pub ignore_theory_inst: bool,
 }
 
 impl Default for ParserSettings {
@@ -67,6 +68,7 @@ impl Default for ParserSettings {
         Self {
             max_line_nr: u32::MAX,
             max_instantiations: u32::MAX,
+            ignore_theory_inst: true,
         }
     }
 }

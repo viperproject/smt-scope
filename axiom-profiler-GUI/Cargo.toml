@@ -24,3 +24,4 @@ prototype = { path = "../smt-log-parser" }
 petgraph = "0.6.4"
 viz-js = "3.1.0"
 implicit-clone = "0.4.1"
+yew-hooks = "0.3.0"

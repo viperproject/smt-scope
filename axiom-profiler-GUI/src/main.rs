@@ -10,6 +10,7 @@ mod svg_result;
 mod graph;
 mod graph_state;
 mod input_state;
+mod toggle_switch;
 pub enum Msg {
     LoadedBytes(String, Vec<u8>),
     Files(Vec<File>),
@@ -80,9 +81,9 @@ impl Component for FileDataComponent {
         });
         html! {
             <div>
-                <div>
-                    {"Choose a log file:"}
-                </div>
+                <h2>
+                    {"Choose a log file"}
+                </h2>
                 <div>
                     <input type="file" accept=".log" onchange={on_change} multiple=false/>
                 </div>

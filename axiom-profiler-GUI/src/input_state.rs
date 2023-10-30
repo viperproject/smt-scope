@@ -36,7 +36,7 @@ impl Reducible for InputValue {
 }
 
 #[derive(Properties, PartialEq)] 
-pub struct IntegerInputProps where {
+pub struct IntegerInputProps {
     pub label: AttrValue,
     pub dependency: AttrValue,
     pub input_value: UseReducerHandle<InputValue>,

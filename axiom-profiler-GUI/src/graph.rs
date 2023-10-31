@@ -75,7 +75,7 @@ pub fn graph(props: &GraphProps) -> Html {
                     let text_element = node.query_selector("text").expect("Failed to select text element");
                     if let Some(text) = text_element {
                         if let Some(text_content) = text.text_content() {
-                            let visibility = match text_content.parse::<i32>() {
+                            let visibility = match text_content.parse::<u32>() {
                                 Ok(line_nr) => if line_nr > max_line_nr {
                                     "hidden"
                                 } else {
@@ -101,7 +101,9 @@ pub fn graph(props: &GraphProps) -> Html {
                                     match (line_nr_of_node.get(&from_node_idx), line_nr_of_node.get(&to_node_idx)) {
                                         (Some(&from_node_line_nr), Some(&to_node_line_nr)) => {
                                             // if from_node_line_nr > graph_state.max_line_nr as usize || to_node_line_nr > graph_state.max_line_nr as usize {
-                                            if from_node_line_nr > max_line_nr as usize || to_node_line_nr > max_line_nr as usize {
+                                            if from_node_line_nr as u32 > max_line_nr || to_node_line_nr as u32 > max_line_nr {
+                                                web_sys::console::log_1(&"Hiding edge:".into());
+                                                web_sys::console::log_1(&title_content.into());
                                                 "hidden"
                                             } else {
                                                 "visible"

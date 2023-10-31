@@ -3,19 +3,19 @@ use yew::prelude::*;
 use wasm_bindgen::{UnwrapThrowExt, JsCast};
 
 pub enum InputAction {
-    SetValueTo(i32),
+    SetValueTo(u32),
     ResetState,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct InputValue {
-    pub value: i32,
+    pub value: u32,
 }
 
 impl Default for InputValue {
     fn default() -> Self {
         Self {
-            value: i32::MAX,
+            value: u32::MAX,
         }
     }
 }
@@ -55,7 +55,7 @@ pub fn integer_input(props: &IntegerInputProps) -> Html {
                 .unwrap_throw()
                 .dyn_into()
                 .unwrap_throw();
-            match target.value().to_string().parse::<i32>() {
+            match target.value().to_string().parse::<u32>() {
                 Ok(value) => {
                     input_value.dispatch(InputAction::SetValueTo(value));
                 },

@@ -1,0 +1,20 @@
+.ascii-art {
+    font-family: monospace;
+    white-space: pre;
+}
+
+#image {
+    display: inline-block;
+    overflow: auto;
+    max-width: 1500px;
+    max-height: 1000px;
+    flex: 1;
+}
+
+.node:hover {
+    opacity: 0.6
+}
+
+.edge:hover * {
+    opacity: 0.4
+}

@@ -1,3 +1,5 @@
+use crate::results;
+
 use self::colors::HSVColour;
 use super::{filters::{
     filter_chain::{FilterChain, Msg as FilterChainMsg},
@@ -20,7 +22,6 @@ use smt_log_parser::{
     },
 };
 use std::num::NonZeroUsize;
-use viz_js::VizInstance;
 use web_sys::window;
 use yew::prelude::*;
 
@@ -106,6 +107,7 @@ impl Component for SVGResult {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::WorkerOutput(out) => {
+                ctx.link().send_message(Msg::UpdateSvgText(AttrValue::from(out.svg_text)));
                 false
             }
             Msg::ApplyFilter(filter) => {
@@ -173,16 +175,8 @@ impl Component for SVGResult {
                     );
                     log::debug!("Finished building dot output");
                     let link = ctx.link().clone();
-                    wasm_bindgen_futures::spawn_local(async move {
-                        let graphviz = VizInstance::new().await;
-                        let options = viz_js::Options::default();
-                        // options.engine = "twopi".to_string();
-                        let svg = graphviz
-                            .render_svg_element(dot_output, options)
-                            .expect("Could not render graphviz");
-                        let svg_text = svg.outer_html();
-                        link.send_message(Msg::UpdateSvgText(AttrValue::from(svg_text)));
-                    });
+                    self.reset_worker(link);
+                    self.send_worker_input(results::worker::WorkerInput { dot_file: dot_output });
                     // only need to re-render once the new SVG has been set
                     false
                 } else {

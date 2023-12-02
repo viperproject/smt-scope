@@ -11,6 +11,10 @@
     flex: 1;
 }
 
+.node {
+    cursor: pointer;
+}
+
 .node:hover {
     opacity: 0.6
 }

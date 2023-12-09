@@ -23,6 +23,6 @@
     opacity: 0.6
 }
 
-.edge:hover * {
+.edge.direct:hover * {
     opacity: 0.4
 }

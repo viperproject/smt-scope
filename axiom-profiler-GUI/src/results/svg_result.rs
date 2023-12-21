@@ -1,19 +1,25 @@
-use crate::{results::graph_info::{GraphInfo, Msg as GraphInfoMsg}, RcParser};
+use crate::{
+    results::graph_info::{GraphInfo, Msg as GraphInfoMsg},
+    RcParser,
+};
 
 use self::colours::HSVColour;
-use super::{filters::{
-    filter_chain::{FilterChain, Msg as FilterChainMsg},
-    graph_filters::Filter,
-}, worker::Worker};
+use super::{
+    filters::{
+        filter_chain::{FilterChain, Msg as FilterChainMsg},
+        graph_filters::Filter,
+    },
+    worker::Worker,
+};
 use material_yew::WeakComponentLink;
 use num_format::{Locale, ToFormattedString};
 use petgraph::dot::{Config, Dot};
-use petgraph::graph::{NodeIndex, EdgeIndex};
+use petgraph::graph::{EdgeIndex, NodeIndex};
 use smt_log_parser::{
-    items::{MatchKind, BlameKind},
+    items::{BlameKind, MatchKind},
     parsers::{
         z3::{
-            inst_graph::{EdgeType, InstGraph, InstInfo, EdgeInfo, VisibleGraphInfo},
+            inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, VisibleGraphInfo},
             z3parser::Z3Parser,
         },
         LogParser,
@@ -73,7 +79,6 @@ pub struct SVGResult {
     get_node_info: Callback<(NodeIndex, bool, RcParser), InstInfo>,
     get_edge_info: Callback<(EdgeIndex, bool, RcParser), EdgeInfo>,
     selected_insts: Vec<InstInfo>,
-
 }
 
 #[derive(Properties, PartialEq)]
@@ -94,13 +99,15 @@ impl Component for SVGResult {
         let get_node_info = Callback::from({
             let inst_graph = inst_graph.clone();
             move |(node, ignore_ids, parser): (NodeIndex, bool, RcParser)| {
-            inst_graph.get_instantiation_info(node.index(), &*parser, ignore_ids)
-        }});
+                inst_graph.get_instantiation_info(node.index(), &*parser, ignore_ids)
+            }
+        });
         let get_edge_info = Callback::from({
             let inst_graph = inst_graph.clone();
             move |(edge, ignore_ids, parser): (EdgeIndex, bool, RcParser)| {
-            inst_graph.get_edge_info(edge, &*parser, ignore_ids)
-        }});
+                inst_graph.get_edge_info(edge, &*parser, ignore_ids)
+            }
+        });
         Self {
             parser,
             colour_map,
@@ -122,9 +129,7 @@ impl Component for SVGResult {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::WorkerOutput(_out) => {
-                false
-            }
+            Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {}", filter);
                 if let Some(ref path) = filter.apply(&mut self.inst_graph) {
@@ -144,11 +149,19 @@ impl Component for SVGResult {
                 false
             }
             Msg::RenderGraph(UserPermission { permission }) => {
-                let VisibleGraphInfo { node_count, edge_count, node_count_decreased, edge_count_decreased } = self.inst_graph.retain_visible_nodes_and_reconnect();
+                let VisibleGraphInfo {
+                    node_count,
+                    edge_count,
+                    node_count_decreased,
+                    edge_count_decreased,
+                } = self.inst_graph.retain_visible_nodes_and_reconnect();
                 log::debug!("The current node count is {}", node_count);
                 self.graph_dim.node_count = node_count;
                 self.graph_dim.edge_count = edge_count;
-                let safe_to_render = edge_count <= EDGE_LIMIT || node_count <= DEFAULT_NODE_COUNT || edge_count_decreased || node_count_decreased;
+                let safe_to_render = edge_count <= EDGE_LIMIT
+                    || node_count <= DEFAULT_NODE_COUNT
+                    || edge_count_decreased
+                    || node_count_decreased;
                 if safe_to_render || permission {
                     self.async_graph_and_filter_chain = false;
                     log::debug!("Rendering graph");
@@ -161,18 +174,28 @@ impl Component for SVGResult {
                     // `ranksep` dictates the distance between ranks (rows) in the graph,
                     // it should be set dynamically based on the average number of children
                     // per node out of all nodes with at least one child.
-                    let settings = ["ranksep=1.0;", "splines=false;", "nslimit=6;", "mclimit=0.6;"];
+                    let settings = [
+                        "ranksep=1.0;",
+                        "splines=false;",
+                        "nslimit=6;",
+                        "mclimit=0.6;",
+                    ];
                     let dot_output = format!(
                         "digraph {{\n{}\n{:?}\n}}",
                         settings.join("\n"),
                         Dot::with_attr_getters(
                             filtered_graph,
-                            &[Config::EdgeNoLabel, Config::NodeNoLabel, Config::GraphContentOnly],
+                            &[
+                                Config::EdgeNoLabel,
+                                Config::NodeNoLabel,
+                                Config::GraphContentOnly
+                            ],
                             &|_, edge_data| format!(
                                 "id={} style={} class={} arrowhead={}",
                                 match edge_data.weight() {
-                                    EdgeType::Direct { orig_graph_idx, .. } => format!("edge{}", orig_graph_idx.index()),
-                                    EdgeType::Indirect => "indirect".to_string() 
+                                    EdgeType::Direct { orig_graph_idx, .. } =>
+                                        format!("edge{}", orig_graph_idx.index()),
+                                    EdgeType::Indirect => "indirect".to_string(),
                                 },
                                 match edge_data.weight() {
                                     EdgeType::Direct { .. } => "solid",
@@ -183,7 +206,10 @@ impl Component for SVGResult {
                                     EdgeType::Indirect => "indirect",
                                 },
                                 match edge_data.weight() {
-                                    EdgeType::Direct { kind: BlameKind::Equality { .. }, .. } => "empty",
+                                    EdgeType::Direct {
+                                        kind: BlameKind::Equality { .. },
+                                        ..
+                                    } => "empty",
                                     _ => "normal",
                                 }
                             ),
@@ -199,7 +225,7 @@ impl Component for SVGResult {
                                         //     (true, false) => format!("{}:{}", self.colour_map.get(&node_data.quant_idx, 0.1), self.colour_map.get(&node_data.quant_idx, 1.0)),
                                         //     (true, true) => format!("{}", self.colour_map.get(&node_data.quant_idx, 0.3)),
                                         // },
-                                        match (self.inst_graph.node_has_filtered_children(node_data.orig_graph_idx), 
+                                        match (self.inst_graph.node_has_filtered_children(node_data.orig_graph_idx),
                                                self.inst_graph.node_has_filtered_parents(node_data.orig_graph_idx)) {
                                             (false, false) => "box",
                                             (false, true) => "house",
@@ -221,7 +247,10 @@ impl Component for SVGResult {
                             .render_svg_element(dot_output, options)
                             .expect("Could not render graphviz");
                         let svg_text = svg.outer_html();
-                        link.send_message(Msg::UpdateSvgText(AttrValue::from(svg_text), node_count_decreased));
+                        link.send_message(Msg::UpdateSvgText(
+                            AttrValue::from(svg_text),
+                            node_count_decreased,
+                        ));
                     });
                     // only need to re-render once the new SVG has been set
                     false
@@ -265,7 +294,7 @@ impl Component for SVGResult {
                                     .send_message(FilterChainMsg::SetToPrevious);
                                 false
                             }
-                            Err(_) => false
+                            Err(_) => false,
                         }
                     }
                     Err(_) => {
@@ -303,7 +332,7 @@ impl Component for SVGResult {
             <h4>{format!{"The filtered graph contains {} nodes and {} edges", self.graph_dim.node_count, self.graph_dim.edge_count}}</h4>
         };
         let async_graph_and_filter_chain_warning = if self.async_graph_and_filter_chain {
-            html! {<h4 style="color: red;">{"Warning: The filter chain and node/edge count do not correspond to the rendered graph."}</h4>} 
+            html! {<h4 style="color: red;">{"Warning: The filter chain and node/edge count do not correspond to the rendered graph."}</h4>}
         } else {
             html! {}
         };
@@ -326,8 +355,8 @@ impl Component for SVGResult {
                 {async_graph_and_filter_chain_warning}
                 {node_and_edge_count_preview}
                 </div>
-                <GraphInfo 
-                    weak_link={self.insts_info_link.clone()} 
+                <GraphInfo
+                    weak_link={self.insts_info_link.clone()}
                     node_info={self.get_node_info.clone()}
                     edge_info={self.get_edge_info.clone()}
                     parser={self.parser.clone()}
@@ -356,9 +385,7 @@ impl SVGResult {
     /// Used internally.
     fn create_worker(link: yew::html::Scope<Self>) -> Box<dyn yew_agent::Bridge<Worker>> {
         use yew_agent::Bridged;
-        let cb = std::rc::Rc::new(
-            move |e| link.send_message(Msg::WorkerOutput(e))
-        );
+        let cb = std::rc::Rc::new(move |e| link.send_message(Msg::WorkerOutput(e)));
         Worker::bridge(cb)
     }
 }
@@ -386,7 +413,10 @@ impl QuantIdxToColourMap {
     pub fn get(&self, mkind: &MatchKind, sat: f64) -> HSVColour {
         let qidx = mkind.quant_idx();
         debug_assert!(self.non_quant_insts || qidx.is_some());
-        let idx = qidx.map(usize::from).map(|q| q + self.non_quant_insts as usize).unwrap_or(0);
+        let idx = qidx
+            .map(usize::from)
+            .map(|q| q + self.non_quant_insts as usize)
+            .unwrap_or(0);
         // debug_assert!(idx < idx);
         let idx_perm = (idx * self.coprime.get() + self.shift) % self.total_count;
         HSVColour {
@@ -405,17 +435,17 @@ impl QuantIdxToColourMap {
         let nz = NonZeroUsize::new(n);
         if let Some(nz) = nz {
             // according to prime number theorem, the number of primes less than or equal to N is roughly N/ln(N)
-            let nr_primes_smaller_than_n = n as f64/f64::ln(n as f64);
+            let nr_primes_smaller_than_n = n as f64 / f64::ln(n as f64);
             primal::Primes::all()
                 // Start from "middle prime" smaller than n since both the very large and very small ones don't permute so nicely.
-                .skip((nr_primes_smaller_than_n/2.0).ceil() as usize)
+                .skip((nr_primes_smaller_than_n / 2.0).ceil() as usize)
                 // SAFETY: returned primes will never be zero.
                 .map(|p| unsafe { NonZeroUsize::new_unchecked(p) })
                 // Find the first prime that is coprime to `nz`.
                 .find(|&prime| nz.get() % prime.get() != 0)
                 .unwrap()
-                // Will always succeed since any prime larger than `nz / 2` is
-                // coprime. Terminates since `nz != 0`.
+            // Will always succeed since any prime larger than `nz / 2` is
+            // coprime. Terminates since `nz != 0`.
         } else {
             ONE
         }

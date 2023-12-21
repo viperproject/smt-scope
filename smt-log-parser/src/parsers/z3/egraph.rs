@@ -43,7 +43,10 @@ impl EGraph {
         let enode = *self.term_to_enode.get(&term)?;
         let frame = self.enodes[enode].frame;
         // This cannot be an enode if it points to a popped stack frame
-        if frame.map(|f| !stack.stack_frames[f].active).unwrap_or_default() {
+        if frame
+            .map(|f| !stack.stack_frames[f].active)
+            .unwrap_or_default()
+        {
             None
         } else {
             Some(enode)
@@ -59,7 +62,11 @@ impl EGraph {
     }
 
     pub fn get_equalities(&self, from: ENodeIdx, to: ENodeIdx) -> &[EqualityExpl] {
-        self.enodes[from].equalities.get(&to).map(|e| &**e).unwrap_or_default()
+        self.enodes[from]
+            .equalities
+            .get(&to)
+            .map(|e| &**e)
+            .unwrap_or_default()
     }
 
     // TODO: unused due to being slow

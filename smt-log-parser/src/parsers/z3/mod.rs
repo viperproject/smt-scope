@@ -52,10 +52,12 @@ impl<T: Z3LogParser + Default> LogParser for T {
             "[conflict]" => self.conflict(split),
             _ => None,
         };
-        parse.unwrap_or_else(|| if std::env::var("SLP_TEST_MODE").is_ok() {
-            panic!("Error parsing line {line_no}: {line:?}");
-        } else {
-            eprintln!("Error parsing line {line_no}: {line:?}")
+        parse.unwrap_or_else(|| {
+            if std::env::var("SLP_TEST_MODE").is_ok() {
+                panic!("Error parsing line {line_no}: {line:?}");
+            } else {
+                eprintln!("Error parsing line {line_no}: {line:?}")
+            }
         });
         true
     }

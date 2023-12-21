@@ -1,9 +1,9 @@
+use petgraph::graph::NodeIndex;
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{Event, HtmlElement, SvgsvgElement};
 use yew::prelude::*;
 use yew::{function_component, html, use_node_ref, Html};
-use petgraph::graph::NodeIndex;
 
 const NODE_SHAPE: &str = "polygon";
 
@@ -56,7 +56,11 @@ pub fn graph(props: &GraphProps) -> Html {
         let nodes_callback = props.update_selected_nodes.clone();
         let edges_callback = props.update_selected_edges.clone();
         let background_callback = props.deselect_all.clone();
-        let selected_nodes: Vec<usize> = props.selected_nodes.iter().map(|nidx| nidx.index()).collect();
+        let selected_nodes: Vec<usize> = props
+            .selected_nodes
+            .iter()
+            .map(|nidx| nidx.index())
+            .collect();
 
         use_effect_with_deps(
             move |_| {
@@ -66,41 +70,44 @@ pub fn graph(props: &GraphProps) -> Html {
                     .expect("div_ref not attached to div element");
 
                 // attach event listener to surrounding polygon that makes all nodes unselected when clicked on it
-                let background = div.query_selector("svg > g > polygon").expect("Failed to select svg > g > polygon");
-                let background_closure: Vec<Closure<dyn Fn(Event)>> = if let Some(ref background_el) = background {
-                    let callback = background_callback.clone();
-                    let div = div.clone();
-                    let closure: Closure<dyn Fn(Event)> = Closure::new(move |_: Event| {
-                        let nodes = div.get_elements_by_class_name("node");
-                        for i in 0..nodes.length() {
-                            let node = nodes.item(i).unwrap();
-                            let ellipse = node
-                                .query_selector(NODE_SHAPE)
-                                .expect("Failed to select ellipse")
-                                .unwrap();
-                            let _ = ellipse.set_attribute("stroke-width", "1");
-                        }
-                        let edges = div.get_elements_by_class_name("edge direct");
-                        for i in 0..edges.length() {
-                            let edge = edges.item(i).unwrap();
-                            let path = edge 
-                                .query_selector("path")
-                                .expect("Failed to select path")
-                                .unwrap();
-                            let _ = path.set_attribute("stroke-width", "1");
-                        }
-                        callback.emit(());
-                    });
-                    background_el
-                        .add_event_listener_with_callback(
-                            "click",
-                            closure.as_ref().unchecked_ref(),
-                        )
-                        .unwrap();
-                    vec![closure]
-                } else {
-                    vec![]
-                };
+                let background = div
+                    .query_selector("svg > g > polygon")
+                    .expect("Failed to select svg > g > polygon");
+                let background_closure: Vec<Closure<dyn Fn(Event)>> =
+                    if let Some(ref background_el) = background {
+                        let callback = background_callback.clone();
+                        let div = div.clone();
+                        let closure: Closure<dyn Fn(Event)> = Closure::new(move |_: Event| {
+                            let nodes = div.get_elements_by_class_name("node");
+                            for i in 0..nodes.length() {
+                                let node = nodes.item(i).unwrap();
+                                let ellipse = node
+                                    .query_selector(NODE_SHAPE)
+                                    .expect("Failed to select ellipse")
+                                    .unwrap();
+                                let _ = ellipse.set_attribute("stroke-width", "1");
+                            }
+                            let edges = div.get_elements_by_class_name("edge direct");
+                            for i in 0..edges.length() {
+                                let edge = edges.item(i).unwrap();
+                                let path = edge
+                                    .query_selector("path")
+                                    .expect("Failed to select path")
+                                    .unwrap();
+                                let _ = path.set_attribute("stroke-width", "1");
+                            }
+                            callback.emit(());
+                        });
+                        background_el
+                            .add_event_listener_with_callback(
+                                "click",
+                                closure.as_ref().unchecked_ref(),
+                            )
+                            .unwrap();
+                        vec![closure]
+                    } else {
+                        vec![]
+                    };
                 // construct event_listeners that emit node indices (contained in title tags)
                 let descendant_nodes = div.get_elements_by_class_name("node");
                 let node_closures: Vec<Closure<dyn Fn(Event)>> = (0..descendant_nodes.length())
@@ -111,7 +118,12 @@ pub fn graph(props: &GraphProps) -> Html {
                             .query_selector(NODE_SHAPE)
                             .expect("Failed to select title element")
                             .unwrap();
-                        let node_index = node.id().strip_prefix("node").unwrap().parse::<usize>().unwrap();
+                        let node_index = node
+                            .id()
+                            .strip_prefix("node")
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap();
                         if selected_nodes.contains(&node_index) {
                             let _ = ellipse.set_attribute("stroke-width", "3");
                         }
@@ -155,10 +167,15 @@ pub fn graph(props: &GraphProps) -> Html {
                             .query_selector("path")
                             .expect("Failed to select title element")
                             .unwrap();
-                        let edge_index = node.id().strip_prefix("edge").unwrap().parse::<usize>().unwrap();
+                        let edge_index = node
+                            .id()
+                            .strip_prefix("edge")
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap();
                         let callback = edges_callback.clone();
                         let closure: Closure<dyn Fn(Event)> = Closure::new(move |_: Event| {
-                            log::debug!("Clicked on edge {}", edge_index); 
+                            log::debug!("Clicked on edge {}", edge_index);
                             let current_stroke_width = path.get_attribute("stroke-width");
                             match current_stroke_width {
                                 None => {
@@ -189,7 +206,9 @@ pub fn graph(props: &GraphProps) -> Html {
                     // Remove event listeners when the component is unmounted
                     if let Some(background_el) = background {
                         let closure = background_closure[0].as_ref();
-                        background_el.remove_event_listener_with_callback("click", closure.unchecked_ref()).unwrap();
+                        background_el
+                            .remove_event_listener_with_callback("click", closure.unchecked_ref())
+                            .unwrap();
                     }
                     for i in 0..node_closures.len() {
                         if let Some(node) = descendant_nodes.item(i as u32) {
@@ -205,8 +224,8 @@ pub fn graph(props: &GraphProps) -> Html {
                         if let Some(edge) = direct_edges.item(i as u32) {
                             let closure = edge_closures.as_slice()[i as usize].as_ref();
                             edge.remove_event_listener_with_callback(
-                                "click", 
-                                closure.unchecked_ref()
+                                "click",
+                                closure.unchecked_ref(),
                             )
                             .unwrap();
                         }
@@ -221,29 +240,38 @@ pub fn graph(props: &GraphProps) -> Html {
         let svg_text = props.svg_text.clone();
         // let selected_nodes: Vec<usize> = props.selected_nodes.iter().map(|nidx| nidx.index()).collect();
         let div_ref = div_ref.clone();
-        use_effect_with_deps({
-            web_sys::console::log_1(&"Using effect due to changed selected nodes".into());
-            let selected_nodes = selected_nodes.clone();
-            move |_| {
-                let div = div_ref
-                    .cast::<HtmlElement>()
-                    .expect("div_ref not attached to div element");
-                let nodes = div.get_elements_by_class_name("node");
-                for i in 0..nodes.length() {
-                    let node = nodes.item(i).unwrap();
-                    let node_index = NodeIndex::new(node.id().strip_prefix("node").unwrap().parse::<usize>().unwrap());
-                    let ellipse = node
-                        .query_selector(NODE_SHAPE)
-                        .expect("Failed to select ellipse")
-                        .unwrap();
-                    if selected_nodes.contains(&node_index) {
-                        let _ = ellipse.set_attribute("stroke-width", "3");
-                    } else {
-                        let _ = ellipse.set_attribute("stroke-width", "1");
+        use_effect_with_deps(
+            {
+                web_sys::console::log_1(&"Using effect due to changed selected nodes".into());
+                let selected_nodes = selected_nodes.clone();
+                move |_| {
+                    let div = div_ref
+                        .cast::<HtmlElement>()
+                        .expect("div_ref not attached to div element");
+                    let nodes = div.get_elements_by_class_name("node");
+                    for i in 0..nodes.length() {
+                        let node = nodes.item(i).unwrap();
+                        let node_index = NodeIndex::new(
+                            node.id()
+                                .strip_prefix("node")
+                                .unwrap()
+                                .parse::<usize>()
+                                .unwrap(),
+                        );
+                        let ellipse = node
+                            .query_selector(NODE_SHAPE)
+                            .expect("Failed to select ellipse")
+                            .unwrap();
+                        if selected_nodes.contains(&node_index) {
+                            let _ = ellipse.set_attribute("stroke-width", "3");
+                        } else {
+                            let _ = ellipse.set_attribute("stroke-width", "1");
+                        }
                     }
                 }
-            }
-        }, (selected_nodes, svg_text));
+            },
+            (selected_nodes, svg_text),
+        );
     }
     let deselect_all = {
         let callback = props.deselect_all.clone();
@@ -262,13 +290,13 @@ pub fn graph(props: &GraphProps) -> Html {
                 }
                 for i in 0..edges.length() {
                     let edge = edges.item(i).unwrap();
-                    let path = edge 
+                    let path = edge
                         .query_selector("path")
                         .expect("Failed to select path")
                         .unwrap();
                     let _ = path.set_attribute("stroke-width", "1");
                 }
-            } 
+            }
             callback.emit(())
         })
     };

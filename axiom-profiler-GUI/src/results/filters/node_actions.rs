@@ -16,22 +16,37 @@ pub fn node_actions(props: &NodeActionsProps) -> Html {
         let callback = props.action.clone();
         let selected_insts = props.selected_nodes.clone();
         Callback::from(move |_| {
-            let filters: Vec<Filter> = selected_insts
-                .iter()
-                .map(&filter_for_inst)
-                .collect();
+            let filters: Vec<Filter> = selected_insts.iter().map(&filter_for_inst).collect();
             callback.emit(filters);
         })
     };
-    let show_subtree = callback_from(Box::new(|inst: &InstInfo| Filter::VisitSubTreeWithRoot(inst.node_index, true)));
-    let hide_subtree = callback_from(Box::new(|inst: &InstInfo| Filter::VisitSubTreeWithRoot(inst.node_index, false)));
-    let show_children = callback_from(Box::new(|inst: &InstInfo| Filter::ShowNeighbours(inst.node_index, Outgoing)));
-    let show_parents = callback_from(Box::new(|inst: &InstInfo| Filter::ShowNeighbours(inst.node_index, Incoming)));
-    let show_source_tree = callback_from(Box::new(|inst: &InstInfo| Filter::VisitSourceTree(inst.node_index, true)));
-    let hide_source_tree = callback_from(Box::new(|inst: &InstInfo| Filter::VisitSourceTree(inst.node_index, false)));
-    let ignore_quantifier = callback_from(Box::new(|inst: &InstInfo| Filter::IgnoreQuantifier(inst.mkind.quant_idx())));
-    let ignore_all_but_quantifier = callback_from(Box::new(|inst: &InstInfo| Filter::IgnoreAllButQuantifier(inst.mkind.quant_idx())));
-    let show_longest_path = callback_from(Box::new(|inst: &InstInfo| Filter::ShowLongestPath(inst.node_index)));
+    let show_subtree = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::VisitSubTreeWithRoot(inst.node_index, true)
+    }));
+    let hide_subtree = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::VisitSubTreeWithRoot(inst.node_index, false)
+    }));
+    let show_children = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::ShowNeighbours(inst.node_index, Outgoing)
+    }));
+    let show_parents = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::ShowNeighbours(inst.node_index, Incoming)
+    }));
+    let show_source_tree = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::VisitSourceTree(inst.node_index, true)
+    }));
+    let hide_source_tree = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::VisitSourceTree(inst.node_index, false)
+    }));
+    let ignore_quantifier = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::IgnoreQuantifier(inst.mkind.quant_idx())
+    }));
+    let ignore_all_but_quantifier = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::IgnoreAllButQuantifier(inst.mkind.quant_idx())
+    }));
+    let show_longest_path = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::ShowLongestPath(inst.node_index)
+    }));
     html! {
     <>
         <h4>{"You have selected some nodes. Here are possible actions (applied to all selected nodes):"}</h4>

@@ -57,7 +57,14 @@ pub enum EdgeType {
 impl PartialEq for EdgeType {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (EdgeType::Direct { orig_graph_idx: s, .. }, EdgeType::Direct { orig_graph_idx: o, .. }) => s == o,
+            (
+                EdgeType::Direct {
+                    orig_graph_idx: s, ..
+                },
+                EdgeType::Direct {
+                    orig_graph_idx: o, ..
+                },
+            ) => s == o,
             (EdgeType::Indirect, EdgeType::Indirect) => true,
             _ => false,
         }
@@ -168,7 +175,12 @@ impl InstGraph {
         // retain all visible nodes
         let mut new_inst_graph = self.orig_graph.filter_map(
             |_, node| Some(node).filter(|node| node.visible).cloned(),
-            |orig_graph_idx, edge_data| Some(EdgeType::Direct { kind: edge_data.clone(), orig_graph_idx }),
+            |orig_graph_idx, edge_data| {
+                Some(EdgeType::Direct {
+                    kind: edge_data.clone(),
+                    orig_graph_idx,
+                })
+            },
         );
         // remember all direct edges (will be added to the graph in the end)
         let direct_edges = new_inst_graph
@@ -206,11 +218,7 @@ impl InstGraph {
                     && self.tr_closure_contains_edge(old_u, old_v)
                 // && petgraph::algo::has_path_connecting(&self.orig_graph, old_u, old_v, None)
                 {
-                    new_inst_graph.add_edge(
-                        u,
-                        v,
-                        EdgeType::Indirect,
-                    );
+                    new_inst_graph.add_edge(u, v, EdgeType::Indirect);
                 }
             }
         }
@@ -239,11 +247,7 @@ impl InstGraph {
             let target = toposorted_dag[indirect_edge.target() as usize];
             // we only want indirect edges
             if !new_inst_graph.contains_edge(source, target) {
-                new_inst_graph.add_edge(
-                    source,
-                    target,
-                    EdgeType::Indirect,
-                );
+                new_inst_graph.add_edge(source, target, EdgeType::Indirect);
             }
         }
         self.visible_graph = new_inst_graph;
@@ -481,7 +485,7 @@ impl InstGraph {
                     .unwrap()
                     .max_depth
                     .cmp(&graph.node_weight(*node_b).unwrap().max_depth)
-                });
+            });
         // backtrack longest paths from furthest away nodes in subgraph until we reach a root
         let mut matching_loop_nodes: FxHashSet<NodeIndex> = FxHashSet::default();
         let mut visitor: Vec<NodeIndex> = furthest_away_nodes;
@@ -499,7 +503,7 @@ impl InstGraph {
                 }
             }
         }
-        matching_loop_nodes 
+        matching_loop_nodes
     }
 
     pub fn reset_visibility_to(&mut self, visibility: bool) {
@@ -609,13 +613,13 @@ impl InstGraph {
         node_idx: NodeIndex,
         direction: Direction,
     ) -> bool {
-        let neighbours = self
-            .orig_graph
-            .edges_directed(node_idx, direction)
-            .map(|e| match direction {
-                Outgoing => e.target(),
-                Incoming => e.source(),
-            });
+        let neighbours =
+            self.orig_graph
+                .edges_directed(node_idx, direction)
+                .map(|e| match direction {
+                    Outgoing => e.target(),
+                    Incoming => e.source(),
+                });
         let (visible_neighbours, hidden_neighbours): (Vec<NodeIndex>, Vec<NodeIndex>) =
             neighbours.partition(|n| self.orig_graph.node_weight(*n).unwrap().visible);
         let nr_visible_neighbours = visible_neighbours.len();
@@ -778,7 +782,13 @@ impl InstGraph {
             }
         }
         log!("Finished computing transitive closure");
-        self.visible_graph = self.orig_graph.map(|_, n| n.clone(), |orig_graph_idx, e| EdgeType::Direct { kind: e.clone(), orig_graph_idx })
+        self.visible_graph = self.orig_graph.map(
+            |_, n| n.clone(),
+            |orig_graph_idx, e| EdgeType::Direct {
+                kind: e.clone(),
+                orig_graph_idx,
+            },
+        )
     }
 
     fn add_node(&mut self, node_data: NodeData) {
@@ -799,10 +809,6 @@ impl InstGraph {
 
     fn add_edge(&mut self, from: InstIdx, to: InstIdx, blame: &BlameKind) {
         let (from, to) = (self.node_of_inst_idx[from], self.node_of_inst_idx[to]);
-        self.orig_graph.add_edge(
-            from,
-            to,
-            blame.clone(),
-        );
+        self.orig_graph.add_edge(from, to, blame.clone());
     }
 }

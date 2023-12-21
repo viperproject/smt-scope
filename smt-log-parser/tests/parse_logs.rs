@@ -16,17 +16,27 @@ fn parse_all_logs() {
 
             // Gives 50 millis per MB (or 50 secs per GB)
             let timeout = Duration::from_millis(500 + (file_size / 20_000));
-            println!("Parsing {} ({} MB) with timeout of {timeout:?}", filename.display(), file_size / 1024 / 1024);
+            println!(
+                "Parsing {} ({} MB) with timeout of {timeout:?}",
+                filename.display(),
+                file_size / 1024 / 1024
+            );
             // Some memory usage is still left over from previous loop iterations, so we'll need to subtract that.
             let start_mem = memory_stats::memory_stats().unwrap().physical_mem as u64;
             // TODO: optimize memory usage and reduce `max_mem`.
-            let max_mem = start_mem + file_size + file_size / 4 + 128*1024*1024;
+            let max_mem = start_mem + file_size + file_size / 4 + 128 * 1024 * 1024;
             let now = Instant::now();
 
             parser.process_check_every(Duration::from_millis(100), |_, _| {
                 assert!(now.elapsed() < timeout, "Parsing took longer than timeout");
                 let physical_mem = memory_stats::memory_stats().unwrap().physical_mem as u64;
-                assert!(physical_mem < max_mem, "Memory usage was {} MB, but file size was {} MB (max mem {} MB)", physical_mem / 1024 / 1024, file_size / 1024 / 1024, max_mem / 1024 / 1024);
+                assert!(
+                    physical_mem < max_mem,
+                    "Memory usage was {} MB, but file size was {} MB (max mem {} MB)",
+                    physical_mem / 1024 / 1024,
+                    file_size / 1024 / 1024,
+                    max_mem / 1024 / 1024
+                );
                 true
             });
             drop(parser);

@@ -69,14 +69,14 @@ impl Component for FileDataComponent {
                         }
                         Err((_err, _stream)) => {
                             let link = ctx.link().clone();
-                            let reader =
-                                gloo_file::callbacks::read_as_bytes(file, move |res| {
-                                    log::info!("Loading to string: {file_name}");
-                                    let text_data = String::from_utf8(res.expect("failed to read file")).unwrap();
-                                    log::info!("Parsing: {file_name}");
-                                    let parser = Z3Parser::from_str(&text_data).process_all();
-                                    link.send_message(Msg::LoadedFile(file_name, parser))
-                                });
+                            let reader = gloo_file::callbacks::read_as_bytes(file, move |res| {
+                                log::info!("Loading to string: {file_name}");
+                                let text_data =
+                                    String::from_utf8(res.expect("failed to read file")).unwrap();
+                                log::info!("Parsing: {file_name}");
+                                let parser = Z3Parser::from_str(&text_data).process_all();
+                                link.send_message(Msg::LoadedFile(file_name, parser))
+                            });
                             self.readers.push(reader);
                         }
                     };
@@ -97,15 +97,20 @@ impl Component for FileDataComponent {
             Msg::Files(files.map(FileList::from))
         });
         // Parse the timestamp at compile time
-        let timestamp = chrono::DateTime::parse_from_rfc3339(env!("VERGEN_GIT_COMMIT_TIMESTAMP")).unwrap();
+        let timestamp =
+            chrono::DateTime::parse_from_rfc3339(env!("VERGEN_GIT_COMMIT_TIMESTAMP")).unwrap();
         // Format using https://docs.rs/chrono/latest/chrono/format/strftime/index.html
-        let version_info = format!("{} ({})", env!("VERGEN_GIT_DESCRIBE"), timestamp.format("%-d %b %y %H:%M"));
+        let version_info = format!(
+            "{} ({})",
+            env!("VERGEN_GIT_DESCRIBE"),
+            timestamp.format("%-d %b %y %H:%M")
+        );
         html! {
             <div>
                 <div style="height: 13vh;">
                     <div style="display: flex; justify-content: space-between; padding: 0;">
                         <h1>{"Axiom Profiler"}</h1>
-                        
+
                         <p><small>{version_info}</small></p>
                     </div>
                     <div>

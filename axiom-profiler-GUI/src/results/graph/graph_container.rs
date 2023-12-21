@@ -1,8 +1,8 @@
+use petgraph::graph::NodeIndex;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use web_sys::Event;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-use petgraph::graph::NodeIndex;
 
 use super::graph::Graph;
 
@@ -29,9 +29,7 @@ impl Component for GraphContainer {
     type Properties = GraphContainerProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        Self { 
-            zoom_factor: 1.0,
-        }
+        Self { zoom_factor: 1.0 }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {

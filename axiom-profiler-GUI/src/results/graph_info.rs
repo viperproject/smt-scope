@@ -1,13 +1,19 @@
-use std::rc::Rc;
+use crate::RcParser;
 use gloo::console::log;
+use indexmap::map::IndexMap;
+use material_yew::WeakComponentLink;
+use petgraph::graph::{EdgeIndex, NodeIndex};
+use smt_log_parser::parsers::z3::inst_graph::EdgeType;
+use smt_log_parser::{
+    items::BlameKind,
+    parsers::z3::{
+        inst_graph::{EdgeInfo, InstInfo},
+        z3parser::Z3Parser,
+    },
+};
+use std::rc::Rc;
 use web_sys::HtmlElement;
 use yew::prelude::*;
-use indexmap::map::IndexMap;
-use petgraph::graph::{NodeIndex, EdgeIndex};
-use smt_log_parser::{parsers::z3::{inst_graph::{InstInfo, EdgeInfo}, z3parser::Z3Parser}, items::BlameKind};
-use smt_log_parser::parsers::z3::inst_graph::EdgeType;
-use material_yew::WeakComponentLink;
-use crate::RcParser;
 
 use super::graph::graph_container::GraphContainer;
 
@@ -15,10 +21,10 @@ pub struct GraphInfo {
     is_expanded_node: IndexMap<NodeIndex, bool>,
     selected_nodes: IndexMap<NodeIndex, InstInfo>,
     selected_nodes_ref: NodeRef,
-    is_expanded_edge: IndexMap<EdgeIndex, bool>, 
+    is_expanded_edge: IndexMap<EdgeIndex, bool>,
     selected_edges: IndexMap<EdgeIndex, EdgeInfo>,
     selected_edges_ref: NodeRef,
-    ignore_term_ids: bool, 
+    ignore_term_ids: bool,
 }
 
 pub enum Msg {
@@ -70,17 +76,26 @@ impl Component for GraphInfo {
                     self.selected_nodes.shift_remove(&node_index);
                     self.is_expanded_node.remove(&node_index);
                 } else {
-                    let inst_info = ctx.props().node_info.emit((node_index, self.ignore_term_ids, ctx.props().parser.clone()));
+                    let inst_info = ctx.props().node_info.emit((
+                        node_index,
+                        self.ignore_term_ids,
+                        ctx.props().parser.clone(),
+                    ));
                     self.selected_nodes.insert(node_index, inst_info);
                     // When adding a single new node,
-                    // close all  
+                    // close all
                     for val in self.is_expanded_node.values_mut() {
                         *val = false;
                     }
                     // except the added node
                     self.is_expanded_node.insert(node_index, true);
                 }
-                ctx.props().update_selected_nodes.emit(self.selected_nodes.values().cloned().collect::<Vec<InstInfo>>());
+                ctx.props().update_selected_nodes.emit(
+                    self.selected_nodes
+                        .values()
+                        .cloned()
+                        .collect::<Vec<InstInfo>>(),
+                );
                 true
             }
             Msg::UserSelectedEdge(edge_index) => {
@@ -89,14 +104,18 @@ impl Component for GraphInfo {
                     self.selected_edges.shift_remove(&edge_index);
                     self.is_expanded_edge.remove(&edge_index);
                 } else {
-                    let edge_info = ctx.props().edge_info.emit((edge_index, self.ignore_term_ids, ctx.props().parser.clone()));
+                    let edge_info = ctx.props().edge_info.emit((
+                        edge_index,
+                        self.ignore_term_ids,
+                        ctx.props().parser.clone(),
+                    ));
                     self.selected_edges.insert(edge_index, edge_info);
                     // When adding a single new edge,
-                    // close all  
+                    // close all
                     for val in self.is_expanded_edge.values_mut() {
                         *val = false;
                     }
-                    // except the added edge 
+                    // except the added edge
                     self.is_expanded_edge.insert(edge_index, true);
                 }
                 true
@@ -105,7 +124,7 @@ impl Component for GraphInfo {
                 let open_value = self.is_expanded_node.get_mut(&node).unwrap();
                 *open_value = !*open_value;
                 false
-            },
+            }
             Msg::ToggleOpenEdge(edge) => {
                 let open_value = self.is_expanded_edge.get_mut(&edge).unwrap();
                 *open_value = !*open_value;
@@ -117,30 +136,52 @@ impl Component for GraphInfo {
                 self.is_expanded_node.clear();
                 self.selected_edges.clear();
                 self.is_expanded_edge.clear();
-                ctx.props().update_selected_nodes.emit(self.selected_nodes.values().cloned().collect::<Vec<InstInfo>>());
+                ctx.props().update_selected_nodes.emit(
+                    self.selected_nodes
+                        .values()
+                        .cloned()
+                        .collect::<Vec<InstInfo>>(),
+                );
                 true
-            },
+            }
             Msg::SelectNodes(nodes) => {
                 self.selected_nodes.clear();
                 self.is_expanded_node.clear();
                 for node in nodes {
-                    let inst_info = ctx.props().node_info.emit((node, self.ignore_term_ids, ctx.props().parser.clone()));
+                    let inst_info = ctx.props().node_info.emit((
+                        node,
+                        self.ignore_term_ids,
+                        ctx.props().parser.clone(),
+                    ));
                     self.selected_nodes.insert(node, inst_info);
                     self.is_expanded_node.insert(node, false);
                 }
-                ctx.props().update_selected_nodes.emit(self.selected_nodes.values().cloned().collect::<Vec<InstInfo>>());
+                ctx.props().update_selected_nodes.emit(
+                    self.selected_nodes
+                        .values()
+                        .cloned()
+                        .collect::<Vec<InstInfo>>(),
+                );
                 true
             }
             Msg::ToggleIgnoreTermIds => {
                 self.ignore_term_ids = !self.ignore_term_ids;
                 for node in self.selected_nodes.values_mut() {
                     let node_idx = node.node_index;
-                    let updated_node = ctx.props().node_info.emit((node_idx, self.ignore_term_ids, ctx.props().parser.clone()));
+                    let updated_node = ctx.props().node_info.emit((
+                        node_idx,
+                        self.ignore_term_ids,
+                        ctx.props().parser.clone(),
+                    ));
                     *node = updated_node;
                 }
                 for edge in self.selected_edges.values_mut() {
                     let edge_idx = edge.orig_graph_idx;
-                    let updated_dep = ctx.props().edge_info.emit((edge_idx, self.ignore_term_ids, ctx.props().parser.clone()));
+                    let updated_dep = ctx.props().edge_info.emit((
+                        edge_idx,
+                        self.ignore_term_ids,
+                        ctx.props().parser.clone(),
+                    ));
                     *edge = updated_dep;
                 }
                 true
@@ -150,7 +191,10 @@ impl Component for GraphInfo {
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         log!("Rendered details");
-        let selected_nodes_details = self.selected_nodes_ref.cast::<HtmlElement>().expect("not attached to div element");
+        let selected_nodes_details = self
+            .selected_nodes_ref
+            .cast::<HtmlElement>()
+            .expect("not attached to div element");
         let node_details = selected_nodes_details.get_elements_by_tag_name("details");
         for i in 0..node_details.length() {
             log!(format!("There are {} nodes", node_details.length()));
@@ -163,7 +207,10 @@ impl Component for GraphInfo {
                 let _ = node_detail.remove_attribute("open");
             }
         }
-        let selected_edges_details = self.selected_edges_ref.cast::<HtmlElement>().expect("not attached to div element");
+        let selected_edges_details = self
+            .selected_edges_ref
+            .cast::<HtmlElement>()
+            .expect("not attached to div element");
         let edge_details = selected_edges_details.get_elements_by_tag_name("details");
         for i in 0..edge_details.length() {
             let edge_detail = edge_details.item(i).unwrap();
@@ -179,15 +226,11 @@ impl Component for GraphInfo {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let on_node_click = {
             let link = ctx.link().clone();
-            Callback::from(move |node: NodeIndex| {
-                link.send_message(Msg::ToggleOpenNode(node))
-            })
+            Callback::from(move |node: NodeIndex| link.send_message(Msg::ToggleOpenNode(node)))
         };
         let on_edge_click = {
             let link = ctx.link().clone();
-            Callback::from(move |edge: EdgeIndex| {
-                link.send_message(Msg::ToggleOpenEdge(edge))
-            })
+            Callback::from(move |edge: EdgeIndex| link.send_message(Msg::ToggleOpenEdge(edge)))
         };
         let toggle = ctx.link().callback(|_| Msg::ToggleIgnoreTermIds);
         let on_node_select = ctx.link().callback(Msg::UserSelectedNode);
@@ -229,10 +272,15 @@ struct SelectedNodesInfoProps {
 }
 
 #[function_component(SelectedNodesInfo)]
-fn selected_nodes_info(SelectedNodesInfoProps { selected_nodes, on_click }: &SelectedNodesInfoProps) -> Html {
-    selected_nodes 
+fn selected_nodes_info(
+    SelectedNodesInfoProps {
+        selected_nodes,
+        on_click,
+    }: &SelectedNodesInfoProps,
+) -> Html {
+    selected_nodes
         .iter()
-        .map(|selected_inst| { 
+        .map(|selected_inst| {
             let get_ul = |label: &str, items: &Vec<String>| html! {
                 <>
                     <h4>{label}</h4>
@@ -272,7 +320,12 @@ struct SelectedEdgesInfoProps {
 }
 
 #[function_component(SelectedEdgesInfo)]
-fn selected_edges_info(SelectedEdgesInfoProps { selected_edges, on_click }: &SelectedEdgesInfoProps) -> Html {
+fn selected_edges_info(
+    SelectedEdgesInfoProps {
+        selected_edges,
+        on_click,
+    }: &SelectedEdgesInfoProps,
+) -> Html {
     selected_edges
         .iter()
         .map(|selected_edge| {
@@ -291,13 +344,13 @@ fn selected_edges_info(SelectedEdgesInfoProps { selected_edges, on_click }: &Sel
                         <div>
                         <h4>{"Blame term: "}</h4><p>{selected_edge.blame_term.clone()}</p>
                         </div>
-                    }, 
+                    },
                     BlameKind::Equality { .. } => html! {
                         <div>
                         <h4>{"Equality: "}</h4><p>{selected_edge.blame_term.clone()}</p>
                         </div>
                     },
-                    _ => html! {} 
+                    _ => html! {}
                 }}
             </details>
             }

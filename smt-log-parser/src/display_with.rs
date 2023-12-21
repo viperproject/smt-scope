@@ -209,7 +209,11 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &MatchKind {
                 quant.fmt_with(f, ctxt, data)
             }
             MatchKind::TheorySolving { axiom_id, .. } => {
-                write!(f, "[TheorySolving] {}#", ctxt.parser.strings.resolve(&axiom_id.namespace))?;
+                write!(
+                    f,
+                    "[TheorySolving] {}#",
+                    ctxt.parser.strings.resolve(&axiom_id.namespace)
+                )?;
                 if let Some(id) = axiom_id.id {
                     write!(f, "{id}")?;
                 }
@@ -431,7 +435,9 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a QuantKind {
                 QuantKind::Other(kind) => write!(f, "{}", ctxt.parser.strings.resolve(kind))?,
                 QuantKind::Lambda => write!(f, "<null>")?,
                 QuantKind::NamedQuant(name) => write!(f, "{}", ctxt.parser.strings.resolve(name))?,
-                QuantKind::UnnamedQuant { name, id } => write!(f, "{}!{id}", ctxt.parser.strings.resolve(name))?,
+                QuantKind::UnnamedQuant { name, id } => {
+                    write!(f, "{}!{id}", ctxt.parser.strings.resolve(name))?
+                }
             };
             write!(f, "\" ")?;
         }

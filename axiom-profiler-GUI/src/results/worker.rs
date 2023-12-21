@@ -45,7 +45,10 @@ impl yew_agent::Worker for Worker {
             }
         }
 
-        let output = Self::Output { input: n, value: fib(n) };
+        let output = Self::Output {
+            input: n,
+            value: fib(n),
+        };
         self.link.respond(id, output);
     }
 

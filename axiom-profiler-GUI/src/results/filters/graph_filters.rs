@@ -42,7 +42,9 @@ impl Display for Filter {
                 write!(f, "Only show instantiations of quantifier {}", qidx)
             }
             Self::MaxInsts(max) => write!(f, "Show the {} most expensive instantiations", max),
-            Self::MaxBranching(max) => write!(f, "Show the {} instantiations with the most children", max),
+            Self::MaxBranching(max) => {
+                write!(f, "Show the {} instantiations with the most children", max)
+            }
             Self::VisitSubTreeWithRoot(nidx, retain) => match retain {
                 true => write!(f, "Show node {} and its descendants", nidx.index()),
                 false => write!(f, "Hide node {} and its descendants", nidx.index()),
@@ -56,7 +58,9 @@ impl Display for Filter {
                 Direction::Outgoing => write!(f, "Show the children of node {}", nidx.index()),
             },
             Self::MaxDepth(depth) => write!(f, "Show nodes up to depth {}", depth),
-            Self::ShowLongestPath(node) => write!(f, "Showing longest path through node {}", node.index()),
+            Self::ShowLongestPath(node) => {
+                write!(f, "Showing longest path through node {}", node.index())
+            }
             Self::ShowMatchingLoops => write!(f, "Showing matching loops"),
         }
     }
@@ -81,9 +85,11 @@ impl Filter {
             Filter::ShowNeighbours(nidx, direction) => graph.show_neighbours(nidx, direction),
             Filter::VisitSubTreeWithRoot(nidx, retain) => graph.visit_descendants(nidx, retain),
             Filter::VisitSourceTree(nidx, retain) => graph.visit_ancestors(nidx, retain),
-            Filter::MaxDepth(depth) => graph.retain_nodes(|node: &NodeData| node.min_depth.unwrap() <= depth),
+            Filter::MaxDepth(depth) => {
+                graph.retain_nodes(|node: &NodeData| node.min_depth.unwrap() <= depth)
+            }
             Filter::ShowLongestPath(nidx) => return Some(graph.show_longest_path_through(nidx)),
-            Filter::ShowMatchingLoops => graph.show_matching_loops(), 
+            Filter::ShowMatchingLoops => graph.show_matching_loops(),
         }
         None
     }

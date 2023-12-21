@@ -4,7 +4,7 @@ use web_sys::Event;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use super::graph::Graph;
+use super::svg_graph::Graph;
 
 pub enum Msg {
     SetValueTo(f32),

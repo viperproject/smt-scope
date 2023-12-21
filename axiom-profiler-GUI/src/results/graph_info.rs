@@ -3,15 +3,10 @@ use gloo::console::log;
 use indexmap::map::IndexMap;
 use material_yew::WeakComponentLink;
 use petgraph::graph::{EdgeIndex, NodeIndex};
-use smt_log_parser::parsers::z3::inst_graph::EdgeType;
 use smt_log_parser::{
     items::BlameKind,
-    parsers::z3::{
-        inst_graph::{EdgeInfo, InstInfo},
-        z3parser::Z3Parser,
-    },
+    parsers::z3::inst_graph::{EdgeInfo, InstInfo},
 };
-use std::rc::Rc;
 use web_sys::HtmlElement;
 use yew::prelude::*;
 
@@ -72,7 +67,7 @@ impl Component for GraphInfo {
         match msg {
             Msg::UserSelectedNode(node_index) => {
                 let node_index = NodeIndex::new(node_index);
-                if let Some(_) = self.selected_nodes.get(&node_index) {
+                if self.selected_nodes.get(&node_index).is_some() {
                     self.selected_nodes.shift_remove(&node_index);
                     self.is_expanded_node.remove(&node_index);
                 } else {
@@ -100,7 +95,7 @@ impl Component for GraphInfo {
             }
             Msg::UserSelectedEdge(edge_index) => {
                 let edge_index = EdgeIndex::new(edge_index);
-                if let Some(_) = self.selected_edges.get(&edge_index) {
+                if self.selected_edges.get(&edge_index).is_some() {
                     self.selected_edges.shift_remove(&edge_index);
                     self.is_expanded_edge.remove(&edge_index);
                 } else {
@@ -291,7 +286,7 @@ fn selected_nodes_info(
                 let on_click = on_click.clone();
                 let selected_inst = selected_inst.clone();
                 Callback::from(move |_| {
-                    on_click.emit(selected_inst.node_index.clone())
+                    on_click.emit(selected_inst.node_index)
                 })
             };
             let z3_gen = selected_inst.z3_gen.map(|gen| format!(", Z3 generation {gen}")).unwrap_or_default();
@@ -306,7 +301,7 @@ fn selected_nodes_info(
                     <li>{get_ul("Bound terms: ", &selected_inst.bound_terms)}</li>
                     <li>{get_ul("Yield terms: ", &selected_inst.yields_terms)}</li>
                     <li>{get_ul("Equality explanations: ", &selected_inst.equality_expls)}</li>
-                    <li><h4>{"Resulting term: "}</h4><p>{if let Some(ref val) = selected_inst.resulting_term {format!("{val}")} else { String::new() }}</p></li>
+                    <li><h4>{"Resulting term: "}</h4><p>{if let Some(ref val) = selected_inst.resulting_term {val.to_string()} else { String::new() }}</p></li>
                 </ul>
             </details>
         }})

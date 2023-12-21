@@ -212,7 +212,7 @@ pub fn graph(props: &GraphProps) -> Html {
                     }
                     for i in 0..node_closures.len() {
                         if let Some(node) = descendant_nodes.item(i as u32) {
-                            let closure = node_closures.as_slice()[i as usize].as_ref();
+                            let closure = node_closures.as_slice()[i].as_ref();
                             node.remove_event_listener_with_callback(
                                 "click",
                                 closure.unchecked_ref(),
@@ -222,7 +222,7 @@ pub fn graph(props: &GraphProps) -> Html {
                     }
                     for i in 0..edge_closures.len() {
                         if let Some(edge) = direct_edges.item(i as u32) {
-                            let closure = edge_closures.as_slice()[i as usize].as_ref();
+                            let closure = edge_closures.as_slice()[i].as_ref();
                             edge.remove_event_listener_with_callback(
                                 "click",
                                 closure.unchecked_ref(),

@@ -116,7 +116,7 @@ impl yew::html::Component for FilterChain {
             <>
                 <GraphFilter
                     add_filters={add_filters.clone()}
-                    dependency={ctx.props().dependency.clone()}
+                    dependency={ctx.props().dependency}
                 />
                 <h2>{"Filter chain:"}</h2>
                 {for filter_chain}

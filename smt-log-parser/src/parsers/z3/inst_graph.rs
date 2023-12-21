@@ -1,7 +1,7 @@
 use fxhash::FxHashSet;
 use gloo_console::log;
 use itertools::Itertools;
-use petgraph::graph::{Edge, NodeIndex};
+use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
 use petgraph::visit::{Bfs, IntoEdgeReferences, Topo};
 use petgraph::{
@@ -185,13 +185,10 @@ impl InstGraph {
         // remember all direct edges (will be added to the graph in the end)
         let direct_edges = new_inst_graph
             .raw_edges()
-            .iter()
-            .cloned()
-            .collect::<Vec<Edge<EdgeType>>>();
+            .to_vec();
         // nodes with missing children
         let out_set: Vec<NodeIndex> = new_inst_graph
             .node_indices()
-            .into_iter()
             .filter(|node| {
                 let new_child_count = new_inst_graph.neighbors_directed(*node, Outgoing).count();
                 let old_child_count = new_inst_graph.node_weight(*node).unwrap().child_count;
@@ -201,7 +198,6 @@ impl InstGraph {
         // nodes with missing parents
         let in_set: Vec<NodeIndex> = new_inst_graph
             .node_indices()
-            .into_iter()
             .filter(|node| {
                 new_inst_graph.neighbors_directed(*node, Incoming).count()
                     < new_inst_graph.node_weight(*node).unwrap().parent_count
@@ -493,11 +489,11 @@ impl InstGraph {
         while let Some(curr) = visitor.pop() {
             matching_loop_nodes.insert(graph.node_weight(curr).unwrap().orig_graph_idx);
             let curr_distance = graph.node_weight(curr).unwrap().max_depth;
-            let mut preds = graph.neighbors_directed(curr, Incoming).filter(|pred| {
+            let preds = graph.neighbors_directed(curr, Incoming).filter(|pred| {
                 let pred_distance = graph.node_weight(*pred).unwrap().max_depth;
                 pred_distance == curr_distance - 1
             });
-            while let Some(pred) = preds.next() {
+            for pred in preds {
                 if visited.insert(pred) {
                     visitor.push(pred);
                 }
@@ -571,7 +567,7 @@ impl InstGraph {
             .collect::<Vec<String>>();
         let inst_info = InstInfo {
             fingerprint: inst.fingerprint,
-            inst_idx: inst_idx,
+            inst_idx,
             resulting_term: inst
                 .get_resulting_term()
                 .map(|rt| rt.with(&ctxt).to_string()),
@@ -671,11 +667,8 @@ impl InstGraph {
         let cost_order = |node_a: &NodeIndex, node_b: &NodeIndex| {
             let node_a_data = self.orig_graph.node_weight(*node_a).unwrap();
             let node_b_data = self.orig_graph.node_weight(*node_b).unwrap();
-            if node_a_data.cost < node_b_data.cost {
-                std::cmp::Ordering::Greater
-            } else if node_a_data.cost == node_b_data.cost
-                && node_b_data.inst_idx < node_a_data.inst_idx
-            {
+            if node_a_data.cost < node_b_data.cost || (node_a_data.cost == node_b_data.cost
+                && node_b_data.inst_idx < node_a_data.inst_idx) {
                 std::cmp::Ordering::Greater
             } else {
                 std::cmp::Ordering::Less
@@ -718,11 +711,8 @@ impl InstGraph {
         let branching_order = |node_a: &NodeIndex, node_b: &NodeIndex| {
             let node_a_data = self.orig_graph.node_weight(*node_a).unwrap();
             let node_b_data = self.orig_graph.node_weight(*node_b).unwrap();
-            if node_a_data.child_count < node_b_data.child_count {
-                std::cmp::Ordering::Greater
-            } else if node_a_data.child_count == node_b_data.child_count
-                && node_b_data.inst_idx < node_a_data.inst_idx
-            {
+            if node_a_data.child_count < node_b_data.child_count || (node_a_data.child_count == node_b_data.child_count
+                && node_b_data.inst_idx < node_a_data.inst_idx) {
                 std::cmp::Ordering::Greater
             } else {
                 std::cmp::Ordering::Less
@@ -758,9 +748,7 @@ impl InstGraph {
         let mut topo_ord = self.orig_graph.node_count() - 1;
         while let Some(nx) = topo.next(petgraph::visit::Reversed(&self.orig_graph)) {
             self.orig_graph[nx].topo_ord = topo_ord;
-            if topo_ord > 0 {
-                topo_ord -= 1;
-            }
+            topo_ord = topo_ord.saturating_sub(1);
         }
         self.tr_closure = vec![RoaringBitmap::new(); self.orig_graph.node_count()];
         // note that we are storing the bitsets's of each node index in topological order!
@@ -777,9 +765,7 @@ impl InstGraph {
                 }
             }
             bitsets = others;
-            if ord > 0 {
-                ord -= 1;
-            }
+            ord = ord.saturating_sub(1);
         }
         log!("Finished computing transitive closure");
         self.visible_graph = self.orig_graph.map(

@@ -17,15 +17,9 @@ use petgraph::dot::{Config, Dot};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use smt_log_parser::{
     items::{BlameKind, MatchKind},
-    parsers::{
-        z3::{
-            inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, VisibleGraphInfo},
-            z3parser::Z3Parser,
-        },
-        LogParser,
-    },
+    parsers::z3::inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, VisibleGraphInfo},
 };
-use std::{num::NonZeroUsize, rc::Rc};
+use std::num::NonZeroUsize;
 use viz_js::VizInstance;
 use web_sys::window;
 use yew::prelude::*;
@@ -45,14 +39,9 @@ pub enum Msg {
     UpdateSelectedNodes(Vec<InstInfo>),
 }
 
+#[derive(Default)]
 pub struct UserPermission {
     permission: bool,
-}
-
-impl Default for UserPermission {
-    fn default() -> Self {
-        Self { permission: false }
-    }
 }
 
 impl From<bool> for UserPermission {
@@ -93,19 +82,19 @@ impl Component for SVGResult {
     fn create(ctx: &Context<Self>) -> Self {
         log::debug!("Creating SVGResult component");
         let parser = RcParser::clone(&ctx.props().parser);
-        let inst_graph = InstGraph::from(&*parser);
+        let inst_graph = InstGraph::from(&parser);
         let (quant_count, non_quant_insts) = parser.quant_count_incl_theory_solving();
         let colour_map = QuantIdxToColourMap::from(quant_count, non_quant_insts);
         let get_node_info = Callback::from({
             let inst_graph = inst_graph.clone();
             move |(node, ignore_ids, parser): (NodeIndex, bool, RcParser)| {
-                inst_graph.get_instantiation_info(node.index(), &*parser, ignore_ids)
+                inst_graph.get_instantiation_info(node.index(), &parser, ignore_ids)
             }
         });
         let get_edge_info = Callback::from({
             let inst_graph = inst_graph.clone();
             move |(edge, ignore_ids, parser): (EdgeIndex, bool, RcParser)| {
-                inst_graph.get_edge_info(edge, &*parser, ignore_ids)
+                inst_graph.get_edge_info(edge, &parser, ignore_ids)
             }
         });
         Self {
@@ -214,8 +203,8 @@ impl Component for SVGResult {
                                 }
                             ),
                             &|_, (_, node_data)| {
-                                format!("id={} label=\"{}\" style=\"{}\" shape={} fillcolor=\"{}\" fontcolor=black gradientangle=90",
-                                        format!("node{}", node_data.orig_graph_idx.index()),
+                                format!("id=node{} label=\"{}\" style=\"{}\" shape={} fillcolor=\"{}\" fontcolor=black gradientangle=90",
+                                        node_data.orig_graph_idx.index(),
                                         node_data.orig_graph_idx.index(),
                                         if node_data.mkind.is_mbqi() { "filled,dashed" } else { "filled" },
                                         // match (self.inst_graph.node_has_filtered_children(node_data.orig_graph_idx), 
@@ -280,7 +269,7 @@ impl Component for SVGResult {
                         // right before adding the filter that caused too many nodes
                         // to be added to the graph
                         let message = "Would you like to apply the filter without rendering?";
-                        let result = window.confirm_with_message(&message);
+                        let result = window.confirm_with_message(message);
                         match result {
                             Ok(true) => {
                                 self.async_graph_and_filter_chain = true;

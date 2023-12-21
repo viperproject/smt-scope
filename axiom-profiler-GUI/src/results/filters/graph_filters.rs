@@ -70,7 +70,7 @@ impl Filter {
     pub fn apply(self: Filter, graph: &mut InstGraph) -> Option<Vec<NodeIndex>> {
         match self {
             Filter::MaxNodeIdx(max) => graph
-                .retain_nodes(|node: &NodeData| usize::from(node.orig_graph_idx.index()) <= max),
+                .retain_nodes(|node: &NodeData| node.orig_graph_idx.index() <= max),
             Filter::IgnoreTheorySolving => {
                 graph.retain_nodes(|node: &NodeData| !node.is_theory_inst)
             }
@@ -143,7 +143,7 @@ pub fn graph_filter(props: &GraphFilterProps) -> Html {
             <div>
                 <UsizeInput
                     label={"Only show nodes up to index "}
-                    dependency={props.dependency.clone()}
+                    dependency={props.dependency}
                     input_value={max_node_idx}
                     default_value={usize::MAX}
                     placeholder={""}
@@ -157,7 +157,7 @@ pub fn graph_filter(props: &GraphFilterProps) -> Html {
             <div>
                 <UsizeInput
                     label={"Render the n most expensive instantiations where n = "}
-                    dependency={props.dependency.clone()}
+                    dependency={props.dependency}
                     input_value={max_instantiations}
                     default_value={super::super::svg_result::DEFAULT_NODE_COUNT}
                     placeholder={""}
@@ -167,7 +167,7 @@ pub fn graph_filter(props: &GraphFilterProps) -> Html {
             <div>
                 <UsizeInput
                     label={"Render the n instantiations with most children where n = "}
-                    dependency={props.dependency.clone()}
+                    dependency={props.dependency}
                     input_value={max_branching}
                     default_value={usize::MAX}
                     placeholder={""}
@@ -177,7 +177,7 @@ pub fn graph_filter(props: &GraphFilterProps) -> Html {
             <div>
                 <UsizeInput
                     label={"Render up to depth "}
-                    dependency={props.dependency.clone()}
+                    dependency={props.dependency}
                     input_value={max_depth}
                     default_value={usize::MAX}
                     placeholder={""}
@@ -188,7 +188,7 @@ pub fn graph_filter(props: &GraphFilterProps) -> Html {
                 <label for="matching_loops">{"Show matching loops"}</label>
                 <button onclick={show_matching_loops} id="matching_loops">{"Add"}</button>
             </div>
-            {if selected_insts.len() > 0 {
+            {if !selected_insts.is_empty() {
                 html! {
                     <NodeActions selected_nodes={selected_insts} action={props.add_filters.clone()} />
                 }

@@ -52,7 +52,7 @@ pub fn integer_input(props: &UsizeInputProps) -> Html {
 
     let set_value = {
         let input_value = input_value.clone();
-        let default_value = props.default_value.clone();
+        let default_value = props.default_value;
         move |input_event: Event| {
             let target: HtmlInputElement = input_event
                 .target()
@@ -91,10 +91,10 @@ pub fn integer_input(props: &UsizeInputProps) -> Html {
 
     {
         // Whenever dependency changes, need to reset the state
-        let dep = props.dependency.clone();
+        let dep = props.dependency;
         let input_value = input_value.clone();
         let input_ref = input_ref.clone();
-        let default_value = props.default_value.clone();
+        let default_value = props.default_value;
         use_effect_with_deps(
             {
                 let input_value = input_value.clone();

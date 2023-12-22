@@ -118,7 +118,7 @@ impl yew::html::Component for FilterChain {
                     add_filters={add_filters.clone()}
                     dependency={ctx.props().dependency}
                 />
-                <h2>{"Filter history:"}</h2>
+                <h2>{"Filter chain:"}</h2>
                 {for filter_chain}
                 <div>
                     <button onclick={reset_filters}>{"Reset to default"}</button>

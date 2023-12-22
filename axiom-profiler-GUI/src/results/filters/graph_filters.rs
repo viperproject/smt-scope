@@ -21,7 +21,7 @@ pub enum Filter {
     VisitSubTreeWithRoot(NodeIndex, bool),
     MaxDepth(usize),
     ShowLongestPath(NodeIndex),
-    AnalyzeMatchingLoops,
+    AnalyzeMatchingLoops(usize),
 }
 
 impl Display for Filter {
@@ -61,7 +61,7 @@ impl Display for Filter {
             Self::ShowLongestPath(node) => {
                 write!(f, "Showing longest path through node {}", node.index())
             }
-            Self::AnalyzeMatchingLoops => write!(f, "Searched for matching loops"),
+            Self::AnalyzeMatchingLoops(loop_count) => write!(f, "Showing the {} longest matching loops", loop_count),
         }
     }
 }
@@ -89,7 +89,7 @@ impl Filter {
                 graph.retain_nodes(|node: &NodeData| node.min_depth.unwrap() <= depth)
             }
             Filter::ShowLongestPath(nidx) => return Some(graph.show_longest_path_through(nidx)),
-            Filter::AnalyzeMatchingLoops => graph.find_matching_loops(),
+            Filter::AnalyzeMatchingLoops(n) => graph.show_n_longest_matching_loops(n),
         }
         None
     }
@@ -108,8 +108,7 @@ pub struct GraphFilters {
     max_depth: usize,
     max_matching_loops: usize,
     selected_insts: Vec<InstInfo>,
-    _context_listener: ContextHandle<Vec<InstInfo>>,
-    analyzed_matching_loops: bool,
+    context_listener: ContextHandle<Vec<InstInfo>>,
     // add additional bool field to store whether matching loops have 
     // already been analyzed 
     // analyzed_matching_loops
@@ -129,15 +128,14 @@ pub enum Msg {
     SetMaxBranching(usize),
     SetMaxDepth(usize),
     SetMaxMatchingLoops(usize),
-    SelectedInstsUpdated(Vec<InstInfo>),
-    AnalyzedMatchingLoops,
+    SelectedInstsUpdated(Vec<InstInfo>)
 }
 
 impl Component for GraphFilters {
     type Message = Msg;
     type Properties = GraphFiltersProps;
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::SetMaxNodeIdx(to) => {
                 self.max_node_idx = to;
@@ -163,15 +161,11 @@ impl Component for GraphFilters {
                 self.selected_insts = selected_insts;
                 true
             }
-            Msg::AnalyzedMatchingLoops => {
-                self.analyzed_matching_loops = true;
-                true
-            }
         }
     }
 
     fn create(ctx: &Context<Self>) -> Self {
-        let (selected_insts, _context_listener) = ctx
+        let (selected_insts, context_listener) = ctx
             .link()
             .context(ctx.link().callback(Msg::SelectedInstsUpdated))
             .expect("No context provided");
@@ -182,8 +176,7 @@ impl Component for GraphFilters {
             max_depth: usize::MAX,
             max_matching_loops: 1,
             selected_insts,
-            _context_listener,
-            analyzed_matching_loops: false,
+            context_listener,
         }
     }
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -213,8 +206,8 @@ impl Component for GraphFilters {
         };
         let analyze_matching_loops = {
             let callback = ctx.props().add_filters.clone();
-            ctx.link().send_message(Msg::AnalyzedMatchingLoops);
-            Callback::from(move |_| callback.emit(vec![Filter::AnalyzeMatchingLoops]))
+            let max_matching_loops = self.max_matching_loops;
+            Callback::from(move |_| callback.emit(vec![Filter::AnalyzeMatchingLoops(max_matching_loops)]))
         };
         html! {
             <div>
@@ -257,21 +250,17 @@ impl Component for GraphFilters {
                     />
                     <button onclick={add_max_depth_filter}>{"Add"}</button>
                 </div>
+                // <div>
+                //     <label for="matching_loops">{"Show matching loops"}</label>
+                //     <button onclick={show_matching_loops} id="matching_loops">{"Add"}</button>
+                // </div>
                 <div>
-                    {if !self.analyzed_matching_loops {
-                        html! {
-                        <button onclick={analyze_matching_loops}>{"Search matching loops"}</button>
-                        }
-                    } else {
-                        html! {
-                        <UsizeInput
-                            label={"Show "}
-                            placeholder={"1"}
-                            set_value={ctx.link().callback(Msg::SetMaxMatchingLoops)}
-                        />
-                        }
-                    }}
-
+                    <UsizeInput
+                        label={"Analyze the n longest matching loops where n = "}
+                        placeholder={"1"}
+                        set_value={ctx.link().callback(Msg::SetMaxMatchingLoops)}
+                    />
+                    <button onclick={analyze_matching_loops}>{"Add"}</button>
                 </div>
                 {if !self.selected_insts.is_empty() {
                     html! {

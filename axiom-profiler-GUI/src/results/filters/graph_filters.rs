@@ -1,5 +1,6 @@
 use super::node_actions::NodeActions;
-use crate::{utils::usize_input::UsizeInput, results::svg_result::DEFAULT_NODE_COUNT};
+use crate::{utils::{usize_input::UsizeInput, indexer::Indexer}, results::svg_result::DEFAULT_NODE_COUNT};
+use gloo::console::log;
 use petgraph::{stable_graph::NodeIndex, Direction};
 use smt_log_parser::{
     items::QuantIdx,
@@ -21,6 +22,7 @@ pub enum Filter {
     VisitSubTreeWithRoot(NodeIndex, bool),
     MaxDepth(usize),
     ShowLongestPath(NodeIndex),
+    SelectNthMatchingLoop(usize),
 }
 
 impl Display for Filter {
@@ -60,6 +62,15 @@ impl Display for Filter {
             Self::ShowLongestPath(node) => {
                 write!(f, "Showing longest path through node {}", node.index())
             }
+            Self::SelectNthMatchingLoop(n) => {
+                let ordinal = match n {
+                    1 => "".to_string(),
+                    2 => "2nd".to_string(),
+                    3 => "3rd".to_string(),
+                    n => n.to_string() + "th",
+                };
+                write!(f, "Showing {} longest matching loop", ordinal)
+            }
         }
     }
 }
@@ -87,6 +98,7 @@ impl Filter {
                 graph.retain_nodes(|node: &NodeData| node.min_depth.unwrap() <= depth)
             }
             Filter::ShowLongestPath(nidx) => return Some(graph.show_longest_path_through(nidx)),
+            Filter::SelectNthMatchingLoop(n) => return Some(graph.show_nth_matching_loop(n)), 
         }
         None
     }
@@ -100,6 +112,7 @@ pub struct GraphFilters {
     max_matching_loops: usize,
     selected_insts: Vec<InstInfo>,
     context_listener: ContextHandle<Vec<InstInfo>>,
+    searched_matching_loops: bool,
     // add additional bool field to store whether matching loops have 
     // already been analyzed 
     // analyzed_matching_loops
@@ -120,7 +133,9 @@ pub enum Msg {
     SetMaxBranching(usize),
     SetMaxDepth(usize),
     SetMaxMatchingLoops(usize),
-    SelectedInstsUpdated(Vec<InstInfo>)
+    SelectedInstsUpdated(Vec<InstInfo>),
+    SearchedMatchingLoops,
+    SelectNthMatchingLoop(usize),
 }
 
 impl Component for GraphFilters {
@@ -153,10 +168,19 @@ impl Component for GraphFilters {
                 self.selected_insts = selected_insts;
                 true
             }
+            Msg::SearchedMatchingLoops => {
+                self.searched_matching_loops = true;
+                true
+            }
+            Msg::SelectNthMatchingLoop(n) => {
+                ctx.props().add_filters.emit(vec![Filter::SelectNthMatchingLoop(n)]);
+                true
+            }
         }
     }
 
     fn create(ctx: &Context<Self>) -> Self {
+        log!("Creating GraphFilters component");
         let (selected_insts, context_listener) = ctx
             .link()
             .context(ctx.link().callback(Msg::SelectedInstsUpdated))
@@ -169,6 +193,7 @@ impl Component for GraphFilters {
             max_matching_loops: 1,
             selected_insts,
             context_listener,
+            searched_matching_loops: false,
         }
     }
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -198,8 +223,13 @@ impl Component for GraphFilters {
         };
         let search_matching_loops = {
             let callback = ctx.props().search_matching_loops.clone();
-            Callback::from(move |_| callback.emit(()))
+            let link = ctx.link().clone();
+            Callback::from(move |_| {
+                link.send_message(Msg::SearchedMatchingLoops);
+                callback.emit(())
+            })
         };
+        let get_matching_loop = ctx.link().callback(Msg::SelectNthMatchingLoop);
         html! {
             <div>
                 <h2>{"Add (optional) filters:"}</h2>
@@ -246,12 +276,24 @@ impl Component for GraphFilters {
                 //     <button onclick={show_matching_loops} id="matching_loops">{"Add"}</button>
                 // </div>
                 <div>
-                    <UsizeInput
-                        label={"Analyze the n longest matching loops where n = "}
-                        placeholder={"1"}
-                        set_value={ctx.link().callback(Msg::SetMaxMatchingLoops)}
-                    />
-                    <button onclick={search_matching_loops}>{"Search matching loops"}</button>
+                    {if !self.searched_matching_loops {
+                        html! {
+                            <button onclick={search_matching_loops}>{"Search matching loops"}</button>
+                        }
+                    } else {
+                        html! {
+                            <Indexer 
+                                label="Analyzed matching loops" 
+                                index_consumer={get_matching_loop}
+                            />
+                            // <UsizeInput
+                            //     label={"Analyze the n longest matching loops where n = "}
+                            //     placeholder={"1"}
+                            //     set_value={ctx.link().callback(Msg::SetMaxMatchingLoops)}
+                            // />
+                        }
+                    }}
+
                 </div>
                 {if !self.selected_insts.is_empty() {
                     html! {

@@ -1,3 +1,4 @@
+use futures::StreamExt;
 use fxhash::FxHashSet;
 use gloo_console::log;
 use itertools::Itertools;
@@ -12,10 +13,11 @@ use petgraph::{
 use petgraph::{Direction, Graph};
 use roaring::bitmap::RoaringBitmap;
 use std::fmt;
+use std::iter::zip;
 use typed_index_collections::TiVec;
 
 use crate::display_with::{DisplayCtxt, DisplayWithCtxt};
-use crate::items::{BlameKind, ENodeIdx, Fingerprint, InstIdx, MatchKind};
+use crate::items::{BlameKind, ENodeIdx, Fingerprint, InstIdx, MatchKind, Term, TermIdx};
 
 use super::z3parser::Z3Parser;
 
@@ -152,6 +154,35 @@ pub struct VisibleGraphInfo {
     pub edge_count: usize,
     pub node_count_decreased: bool,
     pub edge_count_decreased: bool,
+}
+
+pub fn generalize(t1: TermIdx, t2: TermIdx, p: &mut Z3Parser) -> TermIdx {
+    if t1 == t2 {
+        // if terms are equal, no need to generalize
+        t1
+    } else if p.terms.is_general_term(t1) {
+        // if self is already generalized, no need to generalize further
+        t1
+    } else {
+        // if neither term is generalized, check the meanings and recurse over children 
+        if p[t1].meaning == p[t2].meaning {
+            let mut children: Vec<TermIdx> = Vec::new();
+            for (c1, c2) in zip(p[t1].child_ids.clone(), p[t2].child_ids.clone()) {
+                let child = generalize(c1, c2, p);
+                children.push(child)
+            }
+            if children.iter().any(|c| p.terms.is_general_term(*c)) {
+                // if term has any generalized children, need to crate new generalized term
+                p.terms.mk_generalized_term_with_children(p[t1].meaning, children)
+            } else {
+                // else, can just return t1
+                t1
+            } 
+        } else {
+            // if not, generalize
+            p.terms.mk_generalized_term()
+        }
+    }       
 }
 
 impl InstGraph {
@@ -427,7 +458,7 @@ impl InstGraph {
     //     }
     // }
 
-    pub fn show_matching_loops(&mut self) {
+    pub fn show_n_longest_matching_loops(&mut self, n: usize) {
         let quants: FxHashSet<_> = self
             .orig_graph
             .node_weights()

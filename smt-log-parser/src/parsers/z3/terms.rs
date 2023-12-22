@@ -1,6 +1,6 @@
 use typed_index_collections::TiVec;
 
-use crate::items::{StringTable, Term, TermId, TermIdToIdxMap, TermIdx};
+use crate::items::{StringTable, Term, TermId, TermIdToIdxMap, TermIdx, TermKind::GeneralizedTerm, Meaning};
 
 #[derive(Debug)]
 pub struct Terms {
@@ -35,6 +35,34 @@ impl Terms {
     #[must_use]
     pub(super) fn parse_existing_id(&self, strings: &mut StringTable, id: &str) -> Option<TermIdx> {
         self.parse_id(strings, id).and_then(|r| r.ok())
+    }
+
+    pub(super) fn mk_generalized_term(&mut self) -> TermIdx {
+        let idx = self.terms.next_key();
+        let term = Term { 
+            id: None, 
+            kind: GeneralizedTerm, 
+            meaning: None, 
+            child_ids: Vec::new(), 
+        }; 
+        self.terms.push(term);
+        idx
+    }
+
+    pub(super) fn is_general_term(&self, t: TermIdx) -> bool {
+        t == self.terms.last_key().unwrap() 
+    }
+
+    pub(super) fn mk_generalized_term_with_children(&mut self, meaning: Option<Meaning>, children: Vec<TermIdx>) -> TermIdx {
+        let idx = self.terms.next_key();
+        let term = Term {
+            id: None,
+            kind: GeneralizedTerm,
+            meaning,
+            child_ids: children,
+        };
+        self.terms.push(term);
+        idx
     }
 }
 

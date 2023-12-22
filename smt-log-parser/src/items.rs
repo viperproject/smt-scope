@@ -46,7 +46,7 @@ idx!(MatchIdx, "m{}");
 /// A Z3 term and associated data.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Term {
-    pub id: TermId,
+    pub id: Option<TermId>,
     pub kind: TermKind,
     pub meaning: Option<Meaning>,
     pub child_ids: Vec<TermIdx>,
@@ -57,6 +57,7 @@ pub enum TermKind {
     Var(usize),
     ProofOrApp(ProofOrApp),
     Quant(QuantIdx),
+    GeneralizedTerm,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,7 +82,7 @@ impl TermKind {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
 pub struct Meaning {
     /// The theory in which the value should be interpreted (e.g. `bv`)
     pub theory: IString,

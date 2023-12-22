@@ -1,5 +1,5 @@
 use super::super::svg_result::{UserPermission, DEFAULT_NODE_COUNT};
-use super::graph_filters::{Filter, GraphFilter};
+use super::graph_filters::{Filter, GraphFilters};
 use gloo::console::log;
 use yew::prelude::*;
 // use gloo_console::log;
@@ -114,7 +114,7 @@ impl yew::html::Component for FilterChain {
         let add_filters = ctx.link().callback(Msg::AddFilters);
         html!(
             <>
-                <GraphFilter
+                <GraphFilters
                     add_filters={add_filters.clone()}
                     dependency={ctx.props().dependency}
                 />

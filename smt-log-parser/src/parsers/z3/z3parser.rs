@@ -213,7 +213,7 @@ impl Z3LogParser for Z3Parser {
         assert!(!children.is_empty());
         let qidx = self.quantifiers.next_key();
         let term = Term {
-            id: full_id,
+            id: Some(full_id),
             kind: TermKind::Quant(qidx),
             meaning: None,
             child_ids: children,
@@ -240,7 +240,7 @@ impl Z3LogParser for Z3Parser {
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
         let term = Term {
-            id: full_id,
+            id: Some(full_id),
             kind,
             meaning: None,
             child_ids: Vec::new(),
@@ -261,7 +261,7 @@ impl Z3LogParser for Z3Parser {
         // TODO: add rewrite, monotonicity cases
         let children = self.gobble_children(l)?;
         let term = Term {
-            id: full_id,
+            id: Some(full_id),
             kind,
             meaning: None,
             child_ids: children,
@@ -523,6 +523,7 @@ impl Z3LogParser for Z3Parser {
     fn eof(&mut self) {
         // TODO: this shouldn't be done here.
         self.compute_costs();
+        self.terms.mk_generalized_term();
     }
 
     fn push<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Option<()> {

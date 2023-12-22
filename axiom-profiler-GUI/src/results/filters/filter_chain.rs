@@ -29,6 +29,7 @@ pub struct FilterChainProps {
     pub render_graph: Callback<UserPermission>,
     pub dependency: *const smt_log_parser::Z3Parser,
     pub weak_link: WeakComponentLink<FilterChain>,
+    pub search_matching_loops: Callback<()>,
 }
 
 impl yew::html::Component for FilterChain {
@@ -116,6 +117,7 @@ impl yew::html::Component for FilterChain {
             <>
                 <GraphFilters
                     add_filters={add_filters.clone()}
+                    search_matching_loops={ctx.props().search_matching_loops.clone()}
                     dependency={ctx.props().dependency}
                 />
                 <h2>{"Filter chain:"}</h2>

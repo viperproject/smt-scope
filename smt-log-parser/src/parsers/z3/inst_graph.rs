@@ -142,6 +142,7 @@ pub struct InstGraph {
     cost_ranked_node_indices: Vec<NodeIndex>,
     branching_ranked_node_indices: Vec<NodeIndex>,
     tr_closure: Vec<RoaringBitmap>,
+    matching_loop_subgraph: Graph<NodeData, EdgeType>,
 }
 
 enum InstOrder {
@@ -458,7 +459,7 @@ impl InstGraph {
     //     }
     // }
 
-    pub fn show_n_longest_matching_loops(&mut self, n: usize) {
+    pub fn search_matching_loops(&mut self) {
         let quants: FxHashSet<_> = self
             .orig_graph
             .node_weights()
@@ -486,6 +487,8 @@ impl InstGraph {
                 self.orig_graph[node].visible = true;
             }
         }
+        self.retain_visible_nodes_and_reconnect();
+        self.matching_loop_subgraph = self.visible_graph.clone();
     }
 
     fn find_longest_paths(graph: &mut Graph<NodeData, EdgeType>) -> FxHashSet<NodeIndex> {

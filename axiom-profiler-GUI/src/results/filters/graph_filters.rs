@@ -21,7 +21,6 @@ pub enum Filter {
     VisitSubTreeWithRoot(NodeIndex, bool),
     MaxDepth(usize),
     ShowLongestPath(NodeIndex),
-    AnalyzeMatchingLoops(usize),
 }
 
 impl Display for Filter {
@@ -61,7 +60,6 @@ impl Display for Filter {
             Self::ShowLongestPath(node) => {
                 write!(f, "Showing longest path through node {}", node.index())
             }
-            Self::AnalyzeMatchingLoops(loop_count) => write!(f, "Showing the {} longest matching loops", loop_count),
         }
     }
 }
@@ -89,16 +87,9 @@ impl Filter {
                 graph.retain_nodes(|node: &NodeData| node.min_depth.unwrap() <= depth)
             }
             Filter::ShowLongestPath(nidx) => return Some(graph.show_longest_path_through(nidx)),
-            Filter::AnalyzeMatchingLoops(n) => graph.show_n_longest_matching_loops(n),
         }
         None
     }
-}
-
-#[derive(Properties, PartialEq)]
-pub struct GraphFilterProps {
-    pub add_filters: Callback<Vec<Filter>>,
-    pub dependency: *const smt_log_parser::Z3Parser,
 }
 
 pub struct GraphFilters {
@@ -119,6 +110,7 @@ pub struct GraphFilters {
 #[derive(Properties, PartialEq)]
 pub struct GraphFiltersProps {
     pub add_filters: Callback<Vec<Filter>>,
+    pub search_matching_loops: Callback<()>,
     pub dependency: *const smt_log_parser::Z3Parser,
 }
 
@@ -204,10 +196,9 @@ impl Component for GraphFilters {
             let max_depth = self.max_depth;
             Callback::from(move |_| callback.emit(vec![Filter::MaxDepth(max_depth)]))
         };
-        let analyze_matching_loops = {
-            let callback = ctx.props().add_filters.clone();
-            let max_matching_loops = self.max_matching_loops;
-            Callback::from(move |_| callback.emit(vec![Filter::AnalyzeMatchingLoops(max_matching_loops)]))
+        let search_matching_loops = {
+            let callback = ctx.props().search_matching_loops.clone();
+            Callback::from(move |_| callback.emit(()))
         };
         html! {
             <div>
@@ -260,7 +251,7 @@ impl Component for GraphFilters {
                         placeholder={"1"}
                         set_value={ctx.link().callback(Msg::SetMaxMatchingLoops)}
                     />
-                    <button onclick={analyze_matching_loops}>{"Add"}</button>
+                    <button onclick={search_matching_loops}>{"Search matching loops"}</button>
                 </div>
                 {if !self.selected_insts.is_empty() {
                     html! {

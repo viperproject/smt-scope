@@ -1,5 +1,5 @@
 use super::node_actions::NodeActions;
-use crate::{utils::{usize_input::UsizeInput, indexer::Indexer}, results::svg_result::DEFAULT_NODE_COUNT};
+use crate::{utils::usize_input::UsizeInput, results::svg_result::DEFAULT_NODE_COUNT};
 use gloo::console::log;
 use petgraph::{stable_graph::NodeIndex, Direction};
 use smt_log_parser::{
@@ -98,7 +98,7 @@ impl Filter {
                 graph.retain_nodes(|node: &NodeData| node.min_depth.unwrap() <= depth)
             }
             Filter::ShowLongestPath(nidx) => return Some(graph.show_longest_path_through(nidx)),
-            Filter::SelectNthMatchingLoop(n) => return Some(graph.show_nth_matching_loop(n)), 
+            Filter::SelectNthMatchingLoop(n) => graph.show_nth_matching_loop(n), 
         }
         None
     }
@@ -111,20 +111,13 @@ pub struct GraphFilters {
     max_depth: usize,
     max_matching_loops: usize,
     selected_insts: Vec<InstInfo>,
-    context_listener: ContextHandle<Vec<InstInfo>>,
+    _context_listener: ContextHandle<Vec<InstInfo>>,
     searched_matching_loops: bool,
-    // add additional bool field to store whether matching loops have 
-    // already been analyzed 
-    // analyzed_matching_loops
-    // in that case, display additional filters such as 
-    // show n longest matching loops where n =
 }
 
 #[derive(Properties, PartialEq)]
 pub struct GraphFiltersProps {
     pub add_filters: Callback<Vec<Filter>>,
-    pub search_matching_loops: Callback<()>,
-    pub dependency: *const smt_log_parser::Z3Parser,
 }
 
 pub enum Msg {
@@ -173,15 +166,16 @@ impl Component for GraphFilters {
                 true
             }
             Msg::SelectNthMatchingLoop(n) => {
+                log!("Emitting filter SelectNthMatchingLoop(_)");
                 ctx.props().add_filters.emit(vec![Filter::SelectNthMatchingLoop(n)]);
-                true
+                false
             }
         }
     }
 
     fn create(ctx: &Context<Self>) -> Self {
         log!("Creating GraphFilters component");
-        let (selected_insts, context_listener) = ctx
+        let (selected_insts, _context_listener) = ctx
             .link()
             .context(ctx.link().callback(Msg::SelectedInstsUpdated))
             .expect("No context provided");
@@ -192,7 +186,7 @@ impl Component for GraphFilters {
             max_depth: usize::MAX,
             max_matching_loops: 1,
             selected_insts,
-            context_listener,
+            _context_listener,
             searched_matching_loops: false,
         }
     }
@@ -221,21 +215,10 @@ impl Component for GraphFilters {
             let max_depth = self.max_depth;
             Callback::from(move |_| callback.emit(vec![Filter::MaxDepth(max_depth)]))
         };
-        let search_matching_loops = {
-            let callback = ctx.props().search_matching_loops.clone();
-            let link = ctx.link().clone();
-            Callback::from(move |_| {
-                link.send_message(Msg::SearchedMatchingLoops);
-                callback.emit(())
-            })
-        };
-        let get_matching_loop = ctx.link().callback(Msg::SelectNthMatchingLoop);
         html! {
             <div>
                 <h2>{"Add (optional) filters:"}</h2>
                 <div>
-                    // pass a WeakComponentLink here as prop such that the UsizeInput can directly update the 
-                    // fields in the GraphFilters struct
                     <UsizeInput
                         label={"Only show nodes up to index "}
                         placeholder={""}
@@ -271,30 +254,6 @@ impl Component for GraphFilters {
                     />
                     <button onclick={add_max_depth_filter}>{"Add"}</button>
                 </div>
-                // <div>
-                //     <label for="matching_loops">{"Show matching loops"}</label>
-                //     <button onclick={show_matching_loops} id="matching_loops">{"Add"}</button>
-                // </div>
-                <div>
-                    {if !self.searched_matching_loops {
-                        html! {
-                            <button onclick={search_matching_loops}>{"Search matching loops"}</button>
-                        }
-                    } else {
-                        html! {
-                            <Indexer 
-                                label="Analyzed matching loops" 
-                                index_consumer={get_matching_loop}
-                            />
-                            // <UsizeInput
-                            //     label={"Analyze the n longest matching loops where n = "}
-                            //     placeholder={"1"}
-                            //     set_value={ctx.link().callback(Msg::SetMaxMatchingLoops)}
-                            // />
-                        }
-                    }}
-
-                </div>
                 {if !self.selected_insts.is_empty() {
                     html! {
                         <NodeActions selected_nodes={self.selected_insts.clone()} action={ctx.props().add_filters.clone()} />
@@ -302,12 +261,6 @@ impl Component for GraphFilters {
                 } else {
                     html! {}
                 }}
-                // <SelectDropDown
-                //     label={"Select a layout engine:"}
-                //     options={layout_engines}
-                //     selected_option={layout_engine}
-                // />
-                // <button onclick={update_settings}>{"Render graph"}</button>
             </div>
         }
     }

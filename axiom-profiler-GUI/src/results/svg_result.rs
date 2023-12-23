@@ -1,6 +1,6 @@
 use crate::{
     results::graph_info::{GraphInfo, Msg as GraphInfoMsg},
-    RcParser,
+    RcParser, utils::indexer::Indexer,
 };
 
 use self::colours::HSVColour;
@@ -38,6 +38,7 @@ pub enum Msg {
     WorkerOutput(super::worker::WorkerOutput),
     UpdateSelectedNodes(Vec<InstInfo>),
     SearchMatchingLoops,
+    SelectNthMatchingLoop(usize),
 }
 
 #[derive(Default)]
@@ -69,6 +70,7 @@ pub struct SVGResult {
     get_node_info: Callback<(NodeIndex, bool, RcParser), InstInfo>,
     get_edge_info: Callback<(EdgeIndex, bool, RcParser), EdgeInfo>,
     selected_insts: Vec<InstInfo>,
+    searched_matching_loops: bool,
 }
 
 #[derive(Properties, PartialEq)]
@@ -114,6 +116,7 @@ impl Component for SVGResult {
             get_node_info,
             get_edge_info,
             selected_insts: Vec::new(),
+            searched_matching_loops: false,
         }
     }
 
@@ -135,7 +138,16 @@ impl Component for SVGResult {
             }
             Msg::SearchMatchingLoops => {
                 self.inst_graph.search_matching_loops();
-                false 
+                self.searched_matching_loops = true;
+                true
+            }
+            Msg::SelectNthMatchingLoop(n) => {
+                self.filter_chain_link
+                    .borrow()
+                    .clone()
+                    .unwrap()
+                    .send_message(FilterChainMsg::AddFilters(vec![Filter::SelectNthMatchingLoop(n)]));
+                false
             }
             Msg::ResetGraph => {
                 log::debug!("Resetting graph");
@@ -334,18 +346,27 @@ impl Component for SVGResult {
         let reset_graph = ctx.link().callback(|_| Msg::ResetGraph);
         let render_graph = ctx.link().callback(Msg::RenderGraph);
         let update_selected_nodes = ctx.link().callback(Msg::UpdateSelectedNodes);
-        let search_matching_loops = ctx.link().callback(|_| Msg::SearchMatchingLoops);
         html! {
             <>
                 <div style="flex: 20%; height: 87vh; overflow-y: auto; ">
+                {if !self.searched_matching_loops {
+                    html! {
+                        <button onclick={ctx.link().callback(|_| Msg::SearchMatchingLoops)}>{"Search matching loops"}</button>
+                    }
+                } else {
+                    html! {
+                        <Indexer 
+                            label="Analyzed matching loops" 
+                            index_consumer={ctx.link().callback(Msg::SelectNthMatchingLoop)}
+                        />
+                    }
+                }}
                 <ContextProvider<Vec<InstInfo>> context={self.selected_insts.clone()}>
                     <FilterChain
                         apply_filter={apply_filter.clone()}
                         reset_graph={reset_graph.clone()}
                         render_graph={render_graph.clone()}
                         weak_link={self.filter_chain_link.clone()}
-                        dependency={ctx.props().parser.as_ptr()}
-                        search_matching_loops={search_matching_loops.clone()}
                     />
                 </ContextProvider<Vec<InstInfo>>>
                 {async_graph_and_filter_chain_warning}

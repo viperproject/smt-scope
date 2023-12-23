@@ -491,8 +491,7 @@ impl InstGraph {
         self.matching_loop_subgraph = self.visible_graph.clone();
     }
 
-    pub fn show_nth_matching_loop(&mut self, n: usize) -> Vec<NodeIndex> {
-        Vec::new()
+    pub fn show_nth_matching_loop(&mut self, n: usize) {
     }
 
     fn find_longest_paths(graph: &mut Graph<NodeData, EdgeType>) -> FxHashSet<NodeIndex> {

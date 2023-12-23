@@ -240,7 +240,11 @@ impl Component for GraphInfo {
                 deselect_all={&deselect_all}
                 selected_nodes={self.selected_nodes.keys().cloned().collect::<Vec<NodeIndex>>()}
             />
-            <div style="flex: 30%; height: 87vh; overflow: auto; position: relative;">
+            <div style="flex: 30%; height: 87vh; overflow: auto;">
+                <div style="position: sticky; top: 0px; left: 0px">
+                    <label for="term_expander">{"Ignore term IDs "}</label>
+                    <input type="checkbox" checked={self.ignore_term_ids} onclick={toggle} id="term_expander" />
+                </div>
                 <h2>{"Information about selected nodes:"}</h2>
                 <div ref={self.selected_nodes_ref.clone()}>
                     <SelectedNodesInfo selected_nodes={self.selected_nodes.values().cloned().collect::<Vec<InstInfo>>()} on_click={on_node_click} />
@@ -248,10 +252,6 @@ impl Component for GraphInfo {
                 <h2>{"Information about selected dependencies:"}</h2>
                 <div ref={self.selected_edges_ref.clone()}>
                     <SelectedEdgesInfo selected_edges={self.selected_edges.values().cloned().collect::<Vec<EdgeInfo>>()} on_click={on_edge_click} />
-                </div>
-                <div>
-                    <label for="term_expander">{"Ignore term IDs "}</label>
-                    <input type="checkbox" checked={self.ignore_term_ids} onclick={toggle} id="term_expander" />
                 </div>
             </div>
 

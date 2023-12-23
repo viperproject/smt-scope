@@ -15,6 +15,7 @@ pub enum Msg {
 pub struct FilterChain {
     filter_chain: Vec<Filter>,
     prev_filter_chain: Vec<Filter>,
+    add_filters: Callback<Vec<Filter>>,
 }
 
 const DEFAULT_FILTER_CHAIN: &[Filter] = &[
@@ -27,9 +28,7 @@ pub struct FilterChainProps {
     pub apply_filter: Callback<Filter>,
     pub reset_graph: Callback<()>,
     pub render_graph: Callback<UserPermission>,
-    pub dependency: *const smt_log_parser::Z3Parser,
     pub weak_link: WeakComponentLink<FilterChain>,
-    pub search_matching_loops: Callback<()>,
 }
 
 impl yew::html::Component for FilterChain {
@@ -37,6 +36,7 @@ impl yew::html::Component for FilterChain {
     type Properties = FilterChainProps;
 
     fn create(ctx: &Context<Self>) -> Self {
+        log!("Creating FilterChain component");
         ctx.props()
             .weak_link
             .borrow_mut()
@@ -47,9 +47,11 @@ impl yew::html::Component for FilterChain {
         }
         ctx.props().render_graph.emit(UserPermission::default());
         let prev_filter_chain = filter_chain.clone();
+        let add_filters = ctx.link().callback(Msg::AddFilters);
         Self {
             filter_chain,
             prev_filter_chain,
+            add_filters,
         }
     }
 
@@ -63,7 +65,8 @@ impl yew::html::Component for FilterChain {
                     ctx.props().apply_filter.emit(filter);
                 }
                 ctx.props().render_graph.emit(UserPermission::default());
-                true
+                // true
+                false
             }
             Msg::RemoveNthFilter(n) => {
                 log!("Removing filter", n);
@@ -112,13 +115,10 @@ impl yew::html::Component for FilterChain {
             .collect();
         let reset_filters = ctx.link().callback(|_| Msg::ResetFilters);
 
-        let add_filters = ctx.link().callback(Msg::AddFilters);
         html!(
             <>
                 <GraphFilters
-                    add_filters={add_filters.clone()}
-                    search_matching_loops={ctx.props().search_matching_loops.clone()}
-                    dependency={ctx.props().dependency}
+                    add_filters={self.add_filters.clone()}
                 />
                 <h2>{"Filter chain:"}</h2>
                 {for filter_chain}

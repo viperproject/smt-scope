@@ -109,10 +109,8 @@ pub struct GraphFilters {
     max_instantiations: usize,
     max_branching: usize,
     max_depth: usize,
-    max_matching_loops: usize,
     selected_insts: Vec<InstInfo>,
-    _context_listener: ContextHandle<Vec<InstInfo>>,
-    searched_matching_loops: bool,
+    _selected_insts_listener: ContextHandle<Vec<InstInfo>>,
 }
 
 #[derive(Properties, PartialEq)]
@@ -125,17 +123,14 @@ pub enum Msg {
     SetMaxInsts(usize),
     SetMaxBranching(usize),
     SetMaxDepth(usize),
-    SetMaxMatchingLoops(usize),
     SelectedInstsUpdated(Vec<InstInfo>),
-    SearchedMatchingLoops,
-    SelectNthMatchingLoop(usize),
 }
 
 impl Component for GraphFilters {
     type Message = Msg;
     type Properties = GraphFiltersProps;
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::SetMaxNodeIdx(to) => {
                 self.max_node_idx = to;
@@ -153,29 +148,16 @@ impl Component for GraphFilters {
                 self.max_depth = to;
                 true
             }
-            Msg::SetMaxMatchingLoops(to) => {
-                self.max_matching_loops = to;
-                true
-            }
             Msg::SelectedInstsUpdated(selected_insts) => {
                 self.selected_insts = selected_insts;
                 true
-            }
-            Msg::SearchedMatchingLoops => {
-                self.searched_matching_loops = true;
-                true
-            }
-            Msg::SelectNthMatchingLoop(n) => {
-                log!("Emitting filter SelectNthMatchingLoop(_)");
-                ctx.props().add_filters.emit(vec![Filter::SelectNthMatchingLoop(n)]);
-                false
             }
         }
     }
 
     fn create(ctx: &Context<Self>) -> Self {
         log!("Creating GraphFilters component");
-        let (selected_insts, _context_listener) = ctx
+        let (selected_insts, _selected_insts_listener) = ctx
             .link()
             .context(ctx.link().callback(Msg::SelectedInstsUpdated))
             .expect("No context provided");
@@ -184,10 +166,8 @@ impl Component for GraphFilters {
             max_instantiations: DEFAULT_NODE_COUNT,
             max_branching: usize::MAX,
             max_depth: usize::MAX,
-            max_matching_loops: 1,
             selected_insts,
-            _context_listener,
-            searched_matching_loops: false,
+            _selected_insts_listener,
         }
     }
     fn view(&self, ctx: &Context<Self>) -> Html {

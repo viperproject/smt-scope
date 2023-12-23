@@ -71,6 +71,7 @@ pub struct SVGResult {
     get_edge_info: Callback<(EdgeIndex, bool, RcParser), EdgeInfo>,
     selected_insts: Vec<InstInfo>,
     searched_matching_loops: bool,
+    matching_loop_count: usize,
 }
 
 #[derive(Properties, PartialEq)]
@@ -117,6 +118,7 @@ impl Component for SVGResult {
             get_edge_info,
             selected_insts: Vec::new(),
             searched_matching_loops: false,
+            matching_loop_count: 0,
         }
     }
 
@@ -137,7 +139,7 @@ impl Component for SVGResult {
                 }
             }
             Msg::SearchMatchingLoops => {
-                self.inst_graph.search_matching_loops();
+                self.matching_loop_count = self.inst_graph.search_matching_loops();
                 self.searched_matching_loops = true;
                 ctx.link().send_message(Msg::SelectNthMatchingLoop(0));
                 true
@@ -359,6 +361,7 @@ impl Component for SVGResult {
                         <Indexer 
                             label="Analyzed matching loops" 
                             index_consumer={ctx.link().callback(Msg::SelectNthMatchingLoop)}
+                            max={self.matching_loop_count - 1}
                         />
                     }
                 }}

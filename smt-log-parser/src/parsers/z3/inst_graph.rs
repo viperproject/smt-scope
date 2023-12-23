@@ -143,6 +143,7 @@ pub struct InstGraph {
     branching_ranked_node_indices: Vec<NodeIndex>,
     tr_closure: Vec<RoaringBitmap>,
     matching_loop_subgraph: Graph<NodeData, EdgeType>,
+    matching_loop_end_nodes: Vec<NodeIndex>, // these are sorted by maximal depth in descending order 
 }
 
 enum InstOrder {
@@ -459,7 +460,7 @@ impl InstGraph {
     //     }
     // }
 
-    pub fn search_matching_loops(&mut self) {
+    pub fn search_matching_loops(&mut self) -> usize {
         let quants: FxHashSet<_> = self
             .orig_graph
             .node_weights()
@@ -489,13 +490,49 @@ impl InstGraph {
         }
         self.retain_visible_nodes_and_reconnect();
         self.matching_loop_subgraph = self.visible_graph.clone();
+        // for displaying the n-th matching loop later on, we want to compute the end nodes of all the matching loops
+        // and sort them by max-depth in descending order
+        Self::compute_longest_distances(&mut self.matching_loop_subgraph);
+        // compute end-nodes of matching loops 
+        self.matching_loop_end_nodes = self.matching_loop_subgraph 
+            .node_indices()
+            // only keep end-points of matching loops, i.e., nodes without any children in the matching loop subgraph
+            .filter(|nx| self.matching_loop_subgraph.neighbors_directed(*nx, Outgoing).count() == 0)
+            .max_set_by(|node_a, node_b| {
+                self.matching_loop_subgraph
+                    .node_weight(*node_a)
+                    .unwrap()
+                    .max_depth
+                    .cmp(&self.matching_loop_subgraph.node_weight(*node_b).unwrap().max_depth)
+            });
+        // sort the matching loop end-nodes by the max-depth
+        self.matching_loop_end_nodes.sort_unstable_by(|node_a, node_b| {
+            let max_depth_node_a = self.matching_loop_subgraph.node_weight(*node_a).unwrap().max_depth;
+            let max_depth_node_b = self.matching_loop_subgraph.node_weight(*node_b).unwrap().max_depth;
+            if max_depth_node_b < max_depth_node_a {
+                std::cmp::Ordering::Greater
+            } else {
+                std::cmp::Ordering::Less
+            }
+        });
+        // return the total number of potential matching loops
+        self.matching_loop_end_nodes.len()
     }
 
     pub fn show_nth_matching_loop(&mut self, n: usize) {
+        self.reset_visibility_to(false);
+        let end_node_of_nth_matching_loop = self.matching_loop_end_nodes.get(n);
+        if let Some(&node) = end_node_of_nth_matching_loop {
+            // start a reverse-DFS from node and mark all the nodes as visible along the way
+            let mut dfs = Dfs::new(petgraph::visit::Reversed(&self.matching_loop_subgraph), node);
+            while let Some(nx) = dfs.next(petgraph::visit::Reversed(&self.matching_loop_subgraph)) {
+                let orig_index = self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx;
+                self.orig_graph[orig_index].visible = true;
+            }
+        }
     }
 
-    fn find_longest_paths(graph: &mut Graph<NodeData, EdgeType>) -> FxHashSet<NodeIndex> {
-        // traverse this subtree in topological order to compute longest distances from node
+    fn compute_longest_distances(graph: &mut Graph<NodeData, EdgeType>) {
         let mut topo = Topo::new(&*graph);
         while let Some(nx) = topo.next(&*graph) {
             let parents = graph.neighbors_directed(nx, Incoming);
@@ -508,10 +545,28 @@ impl InstGraph {
                 graph[nx].max_depth = 0;
             }
         }
+    }
+
+    fn find_longest_paths(graph: &mut Graph<NodeData, EdgeType>) -> FxHashSet<NodeIndex> {
+        // traverse this subtree in topological order to compute longest distances from node
+        Self::compute_longest_distances(graph);
+        // let mut topo = Topo::new(&*graph);
+        // while let Some(nx) = topo.next(&*graph) {
+        //     let parents = graph.neighbors_directed(nx, Incoming);
+        //     let max_parent_depth = parents
+        //         .map(|nx| graph.node_weight(nx).unwrap().max_depth)
+        //         .max();
+        //     if let Some(depth) = max_parent_depth {
+        //         graph[nx].max_depth = depth + 1;
+        //     } else {
+        //         graph[nx].max_depth = 0;
+        //     }
+        // }
         let furthest_away_nodes = graph
             .node_indices()
             // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
-            .filter(|nx| graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1)
+            .filter(|nx| graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1 
+                && graph.neighbors_directed(*nx, Outgoing).count() == 0)
             .max_set_by(|node_a, node_b| {
                 graph
                     .node_weight(*node_a)

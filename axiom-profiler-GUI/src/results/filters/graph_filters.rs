@@ -64,9 +64,9 @@ impl Display for Filter {
             }
             Self::SelectNthMatchingLoop(n) => {
                 let ordinal = match n {
-                    1 => "".to_string(),
-                    2 => "2nd".to_string(),
-                    3 => "3rd".to_string(),
+                    0 => "".to_string(),
+                    1 => "2nd".to_string(),
+                    2 => "3rd".to_string(),
                     n => n.to_string() + "th",
                 };
                 write!(f, "Showing {} longest matching loop", ordinal)

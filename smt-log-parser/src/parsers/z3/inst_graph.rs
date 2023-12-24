@@ -528,6 +528,13 @@ impl InstGraph {
         }
     }
 
+    pub fn show_matching_loop_subgraph(&mut self) {
+        self.reset_visibility_to(false);
+        for node in self.matching_loop_subgraph.node_weights() {
+            self.orig_graph[node.orig_graph_idx].visible = true;
+        }
+    }
+
     fn compute_longest_distances_from_roots(graph: &mut Graph<NodeData, EdgeType>) {
         let mut topo = Topo::new(&*graph);
         while let Some(nx) = topo.next(&*graph) {

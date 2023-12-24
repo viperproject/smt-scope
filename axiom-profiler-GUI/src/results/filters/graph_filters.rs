@@ -23,6 +23,7 @@ pub enum Filter {
     MaxDepth(usize),
     ShowLongestPath(NodeIndex),
     SelectNthMatchingLoop(usize),
+    ShowMatchingLoopSubgraph,
 }
 
 impl Display for Filter {
@@ -71,6 +72,9 @@ impl Display for Filter {
                 };
                 write!(f, "Showing {} longest matching loop", ordinal)
             }
+            Self::ShowMatchingLoopSubgraph => {
+                write!(f, "Showing all potential matching loops")
+            }
         }
     }
 }
@@ -99,6 +103,7 @@ impl Filter {
             }
             Filter::ShowLongestPath(nidx) => return Some(graph.show_longest_path_through(nidx)),
             Filter::SelectNthMatchingLoop(n) => graph.show_nth_matching_loop(n), 
+            Filter::ShowMatchingLoopSubgraph => graph.show_matching_loop_subgraph(),
         }
         None
     }

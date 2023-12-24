@@ -67,7 +67,7 @@ impl Display for Filter {
                     0 => "".to_string(),
                     1 => "2nd".to_string(),
                     2 => "3rd".to_string(),
-                    n => n.to_string() + "th",
+                    n => (n+1).to_string() + "th",
                 };
                 write!(f, "Showing {} longest matching loop", ordinal)
             }

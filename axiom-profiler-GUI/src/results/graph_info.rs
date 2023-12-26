@@ -20,6 +20,7 @@ pub struct GraphInfo {
     selected_edges: IndexMap<EdgeIndex, EdgeInfo>,
     selected_edges_ref: NodeRef,
     ignore_term_ids: bool,
+    generalized_terms: Vec<String>,
 }
 
 pub enum Msg {
@@ -30,6 +31,7 @@ pub enum Msg {
     SelectNodes(Vec<NodeIndex>),
     DeselectAll,
     ToggleIgnoreTermIds,
+    ShowGeneralizedTerms(Vec<String>),
 }
 
 #[derive(Properties, PartialEq)]
@@ -60,6 +62,7 @@ impl Component for GraphInfo {
             selected_edges: IndexMap::new(),
             selected_edges_ref: NodeRef::default(),
             ignore_term_ids: true,
+            generalized_terms: Vec::new(),
         }
     }
 
@@ -181,6 +184,10 @@ impl Component for GraphInfo {
                 }
                 true
             }
+            Msg::ShowGeneralizedTerms(terms) => {
+                self.generalized_terms = terms;
+                true
+            }
         }
     }
 
@@ -231,6 +238,9 @@ impl Component for GraphInfo {
         let on_node_select = ctx.link().callback(Msg::UserSelectedNode);
         let on_edge_select = ctx.link().callback(Msg::UserSelectedEdge);
         let deselect_all = ctx.link().callback(|_| Msg::DeselectAll);
+        let generalized_terms = self.generalized_terms.iter().map(|term| html! {
+            <ul>{term}</ul>
+        });
         html! {
             <>
             <GraphContainer
@@ -252,6 +262,10 @@ impl Component for GraphInfo {
                 <h2>{"Information about selected dependencies:"}</h2>
                 <div ref={self.selected_edges_ref.clone()}>
                     <SelectedEdgesInfo selected_edges={self.selected_edges.values().cloned().collect::<Vec<EdgeInfo>>()} on_click={on_edge_click} />
+                </div>
+                <h2>{"Information about displayed matching loop:"}</h2>
+                <div>
+                    <li>{for generalized_terms}</li>
                 </div>
             </div>
 

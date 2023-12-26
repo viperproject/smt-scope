@@ -158,11 +158,6 @@ pub struct VisibleGraphInfo {
     pub edge_count_decreased: bool,
 }
 
-#[derive(Default)]
-pub struct GeneralizedTerms {
-    generalized_terms: Vec<String>,
-}
-
 pub fn generalize(t1: TermIdx, t2: TermIdx, p: &mut Z3Parser) -> TermIdx {
     if t1 == t2 {
         // if terms are equal, no need to generalize
@@ -518,7 +513,7 @@ impl InstGraph {
         self.matching_loop_end_nodes.len()
     }
 
-    pub fn show_nth_matching_loop(&mut self, n: usize, p: &mut Z3Parser) -> GeneralizedTerms {
+    pub fn show_nth_matching_loop(&mut self, n: usize, p: &mut Z3Parser) -> Vec<String> {
         self.reset_visibility_to(false);
         // relies on the fact that we have previously sorted self.matching_loop_end_nodes by max_depth in descending order in 
         // search_matching_loops
@@ -570,13 +565,11 @@ impl InstGraph {
                     generalized_terms.push(pretty_gen_term);
                 }
             }
-            GeneralizedTerms {
-                generalized_terms
-            }
+            generalized_terms
             // after generalizing over the terms for each abstract edge, store the key-value pair (n, MatchingLoopInfo) in the 
             // InstGraph such that we don't need to recompute the generalization => can check if the value is already in the map at (*)
         } else {
-            GeneralizedTerms::default()
+            Vec::new() 
         }
     }
 

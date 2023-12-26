@@ -137,7 +137,12 @@ impl Component for SVGResult {
                             .send_message(GraphInfoMsg::SelectNodes(path));
                         false
                     }
-                    FilterOutput::MatchingLoopInfo(gen_terms) => {
+                    FilterOutput::MatchingLoopGeneralizedTerms(gen_terms) => {
+                        self.insts_info_link
+                            .borrow()
+                            .clone()
+                            .unwrap()
+                            .send_message(GraphInfoMsg::ShowGeneralizedTerms(gen_terms));
                         false
                     }
                     FilterOutput::None => false

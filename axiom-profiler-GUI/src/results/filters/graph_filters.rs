@@ -4,7 +4,7 @@ use gloo::console::log;
 use petgraph::{stable_graph::NodeIndex, Direction};
 use smt_log_parser::{
     items::QuantIdx,
-    parsers::z3::inst_graph::{InstGraph, InstInfo, NodeData},
+    parsers::z3::inst_graph::{InstGraph, InstInfo, NodeData, GeneralizedTerms}, Z3Parser,
 };
 use std::fmt::Display;
 use yew::prelude::*;
@@ -79,33 +79,30 @@ impl Display for Filter {
     }
 }
 
+pub enum FilterOutput {
+    LongestPath(Vec<NodeIndex>),
+    MatchingLoopInfo(GeneralizedTerms),
+    None
+}
+
 impl Filter {
-    pub fn apply(self: Filter, graph: &mut InstGraph) -> Option<Vec<NodeIndex>> {
+    pub fn apply(self: Filter, graph: &mut InstGraph, parser: &mut Z3Parser) -> FilterOutput {
         match self {
-            Filter::MaxNodeIdx(max) => graph
-                .retain_nodes(|node: &NodeData| node.orig_graph_idx.index() <= max),
-            Filter::IgnoreTheorySolving => {
-                graph.retain_nodes(|node: &NodeData| !node.is_theory_inst)
-            }
-            Filter::IgnoreQuantifier(qidx) => {
-                graph.retain_nodes(|node: &NodeData| node.mkind.quant_idx() != qidx)
-            }
-            Filter::IgnoreAllButQuantifier(qidx) => {
-                graph.retain_nodes(|node: &NodeData| node.mkind.quant_idx() == qidx)
-            }
+            Filter::MaxNodeIdx(max) => graph.retain_nodes(|node: &NodeData| node.orig_graph_idx.index() <= max),
+            Filter::IgnoreTheorySolving => graph.retain_nodes(|node: &NodeData| !node.is_theory_inst),
+            Filter::IgnoreQuantifier(qidx) => graph.retain_nodes(|node: &NodeData| node.mkind.quant_idx() != qidx),
+            Filter::IgnoreAllButQuantifier(qidx) => graph.retain_nodes(|node: &NodeData| node.mkind.quant_idx() == qidx),
             Filter::MaxInsts(n) => graph.keep_n_most_costly(n),
             Filter::MaxBranching(n) => graph.keep_n_most_branching(n),
             Filter::ShowNeighbours(nidx, direction) => graph.show_neighbours(nidx, direction),
             Filter::VisitSubTreeWithRoot(nidx, retain) => graph.visit_descendants(nidx, retain),
             Filter::VisitSourceTree(nidx, retain) => graph.visit_ancestors(nidx, retain),
-            Filter::MaxDepth(depth) => {
-                graph.retain_nodes(|node: &NodeData| node.min_depth.unwrap() <= depth)
-            }
-            Filter::ShowLongestPath(nidx) => return Some(graph.show_longest_path_through(nidx)),
-            Filter::SelectNthMatchingLoop(n) => graph.show_nth_matching_loop(n), 
+            Filter::MaxDepth(depth) => graph.retain_nodes(|node: &NodeData| node.min_depth.unwrap() <= depth),
+            Filter::ShowLongestPath(nidx) => return FilterOutput::LongestPath(graph.show_longest_path_through(nidx)),
+            Filter::SelectNthMatchingLoop(n) => return FilterOutput::MatchingLoopInfo(graph.show_nth_matching_loop(n, parser)),
             Filter::ShowMatchingLoopSubgraph => graph.show_matching_loop_subgraph(),
         }
-        None
+        FilterOutput::None
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    results::graph_info::{GraphInfo, Msg as GraphInfoMsg},
+    results::{graph_info::{GraphInfo, Msg as GraphInfoMsg}, filters::graph_filters::FilterOutput},
     RcParser, utils::indexer::Indexer,
 };
 
@@ -128,15 +128,19 @@ impl Component for SVGResult {
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {}", filter);
-                if let Some(ref path) = filter.apply(&mut self.inst_graph) {
-                    self.insts_info_link
-                        .borrow()
-                        .clone()
-                        .unwrap()
-                        .send_message(GraphInfoMsg::SelectNodes(path.clone()));
-                    false
-                } else {
-                    false
+                match filter.apply(&mut self.inst_graph, &mut self.parser) {
+                    FilterOutput::LongestPath(path) => {
+                        self.insts_info_link
+                            .borrow()
+                            .clone()
+                            .unwrap()
+                            .send_message(GraphInfoMsg::SelectNodes(path));
+                        false
+                    }
+                    FilterOutput::MatchingLoopInfo(gen_terms) => {
+                        false
+                    }
+                    FilterOutput::None => false
                 }
             }
             Msg::SearchMatchingLoops => {

@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use fxhash::FxHashSet;
+use fxhash::{FxHashSet, FxHashMap};
 use gloo_console::log;
 use itertools::Itertools;
 use petgraph::graph::NodeIndex;
@@ -17,7 +17,7 @@ use std::iter::zip;
 use typed_index_collections::TiVec;
 
 use crate::display_with::{DisplayCtxt, DisplayWithCtxt};
-use crate::items::{BlameKind, ENodeIdx, Fingerprint, InstIdx, MatchKind, Term, TermIdx};
+use crate::items::{BlameKind, ENodeIdx, Fingerprint, InstIdx, MatchKind, Term, TermIdx, QuantIdx};
 
 use super::z3parser::Z3Parser;
 
@@ -156,6 +156,11 @@ pub struct VisibleGraphInfo {
     pub edge_count: usize,
     pub node_count_decreased: bool,
     pub edge_count_decreased: bool,
+}
+
+#[derive(Default)]
+pub struct GeneralizedTerms {
+    generalized_terms: Vec<String>,
 }
 
 pub fn generalize(t1: TermIdx, t2: TermIdx, p: &mut Z3Parser) -> TermIdx {
@@ -513,18 +518,65 @@ impl InstGraph {
         self.matching_loop_end_nodes.len()
     }
 
-    pub fn show_nth_matching_loop(&mut self, n: usize) {
+    pub fn show_nth_matching_loop(&mut self, n: usize, p: &mut Z3Parser) -> GeneralizedTerms {
         self.reset_visibility_to(false);
         // relies on the fact that we have previously sorted self.matching_loop_end_nodes by max_depth in descending order in 
         // search_matching_loops
         let end_node_of_nth_matching_loop = self.matching_loop_end_nodes.get(n);
         if let Some(&node) = end_node_of_nth_matching_loop {
             // start a reverse-DFS from node and mark all the nodes as visible along the way
+            // during the reverse-DFS collect information needed to compute the generalized terms later on
+            let mut abstract_edge_blame_terms: FxHashMap<(QuantIdx, QuantIdx), Vec<TermIdx>> = FxHashMap::default(); 
             let mut dfs = Dfs::new(petgraph::visit::Reversed(&self.matching_loop_subgraph), node);
             while let Some(nx) = dfs.next(petgraph::visit::Reversed(&self.matching_loop_subgraph)) {
                 let orig_index = self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx;
                 self.orig_graph[orig_index].visible = true;
+                // add all direct dependencies which have BlameKind::Term to the correct bin in abstract_edges
+                // such that later on we can generalize over each all edges in a matching loop that have 
+                // identical from- and to-quantifiers
+                // (*)
+                if let Some(to_quant) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.quant_idx() {
+                    for incoming_edge in self.matching_loop_subgraph.edges_directed(nx, Incoming) {
+                        let from = incoming_edge.source(); 
+                        if let Some(from_quant) = self.matching_loop_subgraph.node_weight(from).unwrap().mkind.quant_idx() {
+                            if let Some(blame_term) = incoming_edge.weight().blame_term_idx() {
+                                let blame_term_idx = p[blame_term].owner; 
+                                if let Some(blame_terms) = abstract_edge_blame_terms.get_mut(&(from_quant, to_quant)) {
+                                    blame_terms.push(blame_term_idx);
+                                } else {
+                                    abstract_edge_blame_terms.insert((from_quant, to_quant), vec![blame_term_idx]);
+                                }
+                            }
+                        }
+                    }
+                }
             }
+            // compute the generalized terms for each bucket in abstract_edge_blame_terms
+            let mut generalized_terms: Vec<String> = Vec::new();
+            for blame_terms in abstract_edge_blame_terms.values() {
+                // let generalized_term = blame_terms.iter().reduce(|&t1, &t2| generalize(t1, t2, p)).unwrap();
+                if let Some(t1) = blame_terms.get(0) {
+                    let mut gen_term = t1.clone();
+                    for &t2 in &blame_terms[1..] {
+                        gen_term = generalize(gen_term, t2, p);
+                    }
+                    let ctxt = DisplayCtxt {
+                        parser: p,
+                        display_term_ids: true,
+                        display_quantifier_name: false,
+                        use_mathematical_symbols: true,
+                    };
+                    let pretty_gen_term = gen_term.with(&ctxt).to_string();
+                    generalized_terms.push(pretty_gen_term);
+                }
+            }
+            GeneralizedTerms {
+                generalized_terms
+            }
+            // after generalizing over the terms for each abstract edge, store the key-value pair (n, MatchingLoopInfo) in the 
+            // InstGraph such that we don't need to recompute the generalization => can check if the value is already in the map at (*)
+        } else {
+            GeneralizedTerms::default()
         }
     }
 

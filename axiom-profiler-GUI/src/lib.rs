@@ -194,8 +194,8 @@ impl RcParser {
     }
 }
 
-impl std::ops::DerefMut for RcParser {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+// impl std::ops::DerefMut for RcParser {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.0
+//     }
+// }

@@ -1,4 +1,4 @@
-use std::{rc::Rc, cell::RefCell, ops::Deref};
+use std::{rc::Rc, cell::RefCell};
 
 use typed_index_collections::TiVec;
 
@@ -19,7 +19,7 @@ impl Terms {
     }
 
     pub(super) fn new_term(&mut self, id: TermId, term: Term) -> TermIdx {
-        let idx = self.terms.deref().borrow().next_key();
+        let idx = self.terms.borrow().next_key();
         self.terms.borrow_mut().push(term);
         self.term_id_map.register_term(id, idx);
         idx
@@ -40,7 +40,7 @@ impl Terms {
     }
 
     pub(super) fn mk_generalized_term(&mut self) -> TermIdx {
-        let idx = self.terms.deref().borrow().next_key();
+        let idx = self.terms.borrow().next_key();
         let term = Term { 
             id: None, 
             kind: GeneralizedTerm, 
@@ -52,11 +52,11 @@ impl Terms {
     }
 
     pub(super) fn is_general_term(&self, t: TermIdx) -> bool {
-        t == self.terms.deref().borrow().last_key().unwrap() 
+        t == self.terms.borrow().last_key().unwrap() 
     }
 
     pub(super) fn mk_generalized_term_with_children(&mut self, meaning: Option<Meaning>, children: Vec<TermIdx>) -> TermIdx {
-        let idx = self.terms.deref().borrow().next_key();
+        let idx = self.terms.borrow().next_key();
         let term = Term {
             id: None,
             kind: GeneralizedTerm,

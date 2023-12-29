@@ -1,5 +1,3 @@
-use std::{rc::Rc, cell::RefCell};
-
 use typed_index_collections::TiVec;
 
 use crate::items::{StringTable, Term, TermId, TermIdToIdxMap, TermIdx, TermKind::GeneralizedTerm, Meaning};
@@ -7,20 +5,20 @@ use crate::items::{StringTable, Term, TermId, TermIdToIdxMap, TermIdx, TermKind:
 #[derive(Debug)]
 pub struct Terms {
     term_id_map: TermIdToIdxMap,
-    terms: Rc<RefCell<TiVec<TermIdx, Term>>>,
+    terms: TiVec<TermIdx, Term>,
 }
 
 impl Terms {
     pub(super) fn new(strings: &mut StringTable) -> Self {
         Self {
             term_id_map: TermIdToIdxMap::new(strings),
-            terms: Rc::new(RefCell::new(TiVec::new())),
+            terms: TiVec::new(),
         }
     }
 
     pub(super) fn new_term(&mut self, id: TermId, term: Term) -> TermIdx {
-        let idx = self.terms.borrow().next_key();
-        self.terms.borrow_mut().push(term);
+        let idx = self.terms.next_key();
+        self.terms.push(term);
         self.term_id_map.register_term(id, idx);
         idx
     }
@@ -40,30 +38,30 @@ impl Terms {
     }
 
     pub(super) fn mk_generalized_term(&mut self) -> TermIdx {
-        let idx = self.terms.borrow().next_key();
+        let idx = self.terms.next_key();
         let term = Term { 
             id: None, 
             kind: GeneralizedTerm, 
             meaning: None, 
             child_ids: Vec::new(), 
         }; 
-        self.terms.borrow_mut().push(term);
+        self.terms.push(term);
         idx
     }
 
     pub(super) fn is_general_term(&self, t: TermIdx) -> bool {
-        t == self.terms.borrow().last_key().unwrap() 
+        t == self.terms.last_key().unwrap() 
     }
 
     pub(super) fn mk_generalized_term_with_children(&mut self, meaning: Option<Meaning>, children: Vec<TermIdx>) -> TermIdx {
-        let idx = self.terms.borrow().next_key();
+        let idx = self.terms.next_key();
         let term = Term {
             id: None,
             kind: GeneralizedTerm,
             meaning,
             child_ids: children,
         };
-        self.terms.borrow_mut().push(term);
+        self.terms.push(term);
         idx
     }
 }
@@ -71,12 +69,12 @@ impl Terms {
 impl std::ops::Index<TermIdx> for Terms {
     type Output = Term;
     fn index(&self, idx: TermIdx) -> &Self::Output {
-        &self.terms.borrow()[idx]
+        &self.terms[idx]
     }
 }
 
 impl std::ops::IndexMut<TermIdx> for Terms {
     fn index_mut(&mut self, idx: TermIdx) -> &mut Self::Output {
-        &mut self.terms.borrow_mut()[idx]
+        &mut self.terms[idx]
     }
 }

@@ -8,6 +8,7 @@ use crate::items::{StringTable, Term, TermId, TermIdToIdxMap, TermIdx, TermKind:
 pub struct Terms {
     term_id_map: TermIdToIdxMap,
     terms: Rc<RefCell<TiVec<TermIdx, Term>>>,
+    generalized_term_boundary: Option<TermIdx>,
 }
 
 impl Terms {
@@ -15,6 +16,7 @@ impl Terms {
         Self {
             term_id_map: TermIdToIdxMap::new(strings),
             terms: Rc::new(RefCell::new(TiVec::new())),
+            generalized_term_boundary: None,
         }
     }
 
@@ -39,23 +41,19 @@ impl Terms {
         self.parse_id(strings, id).and_then(|r| r.ok())
     }
 
-    pub(super) fn mk_generalized_term(&mut self) -> TermIdx {
-        let idx = self.terms.borrow().next_key();
-        let term = Term { 
-            id: None, 
-            kind: GeneralizedTerm, 
-            meaning: None, 
-            child_ids: Vec::new(), 
-        }; 
-        self.terms.borrow_mut().push(term);
-        idx
+    pub(super) fn set_generalized_term_boundary(&mut self) {
+        self.generalized_term_boundary = self.terms.borrow().last_key();
     }
 
     pub(super) fn is_general_term(&self, t: TermIdx) -> bool {
-        t == self.terms.borrow().last_key().unwrap() 
+        if let Some(tidx) = self.generalized_term_boundary {
+            t > tidx
+        } else {
+            false
+        } 
     }
 
-    pub(super) fn mk_generalized_term_with_children(&mut self, meaning: Option<Meaning>, children: Vec<TermIdx>) -> TermIdx {
+    pub(super) fn mk_generalized_term(&mut self, meaning: Option<Meaning>, children: Vec<TermIdx>) -> TermIdx {
         let idx = self.terms.borrow().next_key();
         let term = Term {
             id: None,

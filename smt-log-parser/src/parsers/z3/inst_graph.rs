@@ -175,14 +175,14 @@ pub fn generalize(t1: TermIdx, t2: TermIdx, p: &mut Z3Parser) -> TermIdx {
             }
             if children.iter().any(|c| p.terms.is_general_term(*c)) {
                 // if term has any generalized children, need to crate new generalized term
-                p.terms.mk_generalized_term_with_children(p[t1].meaning, children)
+                p.terms.mk_generalized_term(p[t1].meaning, children)
             } else {
                 // else, can just return t1
                 t1
             } 
         } else {
             // if not, generalize
-            p.terms.mk_generalized_term()
+            p.terms.mk_generalized_term(None, vec![])
         }
     }       
 }

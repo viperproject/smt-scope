@@ -167,15 +167,18 @@ pub fn generalize(t1: TermIdx, t2: TermIdx, p: &mut Z3Parser) -> TermIdx {
         t1
     } else {
         // if neither term is generalized, check the meanings and recurse over children 
-        if p[t1].meaning == p[t2].meaning {
+        // if p[t1].meaning == p[t2].meaning {
+        if p.get(t1).meaning == p.get(t2).meaning {
             let mut children: Vec<TermIdx> = Vec::new();
-            for (c1, c2) in zip(p[t1].child_ids.clone(), p[t2].child_ids.clone()) {
+            // for (c1, c2) in zip(p[t1].child_ids.clone(), p[t2].child_ids.clone()) {
+            for (c1, c2) in zip(p.get(t1).child_ids.clone(), p.get(t2).child_ids.clone()) {
                 let child = generalize(c1, c2, p);
                 children.push(child)
             }
             if children.iter().any(|c| p.terms.is_general_term(*c)) {
                 // if term has any generalized children, need to crate new generalized term
-                p.terms.mk_generalized_term(p[t1].meaning, children)
+                // p.terms.mk_generalized_term(p[t1].meaning, children)
+                p.terms.mk_generalized_term(p.get(t1).meaning, children)
             } else {
                 // else, can just return t1
                 t1

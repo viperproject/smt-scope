@@ -53,7 +53,7 @@ impl Terms {
         } 
     }
 
-    pub(super) fn mk_generalized_term(&mut self, meaning: Option<Meaning>, children: Vec<TermIdx>) -> TermIdx {
+    pub(super) fn mk_generalized_term(&self, meaning: Option<Meaning>, children: Vec<TermIdx>) -> TermIdx {
         let idx = self.terms.borrow().next_key();
         let term = Term {
             id: None,
@@ -64,17 +64,26 @@ impl Terms {
         self.terms.borrow_mut().push(term);
         idx
     }
-}
 
-impl std::ops::Index<TermIdx> for Terms {
-    type Output = Term;
-    fn index(&self, idx: TermIdx) -> &Self::Output {
-        &self.terms.borrow()[idx]
+    pub(super) fn set_meaning_of_term(&self, idx: TermIdx, meaning: Meaning) {
+        let mut terms = self.terms.borrow_mut();
+        terms.get_mut(idx).unwrap().meaning = Some(meaning);
+    }
+
+    pub(super) fn get(&self, idx: TermIdx) -> Term {
+        self.terms.borrow().get(idx).unwrap().clone()
     }
 }
 
-impl std::ops::IndexMut<TermIdx> for Terms {
-    fn index_mut(&mut self, idx: TermIdx) -> &mut Self::Output {
-        &mut self.terms.borrow_mut()[idx]
-    }
-}
+// impl std::ops::Index<TermIdx> for Terms {
+//     type Output = Term;
+//     fn index(&self, idx: TermIdx) -> &Self::Output {
+//         &self.terms.borrow()[idx]
+//     }
+// }
+
+// impl std::ops::IndexMut<TermIdx> for Terms {
+//     fn index_mut(&mut self, idx: TermIdx) -> &mut Self::Output {
+//         &mut self.terms.borrow_mut()[idx]
+//     }
+// }

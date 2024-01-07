@@ -276,10 +276,12 @@ impl Z3LogParser for Z3Parser {
         let value = self.strings.get_or_intern(l.collect::<Vec<_>>().join(" "));
         let meaning = Meaning { theory, value };
         let idx = self.terms.parse_existing_id(&mut self.strings, id)?;
-        if let Some(old) = &self.terms[idx].meaning {
+        // if let Some(old) = &self.terms[idx].meaning {
+        if let Some(old) = &self.terms.get(idx).meaning {
             assert_eq!(old, &meaning);
         } else {
-            self.terms[idx].meaning = Some(meaning);
+            // self.terms[idx].meaning = Some(meaning);
+            self.terms.set_meaning_of_term(idx, meaning);
         }
         Some(())
     }
@@ -288,7 +290,8 @@ impl Z3LogParser for Z3Parser {
         let id = l.next()?;
         let var_names = self.gobble_var_names_list(l)?;
         let tidx = self.terms.parse_existing_id(&mut self.strings, id)?;
-        let qidx = self.terms[tidx].kind.quant_idx()?;
+        // let qidx = self.terms[tidx].kind.quant_idx()?;
+        let qidx = self.terms.get(tidx).kind.quant_idx()?;
         assert!(self.quantifiers[qidx].vars.is_none());
         self.quantifiers[qidx].vars = Some(var_names);
         Some(())
@@ -375,7 +378,8 @@ impl Z3LogParser for Z3Parser {
     fn new_match<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Option<()> {
         let fingerprint = l.next().and_then(Fingerprint::parse)?;
         let idx = self.terms.parse_existing_id(&mut self.strings, l.next()?)?;
-        let quant = self.terms[idx].kind.quant_idx()?;
+        // let quant = self.terms[idx].kind.quant_idx()?;
+        let quant = self.terms.get(idx).kind.quant_idx()?;
         let pattern = self.terms.parse_existing_id(&mut self.strings, l.next()?)?;
         let bound_terms = Self::iter_until_eq(&mut l, ";");
         let is_axiom = fingerprint.is_zero();
@@ -476,7 +480,8 @@ impl Z3LogParser for Z3Parser {
             }
             "MBQI" => {
                 let quant = self.terms.parse_existing_id(&mut self.strings, l.next()?)?;
-                let quant = self.terms[quant].kind.quant_idx()?;
+                // let quant = self.terms[quant].kind.quant_idx()?;
+                let quant = self.terms.get(quant).kind.quant_idx()?;
                 let bound_terms = l
                     .map(|id| self.parse_existing_enode(id))
                     .collect::<Option<Vec<_>>>()?;
@@ -567,14 +572,18 @@ impl Z3Parser {
     pub fn quant_count_incl_theory_solving(&self) -> (usize, bool) {
         (self.quantifiers.len(), self.insts.has_theory_solving_inst())
     }
-}
 
-impl std::ops::Index<TermIdx> for Z3Parser {
-    type Output = Term;
-    fn index(&self, idx: TermIdx) -> &Self::Output {
-        &self.terms[idx]
+    pub fn get(&self, idx: TermIdx) -> Term {
+        self.terms.get(idx)
     }
 }
+
+// impl std::ops::Index<TermIdx> for Z3Parser {
+//     type Output = Term;
+//     fn index(&self, idx: TermIdx) -> &Self::Output {
+//         // &self.terms[idx]
+//     }
+// }
 impl std::ops::Index<QuantIdx> for Z3Parser {
     type Output = Quantifier;
     fn index(&self, idx: QuantIdx) -> &Self::Output {

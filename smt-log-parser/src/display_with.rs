@@ -162,7 +162,8 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for TermIdx {
         _data: &mut (),
     ) -> fmt::Result {
         let mut data = DisplayData::new();
-        write!(f, "{}", ctxt.parser[self].with_data(ctxt, &mut data))
+        // write!(f, "{}", ctxt.parser[self].with_data(ctxt, &mut data))
+        write!(f, "{}", ctxt.parser.get(self).with_data(ctxt, &mut data))
     }
 }
 
@@ -311,7 +312,8 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a ProofOrApp {
                 assert!(bind_power <= PREFIX_BIND);
                 assert_eq!(data.children().len(), 1);
                 let child = data.children()[0];
-                write!(f, "{name}{}", ctxt.parser[child].with_data(ctxt, data))
+                // write!(f, "{name}{}", ctxt.parser[child].with_data(ctxt, data))
+                write!(f, "{name}{}", ctxt.parser.get(child).with_data(ctxt, data))
             }),
             Inline => data.with_bind_power(INFIX_BIND, |data, bind_power| {
                 let need_brackets = bind_power >= INFIX_BIND;
@@ -322,7 +324,8 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a ProofOrApp {
                     if idx != 0 {
                         write!(f, " {name} ")?;
                     }
-                    write!(f, "{}", ctxt.parser[*child].with_data(ctxt, data))?;
+                    // write!(f, "{}", ctxt.parser[*child].with_data(ctxt, data))?;
+                    write!(f, "{}", ctxt.parser.get(*child).with_data(ctxt, data))?;
                 }
                 if need_brackets {
                     write!(f, ")")?;
@@ -336,7 +339,8 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a ProofOrApp {
                     if idx != 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", ctxt.parser[*child].with_data(ctxt, data))?;
+                    // write!(f, "{}", ctxt.parser[*child].with_data(ctxt, data))?;
+                    write!(f, "{}", ctxt.parser.get(*child).with_data(ctxt, data))?;
                 }
                 write!(f, "}}")
             }),
@@ -351,7 +355,8 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a ProofOrApp {
                     if idx != 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", ctxt.parser[*child].with_data(ctxt, data))?;
+                    // write!(f, "{}", ctxt.parser[*child].with_data(ctxt, data))?;
+                    write!(f, "{}", ctxt.parser.get(*child).with_data(ctxt, data))?;
                 }
                 write!(f, ")")
             }),
@@ -407,7 +412,8 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                 };
                 write!(f, "{sep}")?;
                 for child in data.children() {
-                    write!(f, " {}", ctxt.parser[*child].with_data(ctxt, data))?;
+                    // write!(f, " {}", ctxt.parser[*child].with_data(ctxt, data))?;
+                    write!(f, " {}", ctxt.parser.get(*child).with_data(ctxt, data))?;
                 }
                 if need_brackets {
                     write!(f, ")")?;

@@ -44,7 +44,7 @@ idx!(ENodeIdx, "e{}");
 idx!(MatchIdx, "m{}");
 
 /// A Z3 term and associated data.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Term {
     pub id: Option<TermId>,
     pub kind: TermKind,

@@ -241,9 +241,15 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Term {
     ) -> fmt::Result {
         data.with_children(&self.child_ids, |data| {
             if ctxt.display_term_ids {
-                let namespace = ctxt.parser.strings.resolve(&self.id.unwrap().namespace);
-                let id = self.id.unwrap().id.map(|id| id.to_string()).unwrap_or_default();
-                write!(f, "[{namespace}#{id}]")?;
+                match self.kind {
+                    TermKind::GeneralizedTerm => {write!(f, "")?;}
+                    _ => {
+                        let namespace = ctxt.parser.strings.resolve(&self.id.unwrap().namespace);
+                        let id = self.id.unwrap().id.map(|id| id.to_string()).unwrap_or_default();
+                        write!(f, "[{namespace}#{id}]")?;
+                    }
+                }
+
             }
             if let Some(meaning) = &self.meaning {
                 write!(f, "{}", meaning.with_data(ctxt, data))?;

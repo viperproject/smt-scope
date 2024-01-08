@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use gloo_file::{callbacks::FileReader, FileList};
 use results::svg_result::SVGResult;
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
@@ -163,10 +165,10 @@ enum Route {
     Test,
 }
 
-pub struct RcParser(std::rc::Rc<Z3Parser>);
+pub struct RcParser(std::rc::Rc<RefCell<Z3Parser>>);
 
 impl std::ops::Deref for RcParser {
-    type Target = Z3Parser;
+    type Target = RefCell<Z3Parser>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -187,15 +189,15 @@ impl PartialEq for RcParser {
 
 impl RcParser {
     fn new(parser: Z3Parser) -> Self {
-        Self(std::rc::Rc::new(parser))
+        Self(std::rc::Rc::new(RefCell::new(parser)))
     }
     pub(crate) fn as_ptr(&self) -> *const Z3Parser {
-        std::rc::Rc::as_ptr(&self.0)
+        self.0.as_ptr()
     }
 }
 
-impl std::ops::DerefMut for RcParser {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+// impl std::ops::DerefMut for RcParser {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.0
+//     }
+// }

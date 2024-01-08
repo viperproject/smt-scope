@@ -87,19 +87,19 @@ impl Component for SVGResult {
     fn create(ctx: &Context<Self>) -> Self {
         log::debug!("Creating SVGResult component");
         let parser = RcParser::clone(&ctx.props().parser);
-        let inst_graph = InstGraph::from(&parser);
-        let (quant_count, non_quant_insts) = parser.quant_count_incl_theory_solving();
+        let inst_graph = InstGraph::from(&parser.borrow());
+        let (quant_count, non_quant_insts) = parser.borrow().quant_count_incl_theory_solving();
         let colour_map = QuantIdxToColourMap::from(quant_count, non_quant_insts);
         let get_node_info = Callback::from({
             let inst_graph = inst_graph.clone();
             move |(node, ignore_ids, parser): (NodeIndex, bool, RcParser)| {
-                inst_graph.get_instantiation_info(node.index(), &parser, ignore_ids)
+                inst_graph.get_instantiation_info(node.index(), &parser.borrow(), ignore_ids)
             }
         });
         let get_edge_info = Callback::from({
             let inst_graph = inst_graph.clone();
             move |(edge, ignore_ids, parser): (EdgeIndex, bool, RcParser)| {
-                inst_graph.get_edge_info(edge, &parser, ignore_ids)
+                inst_graph.get_edge_info(edge, &parser.borrow(), ignore_ids)
             }
         });
         Self {
@@ -128,7 +128,7 @@ impl Component for SVGResult {
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {}", filter);
-                match filter.apply(&mut self.inst_graph, &mut self.parser) {
+                match filter.apply(&mut self.inst_graph, &mut self.parser.borrow_mut()) {
                     FilterOutput::LongestPath(path) => {
                         self.insts_info_link
                             .borrow()

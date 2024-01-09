@@ -162,27 +162,23 @@ pub fn generalize(t1: TermIdx, t2: TermIdx, p: &mut Z3Parser) -> TermIdx {
     if t1 == t2 {
         // if terms are equal, no need to generalize
         t1
-    // } else if p.terms.is_general_term(t1) {
     } else if let TermKind::GeneralizedPrimitive = p[t1].kind {
-        // if self is already generalized, no need to generalize further
+        // if t1 is already generalized, no need to generalize further
         t1
+    } else if let TermKind::GeneralizedPrimitive = p[t2].kind {
+        // if t2 is already generalized, no need to generalize further
+        t2
     } else {
-        // if neither term is generalized, check the meanings and recurse over children 
-        if p[t1].meaning == p[t2].meaning {
+        // if neither term is generalized, check the meanings and kinds and recurse over children 
+        if p[t1].meaning == p[t2].meaning && p[t1].kind == p[t2].kind {
             let mut children: Vec<TermIdx> = Vec::new();
             for (c1, c2) in zip(p[t1].child_ids.clone(), p[t2].child_ids.clone()) {
                 let child = generalize(c1, c2, p);
                 children.push(child)
             }
-            if children.iter().any(|c| p.terms.is_general_term(*c)) {
-                // if term has any generalized children, need to crate new generalized term
-                p.terms.mk_generalized_term(p[t1].meaning, p[t1].kind, children)
-            } else {
-                // else, can just return t1
-                t1
-            } 
+            p.terms.mk_generalized_term(p[t1].meaning, p[t1].kind, children)
         } else {
-            // if not, generalize
+            // if meanings or kinds don't match up, need generalize
             p.terms.mk_generalized_term(None, crate::items::TermKind::GeneralizedPrimitive, vec![])
         }
     }       
@@ -555,13 +551,13 @@ impl InstGraph {
                     let mut gen_term = t1.clone();
                     for &t2 in &blame_terms[1..] {
                         gen_term = generalize(gen_term, t2, p);
-                        // let ctxt = DisplayCtxt {
-                        //     parser: p,
-                        //     display_term_ids: false,
-                        //     display_quantifier_name: false,
-                        //     use_mathematical_symbols: true,
-                        // };
-                        // log!(format!("Generalized term {} and {}", gen_term.with(&ctxt), t2.with(&ctxt)));
+                        let ctxt = DisplayCtxt {
+                            parser: p,
+                            display_term_ids: false,
+                            display_quantifier_name: false,
+                            use_mathematical_symbols: true,
+                        };
+                        log!(format!("Generalized term {} and {}", gen_term.with(&ctxt), t2.with(&ctxt)));
                     }
                     let ctxt = DisplayCtxt {
                         parser: p,

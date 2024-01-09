@@ -1,6 +1,6 @@
 use typed_index_collections::TiVec;
 
-use crate::items::{StringTable, Term, TermId, TermIdToIdxMap, TermIdx, TermKind::GeneralizedTerm, Meaning};
+use crate::items::{StringTable, Term, TermId, TermIdToIdxMap, TermIdx, TermKind::{GeneralizedPrimitive, self}, Meaning};
 
 #[derive(Debug)]
 pub struct Terms {
@@ -51,11 +51,11 @@ impl Terms {
         } 
     }
 
-    pub(super) fn mk_generalized_term(&mut self, meaning: Option<Meaning>, children: Vec<TermIdx>) -> TermIdx {
+    pub(super) fn mk_generalized_term(&mut self, meaning: Option<Meaning>, kind: TermKind, children: Vec<TermIdx>) -> TermIdx {
         let idx = self.terms.next_key();
         let term = Term {
             id: None,
-            kind: GeneralizedTerm,
+            kind,
             meaning,
             child_ids: children,
         };

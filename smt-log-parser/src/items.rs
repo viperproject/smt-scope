@@ -52,15 +52,15 @@ pub struct Term {
     pub child_ids: Vec<TermIdx>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub enum TermKind {
     Var(usize),
     ProofOrApp(ProofOrApp),
     Quant(QuantIdx),
-    GeneralizedTerm,
+    GeneralizedPrimitive,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct ProofOrApp {
     pub is_proof: bool,
     pub name: IString,

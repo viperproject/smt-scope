@@ -242,7 +242,7 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Term {
         data.with_children(&self.child_ids, |data| {
             if ctxt.display_term_ids {
                 match self.kind {
-                    TermKind::GeneralizedTerm => {write!(f, "")?;}
+                    TermKind::GeneralizedPrimitive => {write!(f, "")?;}
                     _ => {
                         let namespace = ctxt.parser.strings.resolve(&self.id.unwrap().namespace);
                         let id = self.id.unwrap().id.map(|id| id.to_string()).unwrap_or_default();
@@ -275,7 +275,7 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a TermKind {
             }
             TermKind::ProofOrApp(poa) => write!(f, "{}", poa.with_data(ctxt, data)),
             TermKind::Quant(idx) => write!(f, "{}", ctxt.parser[*idx].with_data(ctxt, data)),
-            TermKind::GeneralizedTerm => write!(f, "[generalized]"),
+            TermKind::GeneralizedPrimitive => write!(f, "_"),
         }
     }
 }

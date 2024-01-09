@@ -42,7 +42,7 @@ impl Component for Indexer {
                 }
             }
             Msg::Increment => {
-                if self.index + 1 < ctx.props().max {
+                if self.index + 1 <= ctx.props().max {
                     self.index = self.index.saturating_add(1);
                     ctx.props().index_consumer.emit(self.index);
                     true

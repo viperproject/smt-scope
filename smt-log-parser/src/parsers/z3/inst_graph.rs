@@ -178,7 +178,7 @@ pub fn generalize(t1: TermIdx, t2: TermIdx, p: &mut Z3Parser) -> TermIdx {
             }
             p.terms.mk_generalized_term(p[t1].meaning, p[t1].kind, children)
         } else {
-            // if meanings or kinds don't match up, need generalize
+            // if meanings or kinds don't match up, need to generalize
             p.terms.mk_generalized_term(None, crate::items::TermKind::GeneralizedPrimitive, vec![])
         }
     }       

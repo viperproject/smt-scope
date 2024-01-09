@@ -523,7 +523,7 @@ impl Z3LogParser for Z3Parser {
     fn eof(&mut self) {
         // TODO: this shouldn't be done here.
         self.compute_costs();
-        self.terms.set_generalized_term_boundary();
+        self.terms.create_wild_card();
     }
 
     fn push<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Option<()> {

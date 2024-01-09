@@ -191,13 +191,4 @@ impl RcParser {
     fn new(parser: Z3Parser) -> Self {
         Self(std::rc::Rc::new(RefCell::new(parser)))
     }
-    pub(crate) fn as_ptr(&self) -> *const Z3Parser {
-        self.0.as_ptr()
-    }
 }
-
-// impl std::ops::DerefMut for RcParser {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.0
-//     }
-// }

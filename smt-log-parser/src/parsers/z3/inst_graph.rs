@@ -175,14 +175,16 @@ pub fn generalize(t1: TermIdx, t2: TermIdx, p: &mut Z3Parser) -> TermIdx {
             }
             if children.iter().any(|c| p.terms.is_general_term(*c)) {
                 // if term has any generalized children, need to crate new generalized term
-                p.terms.mk_generalized_term(p[t1].meaning, children)
+                p.terms.mk_generalized_term(p[t1].meaning, children);
+                t1
             } else {
                 // else, can just return t1
                 t1
             } 
         } else {
             // if not, generalize
-            p.terms.mk_generalized_term(None, vec![])
+            p.terms.mk_generalized_term(None, vec![]);
+            t1
         }
     }       
 }
@@ -557,7 +559,7 @@ impl InstGraph {
                     }
                     let ctxt = DisplayCtxt {
                         parser: p,
-                        display_term_ids: true,
+                        display_term_ids: false,
                         display_quantifier_name: false,
                         use_mathematical_symbols: true,
                     };

@@ -239,7 +239,7 @@ impl Component for GraphInfo {
         let on_edge_select = ctx.link().callback(Msg::UserSelectedEdge);
         let deselect_all = ctx.link().callback(|_| Msg::DeselectAll);
         let generalized_terms = self.generalized_terms.iter().map(|term| html! {
-            <ul>{term}</ul>
+            <li>{term}</li>
         });
         html! {
             <>
@@ -265,7 +265,7 @@ impl Component for GraphInfo {
                 </div>
                 <h2>{"Information about displayed matching loop:"}</h2>
                 <div>
-                    <li>{for generalized_terms}</li>
+                    <ul>{for generalized_terms}</ul>
                 </div>
             </div>
 

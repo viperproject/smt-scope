@@ -144,6 +144,7 @@ pub struct InstGraph {
     tr_closure: Vec<RoaringBitmap>,
     matching_loop_subgraph: Graph<NodeData, EdgeType>,
     matching_loop_end_nodes: Vec<NodeIndex>, // these are sorted by maximal depth in descending order 
+    generalized_terms: TiVec<usize, Option<Vec<String>>>,
 }
 
 enum InstOrder {
@@ -507,7 +508,9 @@ impl InstGraph {
             }
         });
         // return the total number of potential matching loops
-        self.matching_loop_end_nodes.len()
+        let nr_matching_loop_end_nodes = self.matching_loop_end_nodes.len();
+        self.generalized_terms.resize(nr_matching_loop_end_nodes, None);
+        nr_matching_loop_end_nodes
     }
 
     pub fn show_nth_matching_loop(&mut self, n: usize, p: &mut Z3Parser) -> Vec<String> {
@@ -527,49 +530,60 @@ impl InstGraph {
                 // such that later on we can generalize over each all edges in a matching loop that have 
                 // identical from- and to-quantifiers
                 // (*)
-                if let Some(to_quant) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.quant_idx() {
-                    for incoming_edge in self.matching_loop_subgraph.edges_directed(nx, Incoming) {
-                        let from = incoming_edge.source(); 
-                        if let Some(from_quant) = self.matching_loop_subgraph.node_weight(from).unwrap().mkind.quant_idx() {
-                            if let Some(blame_term) = incoming_edge.weight().blame_term_idx() {
-                                let blame_term_idx = p[blame_term].owner; 
-                                if let Some(blame_terms) = abstract_edge_blame_terms.get_mut(&(from_quant, to_quant)) {
-                                    blame_terms.push(blame_term_idx);
-                                } else {
-                                    abstract_edge_blame_terms.insert((from_quant, to_quant), vec![blame_term_idx]);
+                // avoid unnecessary recomputation if we have already computed the generalized terms 
+                if let None = &self.generalized_terms[n] {
+                    log!(format!("Computation I for matching loop #{}", n));
+                    if let Some(to_quant) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.quant_idx() {
+                        for incoming_edge in self.matching_loop_subgraph.edges_directed(nx, Incoming) {
+                            let from = incoming_edge.source(); 
+                            if let Some(from_quant) = self.matching_loop_subgraph.node_weight(from).unwrap().mkind.quant_idx() {
+                                if let Some(blame_term) = incoming_edge.weight().blame_term_idx() {
+                                    let blame_term_idx = p[blame_term].owner; 
+                                    if let Some(blame_terms) = abstract_edge_blame_terms.get_mut(&(from_quant, to_quant)) {
+                                        blame_terms.push(blame_term_idx);
+                                    } else {
+                                        abstract_edge_blame_terms.insert((from_quant, to_quant), vec![blame_term_idx]);
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-            // compute the generalized terms for each bucket in abstract_edge_blame_terms
-            let mut generalized_terms: Vec<String> = Vec::new();
-            for blame_terms in abstract_edge_blame_terms.values() {
-                // let generalized_term = blame_terms.iter().reduce(|&t1, &t2| generalize(t1, t2, p)).unwrap();
-                if let Some(t1) = blame_terms.get(0) {
-                    let mut gen_term = t1.clone();
-                    for &t2 in &blame_terms[1..] {
-                        gen_term = generalize(gen_term, t2, p);
+            if let Some(generalized_terms) = &self.generalized_terms[n] {
+                // check if we have already computed the generalized terms for the n-th matching loop
+                generalized_terms.clone()
+            } else {
+                log!(format!("Computation II for matching loop #{}", n));
+                // if not, compute the generalized terms for each bucket in abstract_edge_blame_terms
+                let mut generalized_terms: Vec<String> = Vec::new();
+                for blame_terms in abstract_edge_blame_terms.values() {
+                    // let generalized_term = blame_terms.iter().reduce(|&t1, &t2| generalize(t1, t2, p)).unwrap();
+                    if let Some(t1) = blame_terms.get(0) {
+                        let mut gen_term = t1.clone();
+                        for &t2 in &blame_terms[1..] {
+                            gen_term = generalize(gen_term, t2, p);
+                            // let ctxt = DisplayCtxt {
+                            //     parser: p,
+                            //     display_term_ids: false,
+                            //     display_quantifier_name: false,
+                            //     use_mathematical_symbols: true,
+                            // };
+                            // log!(format!("Generalized term {} and {}", gen_term.with(&ctxt), t2.with(&ctxt)));
+                        }
                         let ctxt = DisplayCtxt {
                             parser: p,
                             display_term_ids: false,
                             display_quantifier_name: false,
                             use_mathematical_symbols: true,
                         };
-                        log!(format!("Generalized term {} and {}", gen_term.with(&ctxt), t2.with(&ctxt)));
+                        let pretty_gen_term = gen_term.with(&ctxt).to_string();
+                        generalized_terms.push(pretty_gen_term);
                     }
-                    let ctxt = DisplayCtxt {
-                        parser: p,
-                        display_term_ids: false,
-                        display_quantifier_name: false,
-                        use_mathematical_symbols: true,
-                    };
-                    let pretty_gen_term = gen_term.with(&ctxt).to_string();
-                    generalized_terms.push(pretty_gen_term);
                 }
+                self.generalized_terms[n] = Some(generalized_terms.clone());
+                generalized_terms
             }
-            generalized_terms
             // after generalizing over the terms for each abstract edge, store the key-value pair (n, MatchingLoopInfo) in the 
             // InstGraph such that we don't need to recompute the generalization => can check if the value is already in the map at (*)
         } else {

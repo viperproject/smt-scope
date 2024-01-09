@@ -1,4 +1,4 @@
-// use gloo_console::log;
+use gloo_console::log;
 use typed_index_collections::TiVec;
 
 use crate::items::{StringTable, Term, TermId, TermIdToIdxMap, TermIdx, TermKind::{GeneralizedPrimitive, self}, Meaning};

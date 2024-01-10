@@ -521,7 +521,12 @@ impl InstGraph {
         if let Some(&node) = end_node_of_nth_matching_loop {
             // start a reverse-DFS from node and mark all the nodes as visible along the way
             // during the reverse-DFS collect information needed to compute the generalized terms later on
-            let mut abstract_edge_blame_terms: FxHashMap<(QuantIdx, QuantIdx), Vec<TermIdx>> = FxHashMap::default(); 
+            // we abstract the edges over the from- and to-quantifiers as well as the trigger, i.e.,
+            // two edges (a,b) and (c,d) are the same abstract edge iff 
+            // - a and c correspond to an instantiation of the same quantifier
+            // - and b and d correspond to an instantiation of the same quantifier 
+            // - and b and d used the same trigger
+            let mut abstract_edge_blame_terms: FxHashMap<(QuantIdx, QuantIdx, TermIdx), Vec<TermIdx>> = FxHashMap::default(); 
             let mut dfs = Dfs::new(petgraph::visit::Reversed(&self.matching_loop_subgraph), node);
             while let Some(nx) = dfs.next(petgraph::visit::Reversed(&self.matching_loop_subgraph)) {
                 let orig_index = self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx;
@@ -539,10 +544,12 @@ impl InstGraph {
                             if let Some(from_quant) = self.matching_loop_subgraph.node_weight(from).unwrap().mkind.quant_idx() {
                                 if let Some(blame_term) = incoming_edge.weight().blame_term_idx() {
                                     let blame_term_idx = p[blame_term].owner; 
-                                    if let Some(blame_terms) = abstract_edge_blame_terms.get_mut(&(from_quant, to_quant)) {
-                                        blame_terms.push(blame_term_idx);
-                                    } else {
-                                        abstract_edge_blame_terms.insert((from_quant, to_quant), vec![blame_term_idx]);
+                                    if let Some(trigger) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.pattern() {
+                                        if let Some(blame_terms) = abstract_edge_blame_terms.get_mut(&(from_quant, to_quant, trigger)) {
+                                            blame_terms.push(blame_term_idx);
+                                        } else {
+                                            abstract_edge_blame_terms.insert((from_quant, to_quant, trigger), vec![blame_term_idx]);
+                                        }
                                     }
                                 }
                             }

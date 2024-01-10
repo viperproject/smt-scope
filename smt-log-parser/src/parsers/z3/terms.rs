@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use fxhash::FxHashMap;
 use gloo_console::log;
 use typed_index_collections::TiVec;
 
@@ -8,6 +10,7 @@ pub struct Terms {
     term_id_map: TermIdToIdxMap,
     terms: TiVec<TermIdx, Term>,
     wild_card_index: Option<TermIdx>,
+    term_to_term_idx_map: FxHashMap<Term, TermIdx>,
 }
 
 impl Terms {
@@ -16,6 +19,7 @@ impl Terms {
             term_id_map: TermIdToIdxMap::new(strings),
             terms: TiVec::new(),
             wild_card_index: None,
+            term_to_term_idx_map: HashMap::default(),
         }
     }
 
@@ -41,36 +45,34 @@ impl Terms {
     }
 
     pub(super) fn create_wild_card(&mut self) {
-        // log!(format!("There are {} non-general terms", self.terms.len()));
+        log!(format!("There are {} non-general terms", self.terms.len()));
         let wild_card = Term {
             id: None,
             kind: GeneralizedPrimitive,
             child_ids: vec![],
             meaning: None,
         };
-        self.terms.push(wild_card);
+        self.terms.push(wild_card.clone());
         self.wild_card_index = self.terms.last_key();
-    }
-
-    pub(super) fn is_general_term(&self, t: TermIdx) -> bool {
-        if let Some(boundary) = self.wild_card_index {
-            t > boundary 
-        } else {
-            false
-        } 
+        self.term_to_term_idx_map.insert(wild_card, self.wild_card_index.unwrap());
     }
 
     pub(super) fn mk_generalized_term(&mut self, meaning: Option<Meaning>, kind: TermKind, children: Vec<TermIdx>) -> TermIdx {
-        let idx = self.terms.next_key();
+        log!(format!("There are {} terms (including general terms)", self.terms.len()));
         let term = Term {
             id: None,
             kind,
             meaning,
             child_ids: children,
         };
-        self.terms.push(term);
-        // log!(format!("There are {} terms (including general terms)", self.terms.len()));
-        idx
+        if let Some(term_idx) = self.term_to_term_idx_map.get(&term) {
+            *term_idx
+        } else {
+            let idx = self.terms.next_key();
+            self.terms.push(term.clone());
+            self.term_to_term_idx_map.insert(term, idx);
+            idx
+        }
     }
 }
 

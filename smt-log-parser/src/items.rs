@@ -44,7 +44,7 @@ idx!(ENodeIdx, "e{}");
 idx!(MatchIdx, "m{}");
 
 /// A Z3 term and associated data.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize,PartialEq, Eq, Hash, Clone)]
 pub struct Term {
     pub id: Option<TermId>,
     pub kind: TermKind,
@@ -52,7 +52,7 @@ pub struct Term {
     pub child_ids: Vec<TermIdx>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Copy, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy, PartialEq, Eq, Hash)]
 pub enum TermKind {
     Var(usize),
     ProofOrApp(ProofOrApp),
@@ -60,7 +60,7 @@ pub enum TermKind {
     GeneralizedPrimitive,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Copy, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy, PartialEq, Eq, Hash)]
 pub struct ProofOrApp {
     pub is_proof: bool,
     pub name: IString,
@@ -82,7 +82,7 @@ impl TermKind {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Meaning {
     /// The theory in which the value should be interpreted (e.g. `bv`)
     pub theory: IString,
@@ -327,7 +327,7 @@ impl fmt::Display for Fingerprint {
 }
 
 /// Represents an ID string of the form `name#id` or `name#`.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, Hash)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, Hash, PartialEq, Eq)]
 pub struct TermId {
     pub namespace: IString,
     pub id: Option<NonZeroU32>,

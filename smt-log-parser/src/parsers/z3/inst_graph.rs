@@ -2,7 +2,7 @@ use fxhash::{FxHashSet, FxHashMap};
 use gloo_console::log;
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
-use petgraph::visit::{Bfs, IntoEdgeReferences, Topo, IntoEdges};
+use petgraph::visit::{Bfs, IntoEdgeReferences, Topo, IntoEdgesDirected};
 use petgraph::{
     stable_graph::EdgeIndex,
     visit::{Dfs, EdgeRef},
@@ -10,7 +10,8 @@ use petgraph::{
 };
 use petgraph::{Direction, Graph};
 use roaring::bitmap::RoaringBitmap;
-use std::fmt;
+use std::collections::HashMap;
+use std::fmt::{self};
 use std::iter::zip;
 use typed_index_collections::TiVec;
 
@@ -523,7 +524,8 @@ impl InstGraph {
             // - a and c correspond to an instantiation of the same quantifier
             // - and b and d correspond to an instantiation of the same quantifier 
             // - and b and d used the same trigger
-            let mut abstract_edge_blame_terms: FxHashMap<(QuantIdx, QuantIdx, TermIdx), Vec<TermIdx>> = FxHashMap::default(); 
+            // let mut abstract_edge_blame_terms: FxHashMap<(QuantIdx, QuantIdx, TermIdx), Vec<TermIdx>> = FxHashMap::default(); 
+            let mut abstract_matching_loop = AbstractMatchingLoop::default(); 
             let mut dfs = Dfs::new(petgraph::visit::Reversed(&self.matching_loop_subgraph), node);
             while let Some(nx) = dfs.next(petgraph::visit::Reversed(&self.matching_loop_subgraph)) {
                 let orig_index = self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx;
@@ -535,19 +537,29 @@ impl InstGraph {
                 // avoid unnecessary recomputation if we have already computed the generalized terms 
                 if let None = &self.generalized_terms[n] {
                     log!(format!("Computation I for matching loop #{}", n));
-                    if let Some(to_quant) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.quant_idx() {
+                    if let Some(quant) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.quant_idx() {
                         for incoming_edge in self.matching_loop_subgraph.edges_directed(nx, Incoming) {
-                            let from = incoming_edge.source(); 
-                            if let Some(from_quant) = self.matching_loop_subgraph.node_weight(from).unwrap().mkind.quant_idx() {
+                            // let from = incoming_edge.source(); 
+                            // if let Some(from_quant) = self.matching_loop_subgraph.node_weight(from).unwrap().mkind.quant_idx() {
                                 if let Some(blame_term) = incoming_edge.weight().blame_term_idx() {
                                     let blame_term_idx = p[blame_term].owner; 
-                                    if let Some(trigger) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.pattern() {
-                                        if let Some(blame_terms) = abstract_edge_blame_terms.get_mut(&(from_quant, to_quant, trigger)) {
-                                            blame_terms.push(blame_term_idx);
-                                        } else {
-                                            abstract_edge_blame_terms.insert((from_quant, to_quant, trigger), vec![blame_term_idx]);
-                                        }
-                                    }
+                                    abstract_matching_loop.add_blame_term_for_quant(quant, blame_term_idx, p);
+                                    // if let Some(trigger) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.pattern() {
+                                    //     if let Some(blame_terms) = abstract_edge_blame_terms.get_mut(&(from_quant, to_quant, trigger)) {
+                                    //         blame_terms.push(blame_term_idx);
+                                    //     } else {
+                                    //         abstract_edge_blame_terms.insert((from_quant, to_quant, trigger), vec![blame_term_idx]);
+                                    //     }
+                                    // }
+                                }
+                            // }
+                        }
+                        for outgoing_edge in self.matching_loop_subgraph.edges_directed(nx, Outgoing) {
+                            let to_quant = outgoing_edge.target();
+                            if let Some(to_quant) = self.matching_loop_subgraph.node_weight(to_quant).unwrap().mkind.quant_idx() {
+                                if let Some(yield_term) = outgoing_edge.weight().blame_term_idx() {
+                                    let yield_term_idx = p[yield_term].owner;
+                                    abstract_matching_loop.add_yield_term_with_target_quant_for_quant(quant, to_quant, yield_term_idx, p);
                                 }
                             }
                         }
@@ -560,31 +572,32 @@ impl InstGraph {
             } else {
                 log!(format!("Computation II for matching loop #{}", n));
                 // if not, compute the generalized terms for each bucket in abstract_edge_blame_terms
-                let mut generalized_terms: Vec<String> = Vec::new();
-                for blame_terms in abstract_edge_blame_terms.values() {
-                    // let generalized_term = blame_terms.iter().reduce(|&t1, &t2| generalize(t1, t2, p)).unwrap();
-                    if let Some(t1) = blame_terms.get(0) {
-                        let mut gen_term = *t1;
-                        for &t2 in &blame_terms[1..] {
-                            gen_term = p.terms.generalize(gen_term, t2);
-                            // let ctxt = DisplayCtxt {
-                            //     parser: p,
-                            //     display_term_ids: false,
-                            //     display_quantifier_name: false,
-                            //     use_mathematical_symbols: true,
-                            // };
-                            // log!(format!("Generalized term {} and {}", gen_term.with(&ctxt), t2.with(&ctxt)));
-                        }
-                        let ctxt = DisplayCtxt {
-                            parser: p,
-                            display_term_ids: false,
-                            display_quantifier_name: false,
-                            use_mathematical_symbols: true,
-                        };
-                        let pretty_gen_term = gen_term.with(&ctxt).to_string();
-                        generalized_terms.push(pretty_gen_term);
-                    }
-                }
+                // let mut generalized_terms: Vec<String> = Vec::new();
+                // for blame_terms in abstract_edge_blame_terms.values() {
+                //     // let generalized_term = blame_terms.iter().reduce(|&t1, &t2| generalize(t1, t2, p)).unwrap();
+                //     if let Some(t1) = blame_terms.get(0) {
+                //         let mut gen_term = t1.clone();
+                //         for &t2 in &blame_terms[1..] {
+                //             gen_term = p.terms.generalize(gen_term, t2);
+                //             // let ctxt = DisplayCtxt {
+                //             //     parser: p,
+                //             //     display_term_ids: false,
+                //             //     display_quantifier_name: false,
+                //             //     use_mathematical_symbols: true,
+                //             // };
+                //             // log!(format!("Generalized term {} and {}", gen_term.with(&ctxt), t2.with(&ctxt)));
+                //         }
+                //         let ctxt = DisplayCtxt {
+                //             parser: p,
+                //             display_term_ids: false,
+                //             display_quantifier_name: false,
+                //             use_mathematical_symbols: true,
+                //         };
+                //         let pretty_gen_term = gen_term.with(&ctxt).to_string();
+                //         generalized_terms.push(pretty_gen_term);
+                //     }
+                // }
+                let generalized_terms = abstract_matching_loop.display_abstract_nodes(p);
                 self.generalized_terms[n] = Some(generalized_terms.clone());
                 generalized_terms
             }
@@ -976,6 +989,81 @@ impl EdgeInfoMap {
             blame_term,
             from: *from,
             to: *to,
+        }
+    }
+}
+
+struct AbstractNode {
+    quant: QuantIdx,
+    blame_term: TermIdx,
+    yield_terms: FxHashMap<QuantIdx, TermIdx>,
+}
+
+impl AbstractNode {
+    fn to_string(&self, p: &Z3Parser) -> String {
+        let ctxt = DisplayCtxt {
+            parser: p,
+            display_term_ids: false,
+            display_quantifier_name: false,
+            use_mathematical_symbols: true,
+        };
+        let pretty_blame_term = self.blame_term.with(&ctxt).to_string();
+        let pretty_yield_terms: Vec<String> = self.yield_terms
+            .iter()
+            .map(|(to_quant, yield_term)| format!("{} to q{}", yield_term.with(&ctxt), to_quant))
+            .collect();
+        let pretty_yield_terms = pretty_yield_terms.join(", ");
+        format!("Quantifier q{} has generalized blame term {} and generalized yield terms {}", self.quant, pretty_blame_term, pretty_yield_terms)
+    }
+}
+
+#[derive(Default)]
+struct AbstractMatchingLoop {
+    // stores for each quantifier in a connected component of the matching loop subgraph
+    // the generalized blame term
+    blame_terms_per_quantifier: FxHashMap<QuantIdx, TermIdx>,
+    // stores for each quantifier in a connected component of the matching loop subgraph
+    // the generalized yield term, depending on the quantifier of the target 
+    //                                               from quant          to quant  generalized yield term   
+    yield_terms_per_quantifier_and_target: FxHashMap<QuantIdx, FxHashMap<QuantIdx, TermIdx>>, 
+}
+
+impl AbstractMatchingLoop {
+
+    // outputs for each quantifier the blame and yield terms, e.g.,
+    // first element: q17 has blame term ... and yield terms ...
+    // second element: q4 has blame term ... and yield terms ...
+    fn display_abstract_nodes(&self, p: &Z3Parser) -> Vec<String> {
+        let mut out = vec![];
+        for (quant, gen_blame_term) in &self.blame_terms_per_quantifier {
+            let yield_term_per_quant = self.yield_terms_per_quantifier_and_target.get(&quant).unwrap();
+            let abstract_node = AbstractNode { quant: *quant, blame_term: *gen_blame_term, yield_terms: yield_term_per_quant.clone() };
+            out.push(abstract_node.to_string(p));
+        }
+        out
+    }
+
+    fn add_blame_term_for_quant(&mut self, quant: QuantIdx, blame_term: TermIdx, p: &mut Z3Parser) {
+        if let Some(old_blame_term) = self.blame_terms_per_quantifier.get(&quant) {
+            let gen_blame_term = p.terms.generalize(*old_blame_term, blame_term); 
+            self.blame_terms_per_quantifier.insert(quant, gen_blame_term);
+        } else {
+            self.blame_terms_per_quantifier.insert(quant, blame_term);
+        }
+    }
+
+    fn add_yield_term_with_target_quant_for_quant(&mut self, quant: QuantIdx, target_quant: QuantIdx, yield_term: TermIdx, p: &mut Z3Parser) {
+        if let Some(yield_terms_with_target_quant) = self.yield_terms_per_quantifier_and_target.get_mut(&quant) {
+            if let Some(old_yield_term) = yield_terms_with_target_quant.get(&target_quant) {
+                let gen_yield_term = p.terms.generalize(*old_yield_term, yield_term);
+                yield_terms_with_target_quant.insert(target_quant, gen_yield_term);
+            } else {
+                yield_terms_with_target_quant.insert(target_quant, yield_term);
+            }
+        } else {
+            let mut gen_yield_term_of_target_quant = HashMap::default();
+            gen_yield_term_of_target_quant.insert(target_quant, yield_term);
+            self.yield_terms_per_quantifier_and_target.insert(quant, gen_yield_term_of_target_quant);
         }
     }
 }

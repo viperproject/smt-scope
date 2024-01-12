@@ -541,22 +541,13 @@ impl InstGraph {
                 if let None = &self.generalized_terms[n] {
                     log!(format!("Computation I for matching loop #{}", n));
                     if let Some(quant) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.quant_idx() {
-                        for incoming_edge in self.matching_loop_subgraph.edges_directed(nx, Incoming) {
-                            // let from = incoming_edge.source(); 
-                            // if let Some(from_quant) = self.matching_loop_subgraph.node_weight(from).unwrap().mkind.quant_idx() {
-                                if let Some(blame_term) = incoming_edge.weight().blame_term_idx() {
-                                    let blame_term_idx = p[blame_term].owner; 
-                                    abstract_matching_loop.add_blame_term_for_quant(quant, blame_term_idx, p);
-                                    // if let Some(trigger) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.pattern() {
-                                    //     if let Some(blame_terms) = abstract_edge_blame_terms.get_mut(&(from_quant, to_quant, trigger)) {
-                                    //         blame_terms.push(blame_term_idx);
-                                    //     } else {
-                                    //         abstract_edge_blame_terms.insert((from_quant, to_quant, trigger), vec![blame_term_idx]);
-                                    //     }
-                                    // }
-                                }
-                            // }
-                        }
+                        let NodeData { inst_idx, ..} = self.orig_graph[orig_index];
+                        let inst = &p.insts[inst_idx];
+                        let match_ = &p.insts[inst.match_];
+                        // TODO: make sure this also works if we have more than a single blame term
+                        let blame_term = match_.due_to_terms().next().unwrap();
+                        let blame_term_idx = p[blame_term].owner;
+                        abstract_matching_loop.add_blame_term_for_quant(quant, blame_term_idx, p);
                         for outgoing_edge in self.matching_loop_subgraph.edges_directed(nx, Outgoing) {
                             let to_quant = outgoing_edge.target();
                             if let Some(to_quant) = self.matching_loop_subgraph.node_weight(to_quant).unwrap().mkind.quant_idx() {

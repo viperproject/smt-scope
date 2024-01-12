@@ -84,6 +84,12 @@ impl EdgeType {
     pub fn is_direct(&self) -> bool {
         matches!(self, EdgeType::Direct { .. })
     }
+    pub fn blame_kind(&self) -> Option<BlameKind> {
+        match self {
+            EdgeType::Direct { kind, .. } => Some(kind.clone()),
+            EdgeType::Indirect => None,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -553,7 +559,8 @@ impl InstGraph {
                             if let Some(to_quant) = self.matching_loop_subgraph.node_weight(to_quant).unwrap().mkind.quant_idx() {
                                 if let Some(yield_term) = outgoing_edge.weight().blame_term_idx() {
                                     let yield_term_idx = p[yield_term].owner;
-                                    abstract_matching_loop.add_yield_term_with_target_quant_for_quant(quant, to_quant, yield_term_idx, p);
+                                    let blame_kind = outgoing_edge.weight().blame_kind();
+                                    abstract_matching_loop.add_yield_term_with_target_quant_for_quant(quant, to_quant, yield_term_idx, p, blame_kind);
                                 }
                             }
                         }
@@ -591,6 +598,7 @@ impl InstGraph {
                 //         generalized_terms.push(pretty_gen_term);
                 //     }
                 // }
+                abstract_matching_loop.cross_generalise_terms(p);
                 let generalized_terms = abstract_matching_loop.display_abstract_nodes(p);
                 self.generalized_terms[n] = Some(generalized_terms.clone());
                 generalized_terms
@@ -954,7 +962,7 @@ impl InstGraph {
 struct AbstractNode {
     quant: QuantIdx,
     blame_term: TermIdx,
-    yield_terms: FxHashMap<QuantIdx, TermIdx>,
+    yield_terms: FxHashMap<QuantIdx, (TermIdx, Option<BlameKind>)>,
 }
 
 impl AbstractNode {
@@ -968,7 +976,7 @@ impl AbstractNode {
         let pretty_blame_term = self.blame_term.with(&ctxt).to_string();
         let pretty_yield_terms: String = self.yield_terms
             .iter()
-            .map(|(to_quant, yield_term)| format!("{} to q{}", yield_term.with(&ctxt), to_quant))
+            .map(|(to_quant, (yield_term, _))| format!("{} to q{}", yield_term.with(&ctxt), to_quant))
             .join(", ");
         format!("Quantifier q{} has generalized blame term {} and generalized yield terms {}", self.quant, pretty_blame_term, pretty_yield_terms)
     }
@@ -981,8 +989,9 @@ struct AbstractMatchingLoop {
     blame_terms_per_quantifier: FxHashMap<QuantIdx, TermIdx>,
     // stores for each quantifier in a connected component of the matching loop subgraph
     // the generalized yield term, depending on the quantifier of the target 
-    //                                               from quant          to quant  generalized yield term   
-    yield_terms_per_quantifier_and_target: FxHashMap<QuantIdx, FxHashMap<QuantIdx, TermIdx>>, 
+    //                                               from quant          to quant  (yield term, equality or term)   
+    yield_terms_per_quantifier_and_target: FxHashMap<QuantIdx, FxHashMap<QuantIdx, (TermIdx, Option<BlameKind>)>>, 
+
 }
 
 impl AbstractMatchingLoop {
@@ -1009,18 +1018,31 @@ impl AbstractMatchingLoop {
         }
     }
 
-    fn add_yield_term_with_target_quant_for_quant(&mut self, quant: QuantIdx, target_quant: QuantIdx, yield_term: TermIdx, p: &mut Z3Parser) {
+    fn add_yield_term_with_target_quant_for_quant(&mut self, quant: QuantIdx, target_quant: QuantIdx, yield_term: TermIdx, p: &mut Z3Parser, blame_kind: Option<BlameKind>) {
         if let Some(yield_terms_with_target_quant) = self.yield_terms_per_quantifier_and_target.get_mut(&quant) {
-            if let Some(old_yield_term) = yield_terms_with_target_quant.get(&target_quant) {
+            if let Some((old_yield_term, _)) = yield_terms_with_target_quant.get(&target_quant) {
                 let gen_yield_term = generalize(*old_yield_term, yield_term, p);
-                yield_terms_with_target_quant.insert(target_quant, gen_yield_term);
+                yield_terms_with_target_quant.insert(target_quant, (gen_yield_term, blame_kind));
             } else {
-                yield_terms_with_target_quant.insert(target_quant, yield_term);
+                yield_terms_with_target_quant.insert(target_quant, (yield_term, blame_kind));
             }
         } else {
             let mut gen_yield_term_of_target_quant = HashMap::default();
-            gen_yield_term_of_target_quant.insert(target_quant, yield_term);
+            gen_yield_term_of_target_quant.insert(target_quant, (yield_term, blame_kind));
             self.yield_terms_per_quantifier_and_target.insert(quant, gen_yield_term_of_target_quant);
+        }
+    }
+
+    fn cross_generalise_terms(&mut self, p: &mut Z3Parser) {
+        for (_, to) in self.yield_terms_per_quantifier_and_target.iter_mut() {
+            for (to_quant, (yield_term, blame_kind)) in to.clone() {
+                if let Some(BlameKind::Term {..}) = blame_kind {
+                    let to_quant_blame_term = self.blame_terms_per_quantifier.get(&to_quant).unwrap();
+                    let generalized_term = generalize(yield_term, *to_quant_blame_term, p);
+                    to.insert(to_quant, (generalized_term, blame_kind.clone()));
+                    self.blame_terms_per_quantifier.insert(to_quant, generalized_term);
+                }
+            } 
         }
     }
 }

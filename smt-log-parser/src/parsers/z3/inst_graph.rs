@@ -603,7 +603,7 @@ impl InstGraph {
                 //             //     use_mathematical_symbols: true,
                 //             // };
                 //             // log!(format!("Generalized term {} and {}", gen_term.with(&ctxt), t2.with(&ctxt)));
-                //         }
+                //      s  }
                 //         let ctxt = DisplayCtxt {
                 //             parser: p,
                 //             display_term_ids: false,
@@ -1169,6 +1169,7 @@ impl AbstractMatchingLoop {
     fn add_generalized_pattern_for_quant(&mut self, quant: QuantIdx, pattern: TermIdx, p: &mut Z3Parser) {
         if let None = self.generalized_trigger_per_quantifier.get(&quant) {
             // need to extract the inner term, i.e., pattern(term) -> term
+            // TODO: deal with patterns with more than one child
             let inner_pattern = p[pattern].child_ids.first().unwrap();
             let generalized_pattern = p.terms.generalize_pattern(*inner_pattern);
             self.generalized_trigger_per_quantifier.insert(quant, generalized_pattern);

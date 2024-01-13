@@ -1045,14 +1045,14 @@ impl AbstractNode {
 #[derive(Clone, Debug)]
 pub enum InstOrEquality {
     Inst(String),
-    Equality(String),
+    Equality,
 }
 
 impl Display for InstOrEquality {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             InstOrEquality::Inst(quant) => write!(f, "{}", quant),
-            InstOrEquality::Equality(equality) => write!(f, "{}", equality),
+            InstOrEquality::Equality => write!(f, ""),
         }
     }
 }
@@ -1120,7 +1120,33 @@ impl AbstractMatchingLoop {
                     self.add_edge(pretty_blame_term.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant)));
                 }
             } else {
-                // need to add the generalized trigger as a node 
+                // need to add the generalized trigger as a node
+                let ctxt = DisplayCtxt {
+                    parser: p,
+                    display_term_ids: false,
+                    display_quantifier_name: false,
+                    use_mathematical_symbols: true,
+                };
+                let pretty_gen_trigger = gen_trigger.with(&ctxt).to_string();
+                self.add_node(pretty_gen_trigger.clone());
+                // add instantiation edges from generalized trigger to the yield terms
+                for (yield_term, _) in self.yield_terms_per_quantifier_and_target.get(quant).unwrap().values() {
+                    let pretty_yield_term = yield_term.with(&ctxt).to_string();
+                    self.add_node(pretty_yield_term.clone());
+                    self.add_edge(pretty_gen_trigger.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant)));
+                }
+                // add equality edges from generalized blame term to the blamed equality terms
+                // and from the blamed equality terms to the generalized trigger
+                for yield_terms in self.yield_terms_per_quantifier_and_target.values() {
+                    if let Some((yield_term, blame_kind)) = yield_terms.get(quant) {
+                        if let Some(BlameKind::Equality { .. }) = blame_kind {
+                            let pretty_yield_term = yield_term.with(&ctxt).to_string();
+                            let pretty_blame_term = gen_blame_term.with(&ctxt).to_string();
+                            self.add_edge(pretty_blame_term, pretty_yield_term.clone(), InstOrEquality::Equality);
+                            self.add_edge(pretty_yield_term, pretty_gen_trigger.clone(), InstOrEquality::Equality);
+                        } 
+                    }
+                }
             }
             let yield_term_per_quant = self.yield_terms_per_quantifier_and_target.get(&quant).unwrap();
             let trigger = self.generalized_trigger_per_quantifier.get(&quant).unwrap();

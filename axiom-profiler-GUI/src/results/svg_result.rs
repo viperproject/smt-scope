@@ -169,7 +169,7 @@ impl Component for SVGResult {
                                         InstOrEquality::Equality => "dashed",
                                     },
                                     match edge_data.weight() {
-                                        InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get(&mkind, NODE_COLOUR_SATURATION)),
+                                        InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get(&mkind, NODE_COLOUR_SATURATION + 0.2)),
                                         InstOrEquality::Equality => "black".to_string(),
                                     }
                                 ),

@@ -162,11 +162,15 @@ impl Component for SVGResult {
                                     Config::GraphContentOnly
                                 ],
                                 &|_, edge_data| format!(
-                                    "label=\"{}\" style=\"{}\"",
+                                    "label=\"{}\" style=\"{}\" color=\"{}\"",
                                     edge_data.weight(),
                                     match edge_data.weight() {
-                                        InstOrEquality::Inst(_) => "solid",
+                                        InstOrEquality::Inst(_, _) => "solid, bold",
                                         InstOrEquality::Equality => "dashed",
+                                    },
+                                    match edge_data.weight() {
+                                        InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get(&mkind, NODE_COLOUR_SATURATION)),
+                                        InstOrEquality::Equality => "black".to_string(),
                                     }
                                 ),
                                 &|_, (_, node_data)| {

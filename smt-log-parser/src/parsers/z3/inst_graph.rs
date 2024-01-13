@@ -566,6 +566,7 @@ impl InstGraph {
                         // TODO: make sure this also works if we have more than a single blame term
                         let blame_term = match_.due_to_terms().next().unwrap();
                         let blame_term_idx = p[blame_term].owner;
+                        abstract_matching_loop.add_match_kind_for_quant(quant, match_.kind.clone(), p);
                         abstract_matching_loop.add_blame_term_for_quant(quant, blame_term_idx, p);
                         abstract_matching_loop.add_generalized_pattern_for_quant(quant, pattern, p);
                         for outgoing_edge in self.matching_loop_subgraph.edges_directed(nx, Outgoing) {
@@ -1044,14 +1045,14 @@ impl AbstractNode {
 
 #[derive(Clone, Debug)]
 pub enum InstOrEquality {
-    Inst(String),
+    Inst(String, MatchKind),
     Equality,
 }
 
 impl Display for InstOrEquality {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            InstOrEquality::Inst(quant) => write!(f, "{}", quant),
+            InstOrEquality::Inst(quant, _) => write!(f, "{}", quant),
             InstOrEquality::Equality => write!(f, ""),
         }
     }
@@ -1071,6 +1072,7 @@ struct AbstractMatchingLoop {
     generalized_trigger_per_quantifier: FxHashMap<QuantIdx, TermIdx>,
     graph: std::cell::RefCell<Graph<String, InstOrEquality>>,
     node_idx_per_weight: std::cell::RefCell<FxHashMap<String, NodeIndex>>,
+    match_kind_per_quant: FxHashMap<QuantIdx, MatchKind>,
 }
 
 impl AbstractMatchingLoop {
@@ -1117,7 +1119,7 @@ impl AbstractMatchingLoop {
                 for (yield_term, _) in self.yield_terms_per_quantifier_and_target.get(quant).unwrap().values() {
                     let pretty_yield_term = yield_term.with(&ctxt).to_string();
                     self.add_node(pretty_yield_term.clone());
-                    self.add_edge(pretty_blame_term.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant)));
+                    self.add_edge(pretty_blame_term.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), self.match_kind_per_quant.get(quant).unwrap().clone()));
                 }
             } else {
                 // need to add the generalized trigger as a node
@@ -1133,7 +1135,7 @@ impl AbstractMatchingLoop {
                 for (yield_term, _) in self.yield_terms_per_quantifier_and_target.get(quant).unwrap().values() {
                     let pretty_yield_term = yield_term.with(&ctxt).to_string();
                     self.add_node(pretty_yield_term.clone());
-                    self.add_edge(pretty_gen_trigger.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant)));
+                    self.add_edge(pretty_gen_trigger.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), self.match_kind_per_quant.get(quant).unwrap().clone()));
                 }
                 // add equality edges from generalized blame term to the blamed equality terms
                 // and from the blamed equality terms to the generalized trigger
@@ -1166,6 +1168,10 @@ impl AbstractMatchingLoop {
             out.push(abstract_node.to_string(p));
         }
         out
+    }
+
+    fn add_match_kind_for_quant(&mut self, quant: QuantIdx, match_kind: MatchKind, p: &Z3Parser) {
+        self.match_kind_per_quant.insert(quant, match_kind);
     }
 
     fn add_blame_term_for_quant(&mut self, quant: QuantIdx, blame_term: TermIdx, p: &mut Z3Parser) {

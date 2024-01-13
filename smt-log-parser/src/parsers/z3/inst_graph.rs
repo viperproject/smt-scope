@@ -2,6 +2,7 @@ use futures::StreamExt;
 use fxhash::{FxHashSet, FxHashMap};
 use gloo_console::log;
 use itertools::Itertools;
+use petgraph::data::Build;
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
 use petgraph::visit::{Bfs, IntoEdgeReferences, Topo, IntoEdgesDirected};
@@ -1002,6 +1003,11 @@ impl AbstractNode {
     }
 }
 
+pub enum InstOrEquality {
+    Inst(String),
+    Equality(String),
+}
+
 #[derive(Default)]
 struct AbstractMatchingLoop {
     // stores for each quantifier in a connected component of the matching loop subgraph
@@ -1014,9 +1020,63 @@ struct AbstractMatchingLoop {
     // stores for each quantifier the corresponding trigger where the quantified variables have been
     // replaced by wild cards
     generalized_trigger_per_quantifier: FxHashMap<QuantIdx, TermIdx>,
+    graph: std::cell::RefCell<Graph<String, InstOrEquality>>,
+    node_idx_per_weight: std::cell::RefCell<FxHashMap<String, NodeIndex>>,
 }
 
 impl AbstractMatchingLoop {
+    fn add_node(&self, term: String) {
+        if let None = self.node_idx_per_weight.borrow().get(&term) {
+            let node_idx = self.graph.borrow_mut().add_node(term.clone()); 
+            self.node_idx_per_weight.borrow_mut().insert(term, node_idx);
+        }
+    }
+
+    fn add_edge(&self, from: String, to: String, edge_label: InstOrEquality) {
+        if let Some(from_idx) = self.node_idx_per_weight.borrow().get(&from) {
+            if let Some(to_idx) = self.node_idx_per_weight.borrow().get(&to) {
+                self.graph.borrow_mut().add_edge(*from_idx, *to_idx, edge_label);
+            }
+        }
+    }
+
+    fn compute_matching_loop_graph(&mut self, p: &mut Z3Parser) {
+        // let mut graph = Graph::default();
+        // let mut node_idx_of_weight: FxHashMap<String, NodeIndex> = HashMap::default();
+        
+        // first add all the blame and yield terms as nodes into the graph
+
+        for (quant, gen_blame_term) in &self.blame_terms_per_quantifier {
+            let gen_trigger = self.generalized_trigger_per_quantifier.get(quant).unwrap();
+            if *gen_trigger == generalize(*gen_blame_term, *gen_trigger, p) {
+                // can just add all Inst-edges from the gen_blame_term to the yield_terms
+                let ctxt = DisplayCtxt {
+                    parser: p,
+                    display_term_ids: false,
+                    display_quantifier_name: false,
+                    use_mathematical_symbols: true,
+                };
+                let pretty_blame_term = gen_blame_term.with(&ctxt).to_string();
+                self.add_node(pretty_blame_term.clone());
+                // if let None = node_idx_of_weight.get(&pretty_blame_term) {
+                //     let blame_term_idx = graph.add_node(pretty_blame_term.clone());
+                //     node_idx_of_weight.insert(pretty_blame_term, blame_term_idx);
+                // }
+                // go through all yield terms of quant and add them to the graph with an edge from
+                // the blame term to the yield term
+                for (yield_term, _) in self.yield_terms_per_quantifier_and_target.get(quant).unwrap().values() {
+                    let pretty_yield_term = yield_term.with(&ctxt).to_string();
+                    self.add_node(pretty_yield_term.clone());
+                    self.add_edge(pretty_blame_term.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant)));
+                }
+            } else {
+                // need to add the generalized trigger as a node 
+            }
+            let yield_term_per_quant = self.yield_terms_per_quantifier_and_target.get(&quant).unwrap();
+            let trigger = self.generalized_trigger_per_quantifier.get(&quant).unwrap();
+            let abstract_node = AbstractNode { quant: *quant, blame_term: *gen_blame_term, yield_terms: yield_term_per_quant.clone(), trigger: *trigger };
+        }
+    } 
 
     // outputs for each quantifier the blame and yield terms, e.g.,
     // first element: q17 has blame term ... and yield terms ...

@@ -144,7 +144,29 @@ impl Component for SVGResult {
                             "nslimit=6;",
                             "mclimit=0.6;",
                         ];
-                        let dot_output = format!("{}", Dot::with_config(&graph, &[Config::EdgeNoLabel]));
+                        // let dot_output = format!("{}", Dot::with_config(&graph, &[Config::EdgeNoLabel]));
+                        let dot_output = format!(
+                            "digraph {{\n{}\n{:?}\n}}",
+                            settings.join("\n"),
+                            Dot::with_attr_getters(
+                                &graph,
+                                &[
+                                    Config::EdgeNoLabel,
+                                    Config::NodeNoLabel,
+                                    Config::GraphContentOnly
+                                ],
+                                &|_, edge_data| format!(
+                                    "label=\"{}\"",
+                                    edge_data.weight()
+                                ),
+                                &|_, (_, node_data)| {
+                                    format!("label=\"{}\" shape=\"{}\"",
+                                            node_data,
+                                            "box",
+                                        )
+                                },
+                            )
+                        );
                         log::debug!("Finished building dot output");
                         let link = self.insts_info_link.borrow().clone().unwrap();
                         wasm_bindgen_futures::spawn_local(async move {

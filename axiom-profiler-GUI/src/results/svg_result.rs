@@ -19,7 +19,7 @@ use smt_log_parser::{
     items::{BlameKind, MatchKind},
     parsers::{
         z3::{
-            inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, VisibleGraphInfo},
+            inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, VisibleGraphInfo, InstOrEquality},
             z3parser::Z3Parser,
         },
         LogParser,
@@ -162,8 +162,12 @@ impl Component for SVGResult {
                                     Config::GraphContentOnly
                                 ],
                                 &|_, edge_data| format!(
-                                    "label=\"{}\"",
-                                    edge_data.weight()
+                                    "label=\"{}\" style=\"{}\"",
+                                    edge_data.weight(),
+                                    match edge_data.weight() {
+                                        InstOrEquality::Inst(_) => "solid",
+                                        InstOrEquality::Equality => "dashed",
+                                    }
                                 ),
                                 &|_, (_, node_data)| {
                                     format!("label=\"{}\" shape=\"{}\"",

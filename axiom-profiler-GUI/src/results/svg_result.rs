@@ -160,11 +160,11 @@ impl Component for SVGResult {
                                     edge_data.weight(),
                                     match edge_data.weight() {
                                         InstOrEquality::Inst(_, _) => "solid, bold",
-                                        InstOrEquality::Equality => "dashed",
+                                        InstOrEquality::Equality => "solid",
                                     },
                                     match edge_data.weight() {
                                         InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get(&mkind, NODE_COLOUR_SATURATION + 0.2)),
-                                        InstOrEquality::Equality => "black".to_string(),
+                                        InstOrEquality::Equality => "black:white:black".to_string(),
                                     }
                                 ),
                                 &|_, (_, node_data)| {

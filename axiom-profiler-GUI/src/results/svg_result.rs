@@ -140,7 +140,7 @@ impl Component for SVGResult {
                     FilterOutput::MatchingLoopGraph(graph) => {
                         let settings = [
                             "ranksep=1.0;",
-                            "splines=false;",
+                            "splines=true;",
                             "nslimit=6;",
                             "mclimit=0.6;",
                         ];

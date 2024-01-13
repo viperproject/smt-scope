@@ -137,12 +137,26 @@ impl Component for SVGResult {
                             .send_message(GraphInfoMsg::SelectNodes(path));
                         false
                     }
-                    FilterOutput::MatchingLoopGeneralizedTerms(gen_terms) => {
-                        self.insts_info_link
-                            .borrow()
-                            .clone()
-                            .unwrap()
-                            .send_message(GraphInfoMsg::ShowGeneralizedTerms(gen_terms));
+                    FilterOutput::MatchingLoopGraph(graph) => {
+                        let settings = [
+                            "ranksep=1.0;",
+                            "splines=false;",
+                            "nslimit=6;",
+                            "mclimit=0.6;",
+                        ];
+                        let dot_output = format!("{}", Dot::with_config(&graph, &[Config::EdgeNoLabel]));
+                        log::debug!("Finished building dot output");
+                        let link = self.insts_info_link.borrow().clone().unwrap();
+                        wasm_bindgen_futures::spawn_local(async move {
+                            let graphviz = VizInstance::new().await;
+                            let options = viz_js::Options::default();
+                            // options.engine = "twopi".to_string();
+                            let svg = graphviz
+                                .render_svg_element(dot_output, options)
+                                .expect("Could not render graphviz");
+                            let svg_text = svg.outer_html();
+                            link.send_message(GraphInfoMsg::ShowMatchingLoopGraph(AttrValue::from(svg_text)));
+                        });
                         false
                     }
                     FilterOutput::None => false

@@ -8,7 +8,7 @@ use smt_log_parser::{
     parsers::z3::inst_graph::{EdgeInfo, InstInfo},
 };
 use web_sys::HtmlElement;
-use yew::prelude::*;
+use yew::{prelude::*, virtual_dom::VNode};
 
 use super::graph::graph_container::GraphContainer;
 
@@ -21,6 +21,7 @@ pub struct GraphInfo {
     selected_edges_ref: NodeRef,
     ignore_term_ids: bool,
     generalized_terms: Vec<String>,
+    matching_loop_graph: VNode,
 }
 
 pub enum Msg {
@@ -32,6 +33,7 @@ pub enum Msg {
     DeselectAll,
     ToggleIgnoreTermIds,
     ShowGeneralizedTerms(Vec<String>),
+    ShowMatchingLoopGraph(AttrValue),
 }
 
 #[derive(Properties, PartialEq)]
@@ -63,6 +65,7 @@ impl Component for GraphInfo {
             selected_edges_ref: NodeRef::default(),
             ignore_term_ids: true,
             generalized_terms: Vec::new(),
+            matching_loop_graph: VNode::default(),
         }
     }
 
@@ -188,6 +191,10 @@ impl Component for GraphInfo {
                 self.generalized_terms = terms;
                 true
             }
+            Msg::ShowMatchingLoopGraph(graph) => {
+                self.matching_loop_graph = Html::from_html_unchecked(graph);
+                true
+            }
         }
     }
 
@@ -266,6 +273,9 @@ impl Component for GraphInfo {
                 <h2>{"Information about displayed matching loop:"}</h2>
                 <div>
                     <ul>{for generalized_terms}</ul>
+                </div>
+                <div>
+                    {self.matching_loop_graph.clone()}
                 </div>
             </div>
 

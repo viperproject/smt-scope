@@ -14,7 +14,7 @@ use petgraph::{
 use petgraph::{Direction, Graph};
 use roaring::bitmap::RoaringBitmap;
 use std::collections::HashMap;
-use std::fmt::{self};
+use std::fmt::{self, Display};
 use std::iter::zip;
 use typed_index_collections::TiVec;
 
@@ -152,7 +152,8 @@ pub struct InstGraph {
     tr_closure: Vec<RoaringBitmap>,
     matching_loop_subgraph: Graph<NodeData, EdgeType>,
     matching_loop_end_nodes: Vec<NodeIndex>, // these are sorted by maximal depth in descending order 
-    generalized_terms: TiVec<usize, Option<Vec<String>>>,
+    // generalized_terms: TiVec<usize, Option<Vec<String>>>,
+    matching_loop_graphs: TiVec<usize, Option<Graph<String, InstOrEquality>>>,
 }
 
 enum InstOrder {
@@ -532,11 +533,12 @@ impl InstGraph {
         });
         // return the total number of potential matching loops
         let nr_matching_loop_end_nodes = self.matching_loop_end_nodes.len();
-        self.generalized_terms.resize(nr_matching_loop_end_nodes, None);
+        // self.generalized_terms.resize(nr_matching_loop_end_nodes, None);
+        self.matching_loop_graphs.resize(nr_matching_loop_end_nodes, None);
         nr_matching_loop_end_nodes
     }
 
-    pub fn show_nth_matching_loop(&mut self, n: usize, p: &mut Z3Parser) -> Vec<String> {
+    pub fn show_nth_matching_loop(&mut self, n: usize, p: &mut Z3Parser) -> Graph<String, InstOrEquality> {
         self.reset_visibility_to(false);
         // relies on the fact that we have previously sorted self.matching_loop_end_nodes by max_depth in descending order in 
         // search_matching_loops
@@ -560,7 +562,7 @@ impl InstGraph {
                 // identical from- and to-quantifiers
                 // (*)
                 // avoid unnecessary recomputation if we have already computed the generalized terms 
-                if let None = &self.generalized_terms[n] {
+                if let None = &self.matching_loop_graphs[n] {
                     log!(format!("Computation I for matching loop #{}", n));
                     if let Some(quant) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.quant_idx() {
                         let NodeData { inst_idx, ..} = self.orig_graph[orig_index];
@@ -586,9 +588,11 @@ impl InstGraph {
                     }
                 }
             }
-            if let Some(generalized_terms) = &self.generalized_terms[n] {
+            // if let Some(generalized_terms) = &self.generalized_terms[n] {
+            if let Some(graph) = &self.matching_loop_graphs[n] {
                 // check if we have already computed the generalized terms for the n-th matching loop
-                generalized_terms.clone()
+                // generalized_terms.clone()
+                graph.clone()
             } else {
                 log!(format!("Computation II for matching loop #{}", n));
                 // if not, compute the generalized terms for each bucket in abstract_edge_blame_terms
@@ -618,14 +622,19 @@ impl InstGraph {
                 //     }
                 // }
                 abstract_matching_loop.cross_generalise_terms(p);
-                let generalized_terms = abstract_matching_loop.display_abstract_nodes(p);
-                self.generalized_terms[n] = Some(generalized_terms.clone());
-                generalized_terms
+                // let generalized_terms = abstract_matching_loop.display_abstract_nodes(p);
+                // self.generalized_terms[n] = Some(generalized_terms.clone());
+                // generalized_terms
+                abstract_matching_loop.compute_matching_loop_graph(p);
+                let matching_loop_graph = abstract_matching_loop.graph.into_inner();
+                self.matching_loop_graphs[n] = Some(matching_loop_graph.clone());
+                matching_loop_graph
             }
             // after generalizing over the terms for each abstract edge, store the key-value pair (n, MatchingLoopInfo) in the 
             // InstGraph such that we don't need to recompute the generalization => can check if the value is already in the map at (*)
         } else {
-            Vec::new() 
+            // Vec::new() 
+            Graph::new()
         }
     }
 
@@ -1003,9 +1012,19 @@ impl AbstractNode {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum InstOrEquality {
     Inst(String),
     Equality(String),
+}
+
+impl Display for InstOrEquality {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InstOrEquality::Inst(quant) => write!(f, "{}", quant),
+            InstOrEquality::Equality(equality) => write!(f, "{}", equality),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -1026,9 +1045,10 @@ struct AbstractMatchingLoop {
 
 impl AbstractMatchingLoop {
     fn add_node(&self, term: String) {
-        if let None = self.node_idx_per_weight.borrow().get(&term) {
+        let mut node_idx_per_weight = self.node_idx_per_weight.borrow_mut();
+        if let None = node_idx_per_weight.get(&term) {
             let node_idx = self.graph.borrow_mut().add_node(term.clone()); 
-            self.node_idx_per_weight.borrow_mut().insert(term, node_idx);
+            node_idx_per_weight.insert(term, node_idx);
         }
     }
 
@@ -1118,7 +1138,9 @@ impl AbstractMatchingLoop {
 
     fn add_generalized_pattern_for_quant(&mut self, quant: QuantIdx, pattern: TermIdx, p: &mut Z3Parser) {
         if let None = self.generalized_trigger_per_quantifier.get(&quant) {
-            let generalized_pattern = generalize_pattern(pattern, p);
+            // need to extract the inner term, i.e., pattern(term) -> term
+            let inner_pattern = p[pattern].child_ids.first().unwrap();
+            let generalized_pattern = generalize_pattern(*inner_pattern, p);
             self.generalized_trigger_per_quantifier.insert(quant, generalized_pattern);
         } 
     }

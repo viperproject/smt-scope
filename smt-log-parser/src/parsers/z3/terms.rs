@@ -73,11 +73,11 @@ impl Terms {
         self.parsed_terms = Some(self.terms.next_key());
     }
 
-    pub(super) fn new_synthetic_term(&mut self, kind: TermKind, children: Vec<TermIdx>, meaning: Option<Meaning>) -> TermIdx {
+    pub(super) fn new_synthetic_term(&mut self, kind: TermKind, children: Box<[TermIdx]>, meaning: Option<Meaning>) -> TermIdx {
         let term = Term {
             id: None,
             kind,
-            child_ids: children.into_boxed_slice(),
+            child_ids: children,
         };
         let term = self.synthetic_terms.entry((term, meaning));
         *term.or_insert_with_key(|(term, meaning)| {

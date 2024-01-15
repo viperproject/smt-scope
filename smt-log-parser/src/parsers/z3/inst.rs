@@ -25,12 +25,14 @@ impl Insts {
         Ok(idx)
     }
 
-    pub fn new_inst(&mut self, fingerprint: Fingerprint, mut inst: Instantiation) -> Result<InstIdx> {
-        let (match_idx, inst_idx) = self
+    pub fn get_match(&self, fingerprint: Fingerprint) -> Option<MatchIdx> {
+        self.fingerprint_to_match.get(&fingerprint).map(|(idx, _)| *idx)
+    }
+    pub fn new_inst(&mut self, fingerprint: Fingerprint, inst: Instantiation) -> Result<InstIdx> {
+        let (_, inst_idx) = self
             .fingerprint_to_match
             .get_mut(&fingerprint)
             .expect(&format!("{:x}", fingerprint.0));
-        inst.match_ = *match_idx;
         self.insts.raw.try_reserve(1)?;
         let idx = self.insts.push_and_get_key(inst);
         debug_assert!(inst_idx.is_none(), "duplicate fingerprint");

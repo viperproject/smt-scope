@@ -2,7 +2,7 @@ use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt;
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32, NonZeroUsize};
 use crate::{Result, Error};
 
 pub type StringTable = lasso::Rodeo<lasso::Spur, fxhash::FxBuildHasher>;
@@ -12,17 +12,17 @@ pub type IString = lasso::Spur;
 macro_rules! idx {
     ($struct:ident, $prefix:tt) => {
         #[derive(
-            Clone, Copy, Default, Eq, PartialEq, Serialize, Deserialize, PartialOrd, Ord, Hash,
+            Clone, Copy, Eq, PartialEq, Serialize, Deserialize, PartialOrd, Ord, Hash,
         )]
-        pub struct $struct(usize);
+        pub struct $struct(NonZeroUsize);
         impl From<usize> for $struct {
             fn from(value: usize) -> Self {
-                Self(value)
+                Self(NonZeroUsize::new(value.checked_add(1).unwrap()).unwrap())
             }
         }
         impl From<$struct> for usize {
             fn from(value: $struct) -> Self {
-                value.0
+                value.0.get() - 1
             }
         }
         impl fmt::Debug for $struct {

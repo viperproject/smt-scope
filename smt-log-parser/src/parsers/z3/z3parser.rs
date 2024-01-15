@@ -503,9 +503,9 @@ impl Z3LogParser for Z3Parser {
         Self::expect_completed(proof)?;
         let z3_generation = Self::parse_z3_generation(&mut l)?;
 
+        let match_ = self.insts.get_match(fingerprint).ok_or(Error::UnknownFingerprint(fingerprint))?;
         let inst = Instantiation {
-            // Will be filled in by `new_inst`
-            match_: MatchIdx::default(),
+            match_,
             fingerprint,
             proof_id,
             z3_generation,

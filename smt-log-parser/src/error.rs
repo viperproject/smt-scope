@@ -1,6 +1,6 @@
 use std::{collections::TryReserveError, num::ParseIntError};
 
-use crate::items::{TermId, TermIdx, StackIdx, ENodeIdx, BlameKind};
+use crate::items::{TermId, TermIdx, StackIdx, ENodeIdx, BlameKind, Fingerprint};
 
 pub type Result<T> = std::result::Result<T, Error>;
 pub type FResult<T> = std::result::Result<T, FatalError>;
@@ -44,6 +44,7 @@ pub enum Error {
 
     // Fingerprint
     InvalidFingerprint(ParseIntError),
+    UnknownFingerprint(Fingerprint),
 
     // Enode
     UnknownEnode(TermIdx),

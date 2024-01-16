@@ -556,7 +556,6 @@ impl InstGraph {
                 // (*)
                 // avoid unnecessary recomputation if we have already computed the generalized terms 
                 if let None = &self.matching_loop_graphs[n] {
-                    log!(format!("Computation I for matching loop #{}", n));
                     if let Some(quant) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.quant_idx() {
                         let NodeData { inst_idx, ..} = self.orig_graph[orig_index];
                         let inst = &p.insts[inst_idx];
@@ -588,46 +587,13 @@ impl InstGraph {
                 // generalized_terms.clone()
                 graph.clone()
             } else {
-                log!(format!("Computation II for matching loop #{}", n));
-                // if not, compute the generalized terms for each bucket in abstract_edge_blame_terms
-                // let mut generalized_terms: Vec<String> = Vec::new();
-                // for blame_terms in abstract_edge_blame_terms.values() {
-                //     // let generalized_term = blame_terms.iter().reduce(|&t1, &t2| generalize(t1, t2, p)).unwrap();
-                //     if let Some(t1) = blame_terms.get(0) {
-                //         let mut gen_term = t1.clone();
-                //         for &t2 in &blame_terms[1..] {
-                //             gen_term = p.terms.generalize(gen_term, t2);
-                //             // let ctxt = DisplayCtxt {
-                //             //     parser: p,
-                //             //     display_term_ids: false,
-                //             //     display_quantifier_name: false,
-                //             //     use_mathematical_symbols: true,
-                //             // };
-                //             // log!(format!("Generalized term {} and {}", gen_term.with(&ctxt), t2.with(&ctxt)));
-                //      s  }
-                //         let ctxt = DisplayCtxt {
-                //             parser: p,
-                //             display_term_ids: false,
-                //             display_quantifier_name: false,
-                //             use_mathematical_symbols: true,
-                //         };
-                //         let pretty_gen_term = gen_term.with(&ctxt).to_string();
-                //         generalized_terms.push(pretty_gen_term);
-                //     }
-                // }
                 abstract_matching_loop.cross_generalise_terms(p);
-                // let generalized_terms = abstract_matching_loop.display_abstract_nodes(p);
-                // self.generalized_terms[n] = Some(generalized_terms.clone());
-                // generalized_terms
                 abstract_matching_loop.compute_matching_loop_graph(p);
                 let matching_loop_graph = abstract_matching_loop.graph.into_inner();
                 self.matching_loop_graphs[n] = Some(matching_loop_graph.clone());
                 matching_loop_graph
             }
-            // after generalizing over the terms for each abstract edge, store the key-value pair (n, MatchingLoopInfo) in the 
-            // InstGraph such that we don't need to recompute the generalization => can check if the value is already in the map at (*)
         } else {
-            // Vec::new() 
             Graph::new()
         }
     }
@@ -1076,28 +1042,24 @@ struct AbstractMatchingLoop {
 }
 
 impl AbstractMatchingLoop {
-    fn add_node(&self, term: String) {
+    fn add_node(&self, term: String) -> NodeIndex {
         let mut node_idx_per_weight = self.node_idx_per_weight.borrow_mut();
-        if let None = node_idx_per_weight.get(&term) {
+        if let Some(idx) = node_idx_per_weight.get(&term) {
+            *idx
+        } else {
             let node_idx = self.graph.borrow_mut().add_node(term.clone()); 
             node_idx_per_weight.insert(term, node_idx);
+            node_idx
         }
     }
 
     fn add_edge(&self, from: String, to: String, edge_label: InstOrEquality) {
-        if let Some(from_idx) = self.node_idx_per_weight.borrow().get(&from) {
-            if let Some(to_idx) = self.node_idx_per_weight.borrow().get(&to) {
-                self.graph.borrow_mut().add_edge(*from_idx, *to_idx, edge_label);
-            }
-        }
+        let from_idx = self.add_node(from);
+        let to_idx = self.add_node(to);
+        self.graph.borrow_mut().add_edge(from_idx, to_idx, edge_label);
     }
 
     fn compute_matching_loop_graph(&mut self, p: &mut Z3Parser) {
-        // let mut graph = Graph::default();
-        // let mut node_idx_of_weight: FxHashMap<String, NodeIndex> = HashMap::default();
-        
-        // first add all the blame and yield terms as nodes into the graph
-
         for (quant, gen_blame_term) in &self.blame_terms_per_quantifier {
             let gen_trigger = self.generalized_trigger_per_quantifier.get(quant).unwrap();
             if *gen_trigger == p.terms.generalize(*gen_blame_term, *gen_trigger) {
@@ -1109,16 +1071,8 @@ impl AbstractMatchingLoop {
                     use_mathematical_symbols: true,
                 };
                 let pretty_blame_term = gen_blame_term.with(&ctxt).to_string();
-                self.add_node(pretty_blame_term.clone());
-                // if let None = node_idx_of_weight.get(&pretty_blame_term) {
-                //     let blame_term_idx = graph.add_node(pretty_blame_term.clone());
-                //     node_idx_of_weight.insert(pretty_blame_term, blame_term_idx);
-                // }
-                // go through all yield terms of quant and add them to the graph with an edge from
-                // the blame term to the yield term
                 for (yield_term, _) in self.yield_terms_per_quantifier_and_target.get(quant).unwrap().values() {
                     let pretty_yield_term = yield_term.with(&ctxt).to_string();
-                    self.add_node(pretty_yield_term.clone());
                     self.add_edge(pretty_blame_term.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), self.match_kind_per_quant.get(quant).unwrap().clone()));
                 }
             } else {
@@ -1130,11 +1084,9 @@ impl AbstractMatchingLoop {
                     use_mathematical_symbols: true,
                 };
                 let pretty_gen_trigger = gen_trigger.with(&ctxt).to_string();
-                self.add_node(pretty_gen_trigger.clone());
                 // add instantiation edges from generalized trigger to the yield terms
                 for (yield_term, _) in self.yield_terms_per_quantifier_and_target.get(quant).unwrap().values() {
                     let pretty_yield_term = yield_term.with(&ctxt).to_string();
-                    self.add_node(pretty_yield_term.clone());
                     self.add_edge(pretty_gen_trigger.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), self.match_kind_per_quant.get(quant).unwrap().clone()));
                 }
                 // add equality edges from generalized blame term to the blamed equality terms

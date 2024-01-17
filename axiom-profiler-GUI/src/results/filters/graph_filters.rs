@@ -1,10 +1,10 @@
 use super::node_actions::NodeActions;
 use crate::{utils::usize_input::UsizeInput, results::svg_result::DEFAULT_NODE_COUNT};
 use gloo::console::log;
-use petgraph::{stable_graph::NodeIndex, Direction};
+use petgraph::{stable_graph::NodeIndex, Direction, Graph};
 use smt_log_parser::{
     items::QuantIdx,
-    parsers::z3::inst_graph::{InstGraph, InstInfo, NodeData}, Z3Parser,
+    parsers::z3::inst_graph::{InstGraph, InstInfo, NodeData, InstOrEquality}, Z3Parser,
 };
 use std::fmt::Display;
 use yew::prelude::*;
@@ -81,7 +81,8 @@ impl Display for Filter {
 
 pub enum FilterOutput {
     LongestPath(Vec<NodeIndex>),
-    MatchingLoopGeneralizedTerms(Vec<String>),
+    // MatchingLoopGeneralizedTerms(Vec<String>),
+    MatchingLoopGraph(Graph<String, InstOrEquality>),
     None
 }
 
@@ -99,7 +100,7 @@ impl Filter {
             Filter::VisitSourceTree(nidx, retain) => graph.visit_ancestors(nidx, retain),
             Filter::MaxDepth(depth) => graph.retain_nodes(|node: &NodeData| node.min_depth.unwrap() <= depth),
             Filter::ShowLongestPath(nidx) => return FilterOutput::LongestPath(graph.show_longest_path_through(nidx)),
-            Filter::SelectNthMatchingLoop(n) => return FilterOutput::MatchingLoopGeneralizedTerms(graph.show_nth_matching_loop(n, parser)),
+            Filter::SelectNthMatchingLoop(n) => return FilterOutput::MatchingLoopGraph(graph.show_nth_matching_loop(n, parser)),
             Filter::ShowMatchingLoopSubgraph => graph.show_matching_loop_subgraph(),
         }
         FilterOutput::None

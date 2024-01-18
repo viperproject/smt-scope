@@ -537,83 +537,10 @@ impl InstGraph {
         // search_matching_loops
         let end_node_of_nth_matching_loop = self.matching_loop_end_nodes.get(n);
         if let Some(&node) = end_node_of_nth_matching_loop {
-            // start a reverse-DFS from node and mark all the nodes as visible along the way
-            // during the reverse-DFS collect information needed to compute the generalized terms later on
-            // we abstract the edges over the from- and to-quantifiers as well as the trigger, i.e.,
-            // two edges (a,b) and (c,d) are the same abstract edge iff 
-            // - a and c correspond to an instantiation of the same quantifier
-            // - and b and d correspond to an instantiation of the same quantifier 
-            // - and b and d used the same trigger
-            // let mut abstract_edge_blame_terms: FxHashMap<(QuantIdx, QuantIdx, TermIdx), Vec<TermIdx>> = FxHashMap::default(); 
-            let mut abstract_matching_loop = AbstractMatchingLoop::default(); 
             let mut dfs = Dfs::new(petgraph::visit::Reversed(&self.matching_loop_subgraph), node);
             while let Some(nx) = dfs.next(petgraph::visit::Reversed(&self.matching_loop_subgraph)) {
                 let orig_index = self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx;
                 self.orig_graph[orig_index].visible = true;
-                // add all direct dependencies which have BlameKind::Term to the correct bin in abstract_edges
-                // such that later on we can generalize over each all edges in a matching loop that have 
-                // identical from- and to-quantifiers
-                // (*)
-                // avoid unnecessary recomputation if we have already computed the generalized terms 
-                if let None = &self.matching_loop_graphs[n] {
-                    if let Some(quant) = self.matching_loop_subgraph.node_weight(nx).unwrap().mkind.quant_idx() {
-                        let NodeData { inst_idx, ..} = self.orig_graph[orig_index];
-                        let inst = &p.insts[inst_idx];
-                        let match_ = &p.insts[inst.match_];
-                        // TODO: make sure this also handles the case where there is no pattern
-                        let pattern = match_.kind.pattern().unwrap(); 
-                        // TODO: handle the case where we have a multi-trigger (see e.g., sequences-18.log and thesis_journal_docx)
-                        let inner_pattern = *p[pattern].child_ids.first().unwrap();
-                        let gen_pattern = p.terms.generalize_pattern(inner_pattern);
-                        // TODO: make sure this also works if we have more than a single blame term
-                        let blame_term = match_.due_to_terms().next().unwrap();
-                        let blame_term_idx = p[blame_term].owner;
-                        let mut yield_terms = HashMap::default(); 
-                        for outgoing_edge in self.matching_loop_subgraph.edges_directed(nx, Outgoing) {
-                            let to_quant = outgoing_edge.target();
-                            if let Some(to_quant) = self.matching_loop_subgraph.node_weight(to_quant).unwrap().mkind.quant_idx() {
-                                if let Some(yield_term) = outgoing_edge.weight().blame_term_idx() {
-                                    let yield_term_idx = p[yield_term].owner;
-                                    let blame_kind = outgoing_edge.weight().blame_kind();
-                                    if let Some((old_yield_term, _)) = yield_terms.get(&to_quant) {
-                                        let gen_yield_term = p.terms.generalize(*old_yield_term, yield_term_idx);
-                                        yield_terms.insert(to_quant, (gen_yield_term, blame_kind));
-                                        // log!(format!("Adding yield_term from q{} to q{} while processing node {}", quant, to_quant, self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx.index()));
-                                    } else {
-                                        // log!(format!("Adding yield_term from q{} to q{} while processing node {}", quant, to_quant, self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx.index()));
-                                        yield_terms.insert(to_quant, (yield_term_idx, blame_kind));
-                                    }
-                                }
-                            }
-                        }
-                        let mut blame_term_deps = Vec::new();
-                        let mut equality_deps = Vec::new();
-                        for incoming_edge in self.matching_loop_subgraph.edges_directed(nx, Incoming) {
-                            if let Some(source) = self.matching_loop_subgraph.node_weight(incoming_edge.source()).unwrap().mkind.quant_idx() {
-                                match incoming_edge.weight().blame_kind() {
-                                    Some(blame_kind) => {
-                                        match blame_kind {
-                                            BlameKind::Term { .. } => {blame_term_deps.push(source);},
-                                            BlameKind::Equality { .. } => {equality_deps.push(source);},
-                                            _ => (),
-                                        }
-                                    },
-                                    None => (),
-                                }
-                            }
-                        }
-                        let abstract_inst = AbstractInstantiation {
-                            quant,
-                            blame_term: blame_term_idx,
-                            yield_terms,
-                            pattern: gen_pattern,
-                            match_kind: match_.kind.clone(),
-                            blame_term_deps,
-                            equality_deps,
-                        };
-                        abstract_matching_loop.process_inst(abstract_inst, p);
-                    }
-                }
             }
             if let Some(graph) = &self.matching_loop_graphs[n] {
                 // check if we have already computed the matching loop graph for the n-th matching loop
@@ -624,8 +551,17 @@ impl InstGraph {
                 // for inst in insts {
                 //     log!(inst);
                 // }
-                abstract_matching_loop.compute_matching_loop_graph(p);
-                let matching_loop_graph = abstract_matching_loop.graph.into_inner();
+                // abstract_matching_loop.compute_matching_loop_graph(p);
+                let potential_matching_loop = self.orig_graph.filter_map(
+                    |_, node| Some(node).filter(|node| node.visible).cloned(),
+                    |orig_graph_idx, edge_data| {
+                        Some(EdgeType::Direct {
+                            kind: edge_data.clone(),
+                            orig_graph_idx,
+                        })
+                    },
+                );
+                let matching_loop_graph = MatchingLoopGraph::from_graph(&potential_matching_loop, &self.orig_graph, p);
                 self.matching_loop_graphs[n] = Some(matching_loop_graph.clone());
                 matching_loop_graph
             }
@@ -1083,7 +1019,7 @@ mod matching_loop_graph {
     }
 
     #[derive(Default)]
-    pub struct AbstractMatchingLoop {
+    pub struct MatchingLoopGraph {
         abstract_insts: Vec<AbstractInstantiation>,
         pub graph: std::cell::RefCell<Graph<String, InstOrEquality>>,
         node_idx_per_weight: std::cell::RefCell<FxHashMap<String, NodeIndex>>,
@@ -1091,7 +1027,73 @@ mod matching_loop_graph {
         abstract_insts_idx_map: FxHashMap<QuantIdx, usize>,
     }
 
-    impl AbstractMatchingLoop {
+    impl MatchingLoopGraph {
+        pub fn from_graph(graph: &Graph<NodeData, EdgeType>, orig_graph: &Graph<NodeData, BlameKind>, p: &mut Z3Parser) -> Graph<String, InstOrEquality> {
+            let mut matching_loop_graph = Self::default();
+            for nx in graph.node_indices() {
+                let orig_index = graph.node_weight(nx).unwrap().orig_graph_idx;
+                if let Some(quant) = graph.node_weight(nx).unwrap().mkind.quant_idx() {
+                    let NodeData { inst_idx, ..} = orig_graph[orig_index];
+                    let inst = &p.insts[inst_idx];
+                    let match_ = &p.insts[inst.match_];
+                    // TODO: make sure this also handles the case where there is no pattern
+                    let pattern = match_.kind.pattern().unwrap(); 
+                    // TODO: handle the case where we have a multi-trigger (see e.g., sequences-18.log and thesis_journal_docx)
+                    let inner_pattern = *p[pattern].child_ids.first().unwrap();
+                    let gen_pattern = p.terms.generalize_pattern(inner_pattern);
+                    // TODO: make sure this also works if we have more than a single blame term
+                    let blame_term = match_.due_to_terms().next().unwrap();
+                    let blame_term_idx = p[blame_term].owner;
+                    let mut yield_terms = HashMap::default(); 
+                    for outgoing_edge in graph.edges_directed(nx, Outgoing) {
+                        let to_quant = outgoing_edge.target();
+                        if let Some(to_quant) = graph.node_weight(to_quant).unwrap().mkind.quant_idx() {
+                            if let Some(yield_term) = outgoing_edge.weight().blame_term_idx() {
+                                let yield_term_idx = p[yield_term].owner;
+                                let blame_kind = outgoing_edge.weight().blame_kind();
+                                if let Some((old_yield_term, _)) = yield_terms.get(&to_quant) {
+                                    let gen_yield_term = p.terms.generalize(*old_yield_term, yield_term_idx);
+                                    yield_terms.insert(to_quant, (gen_yield_term, blame_kind));
+                                    // log!(format!("Adding yield_term from q{} to q{} while processing node {}", quant, to_quant, self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx.index()));
+                                } else {
+                                    // log!(format!("Adding yield_term from q{} to q{} while processing node {}", quant, to_quant, self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx.index()));
+                                    yield_terms.insert(to_quant, (yield_term_idx, blame_kind));
+                                }
+                            }
+                        }
+                    }
+                    let mut blame_term_deps = Vec::new();
+                    let mut equality_deps = Vec::new();
+                    for incoming_edge in graph.edges_directed(nx, Incoming) {
+                        if let Some(source) = graph.node_weight(incoming_edge.source()).unwrap().mkind.quant_idx() {
+                            match incoming_edge.weight().blame_kind() {
+                                Some(blame_kind) => {
+                                    match blame_kind {
+                                        BlameKind::Term { .. } => {blame_term_deps.push(source);},
+                                        BlameKind::Equality { .. } => {equality_deps.push(source);},
+                                        _ => (),
+                                    }
+                                },
+                                None => (),
+                            }
+                        }
+                    }
+                    let abstract_inst = AbstractInstantiation {
+                        quant,
+                        blame_term: blame_term_idx,
+                        yield_terms,
+                        pattern: gen_pattern,
+                        match_kind: match_.kind.clone(),
+                        blame_term_deps,
+                        equality_deps,
+                    };
+                    matching_loop_graph.process_inst(abstract_inst, p);
+                }
+            }
+            matching_loop_graph.compute_matching_loop_graph(p);
+            matching_loop_graph.graph.into_inner()
+        }
+
         pub fn display_insts(&self, p: &Z3Parser) -> Vec<String> {
             let mut out = Vec::new();
             for inst in &self.abstract_insts {
@@ -1134,6 +1136,10 @@ mod matching_loop_graph {
         }
 
         pub fn compute_matching_loop_graph(&mut self, p: &mut Z3Parser) {
+            let insts = self.display_insts(p);
+            for inst in insts {
+                log!(inst);
+            }
             self.cross_generalize_terms(p);
             for inst in &self.abstract_insts {
                 let gen_trigger = inst.pattern;
@@ -1193,27 +1199,37 @@ mod matching_loop_graph {
         }
 
         fn cross_generalize_terms(&mut self, p: &mut Z3Parser) {
-            let mut abstract_insts = self.abstract_insts.as_mut_slice();
-            let mut idx: usize = 1;
-            while let Some((first, others)) = abstract_insts.split_first_mut() {
-                for (to_quant, (yield_term, blame_kind)) in first.yield_terms.clone() {
-                    if let Some(BlameKind::Term {..}) = blame_kind {
-                        let blame_term = if first.quant == to_quant {
-                            first.blame_term
-                        } else {
-                            // log!(format!("We have a dependency from q{} to q{}", first.quant, to_quant));
-                            others[*self.abstract_insts_idx_map.get(&to_quant).unwrap() - idx].blame_term
-                        };
-                        let generalized_term = p.terms.generalize(yield_term, blame_term);
-                        first.yield_terms.insert(to_quant, (generalized_term, blame_kind.clone()));
-                        if first.quant == to_quant {
-                            first.blame_term = generalized_term;
-                        } else {
-                            others[*self.abstract_insts_idx_map.get(&to_quant).unwrap() - idx].blame_term = generalized_term;
+            let abstract_insts = self.abstract_insts.as_mut_slice();
+            let mut idx: usize = 0;
+            while idx < abstract_insts.len() {
+                let (before, after) = abstract_insts.split_at_mut(idx);
+                if let Some((curr, after)) = after.split_first_mut() {
+                    for (to_quant, (yield_term, blame_kind)) in curr.yield_terms.clone() {
+                        log!(format!("Processing dependency from q{} to q{}", curr.quant, to_quant));
+                        if let Some(BlameKind::Term {..}) = blame_kind {
+                            let blame_term = if curr.quant == to_quant {
+                                curr.blame_term
+                            } else {
+                                if let Some(el) = before.get(*self.abstract_insts_idx_map.get(&to_quant).unwrap()) {
+                                    el.blame_term
+                                } else {
+                                    after.get(*self.abstract_insts_idx_map.get(&to_quant).unwrap() - (idx + 1)).unwrap().blame_term
+                                }
+                            };
+                            let generalized_term = p.terms.generalize(yield_term, blame_term);
+                            curr.yield_terms.insert(to_quant, (generalized_term, blame_kind.clone()));
+                            if curr.quant == to_quant {
+                                curr.blame_term = generalized_term;
+                            } else {
+                                if let Some(el) = before.get_mut(*self.abstract_insts_idx_map.get(&to_quant).unwrap()) {
+                                    el.blame_term = generalized_term;
+                                } else {
+                                    after.get_mut(*self.abstract_insts_idx_map.get(&to_quant).unwrap() - (idx + 1)).unwrap().blame_term = generalized_term;
+                                }
+                            }
                         }
                     }
-                } 
-                abstract_insts = others;
+                }
                 idx += 1;
             }
         }

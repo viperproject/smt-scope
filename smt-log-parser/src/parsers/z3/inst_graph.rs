@@ -973,7 +973,7 @@ impl Display for InstOrEquality {
 mod matching_loop_graph {
     use super::*;
 
-    pub struct AbstractInstantiation {
+    struct AbstractInstantiation {
         pub quant: QuantIdx,
         pub blame_term: TermIdx,
         pub yield_terms: FxHashMap<QuantIdx, (TermIdx, Option<BlameKind>)>,
@@ -1094,7 +1094,7 @@ mod matching_loop_graph {
             matching_loop_graph.graph.into_inner()
         }
 
-        pub fn display_insts(&self, p: &Z3Parser) -> Vec<String> {
+        fn display_insts(&self, p: &Z3Parser) -> Vec<String> {
             let mut out = Vec::new();
             for inst in &self.abstract_insts {
                 out.push(inst.to_string(p));
@@ -1135,7 +1135,7 @@ mod matching_loop_graph {
             self.graph.borrow_mut().add_edge(from_idx, to_idx, edge_label);
         }
 
-        pub fn compute_matching_loop_graph(&mut self, p: &mut Z3Parser) {
+        fn compute_matching_loop_graph(&mut self, p: &mut Z3Parser) {
             let insts = self.display_insts(p);
             for inst in insts {
                 log!(inst);
@@ -1186,7 +1186,7 @@ mod matching_loop_graph {
             }
         } 
 
-        pub fn process_inst(&mut self, new_inst: AbstractInstantiation, p: &mut Z3Parser) {
+        fn process_inst(&mut self, new_inst: AbstractInstantiation, p: &mut Z3Parser) {
             if let Some(inst) = self.get_mut(new_inst.quant) {
                 // need to generalize with inst
                 inst.generalize(new_inst, p);

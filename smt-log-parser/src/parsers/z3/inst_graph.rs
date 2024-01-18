@@ -484,7 +484,7 @@ impl InstGraph {
         let mut matching_loop_nodes_per_quant: Vec<FxHashSet<NodeIndex>> = Vec::new();
         log!(format!("Start processing quants"));
         for quant in quants {
-            log!(format!("Processing quant {}", quant));
+            // log!(format!("Processing quant {}", quant));
             self.reset_visibility_to(true);
             self.retain_nodes(|node| {
                 node.mkind
@@ -562,6 +562,7 @@ impl InstGraph {
                         let match_ = &p.insts[inst.match_];
                         // TODO: make sure this also handles the case where there is no pattern
                         let pattern = match_.kind.pattern().unwrap(); 
+                        // TODO: handle the case where we have a multi-trigger (see e.g., sequences-18.log and thesis_journal_docx)
                         let inner_pattern = *p[pattern].child_ids.first().unwrap();
                         let gen_pattern = p.terms.generalize_pattern(inner_pattern);
                         // TODO: make sure this also works if we have more than a single blame term
@@ -577,7 +578,9 @@ impl InstGraph {
                                     if let Some((old_yield_term, _)) = yield_terms.get(&to_quant) {
                                         let gen_yield_term = p.terms.generalize(*old_yield_term, yield_term_idx);
                                         yield_terms.insert(to_quant, (gen_yield_term, blame_kind));
+                                        // log!(format!("Adding yield_term from q{} to q{} while processing node {}", quant, to_quant, self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx.index()));
                                     } else {
+                                        // log!(format!("Adding yield_term from q{} to q{} while processing node {}", quant, to_quant, self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx.index()));
                                         yield_terms.insert(to_quant, (yield_term_idx, blame_kind));
                                     }
                                 }
@@ -1198,6 +1201,7 @@ mod matching_loop_graph {
                         let blame_term = if first.quant == to_quant {
                             first.blame_term
                         } else {
+                            // log!(format!("We have a dependency from q{} to q{}", first.quant, to_quant));
                             others[*self.abstract_insts_idx_map.get(&to_quant).unwrap() - idx].blame_term
                         };
                         let generalized_term = p.terms.generalize(yield_term, blame_term);

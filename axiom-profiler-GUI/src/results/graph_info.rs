@@ -25,7 +25,6 @@ pub struct GraphInfo {
     selected_edges: IndexMap<EdgeIndex, EdgeInfo>,
     selected_edges_ref: NodeRef,
     ignore_term_ids: bool,
-    generalized_terms: Vec<String>,
     matching_loop_graph: VNode,
 }
 
@@ -37,7 +36,6 @@ pub enum Msg {
     SelectNodes(Vec<NodeIndex>),
     DeselectAll,
     ToggleIgnoreTermIds,
-    ShowGeneralizedTerms(Vec<String>),
     ShowMatchingLoopGraph(AttrValue),
 }
 
@@ -69,7 +67,6 @@ impl Component for GraphInfo {
             selected_edges: IndexMap::new(),
             selected_edges_ref: NodeRef::default(),
             ignore_term_ids: true,
-            generalized_terms: Vec::new(),
             matching_loop_graph: VNode::default(),
         }
     }
@@ -192,10 +189,6 @@ impl Component for GraphInfo {
                 }
                 true
             }
-            Msg::ShowGeneralizedTerms(terms) => {
-                self.generalized_terms = terms;
-                true
-            }
             Msg::ShowMatchingLoopGraph(graph) => {
                 self.matching_loop_graph = Html::from_html_unchecked(graph);
                 true
@@ -250,9 +243,6 @@ impl Component for GraphInfo {
         let on_node_select = ctx.link().callback(Msg::UserSelectedNode);
         let on_edge_select = ctx.link().callback(Msg::UserSelectedEdge);
         let deselect_all = ctx.link().callback(|_| Msg::DeselectAll);
-        let generalized_terms = self.generalized_terms.iter().map(|term| html! {
-            <li>{term}</li>
-        });
         html! {
             <>
             <GraphContainer
@@ -276,10 +266,7 @@ impl Component for GraphInfo {
                     <SelectedEdgesInfo selected_edges={self.selected_edges.values().cloned().collect::<Vec<EdgeInfo>>()} on_click={on_edge_click} />
                 </div>
                 <h2>{"Information about displayed matching loop:"}</h2>
-                <div>
-                    <ul>{for generalized_terms}</ul>
-                </div>
-                <div>
+                <div style="overflow: auto;">
                     {self.matching_loop_graph.clone()}
                 </div>
             </div>
@@ -308,7 +295,7 @@ fn selected_nodes_info(
             let get_ul = |label: &str, items: &Vec<String>| html! {
                 <>
                     <h4>{label}</h4>
-                    <ul>{for items.iter().map(|item| html!{<li>{item}</li>})}</ul>
+                    <ul style="overflow: auto;">{for items.iter().map(|item| html!{<li>{item}</li>})}</ul>
                 </>
             };
             let on_select = {

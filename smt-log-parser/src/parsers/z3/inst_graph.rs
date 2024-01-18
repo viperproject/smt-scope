@@ -583,10 +583,21 @@ impl InstGraph {
                                 }
                             }
                         }
-                        let mut blamed_insts = Vec::new();
+                        let mut blame_term_deps = Vec::new();
+                        let mut equality_deps = Vec::new();
                         for incoming_edge in self.matching_loop_subgraph.edges_directed(nx, Incoming) {
-                            let source= self.matching_loop_subgraph.node_weight(incoming_edge.source()).unwrap().mkind.quant_idx().unwrap();
-                            blamed_insts.push(source);
+                            if let Some(source) = self.matching_loop_subgraph.node_weight(incoming_edge.source()).unwrap().mkind.quant_idx() {
+                                match incoming_edge.weight().blame_kind() {
+                                    Some(blame_kind) => {
+                                        match blame_kind {
+                                            BlameKind::Term { .. } => {blame_term_deps.push(source);},
+                                            BlameKind::Equality { .. } => {equality_deps.push(source);},
+                                            _ => (),
+                                        }
+                                    },
+                                    None => (),
+                                }
+                            }
                         }
                         let abstract_inst = AbstractInstantiation {
                             quant,
@@ -594,7 +605,8 @@ impl InstGraph {
                             yield_terms,
                             pattern: gen_pattern,
                             match_kind: match_.kind.clone(),
-                            blamed_insts,
+                            blame_term_deps,
+                            equality_deps,
                         };
                         abstract_matching_loop.process_inst(abstract_inst, p);
                     }
@@ -1028,7 +1040,8 @@ mod matching_loop_graph {
         pub yield_terms: FxHashMap<QuantIdx, (TermIdx, Option<BlameKind>)>,
         pub pattern: TermIdx,
         pub match_kind: MatchKind,
-        pub blamed_insts: Vec<QuantIdx>,
+        pub blame_term_deps: Vec<QuantIdx>,
+        pub equality_deps: Vec<QuantIdx>,
     }
 
     impl AbstractInstantiation {
@@ -1042,6 +1055,10 @@ mod matching_loop_graph {
                     self.yield_terms.insert(quant, (other_yield_term, blame_kind));
                 }
             } 
+            self.blame_term_deps.append(&mut other.blame_term_deps.clone());
+            self.blame_term_deps.dedup();
+            self.equality_deps.append(&mut other.equality_deps.clone());
+            self.equality_deps.dedup();
         }
 
         fn to_string(&self, p: &Z3Parser) -> String {
@@ -1119,7 +1136,8 @@ mod matching_loop_graph {
                 let gen_trigger = inst.pattern;
                 let gen_blame_term = inst.blame_term; 
                 let quant = inst.quant;
-                if gen_trigger == p.terms.generalize(gen_blame_term, gen_trigger) {
+                // does not rely on any equalities and hence the blamed term is an instance of the trigger
+                if inst.equality_deps.len() == 0 {
                     let ctxt = DisplayCtxt {
                         parser: p,
                         display_term_ids: false,
@@ -1131,6 +1149,8 @@ mod matching_loop_graph {
                         let pretty_yield_term = yield_term.with(&ctxt).to_string();
                         self.add_edge(pretty_blame_term.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), inst.match_kind.clone()));
                     }
+                // here there are some equalities that this instantiation relies on and hence we indicate this to 
+                // the user by adding equality edges
                 } else {
                     let ctxt = DisplayCtxt {
                         parser: p,
@@ -1139,19 +1159,18 @@ mod matching_loop_graph {
                         use_mathematical_symbols: true,
                     };
                     let pretty_gen_trigger = gen_trigger.with(&ctxt).to_string();
+                    let pretty_blame_term = gen_blame_term.with(&ctxt).to_string();
                     for (_, (yield_term, _)) in inst.yield_terms.clone() {
                         let pretty_yield_term = yield_term.with(&ctxt).to_string();
                         self.add_edge(pretty_gen_trigger.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), inst.match_kind.clone()));
                     }
-                    let pretty_blame_term = gen_blame_term.with(&ctxt).to_string();
-                    for blamed_inst in &inst.blamed_insts {
-                        let blamed_inst = self.get(*blamed_inst).unwrap();
-                        if let Some((yield_term, blame_kind)) = blamed_inst.yield_terms.get(&quant) {
-                            if let Some(BlameKind::Equality {..}) = blame_kind {
-                                let pretty_yield_term = yield_term.with(&ctxt).to_string();
-                                self.add_edge(pretty_blame_term.clone(), pretty_yield_term.clone(), InstOrEquality::Equality);
-                                self.add_edge(pretty_yield_term, pretty_gen_trigger.clone(), InstOrEquality::Equality);
-                            }
+                    // for blamed_inst in &inst.blame_term_deps {
+                    for equality_dep in &inst.equality_deps {
+                        let blamed_inst = self.get(*equality_dep).unwrap();
+                        if let Some((yield_term, _)) = blamed_inst.yield_terms.get(&quant) {
+                            let pretty_yield_term = yield_term.with(&ctxt).to_string();
+                            self.add_edge(pretty_blame_term.clone(), pretty_yield_term.clone(), InstOrEquality::Equality);
+                            self.add_edge(pretty_yield_term, pretty_gen_trigger.clone(), InstOrEquality::Equality);
                         }
                     }
                 }

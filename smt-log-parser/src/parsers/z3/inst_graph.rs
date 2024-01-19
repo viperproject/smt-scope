@@ -1004,6 +1004,7 @@ mod matching_loop_graph {
     //     }
     // }
 
+    #[derive(Clone)]
     struct AbstractInstantiation {
         pub quant: QuantIdx,
         pub blame_term: TermIdx,
@@ -1049,6 +1050,7 @@ mod matching_loop_graph {
                 }
             } 
             // self.blame_term_deps.append(&mut other.blame_term_deps.clone());
+            // let my_union = self.blame_term_deps.union(&other.blame_term_deps).collect::<HashSet<AbstractInstantiation>>();
             self.blame_term_deps.union(&other.blame_term_deps);
             // self.blame_term_deps.dedup();
             self.equality_deps.union(&other.equality_deps);
@@ -1087,13 +1089,11 @@ mod matching_loop_graph {
 
     #[derive(Default)]
     pub struct MatchingLoopGraph {
-        // abstract_insts: Vec<AbstractInstantiation>,
         abstract_insts: Vec<AbstractInstantiation>,
         pub graph: std::cell::RefCell<Graph<String, InstOrEquality>>,
         node_idx_per_weight: std::cell::RefCell<FxHashMap<String, NodeIndex>>,
-        // needed such that we can index into this with QuantIdx
+        // needed such that we can index into this with AbstractInstantiation 
         abstract_insts_idx_map: FxHashMap<AbstractInstantiation, usize>,
-        hasher: RandomState,
     }
 
     impl MatchingLoopGraph {
@@ -1126,7 +1126,7 @@ mod matching_loop_graph {
                 // TODO: make sure this also works if we have more than a single blame term
                 let blame_term = match_.due_to_terms().next().unwrap();
                 let blame_term_idx = p[blame_term].owner;
-                let mut yield_terms = HashMap::with_hasher(matching_loop_graph.hasher.clone()); 
+                let mut yield_terms = HashMap::new(); 
                 for outgoing_edge in graph.edges_directed(nx, Outgoing) {
                     let to_nx = outgoing_edge.target();
                     if let Some(to_quant) = graph.node_weight(to_nx).unwrap().mkind.quant_idx() {
@@ -1150,8 +1150,8 @@ mod matching_loop_graph {
                         }
                     }
                 }
-                let mut blame_term_deps = HashSet::with_hasher(matching_loop_graph.hasher);
-                let mut equality_deps = HashSet::with_hasher(matching_loop_graph.hasher);
+                let mut blame_term_deps = HashSet::new();
+                let mut equality_deps = HashSet::new();
                 for incoming_edge in graph.edges_directed(nx, Incoming) {
                     if let Some(source) = graph.node_weight(incoming_edge.source()).unwrap().mkind.quant_idx() {
                         match incoming_edge.weight().blame_kind() {
@@ -1190,7 +1190,7 @@ mod matching_loop_graph {
             out
         } 
 
-        fn get(&self, inst: AbstractInstantiation) -> Option<&AbstractInstantiation> {
+        fn get(&self, inst: &AbstractInstantiation) -> Option<&AbstractInstantiation> {
             if let Some(idx) = self.abstract_insts_idx_map.get(&inst) {
                 self.abstract_insts.get(*idx)
             } else {
@@ -1198,7 +1198,7 @@ mod matching_loop_graph {
             }
         }
 
-        fn get_mut(&mut self, inst: AbstractInstantiation) -> Option<&mut AbstractInstantiation> {
+        fn get_mut(&mut self, inst: &AbstractInstantiation) -> Option<&mut AbstractInstantiation> {
             if let Some(idx) = self.abstract_insts_idx_map.get(&inst) {
                 self.abstract_insts.get_mut(*idx)
             } else {
@@ -1242,7 +1242,7 @@ mod matching_loop_graph {
                         use_mathematical_symbols: true,
                     };
                     let pretty_blame_term = gen_blame_term.with(&ctxt).to_string();
-                    for (_, (yield_term, _)) in inst.yield_terms {
+                    for (_, (yield_term, _)) in &inst.yield_terms {
                         let pretty_yield_term = yield_term.with(&ctxt).to_string();
                         self.add_edge(pretty_blame_term.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), inst.match_kind.clone()));
                     }
@@ -1257,13 +1257,13 @@ mod matching_loop_graph {
                     };
                     let pretty_gen_trigger = gen_trigger.with(&ctxt).to_string();
                     let pretty_blame_term = gen_blame_term.with(&ctxt).to_string();
-                    for (_, (yield_term, _)) in inst.yield_terms {
+                    for (_, (yield_term, _)) in &inst.yield_terms {
                         let pretty_yield_term = yield_term.with(&ctxt).to_string();
                         self.add_edge(pretty_gen_trigger.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), inst.match_kind.clone()));
                     }
                     // for blamed_inst in &inst.blame_term_deps {
                     for equality_dep in &inst.equality_deps {
-                        let blamed_inst = self.get(*equality_dep).unwrap();
+                        let blamed_inst = self.get(equality_dep).unwrap();
                         if let Some((yield_term, _)) = blamed_inst.yield_terms.get(inst) {
                             let pretty_yield_term = yield_term.with(&ctxt).to_string();
                             self.add_edge(pretty_blame_term.clone(), pretty_yield_term.clone(), InstOrEquality::Equality);
@@ -1275,12 +1275,12 @@ mod matching_loop_graph {
         } 
 
         fn process_inst(&mut self, new_inst: AbstractInstantiation, p: &mut Z3Parser) {
-            if let Some(inst) = self.get_mut(new_inst) {
+            if let Some(inst) = self.get_mut(&new_inst) {
                 // need to generalize with inst
                 inst.generalize(new_inst, p);
             } else {
                 let idx = self.abstract_insts.len();
-                self.abstract_insts.push(new_inst);
+                self.abstract_insts.push(new_inst.clone());
                 self.abstract_insts_idx_map.insert(new_inst, idx);
             }
         }
@@ -1291,7 +1291,7 @@ mod matching_loop_graph {
             while idx < abstract_insts.len() {
                 let (before, after) = abstract_insts.split_at_mut(idx);
                 if let Some((curr, after)) = after.split_first_mut() {
-                    for (to, (yield_term, blame_kind)) in curr.yield_terms {
+                    for (to, (yield_term, blame_kind)) in curr.yield_terms.clone() {
                         log!(format!("Processing dependency from q{} to q{}", curr, to));
                         if let Some(BlameKind::Term {..}) = blame_kind {
                             let blame_term = if *curr == to {
@@ -1304,7 +1304,7 @@ mod matching_loop_graph {
                                 }
                             };
                             let generalized_term = p.terms.generalize(yield_term, blame_term);
-                            curr.yield_terms.insert(to, (generalized_term, blame_kind.clone()));
+                            curr.yield_terms.insert(to.clone(), (generalized_term, blame_kind.clone()));
                             if *curr == to {
                                 curr.blame_term = generalized_term;
                             } else {

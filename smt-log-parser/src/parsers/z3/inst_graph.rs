@@ -987,10 +987,7 @@ impl Display for InstOrEquality {
 }
 
 mod matching_loop_graph {
-    use std::{hash::{Hash, Hasher}, collections::{HashSet, hash_map::RandomState}, rc::Rc};
-
-    use fxhash::FxHasher;
-    use serde::{Serialize, Deserialize};
+    use std::{hash::{Hash, Hasher}, collections::HashSet};
 
     use super::*;
 
@@ -1008,12 +1005,11 @@ mod matching_loop_graph {
     struct AbstractInstantiation {
         pub quant: QuantIdx,
         pub blame_term: TermIdx,
-        // pub yield_terms: FxHashMap<QuantIdx, (TermIdx, Option<BlameKind>)>,
-        pub yield_terms: HashMap<AbstractInstantiation, (TermIdx, Option<BlameKind>)>,
+        pub yield_terms: FxHashMap<AbstractInstantiation, (TermIdx, Option<BlameKind>)>,
         pub pattern: TermIdx,
         pub match_kind: MatchKind,
-        pub blame_term_deps: HashSet<AbstractInstantiation>,
-        pub equality_deps: HashSet<AbstractInstantiation>,
+        pub blame_term_deps: FxHashSet<AbstractInstantiation>,
+        pub equality_deps: FxHashSet<AbstractInstantiation>,
     }
 
     impl Hash for AbstractInstantiation {
@@ -1029,8 +1025,7 @@ mod matching_loop_graph {
         }
     }
 
-    impl std::cmp::Eq for AbstractInstantiation {
-    }
+    impl std::cmp::Eq for AbstractInstantiation {}
 
     impl std::fmt::Display for AbstractInstantiation {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1049,12 +1044,8 @@ mod matching_loop_graph {
                     self.yield_terms.insert(quant, (other_yield_term, blame_kind));
                 }
             } 
-            // self.blame_term_deps.append(&mut other.blame_term_deps.clone());
-            // let my_union = self.blame_term_deps.union(&other.blame_term_deps).collect::<HashSet<AbstractInstantiation>>();
-            self.blame_term_deps.union(&other.blame_term_deps);
-            // self.blame_term_deps.dedup();
-            self.equality_deps.union(&other.equality_deps);
-            // self.equality_deps.dedup();
+            self.blame_term_deps = self.blame_term_deps.union(&other.blame_term_deps).cloned().collect();
+            self.equality_deps = self.equality_deps.union(&other.equality_deps).cloned().collect();
         }
 
         fn from(quant: QuantIdx, pattern: TermIdx) -> Self {
@@ -1105,8 +1096,7 @@ mod matching_loop_graph {
             let match_ = &p.insts[inst.match_];
             // TODO: make sure this also handles the case where there is no pattern
             let pattern = match_.kind.pattern().unwrap(); 
-            // TODO: handle the case where we have a multi-trigger (see e.g., sequences-18.log and thesis_journal_docx)
-            // TODO: make sure this also works if we have more than a single blame term
+            // TODO: handle the case where we have a multi-trigger (see e.g., sequences-18.log and linked-list-predicates-with-wands.log)
             *p[pattern].child_ids.first().unwrap()
         }
 
@@ -1126,7 +1116,7 @@ mod matching_loop_graph {
                 // TODO: make sure this also works if we have more than a single blame term
                 let blame_term = match_.due_to_terms().next().unwrap();
                 let blame_term_idx = p[blame_term].owner;
-                let mut yield_terms = HashMap::new(); 
+                let mut yield_terms = HashMap::default(); 
                 for outgoing_edge in graph.edges_directed(nx, Outgoing) {
                     let to_nx = outgoing_edge.target();
                     if let Some(to_quant) = graph.node_weight(to_nx).unwrap().mkind.quant_idx() {
@@ -1150,8 +1140,8 @@ mod matching_loop_graph {
                         }
                     }
                 }
-                let mut blame_term_deps = HashSet::new();
-                let mut equality_deps = HashSet::new();
+                let mut blame_term_deps = HashSet::default();
+                let mut equality_deps = HashSet::default();
                 for incoming_edge in graph.edges_directed(nx, Incoming) {
                     if let Some(source) = graph.node_weight(incoming_edge.source()).unwrap().mkind.quant_idx() {
                         match incoming_edge.weight().blame_kind() {

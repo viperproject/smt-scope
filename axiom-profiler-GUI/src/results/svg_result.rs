@@ -424,7 +424,7 @@ impl Component for SVGResult {
                     html! {
                         <button onclick={ctx.link().callback(|_| Msg::SearchMatchingLoops)}>{"Search matching loops"}</button>
                     }
-                } else {
+                } else if self.matching_loop_count > 0 {
                     html! {
                         <>
                         <Indexer 
@@ -434,6 +434,10 @@ impl Component for SVGResult {
                         />
                         <button onclick={ctx.link().callback(|_| Msg::ShowMatchingLoopSubgraph)}>{"Show all matching loops"}</button>
                         </>
+                    }
+                } else {
+                    html! {
+                        <p>{"No matching loops have been found."}</p>
                     }
                 }}
                 <ContextProvider<Vec<InstInfo>> context={self.selected_insts.clone()}>

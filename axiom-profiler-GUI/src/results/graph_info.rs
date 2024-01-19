@@ -312,12 +312,12 @@ fn selected_nodes_info(
                 <ul>
                     <li><h4>{"Instantiation number: "}</h4><p>{format!("{}", selected_inst.inst_idx)}</p></li>
                     <li><h4>{"Cost: "}</h4><p>{"Calculated "}{selected_inst.cost}{z3_gen}</p></li>
-                    <li><h4>{"Instantiated formula: "}</h4><p>{&selected_inst.formula}</p></li>
+                    <li><h4>{"Instantiated formula: "}</h4><p style="overflow: auto;">{&selected_inst.formula}</p></li>
                     <li>{get_ul("Blamed terms: ", &selected_inst.blamed_terms)}</li>
                     <li>{get_ul("Bound terms: ", &selected_inst.bound_terms)}</li>
                     <li>{get_ul("Yield terms: ", &selected_inst.yields_terms)}</li>
                     <li>{get_ul("Equality explanations: ", &selected_inst.equality_expls)}</li>
-                    <li><h4>{"Resulting term: "}</h4><p>{if let Some(ref val) = selected_inst.resulting_term {val.to_string()} else { String::new() }}</p></li>
+                    <li><h4>{"Resulting term: "}</h4><p style="overflow: auto;">{if let Some(ref val) = selected_inst.resulting_term {val.to_string()} else { String::new() }}</p></li>
                 </ul>
             </details>
         }})
@@ -353,12 +353,12 @@ fn selected_edges_info(
                 {match selected_edge.edge_data {
                     BlameKind::Term { .. } => html! {
                         <div>
-                        <h4>{"Blame term: "}</h4><p>{selected_edge.blame_term.clone()}</p>
+                        <h4>{"Blame term: "}</h4><p style="overflow: auto;">{selected_edge.blame_term.clone()}</p>
                         </div>
                     },
                     BlameKind::Equality { .. } => html! {
                         <div>
-                        <h4>{"Equality: "}</h4><p>{selected_edge.blame_term.clone()}</p>
+                        <h4>{"Equality: "}</h4><p style="overflow: auto;">{selected_edge.blame_term.clone()}</p>
                         </div>
                     },
                     _ => html! {}

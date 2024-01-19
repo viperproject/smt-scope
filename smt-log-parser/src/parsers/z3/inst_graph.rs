@@ -531,6 +531,22 @@ impl InstGraph {
         nr_matching_loop_end_nodes
     }
 
+    pub fn analyze_matching_loop_with_endnode(&mut self, endnode: NodeIndex, p: &mut Z3Parser) -> Graph<String, InstOrEquality> {
+        if let Some(idx) = self.matching_loop_end_nodes.iter().position(|&nx| {
+            if let Some(node) = self.matching_loop_subgraph.node_weight(nx) {
+                endnode == node.orig_graph_idx
+            } else {
+                false
+            }
+        }) {
+            log!(format!("Analyzing matching loop with endnode {}", endnode.index()));
+            self.show_nth_matching_loop(idx, p)
+        } else {
+            log!(format!("Not analyzing matching loop with endnode {}", endnode.index()));
+            Graph::new()
+        }
+    }
+
     pub fn show_nth_matching_loop(&mut self, n: usize, p: &mut Z3Parser) -> Graph<String, InstOrEquality> {
         self.reset_visibility_to(false);
         // relies on the fact that we have previously sorted self.matching_loop_end_nodes by max_depth in descending order in 

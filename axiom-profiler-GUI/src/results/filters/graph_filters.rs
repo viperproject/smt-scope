@@ -24,6 +24,7 @@ pub enum Filter {
     ShowLongestPath(NodeIndex),
     SelectNthMatchingLoop(usize),
     ShowMatchingLoopSubgraph,
+    AnalyzeMatchingLoopWithEndNode(NodeIndex),
 }
 
 impl Display for Filter {
@@ -75,6 +76,7 @@ impl Display for Filter {
             Self::ShowMatchingLoopSubgraph => {
                 write!(f, "Showing all potential matching loops")
             }
+            Self::AnalyzeMatchingLoopWithEndNode(node) => write!(f, "Analyzing potential matching loop with end-node {}", node.index()),
         }
     }
 }
@@ -102,6 +104,7 @@ impl Filter {
             Filter::ShowLongestPath(nidx) => return FilterOutput::LongestPath(graph.show_longest_path_through(nidx)),
             Filter::SelectNthMatchingLoop(n) => return FilterOutput::MatchingLoopGraph(graph.show_nth_matching_loop(n, parser)),
             Filter::ShowMatchingLoopSubgraph => graph.show_matching_loop_subgraph(),
+            Filter::AnalyzeMatchingLoopWithEndNode(endnode) => return FilterOutput::MatchingLoopGraph(graph.analyze_matching_loop_with_endnode(endnode, parser)),
         }
         FilterOutput::None
     }

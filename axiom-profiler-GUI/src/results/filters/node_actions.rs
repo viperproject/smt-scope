@@ -47,6 +47,9 @@ pub fn node_actions(props: &NodeActionsProps) -> Html {
     let show_longest_path = callback_from(Box::new(|inst: &InstInfo| {
         Filter::ShowLongestPath(inst.node_index)
     }));
+    let analyze_matching_loop_with_endnode = callback_from(Box::new(|inst: &InstInfo| {
+        Filter::AnalyzeMatchingLoopWithEndNode(inst.node_index)
+    }));
     html! {
     <>
         <h4>{"You have selected some nodes. Here are possible actions (applied to all selected nodes):"}</h4>
@@ -70,6 +73,9 @@ pub fn node_actions(props: &NodeActionsProps) -> Html {
         </div>
         <div>
             <button onclick={show_longest_path}>{"Show longest path through last selected node"}</button>
+        </div>
+        <div>
+            <button onclick={analyze_matching_loop_with_endnode}>{"Analyze matching loop with endnode being the last selected node"}</button>
         </div>
     </>
     }

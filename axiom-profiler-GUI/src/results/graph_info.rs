@@ -313,6 +313,7 @@ fn selected_nodes_info(
                     <li><h4>{"Instantiation number: "}</h4><p>{format!("{}", selected_inst.inst_idx)}</p></li>
                     <li><h4>{"Cost: "}</h4><p>{"Calculated "}{selected_inst.cost}{z3_gen}</p></li>
                     <li><h4>{"Instantiated formula: "}</h4><p style="overflow: auto;">{&selected_inst.formula}</p></li>
+                    <li><h4>{"Quantifier: "}</h4><p style="overflow: auto;">{if let Some(ref quant) = selected_inst.quant {format!("q{}", quant)} else { String::new() }}</p></li>
                     <li>{get_ul("Blamed terms: ", &selected_inst.blamed_terms)}</li>
                     <li>{get_ul("Bound terms: ", &selected_inst.bound_terms)}</li>
                     <li>{get_ul("Yield terms: ", &selected_inst.yields_terms)}</li>

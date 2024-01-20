@@ -133,6 +133,7 @@ pub struct InstInfo {
     pub equality_expls: Vec<String>,
     pub dep_instantiations: Vec<NodeIndex>,
     pub node_index: NodeIndex,
+    pub quant: Option<QuantIdx>,
 }
 
 impl PartialEq for InstInfo {
@@ -939,6 +940,7 @@ impl NodeInfoMap {
                 .collect(),
             dep_instantiations: Vec::new(),
             node_index: NodeIndex::new(node_index),
+            quant: match_.kind.quant_idx(), 
         };
         inst_info
     }

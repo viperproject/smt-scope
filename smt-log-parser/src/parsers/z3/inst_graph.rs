@@ -567,10 +567,13 @@ impl InstGraph {
         // search_matching_loops
         let end_node_of_nth_matching_loop = self.matching_loop_end_nodes.get(n);
         if let Some(&node) = end_node_of_nth_matching_loop {
-            let mut dfs = Dfs::new(petgraph::visit::Reversed(&self.matching_loop_subgraph), node);
-            while let Some(nx) = dfs.next(petgraph::visit::Reversed(&self.matching_loop_subgraph)) {
-                let orig_index = self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx;
-                self.orig_graph[orig_index].visible = true;
+            // let mut dfs = Dfs::new(petgraph::visit::Reversed(&self.matching_loop_subgraph), node);
+            let mut dfs = Dfs::new(petgraph::visit::Reversed(&self.orig_graph), self.matching_loop_subgraph.node_weight(node).unwrap().orig_graph_idx);
+            // while let Some(nx) = dfs.next(petgraph::visit::Reversed(&self.matching_loop_subgraph)) {
+            while let Some(nx) = dfs.next(petgraph::visit::Reversed(&self.orig_graph)) {
+                // let orig_index = self.matching_loop_subgraph.node_weight(nx).unwrap().orig_graph_idx;
+                // self.orig_graph[orig_index].visible = true;
+                self.orig_graph[nx].visible = true;
             }
             if let Some(graph) = &self.matching_loop_graphs[n] {
                 // check if we have already computed the matching loop graph for the n-th matching loop
@@ -596,9 +599,13 @@ impl InstGraph {
 
     pub fn show_matching_loop_subgraph(&mut self) {
         self.reset_visibility_to(false);
-        for node in self.matching_loop_subgraph.node_weights() {
-            self.orig_graph[node.orig_graph_idx].visible = true;
+        for node in &self.matching_loop_end_nodes.clone() {
+            let orig_idx = self.matching_loop_subgraph[*node].orig_graph_idx;
+            self.visit_ancestors(orig_idx, true);
         }
+        // for node in self.matching_loop_subgraph.node_weights() {
+        //     self.orig_graph[node.orig_graph_idx].visible = true;
+        // }
     }
 
     fn compute_longest_distances_from_roots(graph: &mut Graph<NodeData, EdgeType>) {

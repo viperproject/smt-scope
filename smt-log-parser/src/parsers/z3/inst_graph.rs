@@ -547,6 +547,19 @@ impl InstGraph {
         }
     }
 
+    pub fn show_matching_loop_graph_of_visible_graph(&self, p: &mut Z3Parser) -> Graph<String, InstOrEquality> {
+        let potential_matching_loop = self.orig_graph.filter_map(
+            |_, node| Some(node).filter(|node| node.visible).cloned(),
+            |orig_graph_idx, edge_data| {
+                Some(EdgeType::Direct {
+                    kind: edge_data.clone(),
+                    orig_graph_idx,
+                })
+            },
+        );
+        MatchingLoopGraph::from_graph(&potential_matching_loop, &self.orig_graph, p)
+    }
+
     pub fn show_nth_matching_loop(&mut self, n: usize, p: &mut Z3Parser) -> Graph<String, InstOrEquality> {
         self.reset_visibility_to(false);
         // relies on the fact that we have previously sorted self.matching_loop_end_nodes by max_depth in descending order in 

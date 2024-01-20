@@ -25,6 +25,7 @@ pub enum Filter {
     SelectNthMatchingLoop(usize),
     ShowMatchingLoopSubgraph,
     AnalyzeMatchingLoopWithEndNode(NodeIndex),
+    ShowMatchingLoopGraph,
 }
 
 impl Display for Filter {
@@ -77,6 +78,7 @@ impl Display for Filter {
                 write!(f, "Showing all potential matching loops")
             }
             Self::AnalyzeMatchingLoopWithEndNode(node) => write!(f, "Analyzing potential matching loop with end-node {}", node.index()),
+            Self::ShowMatchingLoopGraph => write!(f, "Showing matching loop graph of currently visible graph"),
         }
     }
 }
@@ -105,6 +107,7 @@ impl Filter {
             Filter::SelectNthMatchingLoop(n) => return FilterOutput::MatchingLoopGraph(graph.show_nth_matching_loop(n, parser)),
             Filter::ShowMatchingLoopSubgraph => graph.show_matching_loop_subgraph(),
             Filter::AnalyzeMatchingLoopWithEndNode(endnode) => return FilterOutput::MatchingLoopGraph(graph.analyze_matching_loop_with_endnode(endnode, parser)),
+            Filter::ShowMatchingLoopGraph => return FilterOutput::MatchingLoopGraph(graph.show_matching_loop_graph_of_visible_graph(parser)),
         }
         FilterOutput::None
     }
@@ -201,6 +204,10 @@ impl Component for GraphFilters {
             let max_depth = self.max_depth;
             Callback::from(move |_| callback.emit(vec![Filter::MaxDepth(max_depth)]))
         };
+        let matching_loop_graph = {
+            let callback = ctx.props().add_filters.clone();
+            Callback::from(move |_| callback.emit(vec![Filter::ShowMatchingLoopGraph]))
+        };
         html! {
             <div>
                 <h2>{"Add (optional) filters:"}</h2>
@@ -239,6 +246,10 @@ impl Component for GraphFilters {
                         set_value={ctx.link().callback(Msg::SetMaxDepth)}
                     />
                     <button onclick={add_max_depth_filter}>{"Add"}</button>
+                </div>
+                <div>
+                    <label for="matching_loop_graph">{"Generate matching loop graph"}</label>
+                    <button onclick={matching_loop_graph} id="matching_loop_graph">{"Add"}</button>
                 </div>
                 {if !self.selected_insts.is_empty() {
                     html! {

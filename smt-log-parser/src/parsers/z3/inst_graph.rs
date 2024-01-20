@@ -1126,9 +1126,10 @@ mod matching_loop_graph {
             let inst = &p.insts[inst_idx];
             let match_ = &p.insts[inst.match_];
             // TODO: make sure this also handles the case where there is no pattern
-            let pattern = match_.kind.pattern().unwrap(); 
+            // let pattern = match_.kind.pattern().unwrap(); 
+            match_.kind.pattern().unwrap()
             // TODO: handle the case where we have a multi-trigger (see e.g., sequences-18.log and linked-list-predicates-with-wands.log)
-            *p[pattern].child_ids.first().unwrap()
+            // *p[pattern].child_ids.first().unwrap()
         }
 
         pub fn from_graph(graph: &Graph<NodeData, EdgeType>, orig_graph: &Graph<NodeData, BlameKind>, p: &mut Z3Parser) -> Graph<String, InstOrEquality> {
@@ -1142,7 +1143,7 @@ mod matching_loop_graph {
                 // TODO: make sure this also handles the case where there is no pattern
                 let pattern = match_.kind.pattern().unwrap(); 
                 // TODO: handle the case where we have a multi-trigger (see e.g., sequences-18.log and thesis_journal_docx)
-                let pattern = *p[pattern].child_ids.first().unwrap();
+                // let pattern = *p[pattern].child_ids.first().unwrap();
                 // let gen_pattern = p.terms.generalize_pattern(inner_pattern);
                 // TODO: make sure this also works if we have more than a single blame term
                 // let blame_term = match_.due_to_terms().next().unwrap();

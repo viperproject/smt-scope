@@ -1031,6 +1031,7 @@ mod matching_loop_graph {
         pub match_kind: MatchKind,
         pub blame_term_deps: FxHashSet<AbstractInstantiation>,
         pub equality_deps: FxHashSet<AbstractInstantiation>,
+        pub always_needs_equalities: bool,
     }
 
     impl Hash for AbstractInstantiation {
@@ -1075,6 +1076,7 @@ mod matching_loop_graph {
             } 
             self.blame_term_deps = self.blame_term_deps.union(&other.blame_term_deps).cloned().collect();
             self.equality_deps = self.equality_deps.union(&other.equality_deps).cloned().collect();
+            self.always_needs_equalities = self.always_needs_equalities && other.always_needs_equalities;
         }
 
         fn from(quant: QuantIdx, pattern: TermIdx) -> Self {
@@ -1087,6 +1089,7 @@ mod matching_loop_graph {
                 match_kind: MatchKind::Quantifier { quant: QuantIdx::from(0), pattern: TermIdx::from(0), bound_terms: vec![] },
                 blame_term_deps: HashSet::default(),
                 equality_deps: HashSet::default(),
+                always_needs_equalities: false,
             }
         }
 
@@ -1108,7 +1111,7 @@ mod matching_loop_graph {
                 .map(|(to_quant, (yield_term, _))| format!("{} to q{}", yield_term.with(&ctxt), to_quant))
                 .collect::<Vec<String>>()
                 .join(", ");
-            format!("Quantifier q{} with pattern {} has blame terms {} and yield terms {}", self.quant, pretty_pattern, pretty_blame_terms, pretty_yield_terms)
+            format!("Quantifier q{} with pattern {} has blame terms {} and yield terms {}. always_needs_equalities: {}", self.quant, pretty_pattern, pretty_blame_terms, pretty_yield_terms, self.always_needs_equalities)
         }
     }
 
@@ -1162,6 +1165,7 @@ mod matching_loop_graph {
                 let mut blame_terms = HashMap::default();
                 let mut blame_term_deps = HashSet::default();
                 let mut equality_deps = HashSet::default();
+                let mut always_needs_equalities = true;
                 for incoming_edge in graph.edges_directed(nx, Incoming) {
                     let from_nx = incoming_edge.source();
                     if let Some(from_quant) = graph.node_weight(from_nx).unwrap().mkind.quant_idx() {
@@ -1183,6 +1187,13 @@ mod matching_loop_graph {
                         }
                     }
                 }
+                // if there is some inst which does not depend on any equalities, it does not always need equalities 
+                let incoming_edges = graph.edges_directed(nx, Incoming);
+                if incoming_edges.count() > 0 {
+                    always_needs_equalities = graph.edges_directed(nx, Incoming)
+                        .any(|e| if let Some(BlameKind::Equality { .. }) = e.weight().blame_kind() { true } else { false }); 
+                }
+
                 let abstract_inst = AbstractInstantiation {
                     quant,
                     // init_blame_terms,
@@ -1192,6 +1203,7 @@ mod matching_loop_graph {
                     match_kind: match_.kind.clone(),
                     blame_term_deps,
                     equality_deps,
+                    always_needs_equalities,
                 };
                 matching_loop_graph.process_inst(abstract_inst, p);
             }
@@ -1250,7 +1262,8 @@ mod matching_loop_graph {
                 let gen_trigger = inst.pattern;
                 // let gen_blame_term = inst.blame_term; 
                 let quant = inst.quant;
-                if inst.equality_deps.len() == 0 {
+                if !inst.always_needs_equalities {
+                // if inst.equality_deps.len() == 0 {
                     // inst does not rely on any equalities and hence the blamed term is an instance of the trigger
                     let ctxt = DisplayCtxt {
                         parser: p,
@@ -1258,14 +1271,18 @@ mod matching_loop_graph {
                         display_quantifier_name: false,
                         use_mathematical_symbols: true,
                     };
-                    for (_, (blame_term, _)) in &inst.blame_terms {
-                        let pretty_blame_term = blame_term.with(&ctxt).to_string();
-                        for (_, (yield_term, _)) in &inst.yield_terms {
-                            let pretty_yield_term = yield_term.with(&ctxt).to_string();
-                            self.add_edge(pretty_blame_term.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), inst.match_kind.clone()));
+                    for (_, (blame_term, blame_kind)) in &inst.blame_terms {
+                        if let Some(BlameKind::Term {..}) = blame_kind {
+                            let pretty_blame_term = blame_term.with(&ctxt).to_string();
+                            for (_, (yield_term, _)) in &inst.yield_terms {
+                                    let pretty_yield_term = yield_term.with(&ctxt).to_string();
+                                    self.add_edge(pretty_blame_term.clone(), pretty_yield_term, InstOrEquality::Inst(format!("q{}", quant), inst.match_kind.clone()));
+                            }
                         }
                     }
-                } else {
+                } 
+                if inst.equality_deps.len() > 0 {
+                // else {
                     // here there are some equalities that this instantiation relies on and hence we indicate this to 
                     // the user by adding equality edges
                     let ctxt = DisplayCtxt {

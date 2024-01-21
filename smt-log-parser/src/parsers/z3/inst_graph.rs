@@ -482,7 +482,6 @@ impl InstGraph {
             .node_weights()
             .flat_map(|node| node.mkind.quant_idx())
             .collect();
-        let mut matching_loop_nodes_per_quant: Vec<FxHashSet<NodeIndex>> = Vec::new();
         log!(format!("Start processing quants"));
         for quant in quants {
             // log!(format!("Processing quant {}", quant));
@@ -494,15 +493,20 @@ impl InstGraph {
                     .unwrap_or_default()
             });
             self.retain_visible_nodes_and_reconnect();
-            let matching_loops = Self::find_longest_paths(&mut self.visible_graph);
-            matching_loop_nodes_per_quant.push(matching_loops);
+            let end_nodes = Self::find_end_nodes_of_longest_paths(&mut self.visible_graph);
+            self.matching_loop_end_nodes.extend(end_nodes);
         }
         log!(format!("Done processing quants"));
+        // self.reset_visibility_to(false);
+        // for matching_loop in matching_loop_nodes_per_quant {
+        //     for node in matching_loop {
+        //         self.orig_graph[node].visible = true;
+        //     }
+        // }
+        // self.matching_loop_end_nodes = matching_loop_end_nodes.iter().cloned().collect();
         self.reset_visibility_to(false);
-        for matching_loop in matching_loop_nodes_per_quant {
-            for node in matching_loop {
-                self.orig_graph[node].visible = true;
-            }
+        for node in self.matching_loop_end_nodes.clone() {
+                self.visit_ancestors(node, true);
         }
         self.retain_visible_nodes_and_reconnect();
         self.matching_loop_subgraph = self.visible_graph.clone();
@@ -600,8 +604,8 @@ impl InstGraph {
     pub fn show_matching_loop_subgraph(&mut self) {
         self.reset_visibility_to(false);
         for node in &self.matching_loop_end_nodes.clone() {
-            let orig_idx = self.matching_loop_subgraph[*node].orig_graph_idx;
-            self.visit_ancestors(orig_idx, true);
+            let node = self.matching_loop_subgraph[*node].orig_graph_idx;
+            self.visit_ancestors(node, true);
         }
         // for node in self.matching_loop_subgraph.node_weights() {
         //     self.orig_graph[node.orig_graph_idx].visible = true;
@@ -623,7 +627,7 @@ impl InstGraph {
         }
     }
 
-    fn find_longest_paths(graph: &mut Graph<NodeData, EdgeType>) -> FxHashSet<NodeIndex> {
+    fn find_end_nodes_of_longest_paths(graph: &mut Graph<NodeData, EdgeType>) -> Vec<NodeIndex> {
         // traverse this subtree in topological order to compute longest distances from root nodes
         Self::compute_longest_distances_from_roots(graph);
         let furthest_away_end_nodes = graph
@@ -632,25 +636,27 @@ impl InstGraph {
             .filter(|nx| graph.neighbors_directed(*nx, Outgoing).count() == 0)
             // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
             .filter(|nx| graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1) 
+            .map(|nx| graph[nx].orig_graph_idx)
             .collect();
         // backtrack longest paths from furthest away nodes in subgraph until we reach a root
-        let mut matching_loop_nodes: FxHashSet<NodeIndex> = FxHashSet::default();
-        let mut visitor: Vec<NodeIndex> = furthest_away_end_nodes;
-        let mut visited: FxHashSet<_> = FxHashSet::default();
-        while let Some(curr) = visitor.pop() {
-            matching_loop_nodes.insert(graph.node_weight(curr).unwrap().orig_graph_idx);
-            let curr_distance = graph.node_weight(curr).unwrap().max_depth;
-            let preds = graph.neighbors_directed(curr, Incoming).filter(|pred| {
-                let pred_distance = graph.node_weight(*pred).unwrap().max_depth;
-                pred_distance == curr_distance - 1
-            });
-            for pred in preds {
-                if visited.insert(pred) {
-                    visitor.push(pred);
-                }
-            }
-        }
-        matching_loop_nodes
+        // let mut matching_loop_nodes: FxHashSet<NodeIndex> = FxHashSet::default();
+        // let mut visitor: Vec<NodeIndex> = furthest_away_end_nodes;
+        // let mut visited: FxHashSet<_> = FxHashSet::default();
+        // while let Some(curr) = visitor.pop() {
+        //     matching_loop_nodes.insert(graph.node_weight(curr).unwrap().orig_graph_idx);
+        //     let curr_distance = graph.node_weight(curr).unwrap().max_depth;
+        //     let preds = graph.neighbors_directed(curr, Incoming).filter(|pred| {
+        //         let pred_distance = graph.node_weight(*pred).unwrap().max_depth;
+        //         pred_distance == curr_distance - 1
+        //     });
+        //     for pred in preds {
+        //         if visited.insert(pred) {
+        //             visitor.push(pred);
+        //         }
+        //     }
+        // }
+        // matching_loop_nodes
+        furthest_away_end_nodes
     }
 
     pub fn reset_visibility_to(&mut self, visibility: bool) {

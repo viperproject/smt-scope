@@ -1142,6 +1142,12 @@ mod matching_loop_graph {
         }
 
         pub fn from_graph(graph: &Graph<NodeData, EdgeType>, orig_graph: &Graph<NodeData, BlameKind>, p: &mut Z3Parser) -> Graph<String, InstOrEquality> {
+            let graph = graph.filter_map(
+            |_, data| match data.mkind {
+                MatchKind::Quantifier { .. } => Some(data.clone()),
+                _ => None,
+            }, 
+            |_, data| Some(data.clone()));
             let mut matching_loop_graph = Self::default();
             for nx in graph.node_indices() {
                 let quant = graph.node_weight(nx).unwrap().mkind.quant_idx().unwrap(); 
@@ -1158,7 +1164,7 @@ mod matching_loop_graph {
                         if let Some(yield_term) = outgoing_edge.weight().blame_term_idx() {
                             let yield_term_idx = p[yield_term].owner;
                             let blame_kind = outgoing_edge.weight().blame_kind();
-                            let to_pattern = Self::get_pattern(to_nx, graph, orig_graph, p);
+                            let to_pattern = Self::get_pattern(to_nx, &graph, orig_graph, p);
                             if let Some((old_yield_term, _)) = yield_terms.get(&AbstractInstantiation::from(to_quant, to_pattern)) {
                                 let gen_yield_term = p.terms.generalize(*old_yield_term, yield_term_idx);
                                 yield_terms.insert(AbstractInstantiation::from(to_quant, to_pattern), (gen_yield_term, blame_kind));
@@ -1178,7 +1184,7 @@ mod matching_loop_graph {
                         if let Some(blame_term) = incoming_edge.weight().blame_term_idx() {
                             let blame_term_idx = p[blame_term].owner;
                             let blame_kind = incoming_edge.weight().blame_kind();
-                            let from_pattern = Self::get_pattern(from_nx, graph, orig_graph, p);
+                            let from_pattern = Self::get_pattern(from_nx, &graph, orig_graph, p);
                             if let Some((old_blame_term, _)) = blame_terms.get(&AbstractInstantiation::from(from_quant, from_pattern)) {
                                 let gen_blame_term = p.terms.generalize(*old_blame_term, blame_term_idx);
                                 blame_terms.insert(AbstractInstantiation::from(from_quant, from_pattern), (gen_blame_term, blame_kind.clone()));

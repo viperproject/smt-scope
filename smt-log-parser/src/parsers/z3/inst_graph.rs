@@ -1256,6 +1256,7 @@ mod matching_loop_graph {
             self.cross_generalize_terms(p);
             for inst in &self.abstract_insts {
                 let gen_trigger = inst.pattern;
+                let gen_trigger = p.terms.generalize_pattern(gen_trigger); 
                 // let gen_blame_term = inst.blame_term; 
                 let quant = inst.quant;
                 if !inst.always_needs_equalities {

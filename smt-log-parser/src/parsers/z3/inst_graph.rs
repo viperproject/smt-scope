@@ -1026,7 +1026,6 @@ mod matching_loop_graph {
         pub match_kind: MatchKind,
         pub blame_term_deps: FxHashSet<AbstractInstantiation>,
         pub equality_deps: FxHashSet<AbstractInstantiation>,
-        pub always_needs_equalities: bool,
     }
 
     impl Hash for AbstractInstantiation {
@@ -1070,7 +1069,6 @@ mod matching_loop_graph {
             } 
             self.blame_term_deps = self.blame_term_deps.union(&other.blame_term_deps).cloned().collect();
             self.equality_deps = self.equality_deps.union(&other.equality_deps).cloned().collect();
-            self.always_needs_equalities = self.always_needs_equalities && other.always_needs_equalities;
         }
 
         fn from(quant: QuantIdx, pattern: TermIdx) -> Self {
@@ -1082,7 +1080,6 @@ mod matching_loop_graph {
                 match_kind: MatchKind::Quantifier { quant: QuantIdx::from(0), pattern: TermIdx::from(0), bound_terms: vec![] },
                 blame_term_deps: HashSet::default(),
                 equality_deps: HashSet::default(),
-                always_needs_equalities: false,
             }
         }
 
@@ -1104,7 +1101,7 @@ mod matching_loop_graph {
                 .map(|(to_quant, (yield_term, _))| format!("{} to q{}", yield_term.with(&ctxt), to_quant))
                 .collect::<Vec<String>>()
                 .join(", ");
-            format!("Quantifier q{} with pattern {} has blame terms {} and yield terms {}. always_needs_equalities: {}", self.quant, pretty_pattern, pretty_blame_terms, pretty_yield_terms, self.always_needs_equalities)
+            format!("Quantifier q{} with pattern {} has blame terms {} and yield terms {}.", self.quant, pretty_pattern, pretty_blame_terms, pretty_yield_terms)
         }
     }
 
@@ -1199,7 +1196,6 @@ mod matching_loop_graph {
                     match_kind: match_.kind.clone(),
                     blame_term_deps,
                     equality_deps,
-                    always_needs_equalities,
                 };
                 matching_loop_graph.process_inst(abstract_inst, p);
             }
@@ -1259,7 +1255,7 @@ mod matching_loop_graph {
                 let gen_trigger = p.terms.generalize_pattern(gen_trigger); 
                 // let gen_blame_term = inst.blame_term; 
                 let quant = inst.quant;
-                if !inst.always_needs_equalities {
+                if inst.equality_deps.len() == 0 {
                     // inst does not always rely on equalities and hence at some point the blame terms are instances of the trigger 
                     // so we can indicate this to the user by adding "direct" edges from the blame terms to the yield terms
                     let ctxt = DisplayCtxt {
@@ -1277,8 +1273,7 @@ mod matching_loop_graph {
                             }
                         }
                     }
-                } 
-                if inst.equality_deps.len() > 0 {
+                } else {
                     // here there are some equalities that this instantiation relies on 
                     // more precisely, the blame terms are not instances of the triggers and hence
                     // we need to rewrite them using equalities

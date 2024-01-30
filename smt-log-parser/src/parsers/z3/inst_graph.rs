@@ -1159,7 +1159,6 @@ mod matching_loop_graph {
                 let mut blame_terms = HashMap::default();
                 let mut blame_term_deps = HashSet::default();
                 let mut equality_deps = HashSet::default();
-                let mut always_needs_equalities = true;
                 for incoming_edge in graph.edges_directed(nx, Incoming) {
                     let from_nx = incoming_edge.source();
                     if let Some(from_quant) = graph.node_weight(from_nx).unwrap().mkind.quant_idx() {
@@ -1181,13 +1180,6 @@ mod matching_loop_graph {
                         }
                     }
                 }
-                // if there is some inst which does not depend on any equalities, it does not always need equalities 
-                let incoming_edges = graph.edges_directed(nx, Incoming);
-                if incoming_edges.count() > 0 {
-                    always_needs_equalities = graph.edges_directed(nx, Incoming)
-                        .any(|e| if let Some(BlameKind::Equality { .. }) = e.weight().blame_kind() { true } else { false }); 
-                }
-
                 let abstract_inst = AbstractInstantiation {
                     quant,
                     blame_terms,

@@ -531,10 +531,17 @@ impl QuantIdxToColourMap {
         let nz = NonZeroUsize::new(n);
         if let Some(nz) = nz {
             // according to prime number theorem, the number of primes less than or equal to N is roughly N/ln(N)
-            let nr_primes_smaller_than_n = n as f64 / f64::ln(n as f64);
+            // hence there are roughly (N/2)/ln(N/2) primes between 0 and N/2. So, to get a prime that's 
+            // "halfway" between 0 and N we can skip the first ceil((N/2)/ln(N/2)) primes
+            // let nr_primes_smaller_than_n = n as f64 / f64::ln(n as f64);
+            let nr_primes_to_skip = if n == 2 {
+                0
+            } else {
+                (n as f64 / 2.0 / f64::ln(n as f64 / 2.0)).ceil() as usize
+            };
             primal::Primes::all()
                 // Start from "middle prime" smaller than n since both the very large and very small ones don't permute so nicely.
-                .skip((nr_primes_smaller_than_n / 2.0).ceil() as usize)
+                .skip(nr_primes_to_skip)
                 // SAFETY: returned primes will never be zero.
                 .map(|p| unsafe { NonZeroUsize::new_unchecked(p) })
                 // Find the first prime that is coprime to `nz`.

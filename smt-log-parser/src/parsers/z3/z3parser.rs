@@ -227,7 +227,7 @@ impl Z3LogParser for Z3Parser {
             kind: quant_name,
             term: Some(tidx),
             instances: Vec::new(),
-            cost: 0.0,
+            // cost: 0.0,
             vars: None,
         };
         self.quantifiers.raw.try_reserve(1)?;
@@ -565,7 +565,7 @@ impl Z3Parser {
                 let blamed_inst = &mut insts[blamed];
                 blamed_inst.cost += cost;
                 if let Some(qidx) = match_.kind.quant_idx() {
-                    self.quantifiers[qidx].cost += cost;
+                    // self.quantifiers[qidx].cost += cost;
                 }
             }
         }

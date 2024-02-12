@@ -102,7 +102,7 @@ pub struct Quantifier {
     pub kind: QuantKind,
     pub num_vars: usize,
     pub term: Option<TermIdx>,
-    pub cost: f32,
+    // pub cost: f32,
     pub instances: Vec<InstIdx>,
     pub vars: Option<VarNames>,
 }

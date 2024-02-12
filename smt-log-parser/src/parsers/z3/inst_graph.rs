@@ -35,8 +35,8 @@ pub struct NodeData {
     child_count: usize,
     parent_count: usize,
     pub orig_graph_idx: NodeIndex,
-    cost_rank: usize,
-    branching_rank: usize,
+    // cost_rank: usize,
+    // branching_rank: usize,
     pub min_depth: Option<usize>,
     max_depth: usize,
     topo_ord: usize,
@@ -325,33 +325,39 @@ impl InstGraph {
             InstOrder::Branching => &self.branching_ranked_node_indices,
             InstOrder::Cost => &self.cost_ranked_node_indices,
         };
-        let visible_nodes: Vec<NodeIndex> = self
-            .orig_graph
-            .node_indices()
-            .filter(|n| self.orig_graph.node_weight(*n).unwrap().visible)
-            .collect();
-        if let Some(nth_highest_ranked_visible_node) = ranked_node_indices
-            .iter()
-            .filter(|nidx| visible_nodes.contains(nidx))
-            .take(n)
-            .last()
-        {
-            let nth_largest_rank = self
-                .orig_graph
-                .node_weight(*nth_highest_ranked_visible_node)
-                .unwrap()
-                .clone();
-            // among the visible nodes keep those whose cost-rank
-            // is larger than the cost rank of the n-th costliest
-            match order {
-                InstOrder::Branching => self.retain_nodes(|node| {
-                    node.visible && node.branching_rank <= nth_largest_rank.branching_rank
-                }),
-                InstOrder::Cost => self.retain_nodes(|node| {
-                    node.visible && node.cost_rank <= nth_largest_rank.cost_rank
-                }),
-            }
+        for nx in ranked_node_indices.iter().take(n) {
+            self.orig_graph[*nx].visible = true;
         }
+        for nx in ranked_node_indices.iter().skip(n) {
+            self.orig_graph[*nx].visible = false;
+        }
+        // let visible_nodes: Vec<NodeIndex> = self
+        //     .orig_graph
+        //     .node_indices()
+        //     .filter(|n| self.orig_graph.node_weight(*n).unwrap().visible)
+        //     .collect();
+        // if let Some(nth_highest_ranked_visible_node) = ranked_node_indices
+        //     .iter()
+        //     .filter(|nidx| visible_nodes.contains(nidx))
+        //     .take(n)
+        //     .last()
+        // {
+        //     let nth_largest_rank = self
+        //         .orig_graph
+        //         .node_weight(*nth_highest_ranked_visible_node)
+        //         .unwrap()
+        //         .clone();
+        //     // among the visible nodes keep those whose cost-rank
+        //     // is larger than the cost rank of the n-th costliest
+        //     match order {
+        //         InstOrder::Branching => self.retain_nodes(|node| {
+        //             node.visible && node.branching_rank <= nth_largest_rank.branching_rank
+        //         }),
+        //         InstOrder::Cost => self.retain_nodes(|node| {
+        //             node.visible && node.cost_rank <= nth_largest_rank.cost_rank
+        //         }),
+        //     }
+        // }
     }
 
     pub fn visit_descendants(&mut self, root: NodeIndex, retain: bool) {
@@ -715,8 +721,8 @@ impl InstGraph {
                 child_count: 0,
                 parent_count: 0,
                 orig_graph_idx: NodeIndex::default(),
-                cost_rank: 0,
-                branching_rank: 0,
+                // cost_rank: 0,
+                // branching_rank: 0,
                 min_depth: None,
                 max_depth: 0,
                 topo_ord: 0,
@@ -754,9 +760,9 @@ impl InstGraph {
             }
         };
         cost_ranked_node_indices.sort_unstable_by(cost_order);
-        for (i, nidx) in cost_ranked_node_indices.iter().enumerate() {
-            self.orig_graph.node_weight_mut(*nidx).unwrap().cost_rank = i;
-        }
+        // for (i, nidx) in cost_ranked_node_indices.iter().enumerate() {
+        //     self.orig_graph.node_weight_mut(*nidx).unwrap().cost_rank = i;
+        // }
         self.cost_ranked_node_indices = cost_ranked_node_indices;
         // precompute BFS depth such that we can filter the graph up to some specified depth
         let roots: Vec<NodeIndex> = self
@@ -798,12 +804,12 @@ impl InstGraph {
             }
         };
         branching_ranked_node_indices.sort_unstable_by(branching_order);
-        for (i, nidx) in branching_ranked_node_indices.iter().enumerate() {
-            self.orig_graph
-                .node_weight_mut(*nidx)
-                .unwrap()
-                .branching_rank = i;
-        }
+        // for (i, nidx) in branching_ranked_node_indices.iter().enumerate() {
+        //     self.orig_graph
+        //         .node_weight_mut(*nidx)
+        //         .unwrap()
+        //         .branching_rank = i;
+        // }
         self.branching_ranked_node_indices = branching_ranked_node_indices;
         // compute the longest distances from root nodes by traversing the graph in topological order
         // and taking max distance among parents + 1. Needed to compute longest paths through selected

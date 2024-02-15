@@ -534,10 +534,10 @@ impl QuantIdxToColourMap {
             // hence there are roughly (N/2)/ln(N/2) primes between 0 and N/2. So, to get a prime that's 
             // "halfway" between 0 and N we can skip the first ceil((N/2)/ln(N/2)) primes
             // let nr_primes_smaller_than_n = n as f64 / f64::ln(n as f64);
-            let nr_primes_to_skip = if n == 2 {
+            let nr_primes_to_skip = if n <= 2 {
                 0
             } else {
-                (n as f64 / 2.0 / f64::ln(n as f64 / 2.0)).ceil() as usize
+                (n as f64 / 2.0 / f64::ln(n as f64 / 2.0)).floor() as usize
             };
             primal::Primes::all()
                 // Start from "middle prime" smaller than n since both the very large and very small ones don't permute so nicely.

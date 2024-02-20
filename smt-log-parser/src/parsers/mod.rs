@@ -259,7 +259,7 @@ mod wrapper {
                     self.reader_state.lines_read += 1;
                     match self.parser.process_line(&buf, self.reader_state.lines_read) {
                         Ok(true) => None,
-                        Ok(false) =>
+                        Ok(false) => 
                             Some(ParseState::Paused(self.reader_state)),
                         Err(err) =>
                             Some(ParseState::Error(err)),

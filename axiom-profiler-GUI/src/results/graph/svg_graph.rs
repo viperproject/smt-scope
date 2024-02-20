@@ -299,6 +299,10 @@ pub fn graph(props: &GraphProps) -> Html {
             callback.emit(())
         })
     };
+    let window = web_sys::window().expect("should have a window in this context");
+    let performance = window.performance().expect("should have a performance object");
+    let start_timestamp = performance.now();
+    log::info!("Viewing SVG graph component at time {} s", start_timestamp / 1000.0);
     html! {
         <>
             // this is a "background" div

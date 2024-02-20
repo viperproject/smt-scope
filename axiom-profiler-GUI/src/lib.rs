@@ -6,7 +6,7 @@ use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{AsyncBufferRead, AsyncCursorRead, AsyncParser, LogParser};
 use wasm_bindgen::JsCast;
 use wasm_streams::ReadableStream;
-use web_sys::{Event, HtmlInputElement};
+use web_sys::{Event, HtmlInputElement, window};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -65,7 +65,13 @@ impl Component for FileDataComponent {
                             let mut parser = Z3Parser::from_async(stream.buffer());
                             wasm_bindgen_futures::spawn_local(async move {
                                 log::info!("Parsing: {file_name}");
+                                let window = window().expect("should have a window in this context");
+                                let performance = window.performance().expect("should have a performance object");
+                                let start_timestamp = performance.now();
                                 let finished = parser.process_until(|_, state| state.bytes_read <= 1024 * 1024 * 1024).await;
+                                let end_timestamp = performance.now();
+                                let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+                                log::info!("Parsing took {} seconds", elapsed_seconds);
                                 if finished.is_timeout() {
                                     // TODO: make this clear in the UI
                                     log::info!("Stopped parsing at 1GB");
@@ -104,6 +110,10 @@ impl Component for FileDataComponent {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let on_change = ctx.link().callback(move |e: Event| {
+            let window = window().expect("should have a window in this context");
+            let performance = window.performance().expect("should have a performance object");
+            let start_timestamp = performance.now();
+            log::info!("File was selected at time {} s", start_timestamp / 1000.0);
             let files = e.target_dyn_into::<HtmlInputElement>().unwrap().files();
             Msg::Files(files.map(FileList::from))
         });

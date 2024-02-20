@@ -27,7 +27,7 @@ use smt_log_parser::{
 };
 use std::num::NonZeroUsize;
 use viz_js::VizInstance;
-use web_sys::window;
+use web_sys::{window, Performance, Window};
 use yew::prelude::*;
 
 pub const EDGE_LIMIT: usize = 2000;
@@ -79,6 +79,7 @@ pub struct SVGResult {
     selected_insts: Vec<InstInfo>,
     searched_matching_loops: bool,
     matching_loop_count: usize,
+    performance: Performance, 
 }
 
 #[derive(Properties, PartialEq)]
@@ -92,7 +93,13 @@ impl Component for SVGResult {
 
     fn create(ctx: &Context<Self>) -> Self {
         let parser = RcParser::clone(&ctx.props().parser);
+        let window = window().expect("should have a window in this context");
+        let performance = window.performance().expect("should have a performance object");
+        let start_timestamp = performance.now();
         let inst_graph = InstGraph::from(&parser.borrow());
+        let end_timestamp = performance.now();
+        let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+        log::info!("Constructing the instantiation graph took {} seconds", elapsed_seconds);
         let (quant_count, non_quant_insts) = parser.borrow().quant_count_incl_theory_solving();
         let colour_map = QuantIdxToColourMap::from(quant_count, non_quant_insts);
         let get_node_info = Callback::from({
@@ -125,6 +132,7 @@ impl Component for SVGResult {
             selected_insts: Vec::new(),
             searched_matching_loops: false,
             matching_loop_count: 0,
+            performance,
         }
     }
 
@@ -132,7 +140,12 @@ impl Component for SVGResult {
         match msg {
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
-                match filter.apply(&mut self.inst_graph, &mut self.parser.borrow_mut()) {
+                let start_timestamp = self.performance.now();
+                let filter_output = filter.apply(&mut self.inst_graph, &mut self.parser.borrow_mut());
+                let end_timestamp = self.performance.now();
+                let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+                log::info!("Applying filter took {} seconds", elapsed_seconds);
+                match filter_output {
                     FilterOutput::LongestPath(path) => {
                         self.insts_info_link
                             .borrow()
@@ -196,7 +209,11 @@ impl Component for SVGResult {
                 }
             }
             Msg::SearchMatchingLoops => {
+                let start_timestamp = self.performance.now();
                 self.matching_loop_count = self.inst_graph.search_matching_loops();
+                let end_timestamp = self.performance.now();
+                let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+                log::info!("Matching loop search took {} seconds", elapsed_seconds);
                 self.searched_matching_loops = true;
                 ctx.link().send_message(Msg::SelectNthMatchingLoop(0));
                 true
@@ -222,12 +239,16 @@ impl Component for SVGResult {
                 false
             }
             Msg::RenderGraph(UserPermission { permission }) => {
+                let start_timestamp = self.performance.now();
                 let VisibleGraphInfo {
                     node_count,
                     edge_count,
                     node_count_decreased,
                     edge_count_decreased,
                 } = self.inst_graph.retain_visible_nodes_and_reconnect();
+                let end_timestamp = self.performance.now();
+                let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+                log::info!("Reconnecting algorithm took {} seconds", elapsed_seconds);
                 self.graph_dim.node_count = node_count;
                 self.graph_dim.edge_count = edge_count;
                 let safe_to_render = edge_count <= EDGE_LIMIT
@@ -251,6 +272,7 @@ impl Component for SVGResult {
                         "nslimit=6;",
                         "mclimit=0.6;",
                     ];
+                    let start_timestamp = self.performance.now();
                     let dot_output = format!(
                         "digraph {{\n{}\n{:?}\n}}",
                         settings.join("\n"),
@@ -308,14 +330,23 @@ impl Component for SVGResult {
                             },
                         )
                     );
+                    let end_timestamp = self.performance.now();
+                    let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+                    log::info!("Computing dot-String from petgraph algorithm took {} seconds", elapsed_seconds);
                     let link = ctx.link().clone();
                     wasm_bindgen_futures::spawn_local(async move {
                         let graphviz = VizInstance::new().await;
                         let options = viz_js::Options::default();
                         // options.engine = "twopi".to_string();
+                        let window = window().expect("should have a window in this context");
+                        let performance = window.performance().expect("should have a performance object");
+                        let start_timestamp = performance.now();
                         let svg = graphviz
                             .render_svg_element(dot_output, options)
                             .expect("Could not render graphviz");
+                        let end_timestamp = performance.now();
+                        let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+                        log::info!("Converting dot-String to SVG took {} seconds", elapsed_seconds);
                         let svg_text = svg.outer_html();
                         link.send_message(Msg::UpdateSvgText(
                             AttrValue::from(svg_text),

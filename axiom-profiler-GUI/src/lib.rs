@@ -138,7 +138,6 @@ impl Component for FileDataComponent {
 
 impl FileDataComponent {
     fn view_file(data: RcParser) -> Html {
-        log::debug!("Viewing file");
         html! {
             <SVGResult parser={data}/>
         }

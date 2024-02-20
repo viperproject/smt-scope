@@ -14,7 +14,6 @@ pub fn toggle_switch(props: &ToggleSwitchProps) -> Html {
     let input_ref = use_node_ref();
     let toggle = {
         let input_value = props.input_value.clone();
-        log::debug!("input_value has value: {}", *input_value);
         Callback::from(move |_| input_value.toggle())
     };
     {

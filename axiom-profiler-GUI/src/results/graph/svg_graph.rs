@@ -64,7 +64,7 @@ pub fn graph(props: &GraphProps) -> Html {
 
         use_effect_with_deps(
             move |_| {
-                web_sys::console::log_1(&"Using effect".into());
+                // web_sys::console::log_1(&"Using effect".into());
                 let div = div_ref
                     .cast::<HtmlElement>()
                     .expect("div_ref not attached to div element");
@@ -175,7 +175,6 @@ pub fn graph(props: &GraphProps) -> Html {
                             .unwrap();
                         let callback = edges_callback.clone();
                         let closure: Closure<dyn Fn(Event)> = Closure::new(move |_: Event| {
-                            log::debug!("Clicked on edge {}", edge_index);
                             let current_stroke_width = path.get_attribute("stroke-width");
                             match current_stroke_width {
                                 None => {
@@ -242,7 +241,7 @@ pub fn graph(props: &GraphProps) -> Html {
         let div_ref = div_ref.clone();
         use_effect_with_deps(
             {
-                web_sys::console::log_1(&"Using effect due to changed selected nodes".into());
+                // web_sys::console::log_1(&"Using effect due to changed selected nodes".into());
                 let selected_nodes = selected_nodes.clone();
                 move |_| {
                     let div = div_ref

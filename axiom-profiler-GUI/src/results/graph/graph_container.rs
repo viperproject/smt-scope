@@ -52,7 +52,6 @@ impl Component for GraphContainer {
                     .unwrap_throw();
                 match target.value().to_string().parse::<f32>() {
                     Ok(value) => {
-                        // log::debug!("Setting the value to {}", value);
                         Msg::SetValueTo(value)
                     }
                     Err(_) => Msg::SetValueTo(1.0),

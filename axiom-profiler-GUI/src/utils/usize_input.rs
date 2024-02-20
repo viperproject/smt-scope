@@ -21,7 +21,6 @@ pub fn integer_input(props: &UsizeInputProps) -> Html {
                 .dyn_into()
                 .unwrap_throw();
             if let Ok(value) = target.value().to_string().parse::<usize>() {
-                log::debug!("Setting the value to {}", value);
                 set_value.emit(value);
             }
         }

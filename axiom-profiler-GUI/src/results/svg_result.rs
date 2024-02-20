@@ -91,7 +91,6 @@ impl Component for SVGResult {
     type Properties = SVGProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        log::debug!("Creating SVGResult component");
         let parser = RcParser::clone(&ctx.props().parser);
         let inst_graph = InstGraph::from(&parser.borrow());
         let (quant_count, non_quant_insts) = parser.borrow().quant_count_incl_theory_solving();
@@ -133,7 +132,6 @@ impl Component for SVGResult {
         match msg {
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
-                log::debug!("Applying filter {}", filter);
                 match filter.apply(&mut self.inst_graph, &mut self.parser.borrow_mut()) {
                     FilterOutput::LongestPath(path) => {
                         self.insts_info_link
@@ -181,7 +179,6 @@ impl Component for SVGResult {
                                 },
                             )
                         );
-                        log::debug!("Finished building dot output");
                         let link = self.insts_info_link.borrow().clone().unwrap();
                         wasm_bindgen_futures::spawn_local(async move {
                             let graphviz = VizInstance::new().await;
@@ -221,7 +218,6 @@ impl Component for SVGResult {
                 false
             }
             Msg::ResetGraph => {
-                log::debug!("Resetting graph");
                 self.inst_graph.reset_visibility_to(true);
                 false
             }
@@ -232,7 +228,6 @@ impl Component for SVGResult {
                     node_count_decreased,
                     edge_count_decreased,
                 } = self.inst_graph.retain_visible_nodes_and_reconnect();
-                log::debug!("The current node count is {}", node_count);
                 self.graph_dim.node_count = node_count;
                 self.graph_dim.edge_count = edge_count;
                 let safe_to_render = edge_count <= EDGE_LIMIT
@@ -241,7 +236,6 @@ impl Component for SVGResult {
                     || node_count_decreased;
                 if safe_to_render || permission {
                     self.async_graph_and_filter_chain = false;
-                    log::debug!("Rendering graph");
                     let filtered_graph = &self.inst_graph.visible_graph;
 
                     // Performance observations (default value is in [])
@@ -314,7 +308,6 @@ impl Component for SVGResult {
                             },
                         )
                     );
-                    log::debug!("Finished building dot output");
                     let link = ctx.link().clone();
                     wasm_bindgen_futures::spawn_local(async move {
                         let graphviz = VizInstance::new().await;
@@ -337,7 +330,6 @@ impl Component for SVGResult {
                 }
             }
             Msg::GetUserPermission => {
-                log::debug!("Getting user permission");
                 let window = window().unwrap();
                 let node_count = self.graph_dim.node_count.to_formatted_string(&Locale::en);
                 let edge_count = self.graph_dim.edge_count.to_formatted_string(&Locale::en);
@@ -346,13 +338,11 @@ impl Component for SVGResult {
                 match result {
                     Ok(true) => {
                         // if the user wishes to render the current graph, we do so
-                        log::debug!("Got user permission");
                         ctx.link()
                             .send_message(Msg::RenderGraph(UserPermission::from(true)));
                         false
                     }
                     Ok(false) => {
-                        log::debug!("Didn't get user permission");
                         // this resets the filter chain to the filter chain that we had
                         // right before adding the filter that caused too many nodes
                         // to be added to the graph
@@ -381,7 +371,6 @@ impl Component for SVGResult {
                 }
             }
             Msg::UpdateSvgText(svg_text, node_count_decreased) => {
-                log::debug!("Updating svg text");
                 if svg_text != self.svg_text {
                     self.svg_text = svg_text;
                     // only if some nodes were deleted, do we deselect all previously selected nodes

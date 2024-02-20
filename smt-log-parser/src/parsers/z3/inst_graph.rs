@@ -826,7 +826,8 @@ impl InstGraph {
         // efficiently compute transitive closure with a vector of FixedBitSet's
         let mut topo = Topo::new(petgraph::visit::Reversed(&self.orig_graph));
         // assign topological orders to each node
-        let mut topo_ord = self.orig_graph.node_count() - 1;
+        // let mut topo_ord = self.orig_graph.node_count() - 1;
+        let mut topo_ord = self.orig_graph.node_count().saturating_sub(1);
         while let Some(nx) = topo.next(petgraph::visit::Reversed(&self.orig_graph)) {
             self.orig_graph[nx].topo_ord = topo_ord;
             topo_ord = topo_ord.saturating_sub(1);
@@ -835,7 +836,8 @@ impl InstGraph {
         // note that we are storing the bitsets's of each node index in topological order!
         let mut topo = Topo::new(petgraph::visit::Reversed(&self.orig_graph));
         let mut bitsets = self.tr_closure.as_mut_slice();
-        let mut ord = self.orig_graph.node_count() - 1;
+        // let mut ord = self.orig_graph.node_count() - 1;
+        let mut ord = self.orig_graph.node_count().saturating_sub(1);
         while let Some((last, others)) = bitsets.split_last_mut() {
             if let Some(nx) = topo.next(petgraph::visit::Reversed(&self.orig_graph)) {
                 last.insert(nx.index() as u32);
@@ -848,7 +850,6 @@ impl InstGraph {
             bitsets = others;
             ord = ord.saturating_sub(1);
         }
-        log!("Finished computing transitive closure");
         self.visible_graph = self.orig_graph.map(
             |_, n| n.clone(),
             |orig_graph_idx, e| EdgeType::Direct {

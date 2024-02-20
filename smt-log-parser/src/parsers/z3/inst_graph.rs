@@ -488,7 +488,6 @@ impl InstGraph {
             .node_weights()
             .flat_map(|node| node.mkind.quant_idx())
             .collect();
-        log!(format!("Start processing quants"));
         for quant in quants {
             // log!(format!("Processing quant {}", quant));
             self.reset_visibility_to(true);
@@ -502,7 +501,6 @@ impl InstGraph {
             let end_nodes = Self::find_end_nodes_of_longest_paths(&mut self.visible_graph);
             self.matching_loop_end_nodes.extend(end_nodes);
         }
-        log!(format!("Done processing quants"));
         // self.reset_visibility_to(false);
         // for matching_loop in matching_loop_nodes_per_quant {
         //     for node in matching_loop {
@@ -550,10 +548,8 @@ impl InstGraph {
                 false
             }
         }) {
-            log!(format!("Analyzing matching loop with endnode {}", endnode.index()));
             self.show_nth_matching_loop(idx, p)
         } else {
-            log!(format!("Not analyzing matching loop with endnode {}", endnode.index()));
             Graph::new()
         }
     }
@@ -1244,9 +1240,6 @@ mod matching_loop_graph {
 
         fn compute_matching_loop_graph(&mut self, p: &mut Z3Parser) {
             let insts = self.display_insts(p);
-            for inst in insts {
-                log!(inst);
-            }
             self.cross_generalize_terms(p);
             for inst in &self.abstract_insts {
                 let gen_trigger = inst.pattern;
@@ -1323,7 +1316,6 @@ mod matching_loop_graph {
                 let (before, after) = abstract_insts.split_at_mut(idx);
                 if let Some((curr, after)) = after.split_first_mut() {
                     for (to, (yield_term, blame_kind)) in curr.yield_terms.clone() {
-                        log!(format!("Processing dependency from q{} to q{}", curr, to));
                         if let Some(BlameKind::Term {..}) = blame_kind {
                             let blame_term = if *curr == to {
                                 curr.blame_terms.get(&curr).unwrap().0

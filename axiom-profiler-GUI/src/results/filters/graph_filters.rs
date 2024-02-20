@@ -165,7 +165,6 @@ impl Component for GraphFilters {
     }
 
     fn create(ctx: &Context<Self>) -> Self {
-        log!("Creating GraphFilters component");
         let (selected_insts, _selected_insts_listener) = ctx
             .link()
             .context(ctx.link().callback(Msg::SelectedInstsUpdated))

@@ -134,7 +134,6 @@ impl Component for GraphInfo {
                 false
             }
             Msg::DeselectAll => {
-                log!(format!("Deselecting all selected nodes"));
                 self.selected_nodes.clear();
                 self.is_expanded_node.clear();
                 self.selected_edges.clear();
@@ -197,17 +196,14 @@ impl Component for GraphInfo {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        log!("Rendered details");
         let selected_nodes_details = self
             .selected_nodes_ref
             .cast::<HtmlElement>()
             .expect("not attached to div element");
         let node_details = selected_nodes_details.get_elements_by_tag_name("details");
         for i in 0..node_details.length() {
-            log!(format!("There are {} nodes", node_details.length()));
             let node_detail = node_details.item(i).unwrap();
             let node_id = node_detail.id().parse::<usize>().unwrap();
-            log!(format!("node_details contains node {}", node_id));
             if *self.is_expanded_node.get(&NodeIndex::new(node_id)).unwrap() {
                 let _ = node_detail.set_attribute("open", "true");
             } else {

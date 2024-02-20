@@ -564,9 +564,6 @@ impl Z3Parser {
                 let cost = last.cost / num_deps;
                 let blamed_inst = &mut insts[blamed];
                 blamed_inst.cost += cost;
-                if let Some(qidx) = match_.kind.quant_idx() {
-                    // self.quantifiers[qidx].cost += cost;
-                }
             }
         }
     }

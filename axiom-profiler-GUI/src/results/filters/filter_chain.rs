@@ -36,7 +36,6 @@ impl yew::html::Component for FilterChain {
     type Properties = FilterChainProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        log!("Creating FilterChain component");
         ctx.props()
             .weak_link
             .borrow_mut()
@@ -60,7 +59,6 @@ impl yew::html::Component for FilterChain {
             Msg::AddFilters(filters) => {
                 self.prev_filter_chain = self.filter_chain.clone();
                 for filter in filters {
-                    log!("Adding filter ", filter.to_string());
                     self.filter_chain.push(filter);
                     ctx.props().apply_filter.emit(filter);
                 }
@@ -69,7 +67,6 @@ impl yew::html::Component for FilterChain {
                 false
             }
             Msg::RemoveNthFilter(n) => {
-                log!("Removing filter", n);
                 self.prev_filter_chain = self.filter_chain.clone();
                 self.filter_chain.remove(n);
                 ctx.props().reset_graph.emit(());
@@ -80,7 +77,6 @@ impl yew::html::Component for FilterChain {
                 true
             }
             Msg::ResetFilters => {
-                log!("resetting filters");
                 self.prev_filter_chain = self.filter_chain.clone();
                 self.filter_chain = DEFAULT_FILTER_CHAIN.to_vec();
                 ctx.props().reset_graph.emit(());
@@ -91,7 +87,6 @@ impl yew::html::Component for FilterChain {
                 true
             }
             Msg::SetToPrevious => {
-                log!("Setting to previous filter chain");
                 self.filter_chain = self.prev_filter_chain.clone();
                 ctx.props().reset_graph.emit(());
                 for &filter in &self.filter_chain {

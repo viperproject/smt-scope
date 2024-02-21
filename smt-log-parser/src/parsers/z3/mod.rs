@@ -47,7 +47,7 @@ impl<T: Z3LogParser + Default> LogParser for T {
             "[pop]" => self.pop(split),
             "[begin-check]" => self.begin_check(split),
             "[query-done]" => self.query_done(split),
-            "[eof]" => return Ok(true),
+            "[eof]" => return Ok(false),
             "[resolve-process]" => self.resolve_process(split),
             "[resolve-lit]" => self.resolve_lit(split),
             "[conflict]" => self.conflict(split),

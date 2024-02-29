@@ -4,7 +4,7 @@ use gloo::console::log;
 use petgraph::{stable_graph::NodeIndex, Direction, Graph};
 use smt_log_parser::{
     items::QuantIdx,
-    parsers::z3::inst_graph::{InstGraph, InstInfo, NodeData, InstOrEquality}, Z3Parser,
+    parsers::z3::inst_graph::{InstGraph, InstInfo, InstOrEquality, InstRank, NodeData, Order}, Z3Parser,
 };
 use std::fmt::Display;
 use yew::prelude::*;
@@ -15,9 +15,6 @@ pub enum Filter {
     IgnoreTheorySolving,
     IgnoreQuantifier(Option<QuantIdx>),
     IgnoreAllButQuantifier(Option<QuantIdx>),
-    MaxInsts(usize),
-    MinInsts(usize),
-    MaxBranching(usize),
     ShowNeighbours(NodeIndex, Direction),
     VisitSourceTree(NodeIndex, bool),
     VisitSubTreeWithRoot(NodeIndex, bool),
@@ -27,6 +24,7 @@ pub enum Filter {
     ShowMatchingLoopSubgraph,
     AnalyzeMatchingLoopWithEndNode(NodeIndex),
     ShowMatchingLoopGraph,
+    ShowNHighestRanked(usize, InstRank),
 }
 
 impl Display for Filter {
@@ -46,11 +44,9 @@ impl Display for Filter {
             Self::IgnoreAllButQuantifier(Some(qidx)) => {
                 write!(f, "Only show instantiations of quantifier {}", qidx)
             }
-            Self::MaxInsts(max) => write!(f, "Show the {} most expensive instantiations", max),
-            Self::MinInsts(min) => write!(f, "Show the {} least expensive instantiations", min),
-            Self::MaxBranching(max) => {
-                write!(f, "Show the {} instantiations with the most children", max)
-            }
+            // Self::MaxBranching(max) => {
+            //     write!(f, "Show the {} instantiations with the most children", max)
+            // }
             Self::VisitSubTreeWithRoot(nidx, retain) => match retain {
                 true => write!(f, "Show node {} and its descendants", nidx.index()),
                 false => write!(f, "Hide node {} and its descendants", nidx.index()),
@@ -81,6 +77,16 @@ impl Display for Filter {
             }
             Self::AnalyzeMatchingLoopWithEndNode(node) => write!(f, "Analyzing potential matching loop with end-node {}", node.index()),
             Self::ShowMatchingLoopGraph => write!(f, "Showing matching loop graph of currently visible graph"),
+            Self::ShowNHighestRanked(n, order) => {
+                match order {
+                    InstRank::Branching(Order::Ascending) => write!(f, "Show the {} instantiations with the least children", n),
+                    InstRank::Branching(Order::Descending) => write!(f, "Show the {} instantiations with the most children", n),
+                    InstRank::Cost(Order::Ascending) => write!(f, "Show the {} least expensive instantiations", n),
+                    InstRank::Cost(Order::Descending) => write!(f, "Show the {} most expensive instantiations", n),
+                    InstRank::Time(Order::Ascending) => write!(f, "Show the {} last instantiations", n),
+                    InstRank::Time(Order::Descending) => write!(f, "Show the {} first instantiations", n),
+                }
+            }
         }
     }
 }
@@ -99,9 +105,6 @@ impl Filter {
             Filter::IgnoreTheorySolving => graph.retain_nodes(|node: &NodeData| !node.is_theory_inst),
             Filter::IgnoreQuantifier(qidx) => graph.retain_nodes(|node: &NodeData| node.mkind.quant_idx() != qidx),
             Filter::IgnoreAllButQuantifier(qidx) => graph.retain_nodes(|node: &NodeData| node.mkind.quant_idx() == qidx),
-            Filter::MaxInsts(n) => graph.keep_n_costly(n, true),
-            Filter::MinInsts(n) => graph.keep_n_costly(n, false),
-            Filter::MaxBranching(n) => graph.keep_n_most_branching(n),
             Filter::ShowNeighbours(nidx, direction) => graph.show_neighbours(nidx, direction),
             Filter::VisitSubTreeWithRoot(nidx, retain) => graph.visit_descendants(nidx, retain),
             Filter::VisitSourceTree(nidx, retain) => graph.visit_ancestors(nidx, retain),
@@ -111,6 +114,7 @@ impl Filter {
             Filter::ShowMatchingLoopSubgraph => graph.show_matching_loop_subgraph(),
             Filter::AnalyzeMatchingLoopWithEndNode(endnode) => return FilterOutput::MatchingLoopGraph(graph.analyze_matching_loop_with_endnode(endnode, parser)),
             Filter::ShowMatchingLoopGraph => return FilterOutput::MatchingLoopGraph(graph.show_matching_loop_graph_of_visible_graph(parser)),
+            Filter::ShowNHighestRanked(n, order) => graph.keep_n_highest_ranked(n, order),
         }
         FilterOutput::None
     }
@@ -118,12 +122,14 @@ impl Filter {
 
 pub struct GraphFilters {
     max_node_idx: usize,
-    max_instantiations: usize,
-    min_instantiations: usize,
-    max_branching: usize,
+    n_most_costly: usize,
+    n_least_costly: usize,
+    n_highest_branching: usize,
     max_depth: usize,
     selected_insts: Vec<InstInfo>,
     _selected_insts_listener: ContextHandle<Vec<InstInfo>>,
+    n_first: usize,
+    n_last: usize,
 }
 
 #[derive(Properties, PartialEq)]
@@ -133,11 +139,13 @@ pub struct GraphFiltersProps {
 
 pub enum Msg {
     SetMaxNodeIdx(usize),
-    SetMaxInsts(usize),
-    SetMinInsts(usize),
-    SetMaxBranching(usize),
+    SetNMostCostly(usize),
+    SetNLeastCostly(usize),
+    SetNHighestBranching(usize),
     SetMaxDepth(usize),
     SelectedInstsUpdated(Vec<InstInfo>),
+    SetNFirst(usize),
+    SetNLast(usize),
 }
 
 impl Component for GraphFilters {
@@ -150,16 +158,24 @@ impl Component for GraphFilters {
                 self.max_node_idx = to;
                 true
             }
-            Msg::SetMaxInsts(to) => {
-                self.max_instantiations = to;
+            Msg::SetNMostCostly(to) => {
+                self.n_most_costly = to;
                 true
             }
-            Msg::SetMinInsts(to) => {
-                self.min_instantiations = to;
+            Msg::SetNLeastCostly(to) => {
+                self.n_least_costly = to;
                 true
             }
-            Msg::SetMaxBranching(to) => {
-                self.max_branching = to;
+            Msg::SetNHighestBranching(to) => {
+                self.n_highest_branching = to;
+                true
+            }
+            Msg::SetNFirst(to) => {
+                self.n_first = to;
+                true
+            }
+            Msg::SetNLast(to) => {
+                self.n_last = to;
                 true
             }
             Msg::SetMaxDepth(to) => {
@@ -180,12 +196,14 @@ impl Component for GraphFilters {
             .expect("No context provided");
         Self {
             max_node_idx: usize::MAX,
-            max_instantiations: DEFAULT_NODE_COUNT,
-            min_instantiations: DEFAULT_NODE_COUNT,
-            max_branching: usize::MAX,
+            n_most_costly: DEFAULT_NODE_COUNT,
+            n_least_costly: DEFAULT_NODE_COUNT,
+            n_highest_branching: usize::MAX,
             max_depth: usize::MAX,
             selected_insts,
             _selected_insts_listener,
+            n_first: DEFAULT_NODE_COUNT,
+            n_last: DEFAULT_NODE_COUNT,
         }
     }
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -200,18 +218,18 @@ impl Component for GraphFilters {
         };
         let add_max_insts_filter = {
             let callback = ctx.props().add_filters.clone();
-            let max_instantiations = self.max_instantiations;
-            Callback::from(move |_| callback.emit(vec![Filter::MaxInsts(max_instantiations)]))
+            let max_instantiations = self.n_most_costly;
+            Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(max_instantiations, InstRank::Cost(Order::Descending))]))
         };
         let add_min_insts_filter = {
             let callback = ctx.props().add_filters.clone();
-            let min_instantiations = self.min_instantiations;
-            Callback::from(move |_| callback.emit(vec![Filter::MinInsts(min_instantiations)]))
+            let min_instantiations = self.n_least_costly;
+            Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(min_instantiations, InstRank::Cost(Order::Ascending))]))
         };
         let add_max_branching_filter = {
             let callback = ctx.props().add_filters.clone();
-            let max_branching = self.max_branching;
-            Callback::from(move |_| callback.emit(vec![Filter::MaxBranching(max_branching)]))
+            let max_branching = self.n_highest_branching;
+            Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(max_branching, InstRank::Branching(Order::Descending))]))
         };
         let add_max_depth_filter = {
             let callback = ctx.props().add_filters.clone();
@@ -221,6 +239,16 @@ impl Component for GraphFilters {
         let matching_loop_graph = {
             let callback = ctx.props().add_filters.clone();
             Callback::from(move |_| callback.emit(vec![Filter::ShowMatchingLoopGraph]))
+        };
+        let add_n_first_filter = {
+            let callback = ctx.props().add_filters.clone();
+            let max_instantiations = self.n_first;
+            Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(max_instantiations, InstRank::Time(Order::Descending))]))
+        };
+        let add_n_last_filter = {
+            let callback = ctx.props().add_filters.clone();
+            let min_instantiations = self.n_last;
+            Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(min_instantiations, InstRank::Time(Order::Ascending))]))
         };
         html! {
             <div>
@@ -241,7 +269,7 @@ impl Component for GraphFilters {
                     <UsizeInput
                         label={"Render the n most expensive instantiations where n = "}
                         placeholder={""}
-                        set_value={ctx.link().callback(Msg::SetMaxInsts)}
+                        set_value={ctx.link().callback(Msg::SetNMostCostly)}
                     />
                     <button onclick={add_max_insts_filter}>{"Add"}</button>
                 </div>
@@ -249,7 +277,7 @@ impl Component for GraphFilters {
                     <UsizeInput
                         label={"Render the n least expensive instantiations where n = "}
                         placeholder={""}
-                        set_value={ctx.link().callback(Msg::SetMinInsts)}
+                        set_value={ctx.link().callback(Msg::SetNLeastCostly)}
                     />
                     <button onclick={add_min_insts_filter}>{"Add"}</button>
                 </div>
@@ -257,7 +285,7 @@ impl Component for GraphFilters {
                     <UsizeInput
                         label={"Render the n instantiations with most children where n = "}
                         placeholder={""}
-                        set_value={ctx.link().callback(Msg::SetMaxBranching)}
+                        set_value={ctx.link().callback(Msg::SetNHighestBranching)}
                     />
                     <button onclick={add_max_branching_filter}>{"Add"}</button>
                 </div>
@@ -268,6 +296,22 @@ impl Component for GraphFilters {
                         set_value={ctx.link().callback(Msg::SetMaxDepth)}
                     />
                     <button onclick={add_max_depth_filter}>{"Add"}</button>
+                </div>
+                <div>
+                    <UsizeInput
+                        label={"Render the n first instantiations where n = "}
+                        placeholder={""}
+                        set_value={ctx.link().callback(Msg::SetNFirst)}
+                    />
+                    <button onclick={add_n_first_filter}>{"Add"}</button>
+                </div>
+                <div>
+                    <UsizeInput
+                        label={"Render the n last instantiations where n = "}
+                        placeholder={""}
+                        set_value={ctx.link().callback(Msg::SetNLast)}
+                    />
+                    <button onclick={add_n_last_filter}>{"Add"}</button>
                 </div>
                 <div>
                     <label for="matching_loop_graph">{"Generate matching loop graph"}</label>

@@ -149,6 +149,7 @@ pub struct InstGraph {
     node_of_inst_idx: TiVec<InstIdx, NodeIndex>,
     cost_ranked_node_indices: Vec<NodeIndex>,
     branching_ranked_node_indices: Vec<NodeIndex>,
+    time_ranked_node_indices: Vec<NodeIndex>,
     tr_closure: Vec<RoaringBitmap>,
     matching_loop_subgraph: Graph<NodeData, EdgeType>,
     matching_loop_end_nodes: Vec<NodeIndex>, // these are sorted by maximal depth in descending order 
@@ -156,12 +157,20 @@ pub struct InstGraph {
     matching_loop_graphs: TiVec<usize, Option<Graph<String, InstOrEquality>>>,
 }
 
-enum InstOrder {
+#[derive(Clone, Copy)]
+pub enum Order {
+    Ascending, 
+    Descending,
+}
+
+#[derive(Clone, Copy)]
+pub enum InstRank {
     // The boolean flag encodes whether it should be in ascending or in descending order 
     // true indicates descending order 
     // false indicates ascending order
-    Branching(bool),
-    Cost(bool),
+    Branching(Order),
+    Cost(Order),
+    Time(Order),
 }
 
 pub struct VisibleGraphInfo {
@@ -315,39 +324,43 @@ impl InstGraph {
         from_bitset.contains(to.index() as u32)
     }
 
-    pub fn keep_n_costly(&mut self, n: usize, descending: bool) {
-        self.keep_n_highest_ranked(n, InstOrder::Cost(descending))
-    }
+    // pub fn keep_n_costly(&mut self, n: usize, descending: Order) {
+    //     self.keep_n_highest_ranked(n, InstOrder::Cost(descending))
+    // }
 
-    pub fn keep_n_most_branching(&mut self, n: usize) {
-        self.keep_n_highest_ranked(n, InstOrder::Branching(true))
-    }
+    // pub fn keep_n_most_branching(&mut self, n: usize) {
+    //     self.keep_n_highest_ranked(n, InstOrder::Branching(true))
+    // }
 
-    fn keep_n_highest_ranked(&mut self, n: usize, order: InstOrder) {
+    pub fn keep_n_highest_ranked(&mut self, n: usize, order: InstRank) {
         let ranked_node_indices = match order {
-            InstOrder::Branching(_) => &self.branching_ranked_node_indices,
-            InstOrder::Cost(_) => &self.cost_ranked_node_indices,
+            InstRank::Branching(_) => &self.branching_ranked_node_indices,
+            InstRank::Cost(_) => &self.cost_ranked_node_indices,
+            InstRank::Time(_) => &self.time_ranked_node_indices,
         };
-        let descending_order = match order {
-            InstOrder::Branching(order) => order,
-            InstOrder::Cost(order) => order,
+        let order = match order {
+            InstRank::Branching(order) => order,
+            InstRank::Cost(order) => order,
+            InstRank::Time(order) => order,
         };
-        if descending_order {
-            for nx in ranked_node_indices.iter().take(n) {
-                self.orig_graph[*nx].visible = true;
-            }
-            for nx in ranked_node_indices.iter().skip(n) {
-                self.orig_graph[*nx].visible = false;
-            }
-        } else {
-            for nx in ranked_node_indices.iter().rev().take(n) {
-                self.orig_graph[*nx].visible = true;
-            }
-            for nx in ranked_node_indices.iter().rev().skip(n) {
-                self.orig_graph[*nx].visible = false;
-            }
+        match order {
+            Order::Ascending => {
+                for nx in ranked_node_indices.iter().rev().take(n) {
+                    self.orig_graph[*nx].visible = true;
+                }
+                for nx in ranked_node_indices.iter().rev().skip(n) {
+                    self.orig_graph[*nx].visible = false;
+                }
+            },
+            Order::Descending => {
+                for nx in ranked_node_indices.iter().take(n) {
+                    self.orig_graph[*nx].visible = true;
+                }
+                for nx in ranked_node_indices.iter().skip(n) {
+                    self.orig_graph[*nx].visible = false;
+                }
+            },
         }
-
         // let visible_nodes: Vec<NodeIndex> = self
         //     .orig_graph
         //     .node_indices()
@@ -748,6 +761,7 @@ impl InstGraph {
                 self.add_edge(from, inst_idx, kind);
             }
         }
+        self.time_ranked_node_indices = self.orig_graph.node_indices().collect();
         // precompute number of children and parents of each node
         for idx in self.orig_graph.node_indices() {
             let child_count = self.orig_graph.neighbors_directed(idx, Outgoing).count();
@@ -1257,7 +1271,6 @@ mod matching_loop_graph {
         }
 
         fn compute_matching_loop_graph(&mut self, p: &mut Z3Parser) {
-            let insts = self.display_insts(p);
             self.cross_generalize_terms(p);
             for inst in &self.abstract_insts {
                 let gen_trigger = inst.pattern;

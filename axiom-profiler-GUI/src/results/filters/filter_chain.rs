@@ -1,6 +1,7 @@
 use super::super::svg_result::{UserPermission, DEFAULT_NODE_COUNT};
 use super::graph_filters::{Filter, GraphFilters};
 use gloo::console::log;
+use smt_log_parser::parsers::z3::inst_graph::{InstRank, Order};
 use yew::prelude::*;
 // use gloo_console::log;
 use material_yew::WeakComponentLink;
@@ -20,7 +21,7 @@ pub struct FilterChain {
 
 const DEFAULT_FILTER_CHAIN: &[Filter] = &[
     Filter::IgnoreTheorySolving,
-    Filter::MaxInsts(DEFAULT_NODE_COUNT),
+    Filter::ShowNHighestRanked(DEFAULT_NODE_COUNT, InstRank::Cost(Order::Descending)),
 ];
 
 #[derive(Properties, PartialEq)]

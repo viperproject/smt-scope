@@ -85,6 +85,8 @@ impl Display for Filter {
                     InstRank::Cost(Order::Descending) => write!(f, "Show the {} most expensive instantiations", n),
                     InstRank::Time(Order::Ascending) => write!(f, "Show the {} last instantiations", n),
                     InstRank::Time(Order::Descending) => write!(f, "Show the {} first instantiations", n),
+                    InstRank::Depth(Order::Descending) => write!(f, "Show the {} deepest nodes", n),
+                    InstRank::Depth(Order::Ascending) => write!(f, "Show the {} least deep nodes", n),
                 }
             }
         }
@@ -130,6 +132,8 @@ pub struct GraphFilters {
     _selected_insts_listener: ContextHandle<Vec<InstInfo>>,
     n_first: usize,
     n_last: usize,
+    n_deepest: usize,
+    n_least_deep: usize,
 }
 
 #[derive(Properties, PartialEq)]
@@ -146,6 +150,8 @@ pub enum Msg {
     SelectedInstsUpdated(Vec<InstInfo>),
     SetNFirst(usize),
     SetNLast(usize),
+    SetNDeepest(usize),
+    SetNLeastDeep(usize),
 }
 
 impl Component for GraphFilters {
@@ -178,6 +184,14 @@ impl Component for GraphFilters {
                 self.n_last = to;
                 true
             }
+            Msg::SetNDeepest(to) => {
+                self.n_deepest = to;
+                true
+            }
+            Msg::SetNLeastDeep(to) => {
+                self.n_least_deep = to;
+                true
+            }
             Msg::SetMaxDepth(to) => {
                 self.max_depth = to;
                 true
@@ -204,6 +218,8 @@ impl Component for GraphFilters {
             _selected_insts_listener,
             n_first: DEFAULT_NODE_COUNT,
             n_last: DEFAULT_NODE_COUNT,
+            n_deepest: DEFAULT_NODE_COUNT,
+            n_least_deep: DEFAULT_NODE_COUNT,
         }
     }
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -249,6 +265,16 @@ impl Component for GraphFilters {
             let callback = ctx.props().add_filters.clone();
             let min_instantiations = self.n_last;
             Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(min_instantiations, InstRank::Time(Order::Ascending))]))
+        };
+        let add_n_deepest_filter = {
+            let callback = ctx.props().add_filters.clone();
+            let max_instantiations = self.n_deepest;
+            Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(max_instantiations, InstRank::Depth(Order::Ascending))]))
+        };
+        let add_n_least_deep_filter = {
+            let callback = ctx.props().add_filters.clone();
+            let min_instantiations = self.n_least_deep;
+            Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(min_instantiations, InstRank::Depth(Order::Descending))]))
         };
         html! {
             <div>
@@ -312,6 +338,22 @@ impl Component for GraphFilters {
                         set_value={ctx.link().callback(Msg::SetNLast)}
                     />
                     <button onclick={add_n_last_filter}>{"Add"}</button>
+                </div>
+                <div>
+                    <UsizeInput
+                        label={"Render the n deepest nodes where n = "}
+                        placeholder={""}
+                        set_value={ctx.link().callback(Msg::SetNDeepest)}
+                    />
+                    <button onclick={add_n_deepest_filter}>{"Add"}</button>
+                </div>
+                <div>
+                    <UsizeInput
+                        label={"Render the n least deep nodes where n = "}
+                        placeholder={""}
+                        set_value={ctx.link().callback(Msg::SetNLeastDeep)}
+                    />
+                    <button onclick={add_n_least_deep_filter}>{"Add"}</button>
                 </div>
                 <div>
                     <label for="matching_loop_graph">{"Generate matching loop graph"}</label>

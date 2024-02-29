@@ -150,6 +150,7 @@ pub struct InstGraph {
     cost_ranked_node_indices: Vec<NodeIndex>,
     branching_ranked_node_indices: Vec<NodeIndex>,
     time_ranked_node_indices: Vec<NodeIndex>,
+    min_depth_ranked_node_indices: Vec<NodeIndex>,
     tr_closure: Vec<RoaringBitmap>,
     matching_loop_subgraph: Graph<NodeData, EdgeType>,
     matching_loop_end_nodes: Vec<NodeIndex>, // these are sorted by maximal depth in descending order 
@@ -171,6 +172,7 @@ pub enum InstRank {
     Branching(Order),
     Cost(Order),
     Time(Order),
+    Depth(Order),
 }
 
 pub struct VisibleGraphInfo {
@@ -337,11 +339,13 @@ impl InstGraph {
             InstRank::Branching(_) => &self.branching_ranked_node_indices,
             InstRank::Cost(_) => &self.cost_ranked_node_indices,
             InstRank::Time(_) => &self.time_ranked_node_indices,
+            InstRank::Depth(_) => &self.min_depth_ranked_node_indices,
         };
         let order = match order {
             InstRank::Branching(order) => order,
             InstRank::Cost(order) => order,
             InstRank::Time(order) => order,
+            InstRank::Depth(order) => order,
         };
         match order {
             Order::Ascending => {
@@ -812,6 +816,24 @@ impl InstGraph {
                 }
             }
         }
+        // precompute the depth-rank of all nodes by sorting the node_indices by our depth-order
+        // in ascending order and then assigning the rank to each node
+        let mut min_depth_ranked_node_indices: Vec<NodeIndex> = self.orig_graph.node_indices().collect();
+        let depth_order = |node_a: &NodeIndex, node_b: &NodeIndex| {
+            let node_a_data = self.orig_graph.node_weight(*node_a).unwrap();
+            let node_b_data = self.orig_graph.node_weight(*node_b).unwrap();
+            if node_a_data.min_depth < node_b_data.min_depth || (node_a_data.min_depth == node_b_data.min_depth
+                && node_b_data.inst_idx < node_a_data.inst_idx) {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Greater
+            }
+        };
+        min_depth_ranked_node_indices.sort_unstable_by(depth_order);
+        // for (i, nidx) in cost_ranked_node_indices.iter().enumerate() {
+        //     self.orig_graph.node_weight_mut(*nidx).unwrap().cost_rank = i;
+        // }
+        self.min_depth_ranked_node_indices = min_depth_ranked_node_indices;
         // precompute the branching-rank of all nodes by sorting the node_indices by our branching-order
         // in descending order and then assigning the rank to each node
         // Our branching-order is defined as follows:

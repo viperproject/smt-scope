@@ -16,6 +16,7 @@ pub enum Filter {
     IgnoreQuantifier(Option<QuantIdx>),
     IgnoreAllButQuantifier(Option<QuantIdx>),
     MaxInsts(usize),
+    MinInsts(usize),
     MaxBranching(usize),
     ShowNeighbours(NodeIndex, Direction),
     VisitSourceTree(NodeIndex, bool),
@@ -46,6 +47,7 @@ impl Display for Filter {
                 write!(f, "Only show instantiations of quantifier {}", qidx)
             }
             Self::MaxInsts(max) => write!(f, "Show the {} most expensive instantiations", max),
+            Self::MinInsts(min) => write!(f, "Show the {} least expensive instantiations", min),
             Self::MaxBranching(max) => {
                 write!(f, "Show the {} instantiations with the most children", max)
             }
@@ -97,7 +99,8 @@ impl Filter {
             Filter::IgnoreTheorySolving => graph.retain_nodes(|node: &NodeData| !node.is_theory_inst),
             Filter::IgnoreQuantifier(qidx) => graph.retain_nodes(|node: &NodeData| node.mkind.quant_idx() != qidx),
             Filter::IgnoreAllButQuantifier(qidx) => graph.retain_nodes(|node: &NodeData| node.mkind.quant_idx() == qidx),
-            Filter::MaxInsts(n) => graph.keep_n_most_costly(n),
+            Filter::MaxInsts(n) => graph.keep_n_costly(n, true),
+            Filter::MinInsts(n) => graph.keep_n_costly(n, false),
             Filter::MaxBranching(n) => graph.keep_n_most_branching(n),
             Filter::ShowNeighbours(nidx, direction) => graph.show_neighbours(nidx, direction),
             Filter::VisitSubTreeWithRoot(nidx, retain) => graph.visit_descendants(nidx, retain),
@@ -116,6 +119,7 @@ impl Filter {
 pub struct GraphFilters {
     max_node_idx: usize,
     max_instantiations: usize,
+    min_instantiations: usize,
     max_branching: usize,
     max_depth: usize,
     selected_insts: Vec<InstInfo>,
@@ -130,6 +134,7 @@ pub struct GraphFiltersProps {
 pub enum Msg {
     SetMaxNodeIdx(usize),
     SetMaxInsts(usize),
+    SetMinInsts(usize),
     SetMaxBranching(usize),
     SetMaxDepth(usize),
     SelectedInstsUpdated(Vec<InstInfo>),
@@ -147,6 +152,10 @@ impl Component for GraphFilters {
             }
             Msg::SetMaxInsts(to) => {
                 self.max_instantiations = to;
+                true
+            }
+            Msg::SetMinInsts(to) => {
+                self.min_instantiations = to;
                 true
             }
             Msg::SetMaxBranching(to) => {
@@ -172,6 +181,7 @@ impl Component for GraphFilters {
         Self {
             max_node_idx: usize::MAX,
             max_instantiations: DEFAULT_NODE_COUNT,
+            min_instantiations: DEFAULT_NODE_COUNT,
             max_branching: usize::MAX,
             max_depth: usize::MAX,
             selected_insts,
@@ -192,6 +202,11 @@ impl Component for GraphFilters {
             let callback = ctx.props().add_filters.clone();
             let max_instantiations = self.max_instantiations;
             Callback::from(move |_| callback.emit(vec![Filter::MaxInsts(max_instantiations)]))
+        };
+        let add_min_insts_filter = {
+            let callback = ctx.props().add_filters.clone();
+            let min_instantiations = self.min_instantiations;
+            Callback::from(move |_| callback.emit(vec![Filter::MinInsts(min_instantiations)]))
         };
         let add_max_branching_filter = {
             let callback = ctx.props().add_filters.clone();
@@ -229,6 +244,14 @@ impl Component for GraphFilters {
                         set_value={ctx.link().callback(Msg::SetMaxInsts)}
                     />
                     <button onclick={add_max_insts_filter}>{"Add"}</button>
+                </div>
+                <div>
+                    <UsizeInput
+                        label={"Render the n least expensive instantiations where n = "}
+                        placeholder={""}
+                        set_value={ctx.link().callback(Msg::SetMinInsts)}
+                    />
+                    <button onclick={add_min_insts_filter}>{"Add"}</button>
                 </div>
                 <div>
                     <UsizeInput

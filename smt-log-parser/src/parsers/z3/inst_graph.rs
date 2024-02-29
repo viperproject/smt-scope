@@ -157,8 +157,11 @@ pub struct InstGraph {
 }
 
 enum InstOrder {
-    Branching,
-    Cost,
+    // The boolean flag encodes whether it should be in ascending or in descending order 
+    // true indicates descending order 
+    // false indicates ascending order
+    Branching(bool),
+    Cost(bool),
 }
 
 pub struct VisibleGraphInfo {
@@ -312,25 +315,39 @@ impl InstGraph {
         from_bitset.contains(to.index() as u32)
     }
 
-    pub fn keep_n_most_costly(&mut self, n: usize) {
-        self.keep_n_highest_ranked(n, InstOrder::Cost)
+    pub fn keep_n_costly(&mut self, n: usize, descending: bool) {
+        self.keep_n_highest_ranked(n, InstOrder::Cost(descending))
     }
 
     pub fn keep_n_most_branching(&mut self, n: usize) {
-        self.keep_n_highest_ranked(n, InstOrder::Branching)
+        self.keep_n_highest_ranked(n, InstOrder::Branching(true))
     }
 
     fn keep_n_highest_ranked(&mut self, n: usize, order: InstOrder) {
         let ranked_node_indices = match order {
-            InstOrder::Branching => &self.branching_ranked_node_indices,
-            InstOrder::Cost => &self.cost_ranked_node_indices,
+            InstOrder::Branching(_) => &self.branching_ranked_node_indices,
+            InstOrder::Cost(_) => &self.cost_ranked_node_indices,
         };
-        for nx in ranked_node_indices.iter().take(n) {
-            self.orig_graph[*nx].visible = true;
+        let descending_order = match order {
+            InstOrder::Branching(order) => order,
+            InstOrder::Cost(order) => order,
+        };
+        if descending_order {
+            for nx in ranked_node_indices.iter().take(n) {
+                self.orig_graph[*nx].visible = true;
+            }
+            for nx in ranked_node_indices.iter().skip(n) {
+                self.orig_graph[*nx].visible = false;
+            }
+        } else {
+            for nx in ranked_node_indices.iter().rev().take(n) {
+                self.orig_graph[*nx].visible = true;
+            }
+            for nx in ranked_node_indices.iter().rev().skip(n) {
+                self.orig_graph[*nx].visible = false;
+            }
         }
-        for nx in ranked_node_indices.iter().skip(n) {
-            self.orig_graph[*nx].visible = false;
-        }
+
         // let visible_nodes: Vec<NodeIndex> = self
         //     .orig_graph
         //     .node_indices()

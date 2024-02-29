@@ -85,8 +85,8 @@ impl Display for Filter {
                     InstRank::Cost(Order::Descending) => write!(f, "Show the {} most expensive instantiations", n),
                     InstRank::Time(Order::Ascending) => write!(f, "Show the {} last instantiations", n),
                     InstRank::Time(Order::Descending) => write!(f, "Show the {} first instantiations", n),
-                    InstRank::Depth(Order::Descending) => write!(f, "Show the {} deepest nodes", n),
-                    InstRank::Depth(Order::Ascending) => write!(f, "Show the {} least deep nodes", n),
+                    InstRank::Depth(Order::Descending) => write!(f, "Show the {} least deep nodes", n),
+                    InstRank::Depth(Order::Ascending) => write!(f, "Show the {} deepest nodes", n),
                 }
             }
         }

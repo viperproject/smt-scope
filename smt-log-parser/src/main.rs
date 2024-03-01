@@ -1,7 +1,6 @@
-use serde::Deserialize;
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::LogParser;
-use std::{borrow::Cow, env, time::Duration};
+use std::{env, time::Duration};
 use wasm_timer::Instant;
 
 fn main() {

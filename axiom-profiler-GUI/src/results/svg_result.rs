@@ -17,17 +17,11 @@ use petgraph::dot::{Config, Dot};
 use petgraph::graph::{EdgeIndex, NodeIndex};
 use smt_log_parser::{
     items::{BlameKind, MatchKind},
-    parsers::{
-        z3::{
-            inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, VisibleGraphInfo, InstOrEquality},
-            z3parser::Z3Parser,
-        },
-        LogParser,
-    },
+    parsers::z3::inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, VisibleGraphInfo, InstOrEquality},
 };
 use std::num::NonZeroUsize;
 use viz_js::VizInstance;
-use web_sys::{window, Performance, Window};
+use web_sys::{window, Performance};
 use yew::prelude::*;
 
 pub const EDGE_LIMIT: usize = 2000;

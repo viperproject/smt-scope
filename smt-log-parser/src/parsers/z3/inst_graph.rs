@@ -1,8 +1,7 @@
 use fxhash::{FxHashSet, FxHashMap};
-use gloo_console::log;
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
-use petgraph::visit::{Bfs, IntoEdgeReferences, IntoNeighborsDirected, Topo};
+use petgraph::visit::{Bfs, IntoEdgeReferences, Topo};
 use petgraph::{
     stable_graph::EdgeIndex,
     visit::{Dfs, EdgeRef},
@@ -1183,7 +1182,7 @@ mod matching_loop_graph {
             }
         }
 
-        fn to_string(&self, p: &Z3Parser) -> String {
+        fn _to_string(&self, p: &Z3Parser) -> String {
             let ctxt = DisplayCtxt {
                 parser: p,
                 display_term_ids: false,
@@ -1295,10 +1294,10 @@ mod matching_loop_graph {
             matching_loop_graph.graph.into_inner()
         }
 
-        fn display_insts(&self, p: &Z3Parser) -> Vec<String> {
+        fn _display_insts(&self, p: &Z3Parser) -> Vec<String> {
             let mut out = Vec::new();
             for inst in &self.abstract_insts {
-                out.push(inst.to_string(p));
+                out.push(inst._to_string(p));
             }
             out
         } 

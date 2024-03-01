@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use gloo_file::{callbacks::FileReader, FileList};
 use results::svg_result::SVGResult;
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
-use smt_log_parser::parsers::{AsyncBufferRead, AsyncCursorRead, AsyncParser, LogParser};
+use smt_log_parser::parsers::{AsyncBufferRead, LogParser};
 use wasm_bindgen::JsCast;
 use wasm_streams::ReadableStream;
 use web_sys::{Event, HtmlInputElement, window};

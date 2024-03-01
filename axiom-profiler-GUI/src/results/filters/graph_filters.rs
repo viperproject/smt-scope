@@ -1,6 +1,5 @@
 use super::node_actions::NodeActions;
 use crate::{utils::usize_input::UsizeInput, results::svg_result::DEFAULT_NODE_COUNT};
-use gloo::console::log;
 use petgraph::{stable_graph::NodeIndex, Direction, Graph};
 use smt_log_parser::{
     items::QuantIdx,
@@ -294,12 +293,12 @@ impl Component for GraphFilters {
         };
         let add_n_max_subpath_len = {
             let callback = ctx.props().add_filters.clone();
-            let max_instantiations = self.n_deepest;
+            let max_instantiations = self.n_max_sub_path_len;
             Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(max_instantiations, InstRank::MaxSubpathLen(Order::Descending))]))
         };
         let add_n_min_subpath_len = {
             let callback = ctx.props().add_filters.clone();
-            let min_instantiations = self.n_least_deep;
+            let min_instantiations = self.n_min_sub_path_len;
             Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(min_instantiations, InstRank::MaxSubpathLen(Order::Ascending))]))
         };
         html! {

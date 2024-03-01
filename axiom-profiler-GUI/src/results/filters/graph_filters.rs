@@ -87,6 +87,8 @@ impl Display for Filter {
                     InstRank::Time(Order::Descending) => write!(f, "Show the {} first instantiations", n),
                     InstRank::Depth(Order::Descending) => write!(f, "Show the {} least deep nodes", n),
                     InstRank::Depth(Order::Ascending) => write!(f, "Show the {} deepest nodes", n),
+                    InstRank::MaxSubpathLen(Order::Descending) => write!(f, "Show the roots of the {} longest paths", n),
+                    InstRank::MaxSubpathLen(Order::Ascending) => write!(f, "Show the roots of the {} shortest paths", n),
                 }
             }
         }
@@ -134,6 +136,8 @@ pub struct GraphFilters {
     n_last: usize,
     n_deepest: usize,
     n_least_deep: usize,
+    n_max_sub_path_len: usize,
+    n_min_sub_path_len: usize,
 }
 
 #[derive(Properties, PartialEq)]
@@ -152,6 +156,8 @@ pub enum Msg {
     SetNLast(usize),
     SetNDeepest(usize),
     SetNLeastDeep(usize),
+    SetNMaxSubpathLen(usize),
+    SetNMinSubpathLen(usize),
 }
 
 impl Component for GraphFilters {
@@ -192,6 +198,14 @@ impl Component for GraphFilters {
                 self.n_least_deep = to;
                 true
             }
+            Msg::SetNMaxSubpathLen(to) => {
+                self.n_deepest = to;
+                true
+            }
+            Msg::SetNMinSubpathLen(to) => {
+                self.n_least_deep = to;
+                true
+            }
             Msg::SetMaxDepth(to) => {
                 self.max_depth = to;
                 true
@@ -220,6 +234,8 @@ impl Component for GraphFilters {
             n_last: DEFAULT_NODE_COUNT,
             n_deepest: DEFAULT_NODE_COUNT,
             n_least_deep: DEFAULT_NODE_COUNT,
+            n_max_sub_path_len: DEFAULT_NODE_COUNT,
+            n_min_sub_path_len: DEFAULT_NODE_COUNT,
         }
     }
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -275,6 +291,16 @@ impl Component for GraphFilters {
             let callback = ctx.props().add_filters.clone();
             let min_instantiations = self.n_least_deep;
             Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(min_instantiations, InstRank::Depth(Order::Descending))]))
+        };
+        let add_n_max_subpath_len = {
+            let callback = ctx.props().add_filters.clone();
+            let max_instantiations = self.n_deepest;
+            Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(max_instantiations, InstRank::MaxSubpathLen(Order::Descending))]))
+        };
+        let add_n_min_subpath_len = {
+            let callback = ctx.props().add_filters.clone();
+            let min_instantiations = self.n_least_deep;
+            Callback::from(move |_| callback.emit(vec![Filter::ShowNHighestRanked(min_instantiations, InstRank::MaxSubpathLen(Order::Ascending))]))
         };
         html! {
             <div>
@@ -354,6 +380,22 @@ impl Component for GraphFilters {
                         set_value={ctx.link().callback(Msg::SetNLeastDeep)}
                     />
                     <button onclick={add_n_least_deep_filter}>{"Add"}</button>
+                </div>
+                <div>
+                    <UsizeInput
+                        label={"Render the roots of the n longest paths where n = "}
+                        placeholder={""}
+                        set_value={ctx.link().callback(Msg::SetNMaxSubpathLen)}
+                    />
+                    <button onclick={add_n_max_subpath_len}>{"Add"}</button>
+                </div>
+                <div>
+                    <UsizeInput
+                        label={"Render the roots of the n shortest paths where n = "}
+                        placeholder={""}
+                        set_value={ctx.link().callback(Msg::SetNMinSubpathLen)}
+                    />
+                    <button onclick={add_n_min_subpath_len}>{"Add"}</button>
                 </div>
                 <div>
                     <label for="matching_loop_graph">{"Generate matching loop graph"}</label>

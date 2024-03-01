@@ -2,7 +2,7 @@ use fxhash::{FxHashSet, FxHashMap};
 use gloo_console::log;
 use petgraph::graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
-use petgraph::visit::{Bfs, IntoEdgeReferences, Topo};
+use petgraph::visit::{Bfs, IntoEdgeReferences, IntoNeighborsDirected, Topo};
 use petgraph::{
     stable_graph::EdgeIndex,
     visit::{Dfs, EdgeRef},
@@ -40,6 +40,7 @@ pub struct NodeData {
     pub min_depth: Option<usize>,
     max_depth: usize,
     topo_ord: usize,
+    max_subpath_len: usize,
 }
 
 impl fmt::Debug for NodeData {
@@ -151,6 +152,7 @@ pub struct InstGraph {
     branching_ranked_node_indices: Vec<NodeIndex>,
     time_ranked_node_indices: Vec<NodeIndex>,
     min_depth_ranked_node_indices: Vec<NodeIndex>,
+    max_subpath_len_ranked_node_indices: Vec<NodeIndex>,
     tr_closure: Vec<RoaringBitmap>,
     matching_loop_subgraph: Graph<NodeData, EdgeType>,
     matching_loop_end_nodes: Vec<NodeIndex>, // these are sorted by maximal depth in descending order 
@@ -173,6 +175,7 @@ pub enum InstRank {
     Cost(Order),
     Time(Order),
     Depth(Order),
+    MaxSubpathLen(Order),
 }
 
 pub struct VisibleGraphInfo {
@@ -335,34 +338,37 @@ impl InstGraph {
     // }
 
     pub fn keep_n_highest_ranked(&mut self, n: usize, order: InstRank) {
+        self.reset_visibility_to(false);
         let ranked_node_indices = match order {
             InstRank::Branching(_) => &self.branching_ranked_node_indices,
             InstRank::Cost(_) => &self.cost_ranked_node_indices,
             InstRank::Time(_) => &self.time_ranked_node_indices,
             InstRank::Depth(_) => &self.min_depth_ranked_node_indices,
+            InstRank::MaxSubpathLen(_) => &self.max_subpath_len_ranked_node_indices,
         };
         let order = match order {
             InstRank::Branching(order) => order,
             InstRank::Cost(order) => order,
             InstRank::Time(order) => order,
             InstRank::Depth(order) => order,
+            InstRank::MaxSubpathLen(order) => order,
         };
         match order {
             Order::Ascending => {
                 for nx in ranked_node_indices.iter().rev().take(n) {
                     self.orig_graph[*nx].visible = true;
                 }
-                for nx in ranked_node_indices.iter().rev().skip(n) {
-                    self.orig_graph[*nx].visible = false;
-                }
+                // for nx in ranked_node_indices.iter().rev().skip(n) {
+                //     self.orig_graph[*nx].visible = false;
+                // }
             },
             Order::Descending => {
                 for nx in ranked_node_indices.iter().take(n) {
                     self.orig_graph[*nx].visible = true;
                 }
-                for nx in ranked_node_indices.iter().skip(n) {
-                    self.orig_graph[*nx].visible = false;
-                }
+                // for nx in ranked_node_indices.iter().skip(n) {
+                //     self.orig_graph[*nx].visible = false;
+                // }
             },
         }
         // let visible_nodes: Vec<NodeIndex> = self
@@ -756,6 +762,7 @@ impl InstGraph {
                 min_depth: None,
                 max_depth: 0,
                 topo_ord: 0,
+                max_subpath_len: 0,
             });
             // then add all edges to previous nodes
             for (kind, from) in match_
@@ -876,6 +883,43 @@ impl InstGraph {
                 node_weight.max_depth = depth + 1;
             }
         }
+        // using the max_depth stored in each node, compute the length of the longest path starting 
+        // from each node by traversing the DAG in reverse topological order and taking the maximum 
+        // of the children  
+        let mut topo = Topo::new(petgraph::visit::Reversed(&self.orig_graph));
+        while let Some(node) = topo.next(petgraph::visit::Reversed(&self.orig_graph)) {
+            let child_count = self.orig_graph.node_weight(node).unwrap().child_count; 
+            let max_child_subpath_len = self
+                .orig_graph
+                .neighbors_directed(node, Outgoing)
+                .filter(|nx| self.orig_graph.node_weight(*nx).unwrap().max_depth == 
+                self.orig_graph.node_weight(node).unwrap().max_depth + 1)
+                .map(|nx| self.orig_graph.node_weight(nx).unwrap().max_subpath_len)
+                .max();
+            if let Some(len) = max_child_subpath_len {
+                if child_count > 0 {
+                    self.orig_graph[node].max_subpath_len = len;
+                }
+            } else {
+                self.orig_graph[node].max_subpath_len = self.orig_graph[node].max_depth;
+            }
+        }
+        let mut roots: Vec<NodeIndex> = self.orig_graph
+            .node_indices()
+            .filter(|nx| self.orig_graph.node_weight(*nx).unwrap().parent_count == 0)
+            .collect();
+        let max_subpath_len_order = |node_a: &NodeIndex, node_b: &NodeIndex| {
+            let node_a_data = self.orig_graph.node_weight(*node_a).unwrap();
+            let node_b_data = self.orig_graph.node_weight(*node_b).unwrap();
+            if node_a_data.max_subpath_len < node_b_data.max_subpath_len || (node_a_data.max_subpath_len == node_b_data.max_subpath_len
+                && node_b_data.inst_idx < node_a_data.inst_idx) {
+                std::cmp::Ordering::Greater
+            } else {
+                std::cmp::Ordering::Less
+            }
+        };
+        roots.sort_unstable_by(max_subpath_len_order);
+        self.max_subpath_len_ranked_node_indices = roots;
         // efficiently compute transitive closure with a vector of FixedBitSet's
         let mut topo = Topo::new(petgraph::visit::Reversed(&self.orig_graph));
         // assign topological orders to each node

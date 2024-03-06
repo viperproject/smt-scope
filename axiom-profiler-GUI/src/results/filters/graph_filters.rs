@@ -198,11 +198,11 @@ impl Component for GraphFilters {
                 true
             }
             Msg::SetNMaxSubpathLen(to) => {
-                self.n_deepest = to;
+                self.n_max_sub_path_len = to;
                 true
             }
             Msg::SetNMinSubpathLen(to) => {
-                self.n_least_deep = to;
+                self.n_min_sub_path_len = to;
                 true
             }
             Msg::SetMaxDepth(to) => {

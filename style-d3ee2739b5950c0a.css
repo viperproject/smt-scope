@@ -1,0 +1,1 @@
+.loading-bar-failed > mwc-linear-progress{--mdc-theme-primary:red}.ascii-art{font-family:monospace;white-space:pre}#image{display:inline-block;overflow:auto;max-width:1500px;max-height:1000px;flex:1}.node{cursor:pointer}.edge.direct{cursor:pointer}.node:hover {opacity:.6}.edge.direct:hover * {opacity:.4}

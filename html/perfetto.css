@@ -1,0 +1,309 @@
+
+/* From https://ui.perfetto.dev/ */
+
+html {
+	font-family: Roboto, verdana, sans-serif;
+}
+
+html, body, body > main {
+	height: 100%;
+	width: 100%;
+	padding: 0;
+	margin: 0;
+	overscroll-behavior: none;
+	overflow: hidden;
+}
+
+body > main {
+	display: grid;
+	grid-template-areas: "sidebar topbar" "sidebar alerts" "sidebar page";
+	grid-template-rows: auto auto 1fr;
+	grid-template-columns: auto 1fr;
+	color: #121212;
+	overflow: hidden;
+}
+
+.sidebar {
+	--sidebar-padding-bottom: 40px;
+	--sidebar-timing: 0.15s;
+	grid-area: sidebar;
+	z-index: 4;
+	background-color: var(--expanded-background);
+	overflow: hidden;
+	width: var(--sidebar-width);
+	display: flex;
+	position: relative;
+	flex-direction: column;
+	transition: margin-left var(--anim-easing) var(--sidebar-timing), visibility linear var(--sidebar-timing);
+}
+
+:root {
+	--sidebar-width: 230px;
+	--topbar-height: 44px;
+	--monospace-font: "Roboto Mono", monospace;
+	--track-shell-width: 250px;
+	--track-border-color: #00000025;
+	--anim-easing: cubic-bezier(0.4, 0, 0.2, 1);
+	--selection-stroke-color: #00344596;
+	--selection-fill-color: #8398e64d;
+	--overview-timeline-non-visible-color: #c8c8c8cc;
+	--details-content-height: 280px;
+	--collapsed-background: hsla(190, 49%, 97%, 1);
+	--expanded-background: hsl(215, 22%, 81%);
+}
+
+* {
+	box-sizing: border-box;
+	-webkit-tap-highlight-color: transparent;
+	touch-action: none;
+}
+
+.sidebar.hide-sidebar {
+	visibility: hidden;
+	margin-left: calc(var(--sidebar-width) * -1);
+}
+
+.sidebar > header {
+	font-family: "Roboto Condensed", sans-serif;
+	font-weight: 700;
+	font-size: 24px;
+	height: var(--topbar-height);
+	line-height: var(--topbar-height);
+	vertical-align: middle;
+	padding: 0 12px;
+	color: #000;
+	overflow: visible;
+    display: flex;
+}
+
+.sidebar > header .brand {
+	height: 36px;
+	margin-top: 4px;
+}
+
+.sidebar .sidebar-button {
+	position: fixed;
+	z-index: 5;
+	background-color: var(--expanded-background);
+	height: var(--topbar-height);
+	left: calc(var(--sidebar-width) - 50px);
+	border-radius: 0 5px 5px 0;
+	border-bottom: inherit;
+	visibility: visible;
+	transition: left var(--anim-easing) var(--sidebar-timing);
+	width: 48px;
+	overflow: hidden;
+}
+
+.sidebar.hide-sidebar .sidebar-button {
+	left: 0;
+	background-color: transparent;
+	border-radius: unset;
+	border-bottom: none;
+	color: #000;
+}
+
+.sidebar > * {
+	border-bottom: 1px solid hsl(215, 22%, 71%);
+}
+
+.sidebar input[type="file"] {
+	display: none;
+}
+
+.sidebar .sidebar-scroll {
+	overflow-y: auto;
+	flex: 1;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container {
+	position: relative;
+	min-height: 100%;
+	padding-bottom: var(--sidebar-padding-bottom);
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section.expanded {
+	background-color: hsl(213, 26%, 87%);
+	max-height: unset;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section {
+	transition: opacity 0.1s ease, color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease, width 0.1s ease, height 0.1s ease, max-width 0.1s ease, max-height 0.1s ease, margin 0.1s ease, transform 0.1s ease, box-shadow 0.1s ease, border-radius 0.1s ease;
+	padding: 20px 0;
+	max-height: 80px;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section .section-header > h1 {
+	color: #000;
+	font-size: 15px;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section .section-header > h1, .sidebar .sidebar-scroll > .sidebar-scroll-container > section .section-header > h2 {
+	letter-spacing: 0.25px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	margin: 0 12px;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section.expanded .section-header h2 {
+	opacity: 0;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section.expanded .section-header::before {
+	content: "expand_less";
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section:not(.expanded):hover {
+	background-color: hsl(216, 15%, 75%);
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section .section-header::before {
+	font-family: "Material Icons";
+	font-size: 24px;
+	line-height: 1;
+	letter-spacing: normal;
+	text-transform: none;
+	vertical-align: middle;
+	display: inline-block;
+	white-space: nowrap;
+	word-wrap: normal;
+	direction: ltr;
+	-webkit-font-feature-settings: "liga";
+	-webkit-font-smoothing: antialiased;
+	font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+	content: "expand_more";
+	float: right;
+	color: rgba(0, 0, 0, 0.3);
+	margin-right: 12px;
+	margin-top: -4px;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section .section-header > h2 {
+	transition: opacity 0.1s ease, color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease, width 0.1s ease, height 0.1s ease, max-width 0.1s ease, max-height 0.1s ease, margin 0.1s ease, transform 0.1s ease, box-shadow 0.1s ease, border-radius 0.1s ease;
+	color: rgba(0, 0, 0, 0.5);
+	font-size: 12px;
+	margin-top: 8px;
+	font-weight: 400;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content {
+	pointer-events: none;
+	transition: opacity 0.1s ease, color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease, width 0.1s ease, height 0.1s ease, max-width 0.1s ease, max-height 0.1s ease, margin 0.1s ease, transform 0.1s ease, box-shadow 0.1s ease, border-radius 0.1s ease;
+	opacity: 0;
+	color: hsl(210, 4%, 28%);
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content a {
+	color: hsl(210, 4%, 28%);
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li:hover {
+	background-color: hsl(216, 15%, 75%);
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section .section-header {
+	cursor: pointer;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container > section.expanded .section-content {
+	pointer-events: inherit;
+	opacity: 1;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content ul {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li {
+	transition: opacity 0.1s ease, color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease, width 0.1s ease, height 0.1s ease, max-width 0.1s ease, max-height 0.1s ease, margin 0.1s ease, transform 0.1s ease, box-shadow 0.1s ease, border-radius 0.1s ease;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li a {
+	line-height: 24px;
+	font-size: 14px;
+	padding: 4px 12px;
+	text-decoration: none;
+	display: flex;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li .material-icons {
+	margin-right: 10px;
+	font-size: 20px;
+}
+
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li .trace-file-name {
+	white-space: break-spaces;
+	font-family: "Roboto Condensed", sans-serif;
+	word-break: break-all;
+	font-weight: 300;
+	letter-spacing: 0;
+	margin-top: -10px;
+	color: #000;
+}
+
+.sidebar .sidebar-footer .version {
+	position: absolute;
+	right: 8px;
+	bottom: 3px;
+	font-size: 12px;
+	font-family: "Roboto Condensed", sans-serif;
+	margin-top: 11px;
+}
+
+.sidebar .sidebar-footer {
+	position: absolute;
+	bottom: 0;
+	width: 100%;
+	padding: 2px 10px;
+	display: grid;
+	height: -var(--sidebar-padding-bottom);
+	grid-template-columns: repeat(4, min-content);
+	grid-gap: 10px;
+}
+
+.sidebar .sidebar-footer > .dbg-info-square > div {
+	font-size: 10px;
+	line-height: 11px;
+}
+
+.sidebar .sidebar-footer > .dbg-info-square {
+	font-family: "Roboto Condensed", sans-serif;
+	width: 24px;
+	height: 24px;
+	line-height: 24px;
+	display: flex;
+	justify-content: center;
+	flex-direction: column;
+	align-items: center;
+	margin: 1px 0;
+	background: #e3e8ed;
+	color: #4e71b3;
+	border-radius: 2px;
+	font-size: 12px;
+	text-align: center;
+}
+
+.sidebar .sidebar-footer > .dbg-info-square.green {
+	background: #7aca75;
+	color: #12161b;
+}
+.sidebar .sidebar-footer > .dbg-info-square.green {
+    background: #7aca75;
+    color: #12161b;
+}
+.sidebar .sidebar-footer > .dbg-info-square.amber {
+    background: #ffc107;
+    color: #333;
+}
+.sidebar .sidebar-footer > .dbg-info-square.red {
+    background: #d32f2f;
+    color: #fff;
+}
+
+.sidebar .sidebar-footer .version a {
+	color: rgba(0, 0, 0, 0.5);
+	text-decoration: none;
+}

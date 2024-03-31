@@ -33,7 +33,7 @@ div.page svg g.node {
     cursor: pointer;
 }
 
-div.page svg g.edge.direct {
+div.page svg g.edge {
     cursor: pointer;
 }
 
@@ -41,7 +41,7 @@ div.page svg g.node:hover {
     opacity: 0.6
 }
 
-div.page svg g.edge.direct:hover * {
+div.page svg g.edge:hover * {
     opacity: 0.4
 }
 
@@ -49,6 +49,6 @@ div.page svg g.node.selected {
     stroke-width: 3;
 }
 
-div.page svg g.edge.direct.selected {
+div.page svg g.edge.selected {
     stroke-width: 3;
 }

@@ -145,7 +145,8 @@ body > main > div {
 * {
 	box-sizing: border-box;
 	-webkit-tap-highlight-color: transparent;
-	touch-action: none;
+	/* TODO: should this be enabled? */
+	/* touch-action: none; */
 }
 
 .sidebar.hide-sidebar {

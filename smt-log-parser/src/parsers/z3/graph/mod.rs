@@ -34,7 +34,4 @@ impl InstGraph {
         self.raw.stats.generation == old.generation
     }
 
-    pub fn search_matching_loops(&mut self) -> usize {
-        0
-    }
 }

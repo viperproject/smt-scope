@@ -1,5 +1,6 @@
 pub mod cost;
 pub mod depth;
+pub mod matching_loop;
 
 use petgraph::{graph::NodeIndex, Direction};
 

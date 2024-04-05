@@ -1,5 +1,6 @@
 pub mod cost;
 pub mod depth;
+pub mod matching_loop;
 
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::Direction;

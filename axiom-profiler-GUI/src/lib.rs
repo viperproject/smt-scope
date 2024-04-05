@@ -339,12 +339,11 @@ impl Component for FileDataComponent {
                     // TODO: re-add finding matching loops
                     // assert!(file.parser.graph.is_some());
                     let parser = ctx.link().get_configuration().unwrap().config.parser.unwrap();
-                    file.parser = parser; 
+                    file.parser = parser.clone(); 
                     if let Some(g) = &file.parser.graph {
                         file.parser.found_mls = Some(g
                         .borrow_mut()
-                        .search_matching_loops()
-                    )
+                        .search_matching_loops(parser.parser))
                     }
                     return true;
                     // file.parser.found_mls = Some(

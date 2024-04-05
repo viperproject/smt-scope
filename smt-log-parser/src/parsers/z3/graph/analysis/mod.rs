@@ -20,11 +20,12 @@ pub struct Analysis {
     pub fwd_depth_min: Vec<NodeIndex>,
     // // Most to least
     // pub(super) max_depth: Vec<NodeIndex>,
+    pub matching_loop_end_nodes: Option<Vec<NodeIndex>>,
 }
 
 impl Analysis {
     pub fn new(nodes: Vec<NodeIndex>) -> Self {
-        Self { cost: nodes.clone(), children: nodes.clone(), fwd_depth_min: nodes }//.clone(), max_depth: nodes }
+        Self { cost: nodes.clone(), children: nodes.clone(), fwd_depth_min: nodes, matching_loop_end_nodes: None }//.clone(), max_depth: nodes }
     }
 }
 

@@ -1,14 +1,11 @@
-use std::{num::NonZeroU32, ops::{Index, IndexMut}};
-
 use fxhash::FxHashMap;
 use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdges, NodeFiltered}, Direction};
-
-use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}};
 
 use super::{raw::{EdgeKind, Node, NodeKind}, InstGraph, RawEdgeIndex, RawNodeIndex};
 
 graph_idx!(visible_idx, VisibleNodeIndex, VisibleEdgeIndex, VisibleIx);
 
+#[derive(Default)]
 pub struct VisibleInstGraph {
     pub graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx>,
     reverse: FxHashMap<RawNodeIndex, VisibleNodeIndex>,
@@ -134,6 +131,52 @@ impl VisibleInstGraph {
             }
         }
     }
+
+    pub fn find_longest_paths(&mut self) -> FxHashSet<NodeIndex> {
+        // traverse this subtree in topological order to compute longest distances from root nodes
+        Self::compute_longest_distances_from_roots(self);
+        let furthest_away_end_nodes = self.graph
+            .node_indices()
+            // only want to keep end nodes of longest paths, i.e., nodes without any children 
+            .filter(|nx| self.graph.neighbors_directed(*nx, Outgoing).count() == 0)
+            // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
+            .filter(|nx| self.graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1) 
+            .collect();
+        // backtrack longest paths from furthest away nodes in subgraph until we reach a root
+        let mut matching_loop_nodes: FxHashSet<NodeIndex> = FxHashSet::default();
+        let mut visitor: Vec<NodeIndex> = furthest_away_end_nodes;
+        let mut visited: FxHashSet<_> = FxHashSet::default();
+        while let Some(curr) = visitor.pop() {
+            // matching_loop_nodes.insert(self.graph.node_weight(curr).unwrap().orig_graph_idx());
+            matching_loop_nodes.insert(self.graph[curr].idx);
+            let curr_distance = self.graph.node_weight(curr).unwrap().max_depth;
+            let preds = self.graph.neighbors_directed(curr, Incoming).filter(|pred| {
+                let pred_distance = self.graph.node_weight(*pred).unwrap().max_depth;
+                pred_distance == curr_distance - 1
+            });
+            for pred in preds {
+                if visited.insert(pred) {
+                    visitor.push(pred);
+                }
+            }
+        }
+        matching_loop_nodes
+    } 
+
+    pub fn compute_longest_distances_from_roots(&mut self) {
+        let mut topo = Topo::new(&self.graph);
+        while let Some(nx) = topo.next(&self.graph) {
+            let parents = self.graph.neighbors_directed(nx, Incoming);
+            let max_parent_depth = parents
+                .map(|nx| self.graph.node_weight(nx).unwrap().max_depth)
+                .max();
+            if let Some(depth) = max_parent_depth {
+                self.graph[nx].max_depth = depth + 1;
+            } else {
+                self.graph[nx].max_depth = 0;
+            }
+        }
+    }
 }
 
 impl Index<VisibleNodeIndex> for VisibleInstGraph {
@@ -164,6 +207,7 @@ pub struct VisibleNode {
     pub idx: RawNodeIndex,
     pub hidden_parents: u32,
     pub hidden_children: u32,
+    pub max_depth: usize,
 }
 
 #[derive(Clone, PartialEq, Eq)]

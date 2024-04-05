@@ -10,7 +10,7 @@ use crate::{Result, Z3Parser};
 
 use self::{cost::DefaultCost, depth::DefaultDepth};
 
-use super::{raw::Node, InstGraph, RawNodeIndex};
+use super::{raw::Node, visible::VisibleInstGraph, InstGraph, RawNodeIndex};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
@@ -24,11 +24,12 @@ pub struct Analysis {
     // // Most to least
     // pub(super) max_depth: Vec<NodeIndex>,
     pub matching_loop_end_nodes: Option<Vec<NodeIndex>>,
+    pub matching_loop_subgraph: VisibleInstGraph,
 }
 
 impl Analysis {
     pub fn new(nodes: Vec<NodeIndex>) -> Self {
-        Self { cost: nodes.clone(), children: nodes.clone(), fwd_depth_min: nodes, matching_loop_end_nodes: None }//.clone(), max_depth: nodes }
+        Self { cost: nodes.clone(), children: nodes.clone(), fwd_depth_min: nodes, matching_loop_end_nodes: None, matching_loop_subgraph: VisibleInstGraph::default() }//.clone(), max_depth: nodes }
     }
 }
 

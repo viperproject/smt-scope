@@ -20,24 +20,13 @@ pub struct Analysis {
     // Most to least
     pub fwd_depth_min: Vec<RawNodeIndex>,
     // // Most to least
-    // pub(super) max_depth: Vec<RawNodeIndex>,
+    // pub(super) max_depth: Vec<NodeIndex>,
+    pub matching_loop_end_nodes: Option<Vec<NodeIndex>>,
 }
 
 impl Analysis {
-    pub fn new(nodes: impl ExactSizeIterator<Item = RawNodeIndex> + Clone) -> Result<Self> {
-        // Alloc `children` vector
-        let mut cost = Vec::new();
-        cost.try_reserve_exact(nodes.len())?;
-        cost.extend(nodes.clone());
-        // Alloc `children` vector
-        let mut children = Vec::new();
-        children.try_reserve_exact(nodes.len())?;
-        children.extend(nodes.clone());
-        // Alloc `fwd_depth_min` vector
-        let mut fwd_depth_min = Vec::new();
-        fwd_depth_min.try_reserve_exact(nodes.len())?;
-        fwd_depth_min.extend(nodes.clone());
-        Ok(Self { cost, children, fwd_depth_min })
+    pub fn new(nodes: Vec<NodeIndex>) -> Self {
+        Self { cost: nodes.clone(), children: nodes.clone(), fwd_depth_min: nodes, matching_loop_end_nodes: None }//.clone(), max_depth: nodes }
     }
 }
 

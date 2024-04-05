@@ -69,7 +69,15 @@ impl Filter {
                 ))
             }
             // TODO: implement
-            Filter::SelectNthMatchingLoop(n) => (),//return FilterOutput::MatchingLoopGeneralizedTerms(graph.show_nth_matching_loop(n, parser)),
+            Filter::SelectNthMatchingLoop(n) => {
+                if let Some(nidx) = graph.get_nth_matching_loop_end_node(n) {
+                    let nodes: Vec<_> = Dfs::new(graph.raw.rev(), *nidx).iter(graph.raw.rev()).collect();
+                    graph.raw.reset_visibility_to(true);
+                    graph.raw.set_visibility_many(false, nodes.into_iter())
+                } else {
+                    ()
+                }
+            },
             Filter::ShowMatchingLoopSubgraph => (),// graph.show_matching_loop_subgraph(),
         }
         FilterOutput::None

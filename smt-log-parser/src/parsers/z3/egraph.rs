@@ -1,4 +1,5 @@
 use fxhash::{FxHashMap, FxHashSet};
+use gloo_console::log;
 use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::EdgeRef};
 use typed_index_collections::TiVec;
 
@@ -104,6 +105,8 @@ impl EGraph {
         let trans = self.construct_trans_equality(from, to, stack, can_mismatch)?;
         self.enodes[from].transitive.try_reserve(1)?;
         self.enodes[from].transitive.push(trans);
+        log!(format!("Added transitive equality {}", trans));
+        log!("\n");
         Ok(trans)
     }
 
@@ -135,9 +138,12 @@ impl EGraph {
     }
 
     fn get_simple_path(&self, from: ENodeIdx, to: ENodeIdx, stack: &Stack, can_mismatch: impl Fn(&EGraph) -> bool) -> Result<SimplePath> {
+        log!(format!("Computing simple path from {} to {}", from, to));
         let (root, f_path) = self.path_to_root(from, None, stack)?;
+        log!(format!("f_path: {}", f_path.iter().map(|n| format!("{}", n)).collect::<Vec<String>>().join(", ")));
         let f_root = f_path.len() - 1;
         let (_, t_path) = self.path_to_root(to, root, stack)?;
+        log!(format!("t_path: {}", t_path.iter().map(|n| format!("{}", n)).collect::<Vec<String>>().join(", ")));
         let t_root = t_path.len() - 1;
 
         let mut shared = 1;
@@ -158,27 +164,44 @@ impl EGraph {
 
     fn construct_trans_equality(&mut self, from: ENodeIdx, to: ENodeIdx, stack: &Stack, can_mismatch: impl Fn(&EGraph) -> bool) -> Result<EqTransIdx> {
         // Note that it is possible for `from == to`!
+        // log!(format!("Constructing transitive equality (#{} #{})", self.enodes[from].owner, self.enodes[to].owner));
+        log!(format!("Constr. equality (#{} #{})", from, to));
         let simple_path = self.get_simple_path(from, to, stack, can_mismatch)?;
+        log!(format!("Initially, in simple_path, f_path has {}, t_path {}, and shared has {} nodes.", simple_path.from_to_root.len(), simple_path.to_to_root.len(), simple_path.shared));
         // TODO: no need to store the `ENodeIdx` in the graph!
         let mut graph: DiGraph<(ENodeIdx, u32, EdgeIndex), TransitiveExplSegment> = DiGraph::with_capacity(simple_path.nodes_len(), simple_path.edges_len());
         let mut last = graph.add_node((from, 0, EdgeIndex::from(u32::MAX)));
         for (to, eq) in simple_path.all_simple_edges(self, stack) {
             let next = graph.add_node((to, 0, EdgeIndex::from(u32::MAX)));
             graph.add_edge(last, next, TransitiveExplSegment::Leaf(eq));
+            log!(format!("1: Adding edge ({} {})", graph[last].0, graph[next].0));
             last = next;
         }
+        log!(format!("Later, in simple_path, f_path has {}, t_path {}, and shared has {} nodes.", simple_path.from_to_root.len(), simple_path.to_to_root.len(), simple_path.shared));
         for (idx, efrom) in simple_path.all_nodes().enumerate() {
             let nfrom = NodeIndex::new(idx);
             // TODO: remove, just testing `node_at`
             debug_assert_eq!(simple_path.node_at(idx as usize), efrom);
             debug_assert_eq!(efrom, graph[nfrom].0);
+            log!(format!("\n idx = {}, efrom = {}", idx, efrom));
 
             self.enodes[efrom].transitive.retain(|&trans| {
-                let mut prior_simple_edges = (0..idx).rev().map(|idx| EdgeIndex::new(idx)).map(|idx| match graph[idx] {
-                    TransitiveExplSegment::Leaf(eq) => eq,
-                    _ => unreachable!(),
+                log!(format!("\t Processing transitive equality {}", trans));
+                log!(format!("\t idx = {}", idx));
+                let mut prior_simple_edges = (0..idx).rev().map(|idx| { 
+                    log!(format!("\t\t Creating EdgeIndex::new({})", idx));
+                    EdgeIndex::new(idx) }).map(|idx| match graph[idx] {
+                    TransitiveExplSegment::Leaf(eq) => {
+                        log!(format!("\t\t\t prior: matches with Leaf(eq)"));
+                        eq
+                    },
+                    _ => {
+                        log!(format!("\t\t\t prior: Executing unreachable code"));
+                        unreachable!()
+                    },
                 });
                 let check_left = prior_simple_edges.len() != 0;
+                log!(format!("\t check_left = {}", check_left));
                 if check_left {
                     match self.equalities.is_equal(trans, false, &mut prior_simple_edges) {
                         // Unequal straight away at the first one, lets try the other direction
@@ -189,15 +212,23 @@ impl EGraph {
                             debug_assert_eq!(self.equalities.walk_to(efrom, trans, false), graph[to].0);
                             debug_assert!(to.index() < nfrom.index());
                             graph.add_edge(to, nfrom, TransitiveExplSegment::TransitiveBwd(trans));
+                            log!(format!("\t\t\t\t 2: Adding edge ({} {})", graph[to].0, graph[nfrom].0));
                             return true
                         }
                     }
                 }
-                let mut post_simple_edges = (idx..simple_path.edges_len()).map(|idx| EdgeIndex::new(idx)).map(|idx| match graph[idx] {
-                    TransitiveExplSegment::Leaf(eq) => eq,
+                let mut post_simple_edges = (idx..simple_path.edges_len()).map(|idx| { 
+                    log!(format!("\t\t Creating EdgeIndex::new({})", idx));
+                    EdgeIndex::new(idx)
+                }).map(|idx| match graph[idx] {
+                    TransitiveExplSegment::Leaf(eq) => {
+                        log!(format!("\t\t\t post: matches with Leaf({})", eq));
+                        eq
+                    },
                     _ => unreachable!(),
                 });
                 let check_right = prior_simple_edges.len() != 0;
+                log!(format!("\t check_right = {}", check_right));
                 if check_right {
                     let keep = match self.equalities.is_equal(trans, true, &mut post_simple_edges) {
                         Err((true, mismatch)) => {
@@ -213,6 +244,7 @@ impl EGraph {
                             debug_assert_eq!(self.equalities.walk_to(efrom, trans, true), graph[to].0);
                             debug_assert!(nfrom.index() < to.index());
                             graph.add_edge(nfrom, to, TransitiveExplSegment::TransitiveFwd(trans));
+                            log!(format!("\t\t\t\t 3: Adding edge ({} {})", graph[nfrom].0, graph[to].0));
                             true
                         }
                     };

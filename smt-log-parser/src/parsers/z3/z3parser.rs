@@ -1,3 +1,4 @@
+use gloo_console::log;
 use typed_index_collections::TiVec;
 
 use crate::{
@@ -153,6 +154,7 @@ impl Z3Parser {
         can_mismatch: bool,
     ) -> impl FnMut(&str, &str) -> Result<EqTransIdx> + '_ {
         move |from, to| {
+            log!(format!("Parsing equality ({} {})", from, to));
             let from = self.parse_existing_enode(from)?;
             let to = self.parse_existing_enode(to)?;
             if can_mismatch {

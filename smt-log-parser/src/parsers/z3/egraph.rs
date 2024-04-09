@@ -69,6 +69,7 @@ impl EGraph {
     pub fn new_given_equality(&mut self, from: ENodeIdx, expl: EqualityExpl, stack: &Stack) -> Result<()> {
         let to = expl.to();
         self.equalities.given.raw.try_reserve(1)?;
+        log!(format!("Creating new given eq from {} to {}", from, to));
         let expl = self.equalities.given.push_and_get_key(expl);
         let enode = &mut self.enodes[from];
         let eq = Equality {
@@ -181,10 +182,12 @@ impl EGraph {
         for (idx, efrom) in simple_path.all_nodes().enumerate() {
             let nfrom = NodeIndex::new(idx);
             // TODO: remove, just testing `node_at`
+            log!(format!("\n idx = {}, efrom = {}", idx, efrom));
             debug_assert_eq!(simple_path.node_at(idx as usize), efrom);
             debug_assert_eq!(efrom, graph[nfrom].0);
-            log!(format!("\n idx = {}, efrom = {}", idx, efrom));
 
+            // removing self-loops to avoid issues when computing shortest path
+            self.enodes[efrom].transitive.retain(|&trans| self.equalities[trans].to != efrom);
             self.enodes[efrom].transitive.retain(|&trans| {
                 log!(format!("\t Processing transitive equality {}", trans));
                 log!(format!("\t idx = {}", idx));
@@ -260,14 +263,17 @@ impl EGraph {
                             // let to = NodeIndex::new(idx);
                             log!(format!("\t\t trans is from {} to {}", efrom, self.equalities[trans].to));
                             let to = graph.node_indices().find(|nidx| graph[*nidx].0 == self.equalities[trans].to).unwrap();
-                            debug_assert_eq!(self.equalities.walk_to(efrom, trans, true), graph[to].0);
+                            // this assertion does not make sense as we are trying to index the Equalities::given with 
+                            // trans which is a transitive equality, so the assertion is certainly going to fail
+                            // debug_assert_eq!(self.equalities.walk_to(efrom, trans, true), graph[to].0);
                             debug_assert!(nfrom.index() < to.index());
                             log!(format!("\t\t\t nfrom: {}, to: {}", graph[nfrom].0, graph[to].0));
-                            if graph[nfrom].0 != graph[to].0 {
-                                graph.add_edge(nfrom, to, TransitiveExplSegment::TransitiveFwd(trans));
-                                log!(format!("\t\t\t\t 3: Adding edge ({} {})", graph[nfrom].0, graph[to].0));
-                            }
-                            // graph.add_edge(nfrom, to, TransitiveExplSegment::TransitiveFwd(trans));
+                            // if graph[nfrom].0 != graph[to].0 {
+                            //     graph.add_edge(nfrom, to, TransitiveExplSegment::TransitiveFwd(trans));
+                            //     log!(format!("\t\t\t\t 3: Adding edge ({} {})", graph[nfrom].0, graph[to].0));
+                            // }
+                            graph.add_edge(nfrom, to, TransitiveExplSegment::TransitiveFwd(trans));
+                            log!(format!("\t\t\t\t 3: Adding edge ({} {})", graph[nfrom].0, graph[to].0));
                             true
                         }
                     };
@@ -450,7 +456,8 @@ impl SimplePath {
         if idx <= from_len {
             self.from_to_root[idx]
         } else {
-            let to_len = self.from_to_root.len() - self.shared;
+            // let to_len = self.from_to_root.len() - self.shared;
+            let to_len = self.to_to_root.len() - self.shared;
             self.to_to_root[(to_len + from_len) - idx]
         }
     }

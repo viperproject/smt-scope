@@ -43,7 +43,8 @@ jobs:
         key: logs-${{ steps.configure-z3-id.outputs.z3_v_clean }}-${{ hashFiles('smt-problems/**/*.smt2') }}
     - id: check-logs-cached
       run: ls -la logs
-    - run: SLP_MEMORY_LIMIT_GB=13 cargo test --workspace -- --nocapture
+    # Running with sudo seems to improve performance by up to 3x in some cases?
+    - run: sudo SLP_MEMORY_LIMIT_GB=13 cargo test --workspace -- --nocapture
 
     # Failure
     - run: tar -czf failing_logs.tar.bz2 logs/

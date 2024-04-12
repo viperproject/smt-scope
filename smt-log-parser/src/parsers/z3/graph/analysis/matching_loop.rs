@@ -4,7 +4,7 @@ use fxhash::FxHashSet;
 use petgraph::Direction::Outgoing;
 
 use crate::{parsers::z3::graph::{raw::{Node, NodeKind}, InstGraph}, Z3Parser};
-use super::NodeIndex;
+use super::RawNodeIndex;
 
 pub const MIN_MATCHING_LOOP_LENGTH: usize = 3;
 
@@ -24,11 +24,11 @@ impl InstGraph {
             .flat_map(|inst| parser[parser[*inst].match_].kind.quant_idx())
             .collect();
 
-        let mut matching_loop_nodes_per_quant: Vec<FxHashSet<NodeIndex>> = Vec::new();
+        let mut matching_loop_nodes_per_quant: Vec<FxHashSet<RawNodeIndex>> = Vec::new();
         for quant in quants {
             // log!(format!("Processing quant {}", quant));
             self.raw.reset_visibility_to(true);
-            self.raw.set_visibility_when(false, |_: NodeIndex, node: &Node| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.quant_idx() == Some(quant)));
+            self.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.quant_idx() == Some(quant)));
             let mut visible_graph = self.to_visible();
             let matching_loops = visible_graph.find_longest_paths();
             matching_loop_nodes_per_quant.push(matching_loops);
@@ -43,31 +43,35 @@ impl InstGraph {
         //         self.raw.graph[node].set_visibility_to(true);
         //     }
         // }
-        self.analysis.matching_loop_subgraph = self.to_visible();
+        // self.analysis.matching_loop_subgraph = self.to_visible();
+        let mut matching_loop_subgraph = self.to_visible();
         // for displaying the nth longest matching loop later on, we want to compute the end nodes of all the matching loops
         // and sort them by max-depth in descending order
-        self.analysis.matching_loop_subgraph.compute_longest_distances_from_roots();
+        matching_loop_subgraph.compute_longest_distances_from_roots();
         // compute end-nodes of matching loops 
-        let mut matching_loop_end_nodes: Vec<_> = self.analysis.matching_loop_subgraph 
+        let mut matching_loop_end_nodes: Vec<_> = matching_loop_subgraph 
             .graph
             .node_indices()
             // only keep end-points of matching loops, i.e., nodes without any children in the matching loop subgraph
-            .filter(|nx| self.analysis.matching_loop_subgraph.graph.neighbors_directed(*nx, Outgoing).count() == 0)
+            .filter(|nx| matching_loop_subgraph.graph.neighbors_directed(*nx, Outgoing).count() == 0)
             .collect();
         // sort the matching loop end-nodes by the max-depth
         matching_loop_end_nodes.sort_unstable_by(|node_a, node_b| {
-            let max_depth_node_a = self.analysis.matching_loop_subgraph.graph.node_weight(*node_a).unwrap().max_depth;
-            let max_depth_node_b = self.analysis.matching_loop_subgraph.graph.node_weight(*node_b).unwrap().max_depth;
+            let max_depth_node_a = matching_loop_subgraph.graph.node_weight(*node_a).unwrap().max_depth;
+            let max_depth_node_b = matching_loop_subgraph.graph.node_weight(*node_b).unwrap().max_depth;
             if max_depth_node_a < max_depth_node_b {
                 std::cmp::Ordering::Greater
             } else {
                 std::cmp::Ordering::Less
             }
         });
-        matching_loop_end_nodes = matching_loop_end_nodes.iter().map(|nidx| self.analysis.matching_loop_subgraph.graph[*nidx].idx).collect();
+        let matching_loop_end_nodes_raw_indices: Vec<RawNodeIndex> = matching_loop_end_nodes
+            .iter()
+            .map(|nidx| matching_loop_subgraph.graph[*nidx].idx)
+            .collect();
         // return the total number of potential matching loops
-        let nr_matching_loop_end_nodes = matching_loop_end_nodes.len();
-        self.analysis.matching_loop_end_nodes = Some(matching_loop_end_nodes);
+        let nr_matching_loop_end_nodes = matching_loop_end_nodes_raw_indices.len();
+        self.analysis.matching_loop_end_nodes = Some(matching_loop_end_nodes_raw_indices);
         // self.generalized_terms.resize(nr_matching_loop_end_nodes, None);
         nr_matching_loop_end_nodes
     }

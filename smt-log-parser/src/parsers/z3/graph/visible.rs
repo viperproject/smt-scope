@@ -1,11 +1,10 @@
-use std::ops::{Index, IndexMut};
+use std::{num::NonZeroU32, ops::{Index, IndexMut}};
+use fxhash::{FxHashMap, FxHashSet};
+use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdges, NodeFiltered, Topo}, Direction::{self, Incoming, Outgoing}};
 
-use fxhash::FxHashMap;
-use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdges, NodeFiltered}, Direction};
+use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}};
 
-use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}, NonMaxU32};
-
-use super::{raw::{EdgeKind, Node, NodeKind}, InstGraph, RawEdgeIndex, RawNodeIndex};
+use super::{analysis::matching_loop::MIN_MATCHING_LOOP_LENGTH, raw::{EdgeKind, Node, NodeKind}, InstGraph, RawEdgeIndex, RawNodeIndex};
 
 graph_idx!(visible_idx, VisibleNodeIndex, VisibleEdgeIndex, VisibleIx);
 
@@ -29,6 +28,7 @@ impl InstGraph {
             idx,
             hidden_parents: self.raw.neighbors_directed(idx, Direction::Incoming).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
             hidden_children: self.raw.neighbors_directed(idx, Direction::Outgoing).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
+            max_depth: 0 
         });
         for (i, node) in self.raw.graph.node_weights().into_iter().enumerate() {
             if let Some(nw) = node_map(RawNodeIndex(NodeIndex::new(i)), node) {
@@ -136,7 +136,7 @@ impl VisibleInstGraph {
         }
     }
 
-    pub fn find_longest_paths(&mut self) -> FxHashSet<NodeIndex> {
+    pub fn find_longest_paths(&mut self) -> FxHashSet<RawNodeIndex> {
         // traverse this subtree in topological order to compute longest distances from root nodes
         Self::compute_longest_distances_from_roots(self);
         let furthest_away_end_nodes = self.graph
@@ -147,8 +147,8 @@ impl VisibleInstGraph {
             .filter(|nx| self.graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1) 
             .collect();
         // backtrack longest paths from furthest away nodes in subgraph until we reach a root
-        let mut matching_loop_nodes: FxHashSet<NodeIndex> = FxHashSet::default();
-        let mut visitor: Vec<NodeIndex> = furthest_away_end_nodes;
+        let mut matching_loop_nodes: FxHashSet<RawNodeIndex> = FxHashSet::default();
+        let mut visitor: Vec<NodeIndex<VisibleIx>> = furthest_away_end_nodes;
         let mut visited: FxHashSet<_> = FxHashSet::default();
         while let Some(curr) = visitor.pop() {
             // matching_loop_nodes.insert(self.graph.node_weight(curr).unwrap().orig_graph_idx());
@@ -206,7 +206,7 @@ impl IndexMut<VisibleEdgeIndex> for VisibleInstGraph {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VisibleNode {
     pub idx: RawNodeIndex,
     pub hidden_parents: u32,

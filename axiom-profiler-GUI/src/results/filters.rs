@@ -72,7 +72,7 @@ impl Filter {
             Filter::SelectNthMatchingLoop(n) => {
                 if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
                     if let Some(nidx) = nodes.get(n) {
-                        let nodes: Vec<_> = Dfs::new(graph.raw.rev(), *nidx).iter(graph.raw.rev()).collect();
+                        let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
                         graph.raw.reset_visibility_to(true);
                         graph.raw.set_visibility_many(false, nodes.into_iter())
                     }
@@ -82,7 +82,7 @@ impl Filter {
                 if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
                     graph.raw.reset_visibility_to(true);
                     for nidx in nodes {
-                        let nodes: Vec<_> = Dfs::new(graph.raw.rev(), *nidx).iter(graph.raw.rev()).collect();
+                        let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
                         graph.raw.set_visibility_many(false, nodes.into_iter())
                     }
                 }

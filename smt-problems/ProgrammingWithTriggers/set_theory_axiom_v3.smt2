@@ -1,11 +1,10 @@
+; github-ci skip version: 4.8.7
 ; some z3 options
 (set-option :print-success false)
 (set-info :smt-lib-version 2.0)
 (set-option :smt.MBQI false)
 (set-option :smt.QI.EAGER_THRESHOLD 100)
 (set-option :smt.refine_inj_axioms false)
-(set-option :trace true) 
-(set-option :trace_file_name set_theory_axiom_v3.log)
 (set-logic ALL)
 
 (declare-const c (Set Int))

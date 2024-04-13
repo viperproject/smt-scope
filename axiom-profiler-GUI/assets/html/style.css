@@ -52,3 +52,27 @@ div.page svg g.node.selected {
 div.page svg g.edge.selected {
     stroke-width: 3;
 }
+
+.home-page .home-page-center .channel-select fieldset > fieldset {
+    display: flex;
+    flex-direction: column-reverse;
+    position: absolute;
+    left: 0px;
+    margin: 0;
+    width: var(--chan-width);
+    z-index: 3;
+    /* bottom: -40px; */
+    /* height: calc(40px * var(--chan-num)); */
+}
+.home-page .home-page-center .channel-select fieldset > fieldset label {
+    z-index: 5;
+}
+.home-page .home-page-center .channel-select fieldset > fieldset .highlight {
+    z-index: 4;
+    height: 40px;
+    top: inherit;
+}
+
+.home-page .home-page-center .channel-select fieldset > fieldset > label.hover:not(.current) {
+    background-color: #000;
+}

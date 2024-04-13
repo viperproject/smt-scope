@@ -4,8 +4,6 @@
 (set-option :smt.MBQI false)
 (set-option :smt.QI.EAGER_THRESHOLD 100)
 (set-option :smt.refine_inj_axioms false)
-(set-option :trace true) 
-(set-option :trace_file_name heap_example.log)
 (set-logic ALL)
 
 (declare-const next Int)

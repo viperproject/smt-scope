@@ -2,8 +2,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Mutex, OnceLock, RwLock};
 
+use fxhash::{FxHashMap, FxHashSet};
 use gloo_file::File;
 use gloo_file::{callbacks::FileReader, FileList};
+use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 use results::svg_result::{Msg as SVGMsg, RenderedGraph, RenderingState, SVGResult};
 use smt_log_parser::items::{InstIdx, QuantIdx};
 use smt_log_parser::parsers::z3::graph::{InstGraph, VisibleEdgeIndex, RawNodeIndex};
@@ -31,6 +33,12 @@ mod infobars;
 mod filters;
 mod global_callbacks;
 pub mod configuration;
+pub mod homepage;
+
+pub fn version() -> Option<semver::Version> {
+    let version = env!("VERGEN_GIT_DESCRIBE").strip_prefix("v")?;
+    semver::Version::parse(version).ok().filter(|v| v.pre.is_empty())
+}
 
 const SIZE_NAMES: [&'static str; 5] = ["B", "KB", "MB", "GB", "TB"];
 
@@ -285,7 +293,26 @@ impl Component for FileDataComponent {
                     }
                     if let Some(old) = &file.rendered {
                         let old_len = file.selected_edges.len();
-                        file.selected_edges.retain(|e| old.graph[*e] == rendered.graph[*e]);
+                        // Update selected edges
+                        let mut to_update: FxHashMap<_, _> = file.selected_edges.iter_mut().flat_map(|e| {
+                            let old_edge = &old.graph[*e];
+                            let different = !rendered.graph.graph.edge_weight(e.0).is_some_and(|edge| edge == old_edge);
+                            different.then(|| (old_edge, e))
+                        }).collect();
+                        if !to_update.is_empty() {
+                            for new_edge in rendered.graph.graph.edge_references() {
+                                if let Some(e) = to_update.remove(new_edge.weight()) {
+                                    *e = VisibleEdgeIndex(new_edge.id());
+                                    if to_update.is_empty() {
+                                        break;
+                                    }
+                                }
+                            }
+                            if !to_update.is_empty() {
+                                let to_remove: FxHashSet<_> = to_update.into_iter().map(|(_, v)| *v).collect();
+                                file.selected_edges.retain(|e| !to_remove.contains(e));
+                            }
+                        }
                         if file.selected_edges.len() != old_len {
                             ctx.link().send_message(Msg::SelectedEdges(file.selected_edges.clone()));
                         }
@@ -392,6 +419,7 @@ impl Component for FileDataComponent {
             "https://github.com/viperproject/axiom-profiler-2/tree/{}",
             env!("VERGEN_GIT_SHA")
         );
+        let is_canary = version().is_none();
 
         let sidebar = NodeRef::default();
         let scrollable_dialog_link: WeakComponentLink<MatDialog> = WeakComponentLink::default();
@@ -440,11 +468,14 @@ impl Component for FileDataComponent {
             let selected_nodes = ctx.link().callback(Msg::SelectedNodes);
             let selected_edges = ctx.link().callback(Msg::SelectedEdges);
             Self::view_file(f.clone(), progress, selected_nodes, selected_edges)
+        }).unwrap_or_else(|| {
+            html!{<homepage::Homepage {is_canary}/>}
         });
+        let header_class = if is_canary { "canary" } else { "stable" };
         html! {
 <>
     <nav class="sidebar" ref={sidebar}>
-        <header class="stable"><img src="html/logo_side_small.png" class="brand"/><div class="sidebar-button" onclick={hide_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
+        <header class={header_class}><img src="html/logo_side_small.png" class="brand"/><div class="sidebar-button" onclick={hide_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
         <input type="file" ref={&self.file_select} class="trace_file" accept=".log" onchange={on_change} multiple=false/>
         <div class="sidebar-scroll"><div class="sidebar-scroll-container">
             <SidebarSectionHeader header_text="Navigation" collapsed_text="Open a new trace" section={self.navigation_section.clone()}><ul>
@@ -468,9 +499,7 @@ impl Component for FileDataComponent {
         <Topbar progress={self.progress.clone()} />
     </div>
     <div class="alerts"></div>
-    <div class="page">
-        {page}
-    </div>
+    {page}
 
     // Shortcuts dialog
     <section tabindex="0">
@@ -507,7 +536,9 @@ impl Component for FileDataComponent {
 impl FileDataComponent {
     fn view_file(data: OpenedFileInfo, progress: Callback<Result<RenderedGraph, RenderingState>>, selected_nodes: Callback<Vec<RawNodeIndex>>, selected_edges: Callback<Vec<VisibleEdgeIndex>>) -> Html {
         html! {
-            <SVGResult file={data} {progress} {selected_nodes} {selected_edges}/>
+            <div class="page">
+                <SVGResult file={data} {progress} {selected_nodes} {selected_edges}/>
+            </div>
         }
     }
 }

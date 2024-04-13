@@ -528,7 +528,10 @@ impl Z3LogParser for Z3Parser {
             z3_generation,
             yields_terms: Default::default(),
         };
-        let iidx = self.insts.new_inst(fingerprint, inst)?;
+        // In version 4.12.2, I have on very rare occasions seen an `[instance]`
+        // repeated twice with the same fingerprint (without an intermediate
+        // `[new-match]`). We can try to remove the `can_duplicate` in the future.
+        let iidx = self.insts.new_inst(fingerprint, inst, self.version_info.is_version(4, 12, 2))?;
         self.inst_stack.try_reserve(1)?;
         self.inst_stack.push((iidx, Vec::new()));
         Ok(())

@@ -214,7 +214,7 @@ pub struct VisibleNode {
     pub max_depth: usize,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum VisibleEdge {
     Direct(RawEdgeIndex),
     Indirect(Vec<RawEdgeIndex>),

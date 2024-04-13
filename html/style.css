@@ -67,10 +67,12 @@ div.page svg g.edge.selected {
 .home-page .home-page-center .channel-select fieldset > fieldset label {
     z-index: 5;
 }
-.home-page .home-page-center .channel-select fieldset > fieldset .highlight {
+.home-page .home-page-center .channel-select fieldset > fieldset #inner-highlight.highlight {
     z-index: 4;
     height: 40px;
     top: inherit;
+    background-color: hsla(122, 45%, 45%, 0.99);
+    margin-left: 0;
 }
 
 .home-page .home-page-center .channel-select fieldset > fieldset > label.hover:not(.current) {

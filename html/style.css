@@ -78,3 +78,6 @@ div.page svg g.edge.selected {
 .home-page .home-page-center .channel-select fieldset > fieldset > label.hover:not(.current) {
     background-color: #000;
 }
+mwc-dialog {
+    --mdc-dialog-max-width: 850px;
+}

@@ -1,0 +1,83 @@
+html {
+	--mdc-theme-primary: #607D8B;
+	--mdc-theme-secondary: #8BC34A;
+    --mdc-icon-font: "Material Icons Outlined";
+}
+
+.loading-bar-failed > mwc-linear-progress {
+    --mdc-theme-primary: red;
+}
+
+.ascii-art {
+    font-family: monospace;
+    white-space: pre;
+}
+
+#image {
+    display: inline-block;
+    overflow: auto;
+    max-width: 1500px;
+    max-height: 1000px;
+    flex: 1;
+}
+
+div.page div.outdated {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+}
+
+div.page svg g.node {
+    cursor: pointer;
+}
+
+div.page svg g.edge {
+    cursor: pointer;
+}
+
+div.page svg g.node:hover {
+    opacity: 0.6
+}
+
+div.page svg g.edge:hover * {
+    opacity: 0.4
+}
+
+div.page svg g.node.selected {
+    stroke-width: 3;
+}
+
+div.page svg g.edge.selected {
+    stroke-width: 3;
+}
+
+.home-page .home-page-center .channel-select fieldset > fieldset {
+    display: flex;
+    flex-direction: column-reverse;
+    position: absolute;
+    left: 0px;
+    margin: 0;
+    width: var(--chan-width);
+    z-index: 3;
+    /* bottom: -40px; */
+    /* height: calc(40px * var(--chan-num)); */
+}
+.home-page .home-page-center .channel-select fieldset > fieldset label {
+    z-index: 5;
+}
+.home-page .home-page-center .channel-select fieldset > fieldset #inner-highlight.highlight {
+    z-index: 4;
+    height: 40px;
+    top: inherit;
+    background-color: hsla(122, 45%, 45%, 0.99);
+    margin-left: 0;
+}
+
+.home-page .home-page-center .channel-select fieldset > fieldset > label.hover:not(.current) {
+    background-color: #000;
+}
+mwc-dialog {
+    --mdc-dialog-max-width: 850px;
+}

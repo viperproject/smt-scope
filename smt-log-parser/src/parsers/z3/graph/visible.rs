@@ -2,7 +2,8 @@ use std::{num::NonZeroU32, ops::{Index, IndexMut}};
 use std::ops::{Index, IndexMut};
 
 use fxhash::{FxHashMap, FxHashSet};
-use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdges, NodeFiltered, Topo}, Direction::{self, Incoming, Outgoing}};
+use gloo_console::log;
+use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdgeReferences, IntoEdges, NodeFiltered, Topo}, Direction::{self, Incoming, Outgoing}};
 
 use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}};
 
@@ -54,6 +55,54 @@ impl InstGraph {
         let reverse: FxHashMap<_, _> = graph.node_indices().map(VisibleNodeIndex).map(|idx| (graph[idx.0].idx, idx)).collect();
         let mut self_ = VisibleInstGraph { graph, reverse, generation: self.raw.stats.generation };
         self_.reconnect(self);
+        self_
+    }
+
+    pub fn to_visible_simplified(&self) -> VisibleInstGraph {
+        // debug_assert_eq!(self.hidden as usize, self.graph.node_weights().filter(|n| n.hidden).count());
+        
+        // Code copied from `DiGraph::filter_map`, but that function does not
+        // allow for changing the node index type.
+        let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> = DiGraph::with_capacity(self.raw.visible_nodes(), 0);
+        // mapping from old node index to new node index, end represents removed.
+        let mut node_index_map = vec![NodeIndex::end(); self.raw.graph.node_count()];
+        let node_map = |idx, node: &Node| node.visible().then(|| VisibleNode {
+            idx,
+            // hidden_parents: self.raw.neighbors_directed(idx, Direction::Incoming).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
+            hidden_parents: self.raw.graph[idx.0].inst_parents.nodes.iter().filter(|&n| self.raw.graph[*n].hidden()).count() as u32,
+            // hidden_children: self.raw.neighbors_directed(idx, Direction::Outgoing).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
+            hidden_children: self.raw.graph[idx.0].inst_children.nodes.iter().filter(|&n| self.raw.graph[*n].hidden()).count() as u32,
+            max_depth: 0 
+        });
+        for (i, node) in self.raw.graph.node_weights().into_iter().enumerate() {
+            if let Some(nw) = node_map(RawNodeIndex(NodeIndex::new(i)), node) {
+                node_index_map[i] = graph.add_node(nw);
+            }
+        }
+        let edge_map = |idx, _| Some(VisibleEdge::Direct(idx));
+        for (i, edge) in self.raw.graph.edge_references().enumerate() {
+            // skip edge if any endpoint was removed
+            let source = node_index_map[edge.source().index()];
+            let target = node_index_map[edge.target().index()];
+            if source != NodeIndex::end() && target != NodeIndex::end() {
+                if let Some(ew) = edge_map(RawEdgeIndex(EdgeIndex::new(i)), edge.weight()) {
+                    graph.add_edge(source, target, ew);
+                }
+            }
+        }
+        // for edge in graph.edge_indices() {
+        //     let from = graph.edge_endpoints(edge).unwrap().0;
+        //     let to = graph.edge_endpoints(edge).unwrap().0;
+        //     // let old_from = self.graph.node_weight(from).unwrap().idx;
+        //     // let old_to = self.graph.node_weight(to).unwrap().idx;
+        //     // log!(format!("Graph has edge from {} to {}", old_from.0.index(), old_to.0.index()));
+        //     log!(format!("Graph has edge from {} to {}", from.index(), to.index()));
+        // }
+        // log!(format!("Graph has {} edges and {} nodes", graph.edge_count(), graph.node_count()));
+        // log!(format!("Reconnecting graph:"));
+        let reverse: FxHashMap<_, _> = graph.node_indices().map(VisibleNodeIndex).map(|idx| (graph[idx.0].idx, idx)).collect();
+        let mut self_ = VisibleInstGraph { graph, reverse, generation: self.raw.stats.generation };
+        self_.reconnect_simplified(self);
         self_
     }
 }
@@ -140,6 +189,77 @@ impl VisibleInstGraph {
         }
     }
 
+    fn reconnect_simplified(&mut self, igraph: &InstGraph) {
+        // remember all direct edges (will be added to the graph in the end)
+        let direct_edges = self.graph
+            .raw_edges()
+            .to_vec();
+        // nodes with missing children
+        let out_set: Vec<NodeIndex<VisibleIx>> = self.graph 
+            .node_indices()
+            .filter(|node| {
+                // let new_child_count = self.graph.neighbors_directed(*node, Outgoing).count();
+                // let old_child_count = self.graph.node_weight(*node).unwrap().;
+                // new_child_count < old_child_count
+                self.graph.node_weight(*node).unwrap().hidden_children > 0
+            })
+            .collect();
+        // nodes with missing parents
+        let in_set: Vec<NodeIndex<VisibleIx>> = self.graph
+            .node_indices()
+            .filter(|node| {
+                self.graph.node_weight(*node).unwrap().hidden_parents > 0
+            })
+            .collect();
+        log!(format!("|IN| = {}, |OUT| = {}", in_set.len(), out_set.len()));
+        // add all edges (u,v) in out_set x in_set to the self.graph where v is reachable from u in the original graph
+        // and (u,v) is not an edge in the original graph, i.e., all indirect edges
+        for &u in &out_set {
+            for &v in &in_set {
+                let old_u = self.graph.node_weight(u).unwrap().idx;
+                let old_v = self.graph.node_weight(v).unwrap().idx;
+                let old_u_subgraph = &igraph.subgraphs[igraph.raw.graph[old_u.0].subgraph.unwrap().0];
+                // let old_v_subgraph = &igraph.subgraphs[igraph.raw.graph[old_v.0].subgraph.unwrap().0];
+                let old_v_reachable_from_old_u = old_u_subgraph.reach_fwd.in_transitive_closure(igraph.raw.graph[old_u.0].subgraph.unwrap().1, igraph.raw.graph[old_v.0].subgraph.unwrap().1); 
+                if old_u != old_v && old_v_reachable_from_old_u 
+                {
+                    self.graph.update_edge(u, v, VisibleEdge::Indirect(vec![]));
+                    // log!(format!("In reconnect: Adding edge from {} to {}", u.index(), v.index()));
+                }
+            }
+        }
+        // log!(format!("In reconnect: Graph has {} edges and {} nodes", self.graph.edge_count(), self.graph.node_count()));
+        // compute transitive reduction to minimize |E| and not clutter the graph
+        let toposorted_dag = petgraph::algo::toposort(&self.graph, None).unwrap();
+        let (intermediate, _) = petgraph::algo::tred::dag_to_toposorted_adjacency_list::<_, u32>(
+            &self.graph,
+            &toposorted_dag,
+        );
+        let (tred, _) = petgraph::algo::tred::dag_transitive_reduction_closure(&intermediate);
+        // remove all edges since we only want the direct edges and the indirect edges in the transitive reduction in the final graph
+        self.graph.clear_edges();
+        // add all direct edges to new_inst_graph that we removed previously
+        for direct_edge in direct_edges {
+            self.graph.add_edge(
+                direct_edge.source(),
+                direct_edge.target(),
+                direct_edge.weight,
+            );
+        }
+        // log!(format!("After computing tred"));
+        // add all indirect edges from transitive reduction that are not direct edges
+        for indirect_edge in tred.edge_references() {
+            // in tred, the node indices are replaced by their topological rank
+            // hence we need to look up the index before adding to self.graph
+            let source = toposorted_dag[indirect_edge.source() as usize];
+            let target = toposorted_dag[indirect_edge.target() as usize];
+            // we only want indirect edges
+            if !self.graph.contains_edge(source, target) {
+                self.graph.add_edge(source, target, VisibleEdge::Indirect(vec![]));
+            }
+        }
+    }
+
     pub fn find_longest_paths(&mut self) -> FxHashSet<RawNodeIndex> {
         // traverse this subtree in topological order to compute longest distances from root nodes
         Self::compute_longest_distances_from_roots(self);
@@ -170,6 +290,37 @@ impl VisibleInstGraph {
         }
         matching_loop_nodes
     } 
+
+    pub fn find_end_nodes_of_longest_paths(&mut self) -> FxHashSet<RawNodeIndex> {
+        // traverse this subtree in topological order to compute longest distances from root nodes
+        Self::compute_longest_distances_from_roots(self);
+        let furthest_away_end_nodes = self.graph
+            .node_indices()
+            // only want to keep end nodes of longest paths, i.e., nodes without any children 
+            .filter(|nx| self.graph.neighbors_directed(*nx, Outgoing).count() == 0)
+            // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
+            .filter(|nx| self.graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1) 
+            .collect();
+        // backtrack longest paths from furthest away nodes in subgraph until we reach a root
+        let mut matching_loop_nodes: FxHashSet<RawNodeIndex> = FxHashSet::default();
+        let mut visitor: Vec<NodeIndex<VisibleIx>> = furthest_away_end_nodes;
+        let mut visited: FxHashSet<_> = FxHashSet::default();
+        while let Some(curr) = visitor.pop() {
+            // matching_loop_nodes.insert(self.graph.node_weight(curr).unwrap().orig_graph_idx());
+            matching_loop_nodes.insert(self.graph[curr].idx);
+            let curr_distance = self.graph.node_weight(curr).unwrap().max_depth;
+            let preds = self.graph.neighbors_directed(curr, Incoming).filter(|pred| {
+                let pred_distance = self.graph.node_weight(*pred).unwrap().max_depth;
+                pred_distance == curr_distance - 1
+            });
+            for pred in preds {
+                if visited.insert(pred) {
+                    visitor.push(pred);
+                }
+            }
+        }
+        matching_loop_nodes
+    }
 
     pub fn compute_longest_distances_from_roots(&mut self) {
         let mut topo = Topo::new(&self.graph);

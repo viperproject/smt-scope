@@ -1,5 +1,6 @@
 pub mod cost;
 pub mod depth;
+pub mod next_insts;
 pub mod matching_loop;
 
 use mem_dbg::{MemDbg, MemSize};
@@ -7,9 +8,9 @@ use petgraph::Direction;
 
 use crate::{Result, Z3Parser};
 
-use self::{cost::DefaultCost, depth::DefaultDepth};
+use self::{cost::DefaultCost, depth::DefaultDepth, next_insts::DefaultNextInsts};
 
-use super::{raw::Node, visible::VisibleInstGraph, InstGraph, RawNodeIndex};
+use super::{raw::Node, InstGraph, RawNodeIndex};
 
 #[derive(Debug, Default, MemSize, MemDbg)]
 pub struct Analysis {
@@ -99,6 +100,11 @@ impl InstGraph {
         self.initialise_collect(DefaultDepth::<false>, parser);
 
         self.analyse();
+    }
+
+    pub fn initialise_inst_succs_and_preds(&mut self, parser: &Z3Parser) {
+        self.initialise_transfer(DefaultNextInsts::<true>, parser);
+        self.initialise_transfer(DefaultNextInsts::<false>, parser);
     }
 
     pub fn analyse(&mut self) {

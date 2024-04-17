@@ -41,15 +41,15 @@ impl InstGraph {
             .collect();
         let mut matching_loop_nodes_per_quant: Vec<FxHashSet<RawNodeIndex>> = Vec::new();
         for quant in quants {
-            log!(format!("Processing quant {}", ctxt.parser[quant].kind.with(&ctxt).to_string()));
+            // log!(format!("Processing quant {}", ctxt.parser[quant].kind.with(&ctxt).to_string()));
             self.raw.reset_visibility_to(true);
             self.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.quant_idx() == Some(quant)));
             let mut visible_graph = self.to_visible_simplified();
-            log!(format!("Visible graph has {} nodes and {} edges", visible_graph.graph.node_count(), visible_graph.graph.edge_count()));
+            // log!(format!("Visible graph has {} nodes and {} edges", visible_graph.graph.node_count(), visible_graph.graph.edge_count()));
             let matching_loops = visible_graph.find_end_nodes_of_longest_paths();
             matching_loop_nodes_per_quant.push(matching_loops);
         }
-        log!(format!("There are {} matching loop end nodes", matching_loop_nodes_per_quant.len()));
+        // log!(format!("There are {} matching loop end nodes", matching_loop_nodes_per_quant.len()));
         self.raw.reset_visibility_to(true);
         let ml_nodes = matching_loop_nodes_per_quant
             .iter()
@@ -61,9 +61,9 @@ impl InstGraph {
         //     }
         // }
         // self.analysis.matching_loop_subgraph = self.to_visible();
-        log!(format!("Computing ML subgraph"));
+        // log!(format!("Computing ML subgraph"));
         let mut matching_loop_subgraph = self.to_visible_simplified();
-        log!(format!("Matching loop subgraph has {} nodes and {} edges", matching_loop_subgraph.graph.node_count(), matching_loop_subgraph.graph.edge_count()));
+        // log!(format!("Matching loop subgraph has {} nodes and {} edges", matching_loop_subgraph.graph.node_count(), matching_loop_subgraph.graph.edge_count()));
         // for displaying the nth longest matching loop later on, we want to compute the end nodes of all the matching loops
         // and sort them by max-depth in descending order
         matching_loop_subgraph.compute_longest_distances_from_roots();
@@ -74,10 +74,10 @@ impl InstGraph {
             // only keep end-points of matching loops, i.e., nodes without any children in the matching loop subgraph
             .filter(|nx| {
                 let node = &self.raw[matching_loop_subgraph.graph[*nx].idx];
-                match node.kind() {
-                    NodeKind::Instantiation(_) => log!(format!("Inst node has max_depth: {}", matching_loop_subgraph.graph[*nx].max_depth)),
-                    _ => ()
-                };
+                // match node.kind() {
+                //     NodeKind::Instantiation(_) => log!(format!("Inst node has max_depth: {}", matching_loop_subgraph.graph[*nx].max_depth)),
+                //     _ => ()
+                // };
                 matching_loop_subgraph.graph.neighbors_directed(*nx, Outgoing).count() == 0
             })
             .collect();

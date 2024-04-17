@@ -75,14 +75,28 @@ impl InstGraph {
                 node_index_map[i] = graph.add_node(nw);
             }
         }
-        let edge_map = |idx, _| Some(VisibleEdge::Direct(idx));
-        for (i, edge) in self.raw.graph.edge_references().enumerate() {
-            // skip edge if any endpoint was removed
-            let source = node_index_map[edge.source().index()];
-            let target = node_index_map[edge.target().index()];
-            if source != NodeIndex::end() && target != NodeIndex::end() {
-                if let Some(ew) = edge_map(RawEdgeIndex(EdgeIndex::new(i)), edge.weight()) {
-                    graph.add_edge(source, target, ew);
+        // let edge_map = |idx, _| Some(VisibleEdge::Direct(idx));
+        // for (i, edge) in self.raw.graph.edge_references().enumerate() {
+        //     // skip edge if any endpoint was removed
+        //     let source = node_index_map[edge.source().index()];
+        //     let target = node_index_map[edge.target().index()];
+        //     if source != NodeIndex::end() && target != NodeIndex::end() {
+        //         if let Some(ew) = edge_map(RawEdgeIndex(EdgeIndex::new(i)), edge.weight()) {
+        //             graph.add_edge(source, target, ew);
+        //         }
+        //     }
+        // }
+        // assumes that inst-nodes in self.raw.graph are ordered in topological order
+        let mut edge_idx = 0;
+        for (i, node) in self.raw.graph.node_weights().into_iter().enumerate() {
+            let from = node_index_map[i];
+            if from != NodeIndex::end() {
+                for next_inst in node.inst_children.nodes.clone() {
+                    let to = node_index_map[next_inst.index()]; 
+                    if to != NodeIndex::end() {
+                        graph.add_edge(from, to, VisibleEdge::Direct(RawEdgeIndex(EdgeIndex::new(edge_idx))));
+                        edge_idx += 1;
+                    }
                 }
             }
         }
@@ -207,7 +221,6 @@ impl VisibleInstGraph {
                 self.graph.node_weight(*node).unwrap().hidden_parents > 0
             })
             .collect();
-        log!(format!("|IN| = {}, |OUT| = {}", in_set.len(), out_set.len()));
         // add all edges (u,v) in out_set x in_set to the self.graph where v is reachable from u in the original graph
         // and (u,v) is not an edge in the original graph, i.e., all indirect edges
         for &u in &out_set {

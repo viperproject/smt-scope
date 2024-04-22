@@ -228,20 +228,23 @@ impl VisibleInstGraph {
         // add all edges (u,v) in out_set x in_set to the self.graph where v is reachable from u in the original graph
         // and (u,v) is not an edge in the original graph, i.e., all indirect edges
         for &u in &out_set {
+            let old_u = self.graph[u].idx;
+            let Some((subgraph_u, s_u)) = igraph.raw[old_u].subgraph else {
+                continue;
+            };
             for &v in &in_set {
-                let old_u = self.graph.node_weight(u).unwrap().idx;
-                let old_v = self.graph.node_weight(v).unwrap().idx;
-                let old_u_subgraph = &igraph.subgraphs[igraph.raw.graph[old_u.0].subgraph.unwrap().0];
-                // let old_v_subgraph = &igraph.subgraphs[igraph.raw.graph[old_v.0].subgraph.unwrap().0];
-                let old_v_reachable_from_old_u = old_u_subgraph.reach_fwd.in_transitive_closure(igraph.raw.graph[old_u.0].subgraph.unwrap().1, igraph.raw.graph[old_v.0].subgraph.unwrap().1); 
-                if old_u != old_v && old_v_reachable_from_old_u 
+                let old_v = self.graph[v].idx;
+                let Some((subgraph_v, s_v)) = igraph.raw[old_v].subgraph else {
+                    continue;
+                };
+                if subgraph_u != subgraph_v { continue; }
                 {
-                    self.graph.update_edge(u, v, VisibleEdge::Indirect(vec![]));
-                    // log!(format!("In reconnect: Adding edge from {} to {}", u.index(), v.index()));
+                    if s_u != s_v && igraph.subgraphs[subgraph_u].reach_fwd.in_transitive_closure(s_u, s_v) {
+                        self.graph.update_edge(u, v, VisibleEdge::Indirect(vec![]));
+                    }
                 }
             }
         }
-        // log!(format!("In reconnect: Graph has {} edges and {} nodes", self.graph.edge_count(), self.graph.node_count()));
         // compute transitive reduction to minimize |E| and not clutter the graph
         let toposorted_dag = petgraph::algo::toposort(&self.graph, None).unwrap();
         let (intermediate, _) = petgraph::algo::tred::dag_to_toposorted_adjacency_list::<_, u32>(
@@ -259,7 +262,6 @@ impl VisibleInstGraph {
                 direct_edge.weight,
             );
         }
-        // log!(format!("After computing tred"));
         // add all indirect edges from transitive reduction that are not direct edges
         for indirect_edge in tred.edge_references() {
             // in tred, the node indices are replaced by their topological rank

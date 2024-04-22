@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use fxhash::FxHashSet;
-use petgraph::Direction::Outgoing;
+use petgraph::{visit::Dfs, Direction::Outgoing};
 
 use crate::{parsers::z3::graph::{raw::{Node, NodeKind}, InstGraph}, Z3Parser};
 use super::RawNodeIndex;
@@ -57,6 +57,16 @@ impl InstGraph {
                 std::cmp::Ordering::Less
             }
         });
+        // assign to each node in a matching loop which matching loops it belongs to, i.e., if a node is part of the 
+        // i-th longest matching loop, it stores the index i-1. Do this, by doing a reverse-DFS from all ML end nodes 
+        for (i, end_node) in matching_loop_end_nodes.iter().enumerate() {
+            let mut dfs = Dfs::new(petgraph::visit::Reversed(&matching_loop_subgraph.graph), *end_node);
+            while let Some(nx) = dfs.next(petgraph::visit::Reversed(&matching_loop_subgraph.graph)) {
+                let orig_nx = matching_loop_subgraph.graph[nx].idx.0;
+                self.raw.graph[orig_nx].part_of_ML.insert(i);
+            }
+        }
+        // collect all matching loop end nodes
         let matching_loop_end_nodes_raw_indices: Vec<RawNodeIndex> = matching_loop_end_nodes
             .iter()
             .map(|nidx| matching_loop_subgraph.graph[*nidx].idx)
@@ -64,6 +74,7 @@ impl InstGraph {
         // return the total number of potential matching loops
         let nr_matching_loop_end_nodes = matching_loop_end_nodes_raw_indices.len();
         self.analysis.matching_loop_end_nodes = Some(matching_loop_end_nodes_raw_indices);
+        // make sure the enabled and disabled nodes stay the same as before calling the ML search 
         self.reset_disabled_to(&parser, |nx, _| currently_disabled_nodes.contains(&nx));
         nr_matching_loop_end_nodes
     }

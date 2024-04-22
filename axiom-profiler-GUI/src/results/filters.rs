@@ -70,22 +70,28 @@ impl Filter {
             }
             // TODO: implement
             Filter::SelectNthMatchingLoop(n) => {
-                if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
-                    if let Some(nidx) = nodes.get(n) {
-                        let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
-                        graph.raw.reset_visibility_to(true);
-                        graph.raw.set_visibility_many(false, nodes.into_iter())
-                    }
-                } 
+                // graph.raw.reset_visibility_to(true);
+                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.contains(&n));
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && !node.part_of_ML.contains(&n))
+                // if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
+                //     if let Some(nidx) = nodes.get(n) {
+                //         let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
+                //         graph.raw.reset_visibility_to(true);
+                //         graph.raw.set_visibility_many(false, nodes.into_iter())
+                //     }
+                // } 
             },
             Filter::ShowMatchingLoopSubgraph => {
-                if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
-                    graph.raw.reset_visibility_to(true);
-                    for nidx in nodes {
-                        let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
-                        graph.raw.set_visibility_many(false, nodes.into_iter())
-                    }
-                }
+                // graph.raw.reset_visibility_to(true);
+                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.len() > 0);
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.len() <= 0)
+                // if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
+                //     graph.raw.reset_visibility_to(true);
+                //     for nidx in nodes {
+                //         let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
+                //         graph.raw.set_visibility_many(false, nodes.into_iter())
+                //     }
+                // }
             },
         }
         FilterOutput::None

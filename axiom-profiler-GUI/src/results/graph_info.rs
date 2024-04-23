@@ -1,4 +1,5 @@
 use crate::{configuration::{Configuration, ConfigurationContext, ConfigurationProvider, PersistentConfiguration}, utils::split_div::SplitDiv, RcParser};
+use gloo::console::log;
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
 use scraper::node;
@@ -16,6 +17,7 @@ pub struct GraphInfo {
     selected_nodes: IndexMap<RawNodeIndex, bool>,
     selected_edges: IndexMap<VisibleEdgeIndex, bool>,
     generalized_terms: Vec<String>,
+    displayed_matching_loop_graph: Option<AttrValue>,
     graph_container: WeakComponentLink<graph_container::GraphContainer>,
 }
 
@@ -53,6 +55,7 @@ pub enum Msg {
     DeselectAll,
     SelectAll,
     ShowGeneralizedTerms(Vec<String>),
+    ShowMatchingLoopGraph(AttrValue),
 }
 
 #[derive(Properties, PartialEq)]
@@ -83,6 +86,7 @@ impl Component for GraphInfo {
             selected_nodes: ctx.props().selected_nodes.iter().copied().map(|n| (n, false)).collect(),
             selected_edges: ctx.props().selected_edges.iter().copied().map(|e| (e, false)).collect(),
             generalized_terms: Vec::new(),
+            displayed_matching_loop_graph: None,
             graph_container: WeakComponentLink::default(),
         }
     }
@@ -149,6 +153,11 @@ impl Component for GraphInfo {
                 self.generalized_terms = terms;
                 true
             }
+            Msg::ShowMatchingLoopGraph(graph) => {
+                log!("Showing ML graph");
+                self.displayed_matching_loop_graph = Some(graph);
+                true
+            } 
             Msg::ScrollZoomSelection => {
                 let Some(graph_container) = &*self.graph_container.borrow() else {
                     return false;
@@ -197,6 +206,12 @@ impl Component for GraphInfo {
                 <div style="width:100%; height:100%; overflow-wrap:anywhere; overflow:clip auto;">
                     <SelectedNodesInfo selected_nodes={self.selected_nodes.iter().map(|(k, v)| (*k, *v)).collect::<Vec<_>>()} on_click={on_node_click} />
                     <SelectedEdgesInfo selected_edges={self.selected_edges.iter().map(|(k, v)| (*k, *v)).collect::<Vec<_>>()} rendered={ctx.props().rendered.clone()} on_click={on_edge_click} />
+                    { if let Some(graph) = &self.displayed_matching_loop_graph {
+                        html!{<div>{Html::from_html_unchecked(graph.clone())}</div>}
+                    } else {
+                        html!{}
+                    }}
+                    // <DisplayedMLGraph displayed_ml_index={self.displayed_ml_index} rendered={ctx.props().rendered.clone()}/>
                     // TODO: re-add matching loops
                     // <h2>{"Information about displayed matching loop:"}</h2>
                     // <div>

@@ -1,4 +1,4 @@
-use petgraph::{visit::{Dfs, IntoNeighborsDirected, Reversed, Walker}, Direction};
+use petgraph::{visit::{Dfs, IntoNeighborsDirected, Reversed, Walker}, Direction, Graph};
 use smt_log_parser::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{InstIdx, QuantIdx}, parsers::z3::graph::{raw::{Node, NodeKind, RawInstGraph}, InstGraph, RawNodeIndex}, Z3Parser};
 
 use super::svg_result::DEFAULT_NODE_COUNT;
@@ -72,7 +72,9 @@ impl Filter {
             Filter::SelectNthMatchingLoop(n) => {
                 // graph.raw.reset_visibility_to(true);
                 graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.contains(&n));
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && !node.part_of_ML.contains(&n))
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && !node.part_of_ML.contains(&n));
+                let dot_graph = graph.nth_matching_loop_graph(n);
+                return FilterOutput::MatchingLoopGraph(dot_graph);
                 // if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
                 //     if let Some(nidx) = nodes.get(n) {
                 //         let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
@@ -108,6 +110,7 @@ impl Filter {
 pub enum FilterOutput {
     LongestPath(Vec<RawNodeIndex>),
     MatchingLoopGeneralizedTerms(Vec<String>),
+    MatchingLoopGraph(Graph<String, ()>),
     None
 }
 

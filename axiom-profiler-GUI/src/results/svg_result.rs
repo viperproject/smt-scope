@@ -10,7 +10,7 @@ use gloo::console::log;
 use material_yew::WeakComponentLink;
 use num_format::{Locale, ToFormattedString};
 use palette::{encoding::Srgb, white_point::D65, FromColor, Hsl, Hsluv, Hsv, LuvHue};
-use petgraph::{dot::{Config, Dot}, visit::EdgeRef};
+use petgraph::{dot::{Config, Dot}, visit::EdgeRef, Graph};
 use smt_log_parser::{
     display_with::DisplayCtxt, items::{BlameKind, InstIdx, MatchKind, QuantIdx}, parsers::{
         z3::{
@@ -54,6 +54,7 @@ pub enum Msg {
     ResetGraph,
     GetUserPermission(GraphDimensions, bool),
     WorkerOutput(super::worker::WorkerOutput),
+    RenderMLGraph(Graph<String, ()>),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -208,6 +209,10 @@ impl Component for SVGResult {
                             .clone()
                             .unwrap()
                             .send_message(GraphInfoMsg::ShowGeneralizedTerms(gen_terms));
+                        false
+                    }
+                    FilterOutput::MatchingLoopGraph(graph) => {
+                        ctx.link().send_message(Msg::RenderMLGraph(graph));
                         false
                     }
                     FilterOutput::None => false
@@ -434,6 +439,84 @@ impl Component for SVGResult {
                 self.rendered = Some(rendered.clone());
                 ctx.props().progress.emit(Ok(rendered));
                 true
+            }
+            Msg::RenderMLGraph(graph) => {
+                    let filtered_graph = &graph;
+                    let ctxt = &DisplayCtxt {
+                        parser,
+                        config: cfg.config.display,
+                    };
+
+                    // Performance observations (default value is in [])
+                    //  - splines=false -> 38s | [splines=true] -> ??
+                    //  - nslimit=2 -> 7s | nslimit=4 -> 9s | nslimit=7 -> 11.5s | nslimit=10 -> 14s | [nslimit=INT_MAX] -> 38s
+                    //  - [mclimit=1] -> 7s | mclimit=0.5 -> 4s (with nslimit=2)
+                    // `ranksep` dictates the distance between ranks (rows) in the graph,
+                    // it should be set dynamically based on the average number of children
+                    // per node out of all nodes with at least one child.
+                    let settings = [
+                        "ranksep=1.0;",
+                        "splines=false;",
+                        "nslimit=6;",
+                        "mclimit=0.6;",
+                    ];
+                    let dot_output = format!(
+                        "digraph {{\n{}\n{:?}\n}}",
+                        settings.join("\n"),
+                        Dot::with_attr_getters(
+                            &graph,
+                            &[
+                                Config::EdgeNoLabel,
+                                Config::NodeNoLabel,
+                                Config::GraphContentOnly
+                            ],
+                            &|_, edge_data| format!(
+                                ""
+                                // "label=\"{}\" style=\"{}\" color=\"{}\"",
+                                // edge_data.weight(),
+                                // match edge_data.weight() {
+                                //     InstOrEquality::Inst(_, _) => "solid, bold",
+                                //     InstOrEquality::Equality => "solid",
+                                // },
+                                // match edge_data.weight() {
+                                //     InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get(&mkind, NODE_COLOUR_SATURATION + 0.2)),
+                                //     InstOrEquality::Equality => "black:white:black".to_string(),
+                                // }
+                            ),
+                            &|_, (_, node_data)| {
+                                format!("label=\"{}\" shape=\"{}\"",
+                                        node_data,
+                                        "box",
+                                    )
+                            },
+                        )
+                    );
+                    ctx.props().progress.emit(Err(RenderingState::RenderingGraph));
+                    let link = self.insts_info_link.borrow().clone();
+                    wasm_bindgen_futures::spawn_local(async move {
+                        gloo_timers::future::TimeoutFuture::new(10).await;
+                        let graphviz = VizInstance::new().await;
+                        let options = viz_js::Options::default();
+                        // options.engine = "twopi".to_string();
+                        let window = window().expect("should have a window in this context");
+                        let performance = window.performance().expect("should have a performance object");
+                        let start_timestamp = performance.now();
+                        let svg = graphviz
+                            .render_svg_element(dot_output, options)
+                            .expect("Could not render graphviz");
+                        let end_timestamp = performance.now();
+                        let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+                        log::info!("Converting dot-String to SVG took {} seconds", elapsed_seconds);
+                        let svg_text = svg.outer_html();
+                        link.unwrap()
+                            .send_message(GraphInfoMsg::ShowMatchingLoopGraph(AttrValue::from(svg_text)));
+                        // link.send_message(Msg::UpdateSvgText(
+                        //     AttrValue::from(svg_text),
+                        //     calculated,
+                        // ));
+                    });
+                    // only need to re-render once the new SVG has been set
+                   true 
             }
         }
     }

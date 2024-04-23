@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
 use smt_log_parser::{display_with::{DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, VarNames}, parsers::z3::graph::{raw::{EdgeKind, Node, NodeKind}, visible::{VisibleEdge, VisibleEdgeKind}, InstGraph, VisibleEdgeIndex, RawNodeIndex}};
+use viz_js::VizInstance;
+use web_sys::window;
 use yew::{function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties};
 
 use crate::configuration::ConfigurationProvider;
@@ -381,3 +383,65 @@ pub fn SelectedEdgesInfo(
     </>
     }
 }
+
+// #[derive(Properties, PartialEq)]
+// pub struct DisplayedMLInfoProps {
+//     pub displayed_ml_index: Option<usize>,
+//     pub rendered: Option<RenderedGraph>,
+// }
+
+// #[function_component]
+// pub fn DisplayedMLGraph(
+//     DisplayedMLInfoProps {
+//         displayed_ml_index,
+//         rendered,
+//     }: &DisplayedMLInfoProps,
+// ) -> Html {
+//     if displayed_ml_index.is_none() {
+//         return html! {}
+//     }
+//     let Some(rendered) = rendered else {
+//         return html! {}
+//     };
+
+//     let cfg = use_context::<ConfigurationProvider>().unwrap();
+//     let parser = cfg.config.parser.unwrap();
+//     let graph = parser.graph.unwrap();
+//     let parser = &*parser.parser;
+//     let graph = graph.borrow();
+//     let ctxt = &DisplayCtxt {
+//         parser,
+//         config: cfg.config.display,
+//     };
+//     let n = displayed_ml_index.unwrap();
+//     let nth_matching_loop_graph = graph.nth_matching_loop_graph(n);
+//     wasm_bindgen_futures::spawn_local(async move {
+//         gloo_timers::future::TimeoutFuture::new(10).await;
+//         let graphviz = VizInstance::new().await;
+//         let options = viz_js::Options::default();
+//         // options.engine = "twopi".to_string();
+//         let window = window().expect("should have a window in this context");
+//         let performance = window.performance().expect("should have a performance object");
+//         let start_timestamp = performance.now();
+//         let svg = graphviz
+//             .render_svg_element(nth_matching_loop_graph, options)
+//             .expect("Could not render graphviz");
+//         let end_timestamp = performance.now();
+//         let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+//         log::info!("Converting dot-String to SVG took {} seconds", elapsed_seconds);
+//         let svg_text = svg.outer_html();
+//         link.send_message(Msg::UpdateSvgText(
+//             AttrValue::from(svg_text),
+//             calculated,
+//         ));
+//     });
+
+//     html! {
+//     <>
+//         <h2>{"Information on displayed matching loop:"}</h2>
+//         <div>
+
+//         </div>
+//     </>
+//     }
+// }

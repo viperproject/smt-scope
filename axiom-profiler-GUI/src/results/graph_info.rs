@@ -207,7 +207,12 @@ impl Component for GraphInfo {
                     <SelectedNodesInfo selected_nodes={self.selected_nodes.iter().map(|(k, v)| (*k, *v)).collect::<Vec<_>>()} on_click={on_node_click} />
                     <SelectedEdgesInfo selected_edges={self.selected_edges.iter().map(|(k, v)| (*k, *v)).collect::<Vec<_>>()} rendered={ctx.props().rendered.clone()} on_click={on_edge_click} />
                     { if let Some(graph) = &self.displayed_matching_loop_graph {
-                        html!{<div>{Html::from_html_unchecked(graph.clone())}</div>}
+                        html!{
+                            <>
+                                <h2>{"Information on Displayed Matching Loop"}</h2>
+                                <div>{Html::from_html_unchecked(graph.clone())}</div>
+                            </>
+                        }
                     } else {
                         html!{}
                     }}

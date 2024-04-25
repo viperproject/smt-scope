@@ -52,7 +52,7 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
                 NodeKind::Instantiation(i) => Some(i),
                 _ => None
             };
-            let q = i.and_then(|i| parser.parser[parser.parser[i].match_].kind.quant_idx());
+            let q = i.and_then(|i| (& *parser.parser.borrow())[(& *parser.parser.borrow())[i].match_].kind.quant_idx());
             (*n, i, q)
         });
         vec![

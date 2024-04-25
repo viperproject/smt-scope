@@ -70,21 +70,10 @@ impl Filter {
             }
             // TODO: implement
             Filter::SelectNthMatchingLoop(n) => {
-                // graph.raw.reset_visibility_to(true);
-                let currently_disabled_nodes = graph.disabled_nodes();
-                let dot_graph = graph.nth_matching_loop_graph(n, parser);
-                graph.reset_disabled_to(&parser, |nx, _| currently_disabled_nodes.contains(&nx));
-
                 graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.contains(&n));
                 graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && !node.part_of_ML.contains(&n));
-                return FilterOutput::MatchingLoopGraph(dot_graph);
-                // if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
-                //     if let Some(nidx) = nodes.get(n) {
-                //         let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
-                //         graph.raw.reset_visibility_to(true);
-                //         graph.raw.set_visibility_many(false, nodes.into_iter())
-                //     }
-                // } 
+                let dot_graph = graph.nth_matching_loop_graph(n);
+                return FilterOutput::MatchingLoopGraph(dot_graph.0);
             },
             Filter::ShowMatchingLoopSubgraph => {
                 // graph.raw.reset_visibility_to(true);

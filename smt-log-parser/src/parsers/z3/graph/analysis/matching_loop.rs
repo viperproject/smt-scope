@@ -2,9 +2,9 @@ use std::{borrow::Borrow, cell::RefCell, collections::{HashMap, HashSet}, defaul
 
 use fxhash::FxHashSet;
 use gloo_console::log;
-use petgraph::{dot::{Config, Dot}, visit::Dfs, Direction::Outgoing, Graph};
+use petgraph::{dot::{Config, Dot}, visit::Dfs, Direction::Outgoing};
 
-use crate::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, QuantIdx, TermIdx}, parsers::z3::graph::{raw::{Node, NodeKind}, InstGraph}, Z3Parser};
+use crate::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, QuantIdx, TermIdx}, parsers::z3::graph::{raw::{Node, NodeKind}, InstGraph}, DiGraph, Graph, Z3Parser};
 use super::RawNodeIndex;
 // use matching_loop_graph::*;
 
@@ -76,6 +76,10 @@ impl InstGraph {
         // return the total number of potential matching loops
         let nr_matching_loop_end_nodes = matching_loop_end_nodes_raw_indices.len();
         self.analysis.matching_loop_end_nodes = Some(matching_loop_end_nodes_raw_indices);
+
+        // compute the ML graphs for all the potential matching loops
+        self.analysis.matching_loop_graphs = (0..nr_matching_loop_end_nodes).map(|i| self.compute_nth_matching_loop_graph(i, parser)).collect();
+        
         // make sure the enabled and disabled nodes stay the same as before calling the ML search 
         self.reset_disabled_to(&parser, |nx, _| currently_disabled_nodes.contains(&nx));
         nr_matching_loop_end_nodes
@@ -85,20 +89,18 @@ impl InstGraph {
         self.analysis.matching_loop_end_nodes.as_ref().map(|mlen| mlen.len())
     }
 
-    pub fn nth_matching_loop_graph(&mut self, n: usize, parser: &Z3Parser) -> Graph<String, ()> {
-        let mut ctxt = DisplayCtxt {
-            parser,
-            config: DisplayConfiguration {
-            display_term_ids: false,
-            display_quantifier_name: false,
-            use_mathematical_symbols: true,
-            html: true,
-            // Set manually elsewhere
-            enode_char_limit: 0,
-            limit_enode_chars: false,
-        },
-        };
-        let mut graph: Graph<String, ()> = Graph::default();
+    pub fn nth_matching_loop_graph(&mut self, n: usize) -> Graph<String, ()> {
+        if let Some(ml_graph) = self.analysis.matching_loop_graphs.get(n) {
+            Graph(ml_graph.0.clone())
+            // Graph(ml_graph.0.clone())
+        } else {
+            Graph(petgraph::Graph::default())
+        }
+    }
+
+    pub fn compute_nth_matching_loop_graph(&mut self, n: usize, parser: &mut Z3Parser) -> Graph<String, ()> {
+
+        let mut graph = petgraph::Graph::default();
         // filter out graph to only view the nodes that belong to nth matching loop
         self.raw.reset_visibility_to(true);
         self.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.contains(&n));
@@ -111,53 +113,79 @@ impl InstGraph {
             let edge = &potential_ml.graph[edge];
             let kind = edge.kind(self);
             let node = &self.raw[self.raw.index(kind.blame(self))];
-            if let NodeKind::ENode(enode) = node.kind() {
-                let term = parser[*enode].owner;
-                log!(format!("Edge from {} to {} has label {}", self.raw.graph[from.0].kind(), self.raw.graph[to.0].kind(), term));
-                let from_inst = self.raw[from].kind().inst().unwrap(); 
-                let to_inst = self.raw[to].kind().inst().unwrap(); 
-                let from_quant = parser[parser[from_inst].match_].kind.quant_idx().unwrap();
-                let to_quant = parser[parser[to_inst].match_].kind.quant_idx().unwrap();
-                if let Some(terms) = abstract_edges.get_mut(&(from_quant, to_quant)) {
-                    terms.push(term);
-                } else {
-                    abstract_edges.insert((from_quant, to_quant), vec![term]);
-                }  
-            }
-            // let output = match node.kind() {
-            //     NodeKind::ENode(enode) => {
-            //         ctxt.config.enode_char_limit *= 2;
-            //         parser[*enode].owner
-            //         // enode.with(&ctxt).to_string()
-            //     }
-            //     NodeKind::GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
-            //     NodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
-            //     NodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[*inst].match_].kind {
-            //         MatchKind::MBQI { quant, .. } =>
-            //             ctxt.parser[*quant].kind.with(&ctxt).to_string(),
-            //         MatchKind::TheorySolving { axiom_id, .. } => {
-            //             let namespace = &ctxt.parser[axiom_id.namespace];
-            //             let id = axiom_id.display_id().map(|id| id.to_string()).unwrap_or_default();
-            //             format!("{namespace}[{id}]")
-            //         }
-            //         MatchKind::Axiom { axiom, .. } =>
-            //             ctxt.parser[*axiom].kind.with(&ctxt).to_string(),
-            //         MatchKind::Quantifier { quant, .. } => {
-            //             // ctxt.parser[*quant].kind,
-            //             log!("In the MatchKind::Quantifier branch");
-            //             ctxt.parser[*quant].kind.with(&ctxt).to_string()
-            //         },
-            //     },
-            // };
-
+            // if let NodeKind::ENode(enode) = node.kind() {
+            //     let term = parser[*enode].owner;
+            //     // log!(format!("Edge from {} to {} has label {}", self.raw.graph[from.0].kind(), self.raw.graph[to.0].kind(), term));
+            //     let from_inst = self.raw[from].kind().inst().unwrap(); 
+            //     let to_inst = self.raw[to].kind().inst().unwrap(); 
+            //     let from_quant = parser[parser[from_inst].match_].kind.quant_idx().unwrap();
+            //     let to_quant = parser[parser[to_inst].match_].kind.quant_idx().unwrap();
+            //     if let Some(terms) = abstract_edges.get_mut(&(from_quant, to_quant)) {
+            //         terms.push(term);
+            //     } else {
+            //         abstract_edges.insert((from_quant, to_quant), vec![term]);
+            //     }  
+            // }
+            let term = match node.kind() {
+                NodeKind::ENode(enode) => {
+                    // ctxt.config.enode_char_limit *= 2;
+                    parser[*enode].owner
+                    // enode.with(&ctxt).to_string()
+                }
+                NodeKind::GivenEquality(eq, _) => {match parser[*eq] {
+                    crate::items::EqualityExpl::Literal { eq, .. } => parser[eq].owner,
+                    _ => unreachable!()
+                }},
+                _ => unreachable!(),
+                // NodeKind::GivenEquality(eq, _) => parser[*eq].,
+                // NodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
+                // NodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[*inst].match_].kind {
+                //     MatchKind::MBQI { quant, .. } =>
+                //         ctxt.parser[*quant].kind.with(&ctxt).to_string(),
+                //     MatchKind::TheorySolving { axiom_id, .. } => {
+                //         let namespace = &ctxt.parser[axiom_id.namespace];
+                //         let id = axiom_id.display_id().map(|id| id.to_string()).unwrap_or_default();
+                //         format!("{namespace}[{id}]")
+                //     }
+                //     MatchKind::Axiom { axiom, .. } =>
+                //         ctxt.parser[*axiom].kind.with(&ctxt).to_string(),
+                //     MatchKind::Quantifier { quant, .. } => {
+                //         // ctxt.parser[*quant].kind,
+                //         ctxt.parser[*quant].kind.with(&ctxt).to_string()
+                //     },
+                // },
+            };
+            let from_inst = self.raw[from].kind().inst().unwrap(); 
+            let to_inst = self.raw[to].kind().inst().unwrap(); 
+            let from_quant = parser[parser[from_inst].match_].kind.quant_idx().unwrap();
+            let to_quant = parser[parser[to_inst].match_].kind.quant_idx().unwrap();
+            if let Some(terms) = abstract_edges.get_mut(&(from_quant, to_quant)) {
+                terms.push(term);
+            } else {
+                abstract_edges.insert((from_quant, to_quant), vec![term]);
+            }  
         }
-        // for terms in abstract_edges.values() {
-        //     let generalised_term = parser.terms.generalise(&mut parser.strings, terms.to_vec());
-        // }
+        for terms in abstract_edges.values() {
+            if let Some(generalised_term) = parser.terms.generalise(&mut parser.strings, terms.to_vec()) {
+                let ctxt = DisplayCtxt {
+                    parser,
+                    config: DisplayConfiguration {
+                    display_term_ids: false,
+                    display_quantifier_name: false,
+                    use_mathematical_symbols: true,
+                    html: true,
+                    // Set manually elsewhere
+                    enode_char_limit: 0,
+                    limit_enode_chars: false,
+                    },
+                };
+                log!(format!("Creating generalized term {}", generalised_term.with(&ctxt)))
+            }
+        }
         for i in 0..n {
             graph.add_node(format!("{i}"));
         }
-        return graph
+        return Graph(graph) 
     }
 } 
 

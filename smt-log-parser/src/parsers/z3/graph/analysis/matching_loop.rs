@@ -11,7 +11,7 @@ use super::RawNodeIndex;
 pub const MIN_MATCHING_LOOP_LENGTH: usize = 3;
 
 impl InstGraph {
-    pub fn search_matching_loops(&mut self, parser: &Z3Parser) -> usize {
+    pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> usize {
         let currently_disabled_nodes = self.disabled_nodes();
         self.initialise_inst_succs_and_preds(&parser);
         // disable all nodes that do not correspond to QIs
@@ -151,9 +151,9 @@ impl InstGraph {
             // };
 
         }
-        for terms in abstract_edges.values() {
-            let generalised_term = parser.terms.generalise(&mut parser.strings, terms.to_vec());
-        }
+        // for terms in abstract_edges.values() {
+        //     let generalised_term = parser.terms.generalise(&mut parser.strings, terms.to_vec());
+        // }
         for i in 0..n {
             graph.add_node(format!("{i}"));
         }

@@ -171,7 +171,7 @@ pub fn SelectedNodesInfo(
     let parser = &*parser.parser;
     let graph = graph.borrow();
     let ctxt = &DisplayCtxt {
-        parser,
+        parser: &parser.borrow(),
         config: cfg.config.persistent.display.clone(),
     };
 
@@ -190,7 +190,7 @@ pub fn SelectedNodesInfo(
             let header_text = info.kind();
             let summary = format!("[{index}] {header_text}: ");
             let description = info.description((!open).then(|| 10));
-            let z3_gen = info.node.kind().inst().and_then(|i| parser[i].z3_generation).map(|g| format!(" (z3 gen {g})"));
+            let z3_gen = info.node.kind().inst().and_then(|i| (& *parser.borrow())[i].z3_generation).map(|g| format!(" (z3 gen {g})"));
 
             let quantifier_body = info.quantifier_body().map(|body| html! {
                 <><hr/>
@@ -343,7 +343,7 @@ pub fn SelectedEdgesInfo(
     let parser = &*parser.parser;
     let graph = graph.borrow();
     let ctxt = &DisplayCtxt {
-        parser,
+        parser: &parser.borrow(),
         config: cfg.config.persistent.display.clone(),
     };
 

@@ -126,7 +126,7 @@ impl Component for SVGResult {
             gloo::timers::future::TimeoutFuture::new(10).await;
             let cfg = link.get_configuration().unwrap();
             let parser = cfg.config.parser.as_ref().unwrap();
-            let inst_graph = match InstGraph::new(&parser.parser) {
+            let inst_graph = match InstGraph::new(&parser.parser.borrow()) {
                 Ok(inst_graph) => inst_graph,
                 Err(err) => {
                     log::error!("Failed constructing instantiation graph: {err:?}");
@@ -199,7 +199,7 @@ impl Component for SVGResult {
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {:?}", filter);
-                match filter.apply(inst_graph, parser, &cfg.config.persistent.display) {
+                match filter.apply(inst_graph, &parser.borrow(), &cfg.config.persistent.display) {
                     FilterOutput::LongestPath(path) => {
                         ctx.props().selected_nodes.emit(path);
                         // self.insts_info_link
@@ -255,7 +255,7 @@ impl Component for SVGResult {
                 false
             }
             Msg::SetDisabled(disablers) => {
-                Disabler::apply(disablers.iter().copied(), inst_graph, parser);
+                Disabler::apply(disablers.iter().copied(), inst_graph, &parser.borrow());
                 false
             }
             Msg::RenderGraph => {
@@ -276,7 +276,7 @@ impl Component for SVGResult {
                     ctx.props().progress.emit(GraphState::Rendering(RenderingState::GraphToDot));
                     let filtered_graph = &calculated.graph;
                     let ctxt = &DisplayCtxt {
-                        parser,
+                        parser: &parser.borrow(),
                         config: cfg.config.persistent.display.clone(),
                     };
 
@@ -342,7 +342,7 @@ impl Component for SVGResult {
                                 let label = node_data.kind().to_string();
                                 match node_data.kind() {
                                     NodeKind::Instantiation(inst) => {
-                                        let mkind = &parser[parser[*inst].match_].kind;
+                                        let mkind = &(& *parser.borrow())[(& *parser.borrow())[*inst].match_].kind;
                                         style = Some(if mkind.is_mbqi() { "filled,dashed" } else { "filled" });
                                         let s = match (data.hidden_children, data.hidden_parents) {
                                             (0, 0) => "box",
@@ -429,7 +429,7 @@ impl Component for SVGResult {
             Msg::RenderMLGraph(graph) => {
                     let filtered_graph = &graph;
                     let ctxt = &DisplayCtxt {
-                        parser,
+                        parser: &parser.borrow(),
                         config: cfg.config.display,
                     };
 

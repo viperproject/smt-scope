@@ -463,12 +463,14 @@ impl Component for FileDataComponent {
                 if let Some(file) = &mut self.file {
                     // TODO: re-add finding matching loops
                     // assert!(file.parser.graph.is_some());
-                    let parser = ctx.link().get_configuration().unwrap().config.parser.unwrap();
-                    file.parser = parser.clone(); 
+                    // let parser = ctx.link().get_configuration().unwrap().config.parser.unwrap();
+                    let tmp = ctx.link().get_configuration().unwrap().config.parser.unwrap();
+                    let mut parser = tmp.parser.borrow_mut();
+                    file.parser = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone(); 
                     if let Some(g) = &file.parser.graph {
                         file.parser.found_mls = Some(g
                         .borrow_mut()
-                        .search_matching_loops(&parser.parser))
+                        .search_matching_loops(&mut *parser))
                     }
                     return true;
                     // file.parser.found_mls = Some(
@@ -669,7 +671,7 @@ pub fn app() -> Html {
 }
 
 pub struct RcParser {
-    parser: Rc<Z3Parser>,
+    parser: Rc<RefCell<Z3Parser>>,
     lookup: Rc<StringLookupZ3>,
     colour_map: QuantIdxToColourMap,
     graph: Option<Rc<RefCell<InstGraph>>>,
@@ -703,7 +705,7 @@ impl RcParser {
         let colour_map = QuantIdxToColourMap::new(quant_count, non_quant_insts);
         let lookup = StringLookupZ3::init(&parser);
         Self {
-            parser: Rc::new(parser),
+            parser: Rc::new(RefCell::new(parser)),
             lookup: Rc::new(lookup),
             colour_map,
             graph: None,

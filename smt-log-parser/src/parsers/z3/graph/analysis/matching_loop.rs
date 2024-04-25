@@ -11,7 +11,7 @@ use super::RawNodeIndex;
 pub const MIN_MATCHING_LOOP_LENGTH: usize = 3;
 
 impl InstGraph {
-    pub fn search_matching_loops(&mut self, parser: Rc<Z3Parser>) -> usize {
+    pub fn search_matching_loops(&mut self, parser: &Z3Parser) -> usize {
         let currently_disabled_nodes = self.disabled_nodes();
         self.initialise_inst_succs_and_preds(&parser);
         // disable all nodes that do not correspond to QIs
@@ -85,7 +85,7 @@ impl InstGraph {
         self.analysis.matching_loop_end_nodes.as_ref().map(|mlen| mlen.len())
     }
 
-    pub fn nth_matching_loop_graph(&mut self, n: usize, parser: &mut Z3Parser) -> Graph<String, ()> {
+    pub fn nth_matching_loop_graph(&mut self, n: usize, parser: &Z3Parser) -> Graph<String, ()> {
         let mut ctxt = DisplayCtxt {
             parser,
             config: DisplayConfiguration {

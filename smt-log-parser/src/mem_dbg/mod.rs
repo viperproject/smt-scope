@@ -108,7 +108,7 @@ impl<T> DerefMut for BoxSlice<T> {
 // Graph
 
 
-pub struct Graph<N, E, Ty = petgraph::Directed, Ix = petgraph::graph::DefaultIx>(petgraph::graph::Graph<N, E, Ty, Ix>);
+pub struct Graph<N, E, Ty = petgraph::Directed, Ix = petgraph::graph::DefaultIx>(pub petgraph::graph::Graph<N, E, Ty, Ix>);
 pub type DiGraph<N, E, Ix = petgraph::graph::DefaultIx> = Graph<N, E, petgraph::Directed, Ix>;
 pub type UnGraph<N, E, Ix = petgraph::graph::DefaultIx> = Graph<N, E, petgraph::Undirected, Ix>;
 impl<N, E, Ty, Ix> Deref for Graph<N, E, Ty, Ix> {

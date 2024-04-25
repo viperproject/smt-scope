@@ -4,9 +4,9 @@ pub mod next_insts;
 pub mod matching_loop;
 
 use mem_dbg::{MemDbg, MemSize};
-use petgraph::{Direction, Graph};
+use petgraph::{Direction};
 
-use crate::{Result, Z3Parser};
+use crate::{Result, Z3Parser, Graph};
 
 use self::{cost::DefaultCost, depth::DefaultDepth, next_insts::DefaultNextInsts};
 
@@ -24,6 +24,7 @@ pub struct Analysis {
     // pub(super) max_depth: Vec<NodeIndex>,
     pub matching_loop_end_nodes: Option<Vec<RawNodeIndex>>,
     // pub matching_loop_subgraph: VisibleInstGraph,
+    pub matching_loop_graphs: Vec<Graph<String, ()>>,
 }
 
 impl Analysis {
@@ -40,7 +41,7 @@ impl Analysis {
         let mut fwd_depth_min = Vec::new();
         fwd_depth_min.try_reserve_exact(nodes.len())?;
         fwd_depth_min.extend(nodes.clone());
-        Ok(Self { cost, children, fwd_depth_min, matching_loop_end_nodes: None })
+        Ok(Self { cost, children, fwd_depth_min, matching_loop_end_nodes: None, matching_loop_graphs: vec![], })
     }
 }
 

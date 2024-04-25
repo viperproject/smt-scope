@@ -372,7 +372,7 @@ impl Component for FileDataComponent {
                     if let Some(g) = &file.parser.graph {
                         file.parser.found_mls = Some(g
                         .borrow_mut()
-                        .search_matching_loops(parser.parser))
+                        .search_matching_loops(&parser.parser))
                     }
                     return true;
                     // file.parser.found_mls = Some(

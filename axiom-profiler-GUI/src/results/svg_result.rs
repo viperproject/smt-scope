@@ -122,14 +122,14 @@ impl Component for SVGResult {
         let cfg = ctx.link().get_configuration().unwrap();
         let parser = cfg.config.parser.unwrap();
         ctx.props().progress.emit(Err(RenderingState::ConstructingGraph));
-        let (quant_count, non_quant_insts) = parser.parser.quant_count_incl_theory_solving();
+        let (quant_count, non_quant_insts) = parser.parser.borrow().quant_count_incl_theory_solving();
         let colour_map = QuantIdxToColourMap::from(quant_count, non_quant_insts);
         let link = ctx.link().clone();
         wasm_bindgen_futures::spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(10).await;
             let cfg = link.get_configuration().unwrap();
             let mut parser = cfg.config.parser.unwrap();
-            let inst_graph = InstGraph::new(&parser.parser).unwrap();
+            let inst_graph = InstGraph::new(&parser.parser.borrow()).unwrap();
             let inst_graph = Rc::new(RefCell::new(inst_graph));
             parser.graph.replace(inst_graph.clone());
             cfg.update.emit(Configuration {
@@ -193,7 +193,7 @@ impl Component for SVGResult {
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {:?}", filter);
-                match filter.apply(inst_graph, parser, cfg.config.display) {
+                match filter.apply(inst_graph, &parser.borrow(), cfg.config.display) {
                     FilterOutput::LongestPath(path) => {
                         ctx.props().selected_nodes.emit(path);
                         // self.insts_info_link
@@ -248,7 +248,7 @@ impl Component for SVGResult {
                 false
             }
             Msg::SetDisabled(disablers) => {
-                Disabler::apply(disablers.iter().copied(), inst_graph, parser);
+                Disabler::apply(disablers.iter().copied(), inst_graph, &parser.borrow());
                 false
             }
             Msg::RenderGraph => {
@@ -269,7 +269,7 @@ impl Component for SVGResult {
                     ctx.props().progress.emit(Err(RenderingState::GraphToDot));
                     let filtered_graph = &calculated.graph;
                     let ctxt = &DisplayCtxt {
-                        parser,
+                        parser: &parser.borrow(),
                         config: cfg.config.display,
                     };
 
@@ -331,7 +331,7 @@ impl Component for SVGResult {
                                 let label = node_data.kind().to_string();
                                 match node_data.kind() {
                                     NodeKind::Instantiation(inst) => {
-                                        let mkind = &parser[parser[*inst].match_].kind;
+                                        let mkind = &(& *parser.borrow())[(& *parser.borrow())[*inst].match_].kind;
                                         style = Some(if mkind.is_mbqi() { "filled,dashed" } else { "filled" });
                                         let s = match (data.hidden_children, data.hidden_parents) {
                                             (0, 0) => "box",
@@ -340,7 +340,7 @@ impl Component for SVGResult {
                                             (_, _) => "diamond",
                                         };
                                         shape = Some(s);
-                                        let hue = self.colour_map.get_graphviz_hue(mkind);
+                                        let hue = self.colour_map.get_graphviz_hue(&mkind);
                                         fillcolor = Some(format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}"));
                                     }
                                     NodeKind::ENode(..) => {
@@ -443,7 +443,7 @@ impl Component for SVGResult {
             Msg::RenderMLGraph(graph) => {
                     let filtered_graph = &graph;
                     let ctxt = &DisplayCtxt {
-                        parser,
+                        parser: &parser.borrow(),
                         config: cfg.config.display,
                     };
 

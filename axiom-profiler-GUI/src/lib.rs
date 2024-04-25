@@ -367,12 +367,14 @@ impl Component for FileDataComponent {
                 if let Some(file) = &mut self.file {
                     // TODO: re-add finding matching loops
                     // assert!(file.parser.graph.is_some());
-                    let parser = ctx.link().get_configuration().unwrap().config.parser.unwrap();
-                    file.parser = parser.clone(); 
+                    // let parser = ctx.link().get_configuration().unwrap().config.parser.unwrap();
+                    let tmp = ctx.link().get_configuration().unwrap().config.parser.unwrap();
+                    let mut parser = tmp.parser.borrow_mut();
+                    file.parser = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone(); 
                     if let Some(g) = &file.parser.graph {
                         file.parser.found_mls = Some(g
                         .borrow_mut()
-                        .search_matching_loops(&parser.parser))
+                        .search_matching_loops(&mut *parser))
                     }
                     return true;
                     // file.parser.found_mls = Some(
@@ -553,7 +555,7 @@ pub fn app() -> Html {
 }
 
 pub struct RcParser {
-    parser: Rc<Z3Parser>,
+    parser: Rc<RefCell<Z3Parser>>,
     graph: Option<Rc<RefCell<InstGraph>>>,
     found_mls: Option<usize>,
 }
@@ -580,7 +582,7 @@ impl Eq for RcParser {}
 impl RcParser {
     fn new(parser: Z3Parser) -> Self {
         Self {
-            parser: Rc::new(parser),
+            parser: Rc::new(RefCell::new(parser)),
             graph: None,
             found_mls: None,
         }

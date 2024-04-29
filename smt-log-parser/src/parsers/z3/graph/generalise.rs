@@ -60,6 +60,17 @@ impl Terms {
         }
     }
 
+    pub fn generalise_pattern(&mut self, mut strings: &mut StringTable, pattern: TermIdx) -> TermIdx {
+        match self[pattern].kind {
+            TermKind::Var(_) => self.new_synthetic_term(TermKind::Generalised, Default::default(), None),
+            TermKind::Generalised => pattern,
+            _ => {
+                let children = Vec::from(self[pattern].child_ids.clone()).into_iter().map(|c| self.generalise_pattern(&mut strings, c)).collect();
+                self.new_synthetic_term(self[pattern].kind, children, self.meaning(pattern).copied())
+            }
+        }
+    }
+
     pub fn try_find_meaning(&self, strings: &mut StringTable, _terms: &[TermIdx]) -> Option<Meaning> {
         let value = String::from("_");
         // TODO: it would be nice here to try and find the repeating pattern,

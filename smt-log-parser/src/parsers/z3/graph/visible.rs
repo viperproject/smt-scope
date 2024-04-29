@@ -458,6 +458,7 @@ impl VisibleEdge {
     }
 }
 
+#[derive(Clone)]
 pub enum VisibleEdgeKind {
     Direct(RawEdgeIndex, EdgeKind),
     /// `Instantiation` -> `ENode` -> `Instantiation`

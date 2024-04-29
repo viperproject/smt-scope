@@ -14,7 +14,7 @@ use smt_log_parser::{
     display_with::DisplayCtxt, items::{BlameKind, InstIdx, MatchKind, QuantIdx}, parsers::{
         z3::{
             // inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, Node, NodeInfo, VisibleGraphInfo},
-            graph::{raw::{EdgeKind, NodeKind}, visible::{VisibleEdge, VisibleInstGraph}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
+            graph::{analysis::matching_loop::InstOrEquality, raw::{EdgeKind, NodeKind}, visible::{VisibleEdge, VisibleInstGraph}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
         },
         LogParser,
     }
@@ -54,7 +54,7 @@ pub enum Msg {
     ResetGraph,
     UserPermission(WarningChoice),
     WorkerOutput(super::worker::WorkerOutput),
-    RenderMLGraph(Graph<String, ()>),
+    RenderMLGraph(Graph<String, InstOrEquality>),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -457,17 +457,18 @@ impl Component for SVGResult {
                                 Config::GraphContentOnly
                             ],
                             &|_, edge_data| format!(
-                                ""
-                                // "label=\"{}\" style=\"{}\" color=\"{}\"",
-                                // edge_data.weight(),
-                                // match edge_data.weight() {
-                                //     InstOrEquality::Inst(_, _) => "solid, bold",
-                                //     InstOrEquality::Equality => "solid",
-                                // },
-                                // match edge_data.weight() {
-                                //     InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get(&mkind, NODE_COLOUR_SATURATION + 0.2)),
-                                //     InstOrEquality::Equality => "black:white:black".to_string(),
-                                // }
+                                "label=\"{}\" style=\"{}\" color=\"{}\"",
+                                edge_data.weight(),
+                                match edge_data.weight() {
+                                    InstOrEquality::Inst(_, _) => "solid, bold",
+                                    InstOrEquality::Equality => "solid",
+                                },
+                                match edge_data.weight() {
+                                    // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind)),
+                                    InstOrEquality::Inst(_, mkind) => format!("{} {} {NODE_COLOUR_VALUE}", self.colour_map.get_graphviz_hue(&mkind), NODE_COLOUR_SATURATION + 0.2),
+                                    // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind, NODE_COLOUR_SATURATION + 0.2)),
+                                    InstOrEquality::Equality => "black:white:black".to_string(),
+                                }
                             ),
                             &|_, (_, node_data)| {
                                 format!("label=\"{}\" shape=\"{}\"",

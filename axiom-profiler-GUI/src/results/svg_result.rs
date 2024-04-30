@@ -54,7 +54,7 @@ pub enum Msg {
     ResetGraph,
     GetUserPermission(GraphDimensions, bool),
     WorkerOutput(super::worker::WorkerOutput),
-    RenderMLGraph(Graph<String, InstOrEquality>),
+    RenderMLGraph(Graph<(String, Option<QuantIdx>), ()>),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -470,24 +470,30 @@ impl Component for SVGResult {
                                 Config::NodeNoLabel,
                                 Config::GraphContentOnly
                             ],
-                            &|_, edge_data| format!(
-                                "label=\"{}\" style=\"{}\" color=\"{}\"",
-                                edge_data.weight(),
-                                match edge_data.weight() {
-                                    InstOrEquality::Inst(_, _) => "solid, bold",
-                                    InstOrEquality::Equality => "solid",
-                                },
-                                match edge_data.weight() {
-                                    // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind)),
-                                    InstOrEquality::Inst(_, mkind) => format!("{} {} {NODE_COLOUR_VALUE}", self.colour_map.get_graphviz_hue(&mkind), NODE_COLOUR_SATURATION + 0.2),
-                                    // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind, NODE_COLOUR_SATURATION + 0.2)),
-                                    InstOrEquality::Equality => "black:white:black".to_string(),
-                                }
-                            ),
+                            &|_, _| "".to_string(),
+                            // &|_, edge_data| format!(
+                            //     // edge_data.weight(),
+                            //     // match edge_data.weight() {
+                            //     //     InstOrEquality::Inst(_, _) => "solid, bold",
+                            //     //     InstOrEquality::Equality => "solid",
+                            //     // },
+                            //     // match edge_data.weight() {
+                            //     //     // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind)),
+                            //     //     InstOrEquality::Inst(_, mkind) => format!("{} {} {NODE_COLOUR_VALUE}", self.colour_map.get_graphviz_hue(&mkind), NODE_COLOUR_SATURATION + 0.2),
+                            //     //     // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind, NODE_COLOUR_SATURATION + 0.2)),
+                            //     //     InstOrEquality::Equality => "black:white:black".to_string(),
+                            //     // }
+                            // ),
                             &|_, (_, node_data)| {
-                                format!("label=\"{}\" shape=\"{}\"",
-                                        node_data,
+                                format!("label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
+                                        node_data.0,
                                         "box",
+                                        if let Some(match_kind) = &node_data.1 {
+                                            let hue = self.colour_map.get_graphviz_hue_for_quant_idx(&match_kind);
+                                            format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
+                                        } else {
+                                            format!("white")
+                                        }
                                     )
                             },
                         )
@@ -598,6 +604,23 @@ impl QuantIdxToColourMap {
     }
     pub fn get_graphviz_hue(&self, mkind: &MatchKind) -> f64 {
         let hue = self.get(mkind);
+        let colour = Hsluv::<D65, f64>::new(hue, 100.0, 50.0);
+        let colour = Hsv::<Srgb, f64>::from_color(colour);
+        colour.hue.into_positive_degrees() / 360.0
+    }
+    pub fn get_for_quant_idx(&self, mkind: QuantIdx) -> LuvHue<f64> {
+        let qidx = Some(mkind);
+        debug_assert!(self.non_quant_insts || qidx.is_some());
+        let idx = qidx
+            .map(usize::from)
+            .map(|q| q + self.non_quant_insts as usize)
+            .unwrap_or_default();
+        // debug_assert!(idx < idx);
+        let idx_perm = (idx * self.coprime.get() + self.shift) % self.total_count;
+        LuvHue::new(360. * idx_perm as f64 / self.total_count as f64)
+    }
+    pub fn get_graphviz_hue_for_quant_idx(&self, mkind: &QuantIdx) -> f64 {
+        let hue = self.get_for_quant_idx(*mkind);
         let colour = Hsluv::<D65, f64>::new(hue, 100.0, 50.0);
         let colour = Hsv::<Srgb, f64>::from_color(colour);
         colour.hue.into_positive_degrees() / 360.0

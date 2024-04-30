@@ -110,7 +110,7 @@ impl EGraph {
             // Handle the easy and common case of `(#n #n)` separately
             self.equalities.transitive.raw.try_reserve(1)?;
             Ok(*self.enodes[from].self_transitive.get_or_insert_with(|| {
-                self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(to))
+                self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(from, to))
             }))
         } else {
             self.construct_trans_equality(from, to, stack, can_mismatch)
@@ -173,6 +173,15 @@ impl EGraph {
         let Some(simple_path) = self.get_simple_path(from, to, stack, can_mismatch)? else {
             // There was a root mismatch (and `can_mismatch` was true), so we
             // can't construct a simple path.
+            if let Some(trans) = self.enodes[from].transitive.iter().copied().find(|t| {
+                let t = &self.equalities.transitive[*t];
+                t.to == to && t.given_len == 0
+            }) {
+                return Ok(trans)
+            };
+            let trans = TransitiveExpl::empty(from, to);
+            self.equalities.transitive.raw.try_reserve(1)?;
+            let trans = self.equalities.transitive.push_and_get_key(trans);
             self.enodes[from].transitive.try_reserve(1)?;
             let trans = match self.enodes[from].transitive.entry(to) {
                 Entry::Occupied(mut o) => {
@@ -219,7 +228,7 @@ impl EGraph {
                 }
             }
             let solution = TransitiveExplSegment { forward, kind: TransitiveExplSegmentKind::Transitive(solution) };
-            TransitiveExpl::new([solution].into_iter(), 1, to)?
+            TransitiveExpl::new([solution].into_iter(), 1, from, to)?
         } else {
             for idx in 1..edges_len {
                 graph.add_trans_from(idx, self);
@@ -243,7 +252,7 @@ impl EGraph {
                 let kind = &graph.graph[edge.unwrap()];
                 edge = graph.graph[graph.graph.edge_endpoints(edge.unwrap()).unwrap().1].1;
                 kind
-            }).copied(), edges_len, to)?
+            }).copied(), edges_len, from, to)?
         };
         let trans = self.insert_trans_equality(trans, stack)?;
         debug_assert_eq!(self.equalities.walk_to(from, trans), to);

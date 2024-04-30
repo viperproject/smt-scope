@@ -572,6 +572,7 @@ pub struct TransitiveExpl {
     pub path: Box<[TransitiveExplSegment]>,
     pub given_len: usize,
     pub to: ENodeIdx,
+    pub from: ENodeIdx,
 }
 pub enum TransitiveExplIter<'a> {
     Forward(std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>),
@@ -587,14 +588,14 @@ impl<'a> TransitiveExplIter<'a> {
 }
 
 impl TransitiveExpl {
-    pub fn new(i: impl Iterator<Item = TransitiveExplSegment> + ExactSizeIterator, given_len: usize, to: ENodeIdx) -> Result<Self> {
+    pub fn new(i: impl Iterator<Item = TransitiveExplSegment> + ExactSizeIterator, given_len: usize, from: ENodeIdx, to: ENodeIdx) -> Result<Self> {
         let mut path = Vec::new();
         path.try_reserve_exact(i.len())?;
         path.extend(i);
-        Ok(Self { path: path.into_boxed_slice(), given_len, to })
+        Ok(Self { path: path.into_boxed_slice(), given_len, to, from })
     }
-    pub fn empty(to: ENodeIdx) -> Self {
-        Self { path: Box::new([]), given_len: 0, to }
+    pub fn empty(from: ENodeIdx, to: ENodeIdx) -> Self {
+        Self { path: Box::new([]), given_len: 0, to, from }
     }
     pub fn all(&self, fwd: bool) -> TransitiveExplIter {
         let iter = self.path.iter().copied();

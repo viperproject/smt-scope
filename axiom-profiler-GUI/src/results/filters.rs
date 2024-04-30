@@ -1,5 +1,5 @@
 use petgraph::{visit::{Dfs, IntoNeighborsDirected, Reversed, Walker}, Direction, Graph};
-use smt_log_parser::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{InstIdx, QuantIdx}, parsers::z3::graph::{analysis::matching_loop::InstOrEquality, raw::{Node, NodeKind, RawInstGraph}, InstGraph, RawNodeIndex}, Z3Parser};
+use smt_log_parser::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{InstIdx, MatchKind, QuantIdx}, parsers::z3::graph::{analysis::matching_loop::InstOrEquality, raw::{Node, NodeKind, RawInstGraph}, InstGraph, RawNodeIndex}, Z3Parser};
 
 use super::svg_result::DEFAULT_NODE_COUNT;
 
@@ -12,6 +12,7 @@ pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
     (Disabler::ENodes, false),
     (Disabler::GivenEqualities, false),
     (Disabler::AllEqualities, false),
+    (Disabler::Prune, false),
 ];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -102,7 +103,7 @@ impl Filter {
 pub enum FilterOutput {
     LongestPath(Vec<RawNodeIndex>),
     MatchingLoopGeneralizedTerms(Vec<String>),
-    MatchingLoopGraph(Graph<String, InstOrEquality>),
+    MatchingLoopGraph(Graph<(String, Option<QuantIdx>), ()>),
     None
 }
 
@@ -112,6 +113,7 @@ pub enum Disabler {
     ENodes,
     GivenEqualities,
     AllEqualities,
+    Prune,
 }
 
 impl Disabler {
@@ -142,6 +144,7 @@ impl Disabler {
                 }
                 NodeKind::Instantiation(_) => false,
             },
+            Disabler::Prune => !matches!(node.kind(), NodeKind::Instantiation(_)) && (node.inst_children.nodes.len() == 0 || node.inst_parents.nodes.len() == 0), 
         }
     }
     pub fn apply(many: impl Iterator<Item = Disabler> + Clone, graph: &mut InstGraph, parser: &Z3Parser) {
@@ -154,6 +157,7 @@ impl Disabler {
             Disabler::ENodes => "yield terms",
             Disabler::GivenEqualities => "yield equalities",
             Disabler::AllEqualities => "all equalities",
+            Disabler::Prune => "non intermediate eqs/terms",
         }
     }
     pub fn icon(&self) -> &'static str {
@@ -162,6 +166,7 @@ impl Disabler {
             Disabler::ENodes => "functions",
             Disabler::GivenEqualities => "compare_arrows",
             Disabler::AllEqualities => "compare_arrows",
+            Disabler::Prune => "compare_arrows",
         }
     }
 }

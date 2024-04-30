@@ -7,7 +7,7 @@ pub mod matching_loop;
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::{Direction};
 
-use crate::{Result, Z3Parser, Graph};
+use crate::{items::{MatchKind, QuantIdx}, Graph, Result, Z3Parser};
 
 use self::{cost::DefaultCost, depth::DefaultDepth, matching_loop::InstOrEquality, next_insts::DefaultNextInsts};
 
@@ -26,7 +26,7 @@ pub struct Analysis {
     // pub(super) max_depth: Vec<NodeIndex>,
     pub matching_loop_end_nodes: Option<Vec<RawNodeIndex>>,
     // pub matching_loop_subgraph: VisibleInstGraph,
-    pub matching_loop_graphs: Vec<Graph<String, InstOrEquality>>,
+    pub matching_loop_graphs: Vec<Graph<(String, Option<QuantIdx>), ()>>,
 }
 
 impl Analysis {

@@ -10,6 +10,17 @@ use super::RawNodeIndex;
 
 pub const MIN_MATCHING_LOOP_LENGTH: usize = 3;
 
+struct GeneralisedInst {
+    // abstract instantiation defined by quantifier and trigger
+    id: (QuantIdx, TermIdx),
+    // stores the generalised blame terms and which (generalised) instantiation created it (indirectly)  
+    blame_terms: Vec<(TermIdx, (QuantIdx, TermIdx))>,
+    // stores the generalised equalities and which (generalised) instantiation created it (indirectly)  
+    equalities: Vec<((TermIdx, TermIdx), (QuantIdx, TermIdx))>,
+}
+
+
+
 impl InstGraph {
     pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> usize {
         let currently_disabled_nodes = self.disabled_nodes();
@@ -116,12 +127,12 @@ impl InstGraph {
     }
 
     pub fn compute_nth_matching_loop_graph(&mut self, n: usize, parser: &mut Z3Parser) -> Graph<(String, Option<QuantIdx>), ()> {
-
-        // let mut graph = petgraph::Graph::default();
         // filter out graph to only view the nodes that belong to nth matching loop
         self.raw.reset_visibility_to(true);
+        // make the nodes of the n-th matching loop visible
         let nodes_of_nth_matching_loop = self.raw.graph.node_indices().filter(|nx| self.raw.graph[*nx].part_of_ML.contains(&n)).collect::<FxHashSet<NodeIndex<RawIx>>>();
         self.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.contains(&n));
+        // identify the blame terms of the nodes of the n-th matching loop that have both an ancestor and a descendant that is part of the n-th matching loop and make them visible
         let relevant_blame_terms = nodes_of_nth_matching_loop.iter().flat_map(|nx| 
             self.raw.graph
                 .neighbors_directed(*nx, Incoming)
@@ -131,7 +142,7 @@ impl InstGraph {
         ).collect::<Vec<RawNodeIndex>>();
         self.raw.set_visibility_many(false, relevant_blame_terms.iter().cloned());
         let potential_ml = self.to_visible();
-        
+        // generalise the blame terms and equalities
         let mut equality_term_buckets: FxHashMap<((QuantIdx, TermIdx), (QuantIdx, TermIdx)), Vec<(TermIdx, TermIdx)>> = HashMap::default();
         let mut enode_term_buckets: FxHashMap<((QuantIdx, TermIdx), (QuantIdx, TermIdx)), Vec<TermIdx>> = HashMap::default();
         for nx in potential_ml.graph.node_indices() {
@@ -224,8 +235,22 @@ impl InstGraph {
                 let label = format!("{}", gen.with(&ctxt));
                 let gen_term_nx = ml_graph.add_node((label.clone(), None));
                 nx_of_gen_term.insert(label, gen_term_nx);
-                let from_quant = format!("{}", parser[key.0.0].kind.with(&ctxt)); 
-                let to_quant = format!("{}", parser[key.1.0].kind.with(&ctxt)); 
+                let from_quant_pattern =  parser.terms.generalise_pattern(&mut parser.strings, key.0.1);
+                let to_quant_pattern =  parser.terms.generalise_pattern(&mut parser.strings, key.1.1);
+                let ctxt = DisplayCtxt {
+                    parser: &parser,
+                    config: DisplayConfiguration {
+                        display_term_ids: false,
+                        display_quantifier_name: false,
+                        use_mathematical_symbols: true,
+                        html: true,
+                        // Set manually elsewhere
+                        enode_char_limit: 0,
+                        limit_enode_chars: false,
+                        },
+                };
+                let from_quant = format!("{}: {}", parser[key.0.0].kind.with(&ctxt), from_quant_pattern.with(&ctxt)); 
+                let to_quant = format!("{}: {}", parser[key.1.0].kind.with(&ctxt), to_quant_pattern.with(&ctxt)); 
                 let from_nx = if let Some(idx) = nx_of_quant.get(&(key.0.0, key.0.1)) {
                     *idx
                 } else {

@@ -4,7 +4,7 @@ use mem_dbg::{MemDbg, MemSize};
 use std::fmt;
 use std::ops::Index;
 use crate::error::Either;
-use crate::{BoxSlice, FxHashMap, IString, StringTable, NonMaxU32};
+use crate::{BoxSlice, FxHashMap, IString, StringTable, Z3Parser, NonMaxU32};
 use crate::{Result, Error};
 
 #[macro_export]
@@ -604,6 +604,18 @@ impl TransitiveExpl {
         } else {
             TransitiveExplIter::Backward(TransitiveExplSegment::rev(iter))
         }
+    }
+    pub fn get_creator_insts(&self, parser: &Z3Parser) -> Vec<Option<InstIdx>> {
+        self.path.iter().flat_map(|expl_seg| match expl_seg.kind {
+            TransitiveExplSegmentKind::Given(eq_idx, _) => match parser[eq_idx] {
+                EqualityExpl::Literal { eq, ..} => vec![parser[eq].created_by],
+                _ => vec![None]
+            },
+            TransitiveExplSegmentKind::Transitive(eq_idx) => {
+                let trans_expl = &parser[eq_idx];
+                trans_expl.get_creator_insts(parser)
+            },
+        }).collect()
     }
 }
 

@@ -6,7 +6,7 @@ use std::num::{NonZeroU32, NonZeroUsize};
 use std::ops::Index;
 use crate::display_with::DisplayConfiguration;
 use crate::error::Either;
-use crate::{BoxSlice, FxHashMap, IString, StringTable};
+use crate::{BoxSlice, FxHashMap, IString, StringTable, Z3Parser};
 use crate::{Result, Error};
 
 #[macro_export]
@@ -593,6 +593,18 @@ impl TransitiveExpl {
         } else {
             TransitiveExplIter::Backward(TransitiveExplSegment::rev(iter))
         }
+    }
+    pub fn get_creator_insts(&self, parser: &Z3Parser) -> Vec<Option<InstIdx>> {
+        self.path.iter().flat_map(|expl_seg| match expl_seg.kind {
+            TransitiveExplSegmentKind::Given(eq_idx, _) => match parser[eq_idx] {
+                EqualityExpl::Literal { eq, ..} => vec![parser[eq].created_by],
+                _ => vec![None]
+            },
+            TransitiveExplSegmentKind::Transitive(eq_idx) => {
+                let trans_expl = &parser[eq_idx];
+                trans_expl.get_creator_insts(parser)
+            },
+        }).collect()
     }
 }
 

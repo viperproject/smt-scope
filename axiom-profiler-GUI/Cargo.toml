@@ -38,6 +38,7 @@ console_error_panic_hook = "0.1.2"
 wasm-timer = "0.2"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
 semver = "1.0"
+implicit-clone = "0.4.9"
 
 # For random colour generation
 gcd = "2.3.0"

@@ -1,11 +1,11 @@
-use std::{borrow::Borrow, cell::RefCell, collections::{HashMap, HashSet}, default, fmt::Display, rc::Rc};
+use std::{borrow::Borrow, cell::RefCell, collections::{HashMap, HashSet}, default, fmt::Display, hash::Hash, rc::Rc};
 
 use fxhash::{FxHashMap, FxHashSet};
 use gloo_console::log;
 use petgraph::{dot::{Config, Dot}, graph::NodeIndex, visit::Dfs, Direction::{Incoming, Outgoing}};
 
 use crate::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{ENodeIdx, EqTransIdx, InstIdx, MatchKind, QuantIdx, QuantKind, Term, TermIdx, TransitiveExplSegmentKind}, parsers::z3::graph::{analysis::matching_loop::matching_loop_graph::MatchingLoopGraph, raw::{Node, NodeKind, RawIx}, visible::{VisibleEdge, VisibleIx}, InstGraph}, DiGraph, Graph, Z3Parser};
-use super::RawNodeIndex;
+use super::{cost::DefaultCost, RawNodeIndex};
 // use matching_loop_graph::*;
 
 pub const MIN_MATCHING_LOOP_LENGTH: usize = 3;
@@ -13,16 +13,42 @@ pub const MIN_MATCHING_LOOP_LENGTH: usize = 3;
 struct MlEquality {
     from: TermIdx,
     to: TermIdx,
-    creators: Vec<(QuantIdx, TermIdx)>,
+    creators: FxHashSet<(QuantIdx, TermIdx)>,
 }
 
 impl MlEquality {
     pub fn merge_with(&mut self, from: TermIdx, to: TermIdx, creators: Vec<(QuantIdx, TermIdx)>, parser: &mut Z3Parser) {
-        self.from = parser.terms.generalise(&mut parser.strings, vec![self.from, from]).unwrap();
-        self.to = parser.terms.generalise(&mut parser.strings, vec![self.to, to]).unwrap();
+        let ctxt = DisplayCtxt {
+            parser: &parser,
+            config: DisplayConfiguration {
+                display_term_ids: false,
+                display_quantifier_name: false,
+                use_mathematical_symbols: true,
+                html: true,
+                // Set manually elsewhere
+                enode_char_limit: 0,
+                limit_enode_chars: false,
+            },
+        };
+        // log!(format!("Generalising {} with {}", self.from.with(&ctxt), from.with(&ctxt)));
+        if let Some(term) = parser.terms.generalise(&mut parser.strings, vec![self.from, from]) {
+            self.from = term;
+        }
+        if let Some(term) = parser.terms.generalise(&mut parser.strings, vec![self.to, to]) {
+            self.to = term;
+        }
+        self.creators.extend(creators);
+        // self.from = parser.terms.generalise(&mut parser.strings, vec![self.from, from]).unwrap();
+        // self.to = parser.terms.generalise(&mut parser.strings, vec![self.to, to]).unwrap();
     }
     pub fn from(from: TermIdx, to: TermIdx, creators: Vec<(QuantIdx, TermIdx)>) -> Self {
-        MlEquality { from, to, creators }
+        MlEquality { from, to, creators: creators.iter().cloned().collect() }
+    }
+}
+
+impl Default for MlEquality {
+    fn default() -> Self {
+        Self { from: TermIdx::from(0), to: TermIdx::from(0), creators: HashSet::default() }
     }
 }
 
@@ -35,46 +61,6 @@ impl MlMatchedTerm {
     // TODO: maybe only generalise the terms in the very end? Otherwise we are creating lots of unnecessary generalised
     // terms that we won't even make use of
     pub fn merge_with(&mut self, matched: TermIdx, quant: QuantIdx, pattern: TermIdx, parser: &mut Z3Parser) {
-        self.matched = parser.terms.generalise(&mut parser.strings, vec![self.matched, matched]).unwrap()
-    }
-    pub fn from(matched: TermIdx, quant: QuantIdx, pattern: TermIdx) -> Self {
-        MlMatchedTerm { matched, creator: (quant, pattern) }
-    }
-}
-
-struct AbstractInst {
-    // abstract instantiation defined by quantifier and trigger
-    id: (QuantIdx, TermIdx),
-    // stores the generalised blame terms and which (generalised) instantiation created it (indirectly)  
-    // the first element in each tuple is a vector that will be mapped to a generalized term
-    matched_terms: Vec<MlMatchedTerm>,
-    // stores the generalised equalities and which (generalised) instantiation created it (indirectly)  
-    // the first element in each tuple is a vector that will be mapped to a generalized term
-    equalities: Vec<MlEquality>,
-}
-
-impl AbstractInst {
-    pub fn from(id: (QuantIdx, TermIdx)) -> Self {
-        Self { id, matched_terms: Vec::default(), equalities: Vec::default() }
-    }
-    pub fn merge_nth_blame_term(&mut self, n: usize, blame_term: TermIdx, creator_quant: QuantIdx, creator_pattern: TermIdx, parser: &mut Z3Parser) {
-        if let Some(matched_term) = self.matched_terms.get_mut(n) {
-            matched_term.merge_with(blame_term, creator_quant, creator_pattern, parser);
-        } else {
-            self.matched_terms.reserve(n.saturating_sub(self.matched_terms.len()));
-            self.matched_terms[n] = MlMatchedTerm::from(blame_term, creator_quant, creator_pattern);
-        }
-    }
-
-    pub fn merge_nth_equalities(&mut self, n: usize, from: TermIdx, to: TermIdx, creators: Vec<(QuantIdx, TermIdx)>, parser: &mut Z3Parser) {
-        if let Some(equalities) = self.equalities.get_mut(n) {
-            equalities.merge_with(from, to, creators, parser);
-        } else {
-            self.equalities.reserve(n.saturating_sub(self.equalities.len()));
-            self.equalities[n] = MlEquality::from(from, to, creators);
-        }
-    }
-    pub fn to_string(&self, parser: &Z3Parser) -> String {
         let ctxt = DisplayCtxt {
             parser: &parser,
             config: DisplayConfiguration {
@@ -87,17 +73,67 @@ impl AbstractInst {
                 limit_enode_chars: false,
                 },
         };
-        let matched_terms = self.matched_terms.iter().map(|mterm| format!("{}", mterm.matched.with(&ctxt))).collect::<Vec<String>>().join(",");
-        let equalities = self.equalities.iter().map(|meq| format!("{} = {}", meq.from.with(&ctxt), meq.to.with(&ctxt))).collect::<Vec<String>>().join(",");
-        format!("Abstract Instantiation ({}, {}) \n has matched terms {} and \n equalities {}", parser[self.id.0].kind.with(&ctxt), self.id.1.with(&ctxt), matched_terms, equalities)
+        // log!(format!("Generalising {} with {}", self.matched.with(&ctxt), matched.with(&ctxt)));
+        // self.matched = parser.terms.generalise(&mut parser.strings, vec![self.matched, matched]).unwrap()
+        if let Some(term) = parser.terms.generalise(&mut parser.strings, vec![self.matched, matched]) {
+            self.matched = term;
+        }
+        self.creator = (quant, pattern)
     }
-    // pub fn add_to_nth_blame_term(&mut self, n: usize, blame_term: TermIdx, quant: QuantIdx, pattern: TermIdx) {
-    //     self.matched_terms[n].0.push(blame_term);
-    //     self.matched_terms[n].1 = (quant, pattern);
-    // }
-    // pub fn add_to_nth_equality(&mut self, n: usize, from: TermIdx, to: TermIdx) {
-    //     self.equalities[n].0.push((from, to));
-    // }
+    pub fn from(matched: TermIdx, quant: QuantIdx, pattern: TermIdx) -> Self {
+        MlMatchedTerm { matched, creator: (quant, pattern) }
+    }
+}
+
+struct AbstractInst {
+    // abstract instantiation defined by quantifier and trigger
+    id: (QuantIdx, TermIdx),
+    // stores the generalised blame terms and which (generalised) instantiation created it (indirectly)  
+    // the first element in each tuple is a vector that will be mapped to a generalized term
+    matched_terms: FxHashMap<usize, MlMatchedTerm>,
+    // stores the generalised equalities and which (generalised) instantiation created it (indirectly)  
+    // the first element in each tuple is a vector that will be mapped to a generalized term
+    equalities: FxHashMap<usize, MlEquality>,
+}
+
+impl AbstractInst {
+    pub fn from(id: (QuantIdx, TermIdx)) -> Self {
+        Self { id, matched_terms: HashMap::default(), equalities: HashMap::default() }
+    }
+    pub fn merge_nth_blame_term(&mut self, n: usize, blame_term: TermIdx, creator_quant: QuantIdx, creator_pattern: TermIdx, parser: &mut Z3Parser) {
+        if let Some(matched_term) = self.matched_terms.get_mut(&n) {
+            matched_term.merge_with(blame_term, creator_quant, creator_pattern, parser);
+        } else {
+            self.matched_terms.insert(n, MlMatchedTerm::from(blame_term, creator_quant, creator_pattern));
+        }
+    }
+
+    pub fn merge_nth_equalities(&mut self, n: usize, from: TermIdx, to: TermIdx, creators: Vec<(QuantIdx, TermIdx)>, parser: &mut Z3Parser) {
+        if let Some(equalities) = self.equalities.get_mut(&n) {
+            equalities.merge_with(from, to, creators, parser);
+        } else {
+            // self.equalities.reserve((n+1).saturating_sub(self.equalities.len()));
+            self.equalities.insert(n, MlEquality::from(from, to, creators));
+        }
+    }
+    pub fn to_string(&self, parser: &mut Z3Parser) -> String {
+        let generalised_pattern = parser.terms.generalise_pattern(&mut parser.strings, self.id.1);  
+        let ctxt = DisplayCtxt {
+            parser: &parser,
+            config: DisplayConfiguration {
+                display_term_ids: false,
+                display_quantifier_name: false,
+                use_mathematical_symbols: true,
+                html: true,
+                // Set manually elsewhere
+                enode_char_limit: 0,
+                limit_enode_chars: false,
+                },
+        };
+        let matched_terms = self.matched_terms.values().map(|mterm| format!("{} created by {}", mterm.matched.with(&ctxt), parser[mterm.creator.0].kind.with(&ctxt))).collect::<Vec<String>>().join(", ");
+        let equalities = self.equalities.values().map(|meq| format!("{} = {} created by {}", meq.from.with(&ctxt), meq.to.with(&ctxt), meq.creators.iter().map(|cr| format!("{}", parser[cr.0].kind.with(&ctxt))).collect::<Vec<String>>().join(", "))).collect::<Vec<String>>().join(", ");
+        format!("Abstract Instantiation ({}, {}) \n has matched terms \n {} \n and \n equalities {}", parser[self.id.0].kind.with(&ctxt), generalised_pattern.with(&ctxt), matched_terms, equalities)
+    }
 }
 
 
@@ -231,6 +267,7 @@ impl InstGraph {
             let idx = potential_ml.graph[nx].idx;
             let node_kind = self.raw.graph[idx.0].kind();
             if let NodeKind::Instantiation(inst) = node_kind {
+                // log!(format!("Processing i{}", inst));
                 let match_ = &parser[parser[*inst].match_];
                 let pattern = match_.kind.pattern().unwrap();
                 // here we have pairs (trigger, matched) where 
@@ -297,7 +334,7 @@ impl InstGraph {
                         }
                     }
                     for (n, equality) in equalities.iter().enumerate() {
-                        for eq in equality {
+                        for (i, eq) in equality.iter().enumerate() {
                             // should first check that eq = (from, to) occurs as an equality in the ML-graph, so need to 
                             // collect all incoming equalities of the current node
                             let creator_insts: Vec<(QuantIdx, TermIdx)> = parser[*eq].get_creator_insts(parser).iter().filter_map(|iidx| {
@@ -315,7 +352,7 @@ impl InstGraph {
                             let to = parser[*eq].to;
                             let to_term = parser[to].owner;
                             if let Some(abstract_inst) = abstract_insts.get_mut(&(quant, pattern)) {
-                                abstract_inst.merge_nth_equalities(n, from_term, to_term, creator_insts, parser)
+                                abstract_inst.merge_nth_equalities(n+i, from_term, to_term, creator_insts, parser)
                             } else {
                                 abstract_insts.insert((quant, pattern), AbstractInst::from((quant, pattern)));
                                 abstract_insts.get_mut(&(quant, pattern)).unwrap().merge_nth_equalities(n, from_term, to_term, creator_insts, parser)

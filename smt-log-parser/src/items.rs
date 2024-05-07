@@ -606,6 +606,18 @@ impl TransitiveExpl {
             },
         }).collect()
     }
+    // pub fn get_creator_insts_(&self, parser: &Z3Parser) -> impl Iterator<Item = Option<InstIdx>> {
+    //     self.path.iter().flat_map(move |expl_seg| match expl_seg.kind {
+    //         TransitiveExplSegmentKind::Given(eq_idx, _) => match parser[eq_idx] {
+    //             EqualityExpl::Literal { eq, ..} => std::iter::once::<Option<InstIdx>>(parser[eq].created_by),
+    //             _ => std::iter::once::<Option<InstIdx>>(None)
+    //         },
+    //         TransitiveExplSegmentKind::Transitive(eq_idx) => {
+    //             let trans_expl = &parser[eq_idx];
+    //             trans_expl.get_creator_insts_(parser)
+    //         },
+    //     })
+    // }
 }
 
 #[derive(Debug, Clone, Copy, MemSize, MemDbg, Serialize, Deserialize)]

@@ -15,7 +15,7 @@ use smt_log_parser::{
     display_with::DisplayCtxt, items::{BlameKind, InstIdx, MatchKind, QuantIdx}, parsers::{
         z3::{
             // inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, Node, NodeInfo, VisibleGraphInfo},
-            graph::{analysis::matching_loop::InstOrEquality, raw::{EdgeKind, NodeKind}, visible::{VisibleEdge, VisibleInstGraph}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
+            graph::{analysis::matching_loop::{InstOrEquality, MLGraphNode}, raw::{EdgeKind, NodeKind}, visible::{VisibleEdge, VisibleInstGraph}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
         },
         LogParser,
     }
@@ -54,7 +54,7 @@ pub enum Msg {
     ResetGraph,
     GetUserPermission(GraphDimensions, bool),
     WorkerOutput(super::worker::WorkerOutput),
-    RenderMLGraph(Graph<(String, Option<QuantIdx>), ()>),
+    RenderMLGraph(Graph<(String, MLGraphNode), ()>),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -488,12 +488,20 @@ impl Component for SVGResult {
                                 format!("label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
                                         node_data.0,
                                         "box",
-                                        if let Some(match_kind) = &node_data.1 {
-                                            let hue = self.colour_map.get_graphviz_hue_for_quant_idx(&match_kind);
-                                            format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
-                                        } else {
-                                            format!("white")
+                                        match &node_data.1 {
+                                            MLGraphNode::QI(quant) => {
+                                                let hue = self.colour_map.get_graphviz_hue_for_quant_idx(&quant);
+                                                format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
+                                            },
+                                            MLGraphNode::ENode => format!("lightgrey"),
+                                            MLGraphNode::Equality => format!("white"),
                                         }
+                                        // if let Some(match_kind) = &node_data.1 {
+                                        //     let hue = self.colour_map.get_graphviz_hue_for_quant_idx(&match_kind);
+                                        //     format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
+                                        // } else {
+                                        //     format!("white")
+                                        // }
                                     )
                             },
                         )

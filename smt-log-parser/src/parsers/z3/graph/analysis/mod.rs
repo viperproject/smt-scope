@@ -8,7 +8,7 @@ use petgraph::{Direction};
 
 use crate::{items::{MatchKind, QuantIdx}, Graph, Result, Z3Parser};
 
-use self::{cost::DefaultCost, depth::DefaultDepth, matching_loop::InstOrEquality, next_insts::DefaultNextInsts};
+use self::{cost::DefaultCost, depth::DefaultDepth, matching_loop::{InstOrEquality, MLGraphNode}, next_insts::DefaultNextInsts};
 
 use super::{raw::Node, InstGraph, RawNodeIndex};
 
@@ -24,7 +24,7 @@ pub struct Analysis {
     // pub(super) max_depth: Vec<NodeIndex>,
     pub matching_loop_end_nodes: Option<Vec<RawNodeIndex>>,
     // pub matching_loop_subgraph: VisibleInstGraph,
-    pub matching_loop_graphs: Vec<Graph<(String, Option<QuantIdx>), ()>>,
+    pub matching_loop_graphs: Vec<Graph<(String, MLGraphNode), ()>>,
 }
 
 impl Analysis {

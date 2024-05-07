@@ -373,11 +373,19 @@ impl InstGraph {
                 let matched_term_creator_nx = if let Some(nx) = nx_of_abstract_inst.get(&matched_term.creator) {
                     *nx
                 } else {
-                    let creator_abstract_inst = abstract_insts.get(&matched_term.creator).unwrap();
-                    let abstract_inst_label = creator_abstract_inst.to_string(true, parser);
-                    let nx = ml_graph.add_node((abstract_inst_label, Some(creator_abstract_inst.id.0)));
-                    nx_of_abstract_inst.insert((creator_abstract_inst.id.0, creator_abstract_inst.id.1), nx);
-                    nx
+                    if let Some(creator_abstract_inst) = abstract_insts.get(&matched_term.creator) {
+                        let abstract_inst_label = creator_abstract_inst.to_string(true, parser);
+                        let nx = ml_graph.add_node((abstract_inst_label, Some(creator_abstract_inst.id.0)));
+                        nx_of_abstract_inst.insert((creator_abstract_inst.id.0, creator_abstract_inst.id.1), nx);
+                        nx
+                    } else {
+                        let creator_abstract_inst = AbstractInst::from(matched_term.creator);
+                        let abstract_inst_label = creator_abstract_inst.to_string(true, parser);
+                        let nx = ml_graph.add_node((abstract_inst_label, Some(creator_abstract_inst.id.0)));
+                        nx_of_abstract_inst.insert((creator_abstract_inst.id.0, creator_abstract_inst.id.1), nx);
+                        nx
+                    }
+
                 };
                 ml_graph.update_edge(matched_term_creator_nx, matched_term_nx, ());
             }
@@ -407,11 +415,18 @@ impl InstGraph {
                     let eq_creator_nx = if let Some(nx) = nx_of_abstract_inst.get(&eq_creator) {
                         *nx
                     } else {
-                        let creator_abstract_inst = abstract_insts.get(&eq_creator).unwrap();
-                        let abstract_inst_label = creator_abstract_inst.to_string(true, parser);
-                        let nx = ml_graph.add_node((abstract_inst_label, Some(creator_abstract_inst.id.0)));
-                        nx_of_abstract_inst.insert((creator_abstract_inst.id.0, creator_abstract_inst.id.1), nx);
-                        nx
+                        if let Some(creator_abstract_inst) = abstract_insts.get(&eq_creator) {
+                            let abstract_inst_label = creator_abstract_inst.to_string(true, parser);
+                            let nx = ml_graph.add_node((abstract_inst_label, Some(creator_abstract_inst.id.0)));
+                            nx_of_abstract_inst.insert((creator_abstract_inst.id.0, creator_abstract_inst.id.1), nx);
+                            nx
+                        } else {
+                            let creator_abstract_inst = AbstractInst::from(*eq_creator);
+                            let abstract_inst_label = creator_abstract_inst.to_string(true, parser);
+                            let nx = ml_graph.add_node((abstract_inst_label, Some(creator_abstract_inst.id.0)));
+                            nx_of_abstract_inst.insert((creator_abstract_inst.id.0, creator_abstract_inst.id.1), nx);
+                            nx
+                        }
                     };
                     ml_graph.update_edge(eq_creator_nx, eq_nx, ());
                 }

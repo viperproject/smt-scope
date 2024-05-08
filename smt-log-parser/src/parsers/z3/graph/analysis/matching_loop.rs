@@ -224,12 +224,14 @@ impl InstGraph {
         self.analysis.matching_loop_end_nodes.as_ref().map(|mlen| mlen.len())
     }
 
-    pub fn nth_matching_loop_graph(&mut self, n: usize) -> Graph<(String, MLGraphNode), ()> {
+    pub fn nth_matching_loop_graph(&mut self, n: usize) -> Option<Graph<(String, MLGraphNode), ()>> {
         if let Some(ml_graph) = self.analysis.matching_loop_graphs.get(n) {
-            Graph(ml_graph.0.clone())
+            Some(Graph::from(ml_graph.clone()))
             // Graph(ml_graph.0.clone())
         } else {
-            Graph(petgraph::Graph::default())
+            None
+            // let empty_graph: petgraph::Graph::<(String, MLGraphNode), ()> = petgraph::Graph::default(); 
+            // Graph::from(&empty_graph.clone())
         }
     }
 
@@ -356,7 +358,7 @@ impl InstGraph {
         for abstract_ints in abstract_insts.values() {
             log!(format!("{}", abstract_ints.to_string(false, parser)))
         }
-        let mut ml_graph: Graph<(String, MLGraphNode), ()> = Graph(Default::default());
+        let mut ml_graph: Graph<(String, MLGraphNode), ()> = Graph::with_capacity(0, 0);
         let mut nx_of_gen_term: FxHashMap<String, NodeIndex> = HashMap::default();
         let mut nx_of_abstract_inst: FxHashMap<(QuantIdx, TermIdx), NodeIndex> = HashMap::default();
 

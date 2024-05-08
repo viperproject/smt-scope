@@ -9,12 +9,12 @@ use gloo::console::log;
 use material_yew::{dialog::MatDialog, WeakComponentLink};
 use num_format::{Locale, ToFormattedString};
 use palette::{encoding::Srgb, white_point::D65, FromColor, Hsl, Hsluv, Hsv, LuvHue, RgbHue};
-use petgraph::{dot::{Config, Dot}, visit::EdgeRef, Graph};
+use petgraph::{dot::{Config, Dot}, visit::EdgeRef};
 use smt_log_parser::{
     display_with::DisplayCtxt, items::{BlameKind, InstIdx, MatchKind, QuantIdx}, parsers::{
         z3::{
             // inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, Node, NodeInfo, VisibleGraphInfo},
-            graph::{analysis::matching_loop::{InstOrEquality, MLGraphNode}, raw::{EdgeKind, NodeKind}, visible::{VisibleEdge, VisibleInstGraph}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
+            graph::{raw::{EdgeKind, NodeKind}, visible::{VisibleEdge, VisibleInstGraph}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
         },
         LogParser,
     }
@@ -54,7 +54,6 @@ pub enum Msg {
     ResetGraph,
     UserPermission(WarningChoice),
     WorkerOutput(super::worker::WorkerOutput),
-    RenderMLGraph(Graph<(String, MLGraphNode), ()>),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -218,11 +217,8 @@ impl Component for SVGResult {
                             .send_message(GraphInfoMsg::ShowGeneralizedTerms(gen_terms));
                         false
                     }
-                    FilterOutput::MatchingLoopGraph(graph) => {
-                        ctx.link().send_message(Msg::RenderMLGraph(graph));
-                        false
-                    }
-                    FilterOutput::None => false
+                    FilterOutput::None => false,
+                    FilterOutput::MatchingLoopGraph(_) => todo!(),
                 }
             }
             // Msg::SearchMatchingLoops => {
@@ -426,99 +422,6 @@ impl Component for SVGResult {
                 ctx.props().progress.emit(GraphState::Constructed(rendered));
                 true
             }
-            Msg::RenderMLGraph(graph) => {
-                    let filtered_graph = &graph;
-                    let ctxt = &DisplayCtxt {
-                        parser: &parser.borrow(),
-                        config: cfg.config.display,
-                    };
-
-                    // Performance observations (default value is in [])
-                    //  - splines=false -> 38s | [splines=true] -> ??
-                    //  - nslimit=2 -> 7s | nslimit=4 -> 9s | nslimit=7 -> 11.5s | nslimit=10 -> 14s | [nslimit=INT_MAX] -> 38s
-                    //  - [mclimit=1] -> 7s | mclimit=0.5 -> 4s (with nslimit=2)
-                    // `ranksep` dictates the distance between ranks (rows) in the graph,
-                    // it should be set dynamically based on the average number of children
-                    // per node out of all nodes with at least one child.
-                    let settings = [
-                        "ranksep=1.0;",
-                        "splines=false;",
-                        "nslimit=6;",
-                        "mclimit=0.6;",
-                    ];
-                    let dot_output = format!(
-                        "digraph {{\n{}\n{:?}\n}}",
-                        settings.join("\n"),
-                        Dot::with_attr_getters(
-                            &graph,
-                            &[
-                                Config::EdgeNoLabel,
-                                Config::NodeNoLabel,
-                                Config::GraphContentOnly
-                            ],
-                            &|_, _| "".to_string(),
-                            // &|_, edge_data| format!(
-                            //     // edge_data.weight(),
-                            //     // match edge_data.weight() {
-                            //     //     InstOrEquality::Inst(_, _) => "solid, bold",
-                            //     //     InstOrEquality::Equality => "solid",
-                            //     // },
-                            //     // match edge_data.weight() {
-                            //     //     // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind)),
-                            //     //     InstOrEquality::Inst(_, mkind) => format!("{} {} {NODE_COLOUR_VALUE}", self.colour_map.get_graphviz_hue(&mkind), NODE_COLOUR_SATURATION + 0.2),
-                            //     //     // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind, NODE_COLOUR_SATURATION + 0.2)),
-                            //     //     InstOrEquality::Equality => "black:white:black".to_string(),
-                            //     // }
-                            // ),
-                            &|_, (_, node_data)| {
-                                format!("label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
-                                        node_data.0,
-                                        "box",
-                                        match &node_data.1 {
-                                            MLGraphNode::QI(quant) => {
-                                                let hue = self.colour_map.get_graphviz_hue_for_quant_idx(&quant);
-                                                format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
-                                            },
-                                            MLGraphNode::ENode => format!("lightgrey"),
-                                            MLGraphNode::Equality => format!("white"),
-                                        }
-                                        // if let Some(match_kind) = &node_data.1 {
-                                        //     let hue = self.colour_map.get_graphviz_hue_for_quant_idx(&match_kind);
-                                        //     format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
-                                        // } else {
-                                        //     format!("white")
-                                        // }
-                                    )
-                            },
-                        )
-                    );
-                    ctx.props().progress.emit(Err(RenderingState::RenderingGraph));
-                    let link = self.insts_info_link.borrow().clone();
-                    wasm_bindgen_futures::spawn_local(async move {
-                        gloo_timers::future::TimeoutFuture::new(10).await;
-                        let graphviz = VizInstance::new().await;
-                        let options = viz_js::Options::default();
-                        // options.engine = "twopi".to_string();
-                        let window = window().expect("should have a window in this context");
-                        let performance = window.performance().expect("should have a performance object");
-                        let start_timestamp = performance.now();
-                        let svg = graphviz
-                            .render_svg_element(dot_output, options)
-                            .expect("Could not render graphviz");
-                        let end_timestamp = performance.now();
-                        let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
-                        log::info!("Converting dot-String to SVG took {} seconds", elapsed_seconds);
-                        let svg_text = svg.outer_html();
-                        link.unwrap()
-                            .send_message(GraphInfoMsg::ShowMatchingLoopGraph(AttrValue::from(svg_text)));
-                        // link.send_message(Msg::UpdateSvgText(
-                        //     AttrValue::from(svg_text),
-                        //     calculated,
-                        // ));
-                    });
-                    // only need to re-render once the new SVG has been set
-                   true 
-            }
         }
     }
 
@@ -602,23 +505,6 @@ impl QuantIdxToColourMap {
         let colour = Hsluv::<D65, f64>::new(hue, 100.0, 50.0);
         let colour = Hsv::<Srgb, f64>::from_color(colour);
         colour.hue.into_positive_degrees()
-    }
-    pub fn get_for_quant_idx(&self, mkind: QuantIdx) -> LuvHue<f64> {
-        let qidx = Some(mkind);
-        debug_assert!(self.non_quant_insts || qidx.is_some());
-        let idx = qidx
-            .map(usize::from)
-            .map(|q| q + self.non_quant_insts as usize)
-            .unwrap_or_default();
-        // debug_assert!(idx < idx);
-        let idx_perm = (idx * self.coprime.get() + self.shift) % self.total_count;
-        LuvHue::new(360. * idx_perm as f64 / self.total_count as f64)
-    }
-    pub fn get_graphviz_hue_for_quant_idx(&self, mkind: &QuantIdx) -> f64 {
-        let hue = self.get_for_quant_idx(*mkind);
-        let colour = Hsluv::<D65, f64>::new(hue, 100.0, 50.0);
-        let colour = Hsv::<Srgb, f64>::from_color(colour);
-        colour.hue.into_positive_degrees() / 360.0
     }
 
     fn find_coprime(n: usize) -> NonZeroUsize {

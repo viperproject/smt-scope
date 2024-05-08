@@ -476,7 +476,7 @@ impl SearchActionResult {
                     0
                 };
                 let hue = entry.qidx.map(|qidx| parser.colour_map.get_rbg_hue(Some(qidx)));
-                let arguments = entry.tidx.map(|tidx| parser.parser[tidx].child_ids.len());
+                let arguments = entry.tidx.map(|tidx| (& *parser.parser.borrow())[tidx].child_ids.len());
                 SearchAction {
                     count: entry.count(),
                     visible,

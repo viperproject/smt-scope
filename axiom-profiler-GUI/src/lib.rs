@@ -134,7 +134,6 @@ pub struct OpenedFileInfo {
     selected_nodes: Vec<RawNodeIndex>,
     selected_edges: Vec<VisibleEdgeIndex>,
     rendered: Option<RenderedGraph>,
-    parser: RcParser,
 }
 
 impl PartialEq for OpenedFileInfo {
@@ -398,7 +397,6 @@ impl Component for FileDataComponent {
                     selected_nodes: Vec::new(),
                     selected_edges: Vec::new(),
                     rendered: None,
-                    parser,
                 };
                 self.file = Some(file);
                 if let Some(navigation_section) = self.navigation_section.cast::<web_sys::Element>() {
@@ -459,45 +457,13 @@ impl Component for FileDataComponent {
                 _ => false,
             }
             Msg::SearchMatchingLoops => {
-                log::info!("Searching matching loops");
                 if let Some(file) = &mut self.file {
                     // TODO: re-add finding matching loops
-                    // assert!(file.parser.graph.is_some());
-                    // let parser = ctx.link().get_configuration().unwrap().config.parser.unwrap();
-                    let tmp = ctx.link().get_configuration().unwrap().config.parser.unwrap();
-                    let mut parser = tmp.parser.borrow_mut();
-                    file.parser = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone(); 
-                    if let Some(g) = &file.parser.graph {
-                        file.parser.found_mls = Some(g
-                        .borrow_mut()
-                        .search_matching_loops(&mut *parser))
-                    }
-                    return true;
-                    // file.parser.found_mls = Some(
-                    //     &file
-                    //     .parser
-                    //     .graph
-                    //     .unwrap()
-                    //     .borrow_mut()
-                    //     .deref_mut()
-                    //     .search_matching_loops()
-                    // );
-                    // assert!(parser.graph.is_some());
-                    // if let Some(g) = &file
-                    //     .parser
-                    //     .graph
-                    //     // .borrow_mut() 
-                    //     // .as_mut()
-                    //     {
-                    //     file.parser.found_mls = Some(g
-                    //         .borrow_mut()
-                    //         .deref_mut()
-                    //         .search_matching_loops());
-                    //     log::info!("Returning true");
+                    // if let Some(g) = file.parser.graph.borrow_mut().as_mut() {
+                    //     file.parser.found_mls = Some(g.search_matching_loops());
                     //     return true;
                     // }
                 }
-                log::info!("Returning false");
                 false
             }
         }

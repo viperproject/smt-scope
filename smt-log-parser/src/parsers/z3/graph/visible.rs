@@ -3,7 +3,7 @@ use fxhash::{FxHashMap, FxHashSet};
 use gloo_console::log;
 use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdgeReferences, IntoEdges, NodeFiltered, Topo}, Direction::{self, Incoming, Outgoing}};
 
-use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}};
+use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}, NonMaxU32};
 
 use super::{analysis::matching_loop::MIN_MATCHING_LOOP_LENGTH, raw::{EdgeKind, Node, NodeKind}, InstGraph, RawEdgeIndex, RawNodeIndex};
 

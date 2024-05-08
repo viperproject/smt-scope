@@ -153,10 +153,10 @@ impl Component for FiltersState {
                 }
                 if let Filter::SelectNthMatchingLoop(n) = &filter {
                     // TODO: re-add finding matching loops
-                    let graph = &ctx.props().file.parser.graph;
-                    if !graph.as_ref().is_some_and(|g| g.borrow().found_matching_loops().is_some_and(|mls| mls > *n)) {
-                        return modified;
-                    }
+                    // let graph = &ctx.props().file.parser.graph;
+                    // if !graph.as_ref().is_some_and(|g| g.borrow().found_matching_loops().is_some_and(|mls| mls > *n)) {
+                    //     return modified;
+                    // }
                 }
                 self.filter_chain[idx] = filter;
                 self.send_updates(&ctx.props().file, true) || modified
@@ -164,11 +164,11 @@ impl Component for FiltersState {
             Msg::AddFilter(edit, filter) => {
                 if let Filter::SelectNthMatchingLoop(n) = &filter {
                     // TODO: re-add finding matching loops
-                    let graph = &ctx.props().file.parser.graph;
-                    // This relies on the fact that the graph is updated before the `AddFilter` is
-                    if !graph.as_ref().is_some_and(|g| g.borrow().found_matching_loops().is_some_and(|mls| mls > *n)) {
-                        return false;
-                    }
+                    // let graph = &ctx.props().file.parser.graph;
+                    // // This relies on the fact that the graph is updated before the `AddFilter` is
+                    // if !graph.as_ref().is_some_and(|g| g.borrow().found_matching_loops().is_some_and(|mls| mls > *n)) {
+                    //     return false;
+                    // }
                 }
                 self.prev_filter_chain.clone_from(&self.filter_chain);
                 self.edit_filter = edit.then(|| self.filter_chain.len());
@@ -199,6 +199,7 @@ impl Component for FiltersState {
             ParseState::Error(err) =>
                 format!("{} (error {err:?})", file.file_name),
         };
+
         // Existing ops
         let elem_hashes: Vec<_> = self.filter_chain.iter().map(Filter::get_hash).collect();
         let elements: Vec<_> = self.filter_chain.iter().enumerate().map(|(idx, filter)| {
@@ -213,22 +214,21 @@ impl Component for FiltersState {
         let drag = ctx.link().callback(Msg::Drag);
         let will_delete = ctx.link().callback(Msg::WillDelete);
         // TODO: re-add finding matching loops
-        let found_mls = ctx.props().file.parser.found_mls;
-        // let found_mls = None;
-        let matching_loops = found_mls.is_none().then(|| {
-            let search_matching_loops = ctx.props().search_matching_loops.clone();
-            let show_first = ctx.link().callback(|edit| Msg::AddFilter(edit, Filter::SelectNthMatchingLoop(0)));
-            let matching_loops = Callback::from(move |e: MouseEvent| {
-                e.prevent_default();
-                search_matching_loops.emit(());
-                show_first.emit(false);
-            });
-            html! {
-                <li><a draggable="false" href="#" onclick={matching_loops}><div class="material-icons"><MatIcon>{"youtube_searched_for"}</MatIcon></div>{"Search matching loops"}</a></li>
-            }
-        });
-        // let found_mls = None;
-        // let matching_loops = "";
+        // let found_mls = ctx.props().file.parser.found_mls;
+        // let matching_loops = found_mls.is_none().then(|| {
+        //     let search_matching_loops = ctx.props().search_matching_loops.clone();
+        //     let show_first = ctx.link().callback(|edit| Msg::AddFilter(edit, Filter::SelectNthMatchingLoop(0)));
+        //     let matching_loops = Callback::from(move |e: MouseEvent| {
+        //         e.prevent_default();
+        //         search_matching_loops.emit(());
+        //         show_first.emit(false);
+        //     });
+        //     html! {
+        //         <li><a draggable="false" href="#" onclick={matching_loops}><div class="material-icons"><MatIcon>{"youtube_searched_for"}</MatIcon></div>{"Search matching loops"}</a></li>
+        //     }
+        // });
+        let found_mls = None;
+        let matching_loops = "";
         let reset = ctx.link().callback(|e: MouseEvent| {
             e.prevent_default();
             Msg::ResetOperations
@@ -276,7 +276,7 @@ impl Component for FiltersState {
         let graph_details = file.rendered.as_ref().map(|g| {
             let class = if self.dragging { "hidden" } else { "" };
             // TODO: re-add finding matching loops
-            let mls = ctx.props().file.parser.found_mls.map(|mls| format!(", {mls} mtch loops")).unwrap_or_default();
+            let mls = ""; // g.found_matching_loops().map(|mls| format!(", {mls} mtch loops")).unwrap_or_default();
             let details = format!("{} nodes, {} edges{mls}", g.graph.graph.node_count(), g.graph.graph.edge_count());
             html! { <li class={class}><a draggable="false" class="trace-file-name">{details}</a></li> }
         });

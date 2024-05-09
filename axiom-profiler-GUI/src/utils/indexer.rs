@@ -4,6 +4,7 @@ use yew::prelude::*;
 pub struct IndexerProps {
     pub label: AttrValue,
     pub index_consumer: Callback<usize>,
+    pub min: usize,
     pub max: usize,
 }
 
@@ -18,53 +19,55 @@ pub enum Msg {
     SetToMax,
 }
 
+/// Component for clicking through indices in [min, max] where min > 0.
+/// Note: the emitted indices are in the range [min-1, max-1].
 impl Component for Indexer {
     type Message = Msg;
 
     type Properties = IndexerProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
+        if _ctx.props().min > 0 {
+            _ctx.props().index_consumer.emit(_ctx.props().min - 1);
+        } 
         Self {
-            index: 0,
+            index: _ctx.props().min,
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Decrement => {
-                let old_index = self.index;
-                self.index = self.index.saturating_sub(1);
-                if old_index != self.index {
-                    ctx.props().index_consumer.emit(self.index);
+                if self.index > ctx.props().min {
+                    self.index = self.index.saturating_sub(1);
+                    ctx.props().index_consumer.emit(self.index - 1);
                     true
                 } else {
                     false
                 }
             }
             Msg::Increment => {
-                if self.index + 1 <= ctx.props().max {
+                if self.index < ctx.props().max {
                     self.index = self.index.saturating_add(1);
-                    ctx.props().index_consumer.emit(self.index);
+                    ctx.props().index_consumer.emit(self.index - 1);
                     true
                 } else {
                     false
                 }
             }
             Msg::SetToMin => {
-                let old_index = self.index;
-                self.index = 0;
-                if old_index != self.index {
-                    ctx.props().index_consumer.emit(self.index);
+                if self.index > ctx.props().min {
+                    self.index = ctx.props().min;
+                    ctx.props().index_consumer.emit(self.index - 1);
                     true
                 } else {
                     false
                 }
             }
             Msg::SetToMax => {
-                let old_index = self.index;
-                self.index = ctx.props().max;
-                if old_index != self.index {
-                    ctx.props().index_consumer.emit(self.index);
+                if self.index < ctx.props().max {
+                    self.index = ctx.props().max;
+                    ctx.props().index_consumer.emit(self.index - 1);
                     true
                 } else {
                     false
@@ -76,11 +79,11 @@ impl Component for Indexer {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div>
-                <h4>{ctx.props().label.to_string()}</h4>
+                <p>{ctx.props().label.to_string()}</p>
                 <div>
                     <button onclick={ctx.link().callback(|_| Msg::SetToMin)}>{"First"}</button>
                     <button onclick={ctx.link().callback(|_| Msg::Decrement)}>{"Previous"}</button>
-                    <span>{format!("{}/{}", self.index + 1, ctx.props().max + 1) }</span>
+                    <span>{format!("{}/{}", self.index, ctx.props().max) }</span>
                     <button onclick={ctx.link().callback(|_| Msg::Increment)}>{"Next"}</button>
                     <button onclick={ctx.link().callback(|_| Msg::SetToMax)}>{"Last"}</button>
                 </div>

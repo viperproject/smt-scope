@@ -8,7 +8,7 @@ use petgraph::Direction;
 use smt_log_parser::parsers::{z3::graph::{raw::NodeKind, RawNodeIndex}, ParseState};
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
-use crate::{filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, utils::toggle_list::ToggleList, OpenedFileInfo, RcParser, SIZE_NAMES};
+use crate::{filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, utils::{indexer::Indexer, toggle_list::ToggleList}, OpenedFileInfo, RcParser, SIZE_NAMES};
 
 use self::manage_filter::DragState;
 
@@ -227,6 +227,18 @@ impl Component for FiltersState {
                 <li><a draggable="false" href="#" onclick={matching_loops}><div class="material-icons"><MatIcon>{"youtube_searched_for"}</MatIcon></div>{"Search matching loops"}</a></li>
             }
         });
+        let matching_loop_clicker = found_mls.is_some().then(|| {
+            if found_mls.unwrap() > 0 {
+                let label = format!("Found {} potential matching loops:", found_mls.unwrap());
+                html! {
+                    <Indexer {label} index_consumer={ctx.link().callback(|n| Msg::AddFilter(false, Filter::SelectNthMatchingLoop(n)))} min={1} max={found_mls.unwrap()} />
+                }
+            } else {
+                html! {
+                    <p>{"No matching loops found"}</p>
+                }
+            }
+        });
         // let found_mls = None;
         // let matching_loops = "";
         let reset = ctx.link().callback(|e: MouseEvent| {
@@ -297,6 +309,7 @@ impl Component for FiltersState {
                 <li><a draggable="false" class="trace-file-name">{details}</a></li>
                 <AddFilterSidebar new_filter={new_filter} found_mls={found_mls} nodes={Vec::new()} general_filters={true}/>
                 {matching_loops}
+                {matching_loop_clicker}
                 <li><a draggable="false" href="#" onclick={reset}><div class="material-icons"><MatIcon>{"restore"}</MatIcon></div>{"Reset operations"}</a></li>
                 {undo}
             </ul></SidebarSectionHeader>

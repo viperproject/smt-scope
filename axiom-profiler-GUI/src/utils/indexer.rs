@@ -1,3 +1,4 @@
+use material_yew::icon::MatIcon;
 use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
@@ -81,11 +82,12 @@ impl Component for Indexer {
             <div>
                 <p>{ctx.props().label.to_string()}</p>
                 <div>
-                    <button onclick={ctx.link().callback(|_| Msg::SetToMin)}>{"First"}</button>
-                    <button onclick={ctx.link().callback(|_| Msg::Decrement)}>{"Previous"}</button>
+                    // <button onclick={ctx.link().callback(|_| Msg::SetToMin)}>{"First"}</button>
+                    <button onclick={ctx.link().callback(|_| Msg::SetToMin)}><span class="material-icons"><MatIcon>{"first_page"}</MatIcon></span></button>
+                    <button onclick={ctx.link().callback(|_| Msg::Decrement)}><MatIcon>{"chevron_left"}</MatIcon></button>
                     <span>{format!("{}/{}", self.index, ctx.props().max) }</span>
-                    <button onclick={ctx.link().callback(|_| Msg::Increment)}>{"Next"}</button>
-                    <button onclick={ctx.link().callback(|_| Msg::SetToMax)}>{"Last"}</button>
+                    <button onclick={ctx.link().callback(|_| Msg::Increment)}><MatIcon>{"chevron_right"}</MatIcon></button>
+                    <button onclick={ctx.link().callback(|_| Msg::SetToMax)}><MatIcon>{"last_page"}</MatIcon></button>
                 </div>
             </div>
         } 

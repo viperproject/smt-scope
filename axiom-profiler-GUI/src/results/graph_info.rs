@@ -128,6 +128,7 @@ impl Component for GraphInfo {
                 self.selected_edges.clear();
                 ctx.props().update_selected_nodes.emit(Vec::new());
                 ctx.props().update_selected_edges.emit(Vec::new());
+                self.displayed_matching_loop_graph = None;
                 true
             }
             // Msg::SelectNodes(nodes) => {
@@ -153,7 +154,6 @@ impl Component for GraphInfo {
                 true
             }
             Msg::ShowMatchingLoopGraph(graph) => {
-                log!("Showing ML graph");
                 self.displayed_matching_loop_graph = Some(graph);
                 true
             } 
@@ -177,7 +177,7 @@ impl Component for GraphInfo {
             <li>{term}</li>
         });
         let outdated = ctx.props().outdated.then(|| html! {<div class="outdated"></div>});
-        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty();
+        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty() && self.displayed_matching_loop_graph.is_none();
         let left_bound = if hide_right_bar { 1.0 } else { 0.3 };
         html! {
             <>
@@ -202,7 +202,7 @@ impl Component for GraphInfo {
                         html!{
                             <>
                                 <h2>{"Information on Displayed Matching Loop"}</h2>
-                                <div>{Html::from_html_unchecked(graph.clone())}</div>
+                                <div style="overflow-x: auto;">{Html::from_html_unchecked(graph.clone())}</div>
                             </>
                         }
                     } else {

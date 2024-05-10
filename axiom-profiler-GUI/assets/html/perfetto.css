@@ -835,3 +835,21 @@ table {
 	color: rgba(0, 0, 0, 0.5);
 	text-decoration: none;
 }
+
+.indexer > p {
+	margin-top: 0; 
+	margin-bottom: 0; 
+}
+
+.indexer {
+	display: flex;
+	flex-direction: column;
+	overflow-x: auto;
+}
+
+.indexer > .buttons-container {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: start;
+}

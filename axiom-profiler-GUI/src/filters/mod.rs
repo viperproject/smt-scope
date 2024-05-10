@@ -229,13 +229,21 @@ impl Component for FiltersState {
         });
         let matching_loop_clicker = found_mls.is_some().then(|| {
             if found_mls.unwrap() > 0 {
-                let label = format!("Found {} potential matching loops:", found_mls.unwrap());
+                let label = format!("Found {} potential matching loop(s):", found_mls.unwrap());
                 html! {
-                    <Indexer {label} index_consumer={ctx.link().callback(|n| Msg::AddFilter(false, Filter::SelectNthMatchingLoop(n)))} min={1} max={found_mls.unwrap()} />
+                    <li>
+                        <a>
+                        <Indexer {label} index_consumer={ctx.link().callback(|n| Msg::AddFilter(false, Filter::SelectNthMatchingLoop(n)))} min={1} max={found_mls.unwrap()} />
+                        </a>
+                    </li>
                 }
             } else {
                 html! {
-                    <p>{"No matching loops found"}</p>
+                    <li>
+                        <a>
+                        <p>{"No matching loops found"}</p>
+                        </a>
+                    </li>
                 }
             }
         });

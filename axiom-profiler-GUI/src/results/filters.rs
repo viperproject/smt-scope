@@ -12,7 +12,6 @@ pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
     (Disabler::ENodes, false),
     (Disabler::GivenEqualities, false),
     (Disabler::AllEqualities, false),
-    (Disabler::Prune, false),
 ];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -113,7 +112,6 @@ pub enum Disabler {
     ENodes,
     GivenEqualities,
     AllEqualities,
-    Prune,
 }
 
 impl Disabler {
@@ -144,7 +142,6 @@ impl Disabler {
                 }
                 NodeKind::Instantiation(_) => false,
             },
-            Disabler::Prune => !matches!(node.kind(), NodeKind::Instantiation(_)) && (node.inst_children.nodes.len() == 0 || node.inst_parents.nodes.len() == 0), 
         }
     }
     pub fn apply(many: impl Iterator<Item = Disabler> + Clone, graph: &mut InstGraph, parser: &Z3Parser) {
@@ -157,7 +154,6 @@ impl Disabler {
             Disabler::ENodes => "yield terms",
             Disabler::GivenEqualities => "yield equalities",
             Disabler::AllEqualities => "all equalities",
-            Disabler::Prune => "non intermediate eqs/terms",
         }
     }
     pub fn icon(&self) -> &'static str {
@@ -166,7 +162,6 @@ impl Disabler {
             Disabler::ENodes => "functions",
             Disabler::GivenEqualities => "compare_arrows",
             Disabler::AllEqualities => "compare_arrows",
-            Disabler::Prune => "compare_arrows",
         }
     }
 }

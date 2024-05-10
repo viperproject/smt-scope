@@ -79,11 +79,11 @@ impl Component for Indexer {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div>
+            <div class="indexer">
                 <p>{ctx.props().label.to_string()}</p>
-                <div>
+                <div class="buttons-container">
                     // <button onclick={ctx.link().callback(|_| Msg::SetToMin)}>{"First"}</button>
-                    <button onclick={ctx.link().callback(|_| Msg::SetToMin)}><span class="material-icons"><MatIcon>{"first_page"}</MatIcon></span></button>
+                    <button onclick={ctx.link().callback(|_| Msg::SetToMin)}><MatIcon>{"first_page"}</MatIcon></button>
                     <button onclick={ctx.link().callback(|_| Msg::Decrement)}><MatIcon>{"chevron_left"}</MatIcon></button>
                     <span>{format!("{}/{}", self.index, ctx.props().max) }</span>
                     <button onclick={ctx.link().callback(|_| Msg::Increment)}><MatIcon>{"chevron_right"}</MatIcon></button>

@@ -372,7 +372,7 @@ impl Component for SVGResult {
                             .expect("Could not render graphviz");
                         let end_timestamp = performance.now();
                         let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
-                        log::info!("Converting dot-String to SVG took {} seconds", elapsed_seconds);
+                        log::info!("Graph: Converting dot-String to SVG took {} seconds", elapsed_seconds);
                         let svg_text = svg.outer_html();
                         link.send_message(Msg::UpdateSvgText(
                             AttrValue::from(svg_text),
@@ -521,7 +521,7 @@ impl Component for SVGResult {
                             .expect("Could not render graphviz");
                         let end_timestamp = performance.now();
                         let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
-                        log::info!("Converting dot-String to SVG took {} seconds", elapsed_seconds);
+                        log::info!("ML-graph: Converting dot-String to SVG took {} seconds", elapsed_seconds);
                         let svg_text = svg.outer_html();
                         link.unwrap()
                             .send_message(GraphInfoMsg::ShowMatchingLoopGraph(AttrValue::from(svg_text)));

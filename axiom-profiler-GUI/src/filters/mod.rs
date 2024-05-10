@@ -229,7 +229,11 @@ impl Component for FiltersState {
         });
         let matching_loop_clicker = found_mls.is_some().then(|| {
             if found_mls.unwrap() > 0 {
-                let label = format!("Found {} potential matching loop(s):", found_mls.unwrap());
+                let label = match found_mls {
+                    Some(1) => format!("Found 1 potential matching loop"),
+                    Some(n) => format!("Found {} potential matching loops", n),
+                    None => unreachable!(),
+                };
                 html! {
                     <li>
                         <a>

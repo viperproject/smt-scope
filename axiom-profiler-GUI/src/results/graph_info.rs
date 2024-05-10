@@ -129,7 +129,7 @@ impl Component for GraphInfo {
                 self.selected_edges.clear();
                 ctx.props().update_selected_nodes.emit(Vec::new());
                 ctx.props().update_selected_edges.emit(Vec::new());
-                self.displayed_matching_loop_graph = None;
+                // self.displayed_matching_loop_graph = None;
                 true
             }
             Msg::SelectAll => {
@@ -187,7 +187,7 @@ impl Component for GraphInfo {
             <li>{term}</li>
         });
         let outdated = ctx.props().outdated.then(|| html! {<div class="outdated"></div>});
-        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty() && self.displayed_matching_loop_graph.is_none();
+        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty();
         let left_bound = if hide_right_bar { 1.0 } else { 0.3 };
         html! {
             <>

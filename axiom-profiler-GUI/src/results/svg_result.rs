@@ -1,27 +1,24 @@
 use crate::{
-    configuration::{Configuration, ConfigurationContext}, filters, results::{filters::FilterOutput, graph_info::{GraphInfo, Msg as GraphInfoMsg}, node_info::{EdgeInfo, NodeInfo}}, OpenedFileInfo, RcParser
+    configuration::ConfigurationContext, filters, results::{filters::FilterOutput, graph_info::{GraphInfo, Msg as GraphInfoMsg}, node_info::{EdgeInfo, NodeInfo}}, OpenedFileInfo
 };
 
 use super::{
     filters::{Disabler, Filter}, render_warning::{Warning, WarningChoice}, worker::Worker
 };
-use gloo::console::log;
 use material_yew::{dialog::MatDialog, WeakComponentLink};
-use num_format::{Locale, ToFormattedString};
-use palette::{encoding::Srgb, white_point::D65, FromColor, Hsl, Hsluv, Hsv, LuvHue, RgbHue};
+use palette::{encoding::Srgb, white_point::D65, FromColor, Hsluv, Hsv, LuvHue};
 use petgraph::{dot::{Config, Dot}, visit::EdgeRef, Graph};
 use smt_log_parser::{
-    display_with::DisplayCtxt, items::{BlameKind, InstIdx, MatchKind, QuantIdx}, parsers::{
-        z3::{
+    display_with::DisplayCtxt, items::QuantIdx, parsers::
+        z3::
             // inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, Node, NodeInfo, VisibleGraphInfo},
-            graph::{analysis::matching_loop::{InstOrEquality, MLGraphNode}, raw::{EdgeKind, NodeKind}, visible::{VisibleEdge, VisibleInstGraph}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
-        },
-        LogParser,
-    }
+            graph::{analysis::matching_loop::MLGraphNode, raw::NodeKind, visible::VisibleInstGraph, InstGraph, RawNodeIndex, VisibleEdgeIndex}
+        
+    
 };
-use std::{borrow::BorrowMut, cell::RefCell, num::NonZeroUsize, rc::Rc};
+use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
 use viz_js::VizInstance;
-use web_sys::{window, Performance, Window};
+use web_sys::window;
 use yew::prelude::*;
 
 pub const EDGE_LIMIT: usize = 2000;
@@ -427,10 +424,10 @@ impl Component for SVGResult {
                 true
             }
             Msg::RenderMLGraph(graph) => {
-                    let filtered_graph = &graph;
-                    let ctxt = &DisplayCtxt {
+                    let _filtered_graph = &graph;
+                    let _ctxt = &DisplayCtxt {
                         parser: &parser.borrow(),
-                        config: cfg.config.display,
+                        config: cfg.config.persistent.display.clone(),
                     };
 
                     // Performance observations (default value is in [])
@@ -476,7 +473,7 @@ impl Component for SVGResult {
                                         "box",
                                         match &node_data.1 {
                                             MLGraphNode::QI(quant) => {
-                                                let hue = self.colour_map.get_graphviz_hue_for_quant_idx(&quant);
+                                                let hue = rc_parser.colour_map.get_graphviz_hue_for_quant_idx(&quant);
                                                 format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
                                             },
                                             MLGraphNode::ENode => format!("lightgrey"),
@@ -492,8 +489,10 @@ impl Component for SVGResult {
                             },
                         )
                     );
-                    ctx.props().progress.emit(Err(RenderingState::RenderingGraph));
-                    let link = self.insts_info_link.borrow().clone();
+                    // ctx.props().progress.emit(Err(RenderingState::RenderingGraph));
+                    ctx.props().progress.emit(GraphState::Rendering(RenderingState::RenderingGraph));
+                    // let link = self.insts_info_link.borrow().clone();
+                    let link = ctx.props().insts_info_link.borrow().clone();
                     wasm_bindgen_futures::spawn_local(async move {
                         gloo_timers::future::TimeoutFuture::new(10).await;
                         let graphviz = VizInstance::new().await;

@@ -1,8 +1,6 @@
 use std::rc::Rc;
 
 use smt_log_parser::{display_with::{DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, VarNames}, parsers::z3::graph::{raw::{EdgeKind, Node, NodeKind}, visible::{VisibleEdge, VisibleEdgeKind}, InstGraph, VisibleEdgeIndex, RawNodeIndex}};
-use viz_js::VizInstance;
-use web_sys::window;
 use yew::{function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties};
 
 use crate::configuration::ConfigurationProvider;

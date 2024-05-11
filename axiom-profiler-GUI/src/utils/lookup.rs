@@ -1,8 +1,8 @@
-use std::{collections::BTreeMap, rc::Rc, sync::Mutex};
+use std::sync::Mutex;
 
 use fxhash::FxHashMap;
 use nucleo_matcher::{Config, Matcher, Utf32String};
-use smt_log_parser::{items::{ENodeIdx, InstIdx, QuantIdx, QuantKind, TermIdx, TermKind}, parsers::z3::graph::{raw::IndexesInstGraph, visible::VisibleInstGraph, InstGraph, RawNodeIndex}, IString, Z3Parser};
+use smt_log_parser::{items::{ENodeIdx, InstIdx, QuantIdx, QuantKind, TermIdx, TermKind}, parsers::z3::graph::{raw::IndexesInstGraph, visible::VisibleInstGraph, InstGraph, RawNodeIndex}, Z3Parser};
 
 use crate::commands::{Command, CommandId};
 

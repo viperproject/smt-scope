@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use material_yew::linear_progress::MatLinearProgress;
 use smt_log_parser::parsers::z3::graph::RawNodeIndex;
 use yew::{function_component, html, Callback, Html, NodeRef, Properties};

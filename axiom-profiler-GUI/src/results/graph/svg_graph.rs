@@ -1,8 +1,6 @@
-use std::sync::{Mutex, OnceLock};
 
 use fxhash::FxHashSet;
 use petgraph::graph::{EdgeIndex, NodeIndex};
-use smt_log_parser::items::InstIdx;
 use smt_log_parser::parsers::z3::graph::{RawNodeIndex, VisibleEdgeIndex};
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;

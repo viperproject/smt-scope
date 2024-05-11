@@ -4,7 +4,6 @@ use std::{collections::HashSet, fmt, ops::{Index, IndexMut}};
 use fxhash::FxHashSet;
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::{graph::NodeIndex, visit::{Reversed, Visitable}, Direction::{self, Incoming, Outgoing}};
-use roaring::MultiOps;
 
 use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, TransitiveExplSegmentKind}, DiGraph, FxHashMap, NonMaxU32, Result, TiVec, Z3Parser};
 
@@ -231,7 +230,7 @@ pub struct Node {
     pub inst_parents: NextInsts,
     pub inst_children: NextInsts,
     pub raw_nidx: NodeIndex<RawIx>,
-    pub part_of_ML: FxHashSet<usize>,
+    pub part_of_ml: FxHashSet<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -257,7 +256,7 @@ pub struct NextInsts {
 
 impl Node {
     fn new(kind: NodeKind) -> Self {
-        Self { state: NodeState::Hidden, cost: 0.0, fwd_depth: Depth::default(), bwd_depth: Depth::default(), subgraph: None, kind, inst_parents: NextInsts { nodes: HashSet::default() }, inst_children: NextInsts { nodes: HashSet::default() }, raw_nidx: NodeIndex::default(), part_of_ML: HashSet::default() }
+        Self { state: NodeState::Hidden, cost: 0.0, fwd_depth: Depth::default(), bwd_depth: Depth::default(), subgraph: None, kind, inst_parents: NextInsts { nodes: HashSet::default() }, inst_children: NextInsts { nodes: HashSet::default() }, raw_nidx: NodeIndex::default(), part_of_ml: HashSet::default() }
     }
     pub fn kind(&self) -> &NodeKind {
         &self.kind

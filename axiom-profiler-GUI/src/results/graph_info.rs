@@ -1,14 +1,11 @@
-use crate::{configuration::{Configuration, ConfigurationContext, ConfigurationProvider, PersistentConfiguration}, utils::split_div::SplitDiv, RcParser};
-use gloo::console::log;
+use crate::{configuration::ConfigurationContext, utils::split_div::SplitDiv};
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
-use scraper::node;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
-use smt_log_parser::{
-    display_with::DisplayConfiguration, items::BlameKind, parsers::z3::graph::{raw::NodeKind, RawNodeIndex, VisibleEdgeIndex}
+use smt_log_parser::
+    parsers::z3::graph::{RawNodeIndex, VisibleEdgeIndex}
     // parsers::z3::inst_graph::{EdgeInfo, InstInfo},
-};
-use web_sys::HtmlElement;
+;
 use yew::prelude::*;
 
 use super::{graph::graph_container, node_info::{SelectedEdgesInfo, SelectedNodesInfo}, svg_result::RenderedGraph};
@@ -178,12 +175,12 @@ impl Component for GraphInfo {
             let link = ctx.link().clone();
             Callback::from(move |edge: VisibleEdgeIndex| link.send_message(Msg::ToggleOpenEdge(edge)))
         };
-        let ignore_term_ids = !ctx.link().get_configuration().unwrap().config.persistent.display.display_term_ids;
+        let _ignore_term_ids = !ctx.link().get_configuration().unwrap().config.persistent.display.display_term_ids;
         let on_node_select = ctx.link().callback(Msg::UserSelectedNode);
         let on_edge_select = ctx.link().callback(Msg::UserSelectedEdge);
         let deselect_all = ctx.link().callback(|_| Msg::DeselectAll);
         let select_all = ctx.link().callback(|_| Msg::SelectAll);
-        let generalized_terms = self.generalized_terms.iter().map(|term| html! {
+        let _generalized_terms = self.generalized_terms.iter().map(|term| html! {
             <li>{term}</li>
         });
         let outdated = ctx.props().outdated.then(|| html! {<div class="outdated"></div>});

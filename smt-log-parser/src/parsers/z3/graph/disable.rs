@@ -1,11 +1,10 @@
 use std::collections::HashSet;
 
 use fxhash::FxHashSet;
-use petgraph::graph::NodeIndex;
 
 use crate::Z3Parser;
 
-use super::{raw::{NodeState, RawInstGraph, RawIx}, InstGraph, RawNodeIndex};
+use super::{raw::{NodeState, RawInstGraph}, InstGraph, RawNodeIndex};
 
 
 impl InstGraph {

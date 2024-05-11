@@ -173,15 +173,6 @@ impl EGraph {
         let Some(simple_path) = self.get_simple_path(from, to, stack, can_mismatch)? else {
             // There was a root mismatch (and `can_mismatch` was true), so we
             // can't construct a simple path.
-            if let Some(trans) = self.enodes[from].transitive.iter().copied().find(|t| {
-                let t = &self.equalities.transitive[*t];
-                t.to == to && t.given_len == 0
-            }) {
-                return Ok(trans)
-            };
-            let trans = TransitiveExpl::empty(from, to);
-            self.equalities.transitive.raw.try_reserve(1)?;
-            let trans = self.equalities.transitive.push_and_get_key(trans);
             self.enodes[from].transitive.try_reserve(1)?;
             let trans = match self.enodes[from].transitive.entry(to) {
                 Entry::Occupied(mut o) => {
@@ -190,7 +181,7 @@ impl EGraph {
                         // These two nodes are no longer equal (this is an old
                         // transitive equality that is no longer valid).
                         self.equalities.transitive.raw.try_reserve(1)?;
-                        let trans = self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(to));
+                        let trans = self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(from, to));
                         o.insert(trans);
                         trans
                     } else {
@@ -199,7 +190,7 @@ impl EGraph {
                 }
                 Entry::Vacant(v) => {
                     self.equalities.transitive.raw.try_reserve(1)?;
-                    let trans = self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(to));
+                    let trans = self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(from, to));
                     *v.insert(trans)
                 }
             };

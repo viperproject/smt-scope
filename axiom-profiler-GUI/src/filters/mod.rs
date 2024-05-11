@@ -3,12 +3,12 @@ mod manage_filter;
 
 use std::fmt::Display;
 
-use material_yew::{icon::MatIcon, switch::MatSwitch};
+use material_yew::icon::MatIcon;
 use petgraph::Direction;
 use smt_log_parser::parsers::{z3::graph::{raw::NodeKind, RawNodeIndex}, ParseState};
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
-use crate::{filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, utils::{indexer::Indexer, toggle_list::ToggleList}, OpenedFileInfo, RcParser, SIZE_NAMES};
+use crate::{filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, utils::{indexer::Indexer, toggle_list::ToggleList}, OpenedFileInfo, SIZE_NAMES};
 
 use self::manage_filter::DragState;
 

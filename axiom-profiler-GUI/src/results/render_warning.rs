@@ -1,6 +1,6 @@
 use material_yew::{dialog::{ActionType, MatDialog, MatDialogAction}, MatButton, WeakComponentLink};
 use num_format::{Locale, ToFormattedString};
-use yew::{function_component, html, Callback, Children, Html, Properties};
+use yew::{function_component, html, Callback, Html, Properties};
 
 use super::svg_result::GraphDimensions;
 

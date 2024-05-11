@@ -2,8 +2,7 @@ use std::rc::Rc;
 
 use gloo::timers::callback::Timeout;
 use material_yew::icon::MatIcon;
-use petgraph::graph::NodeIndex;
-use smt_log_parser::{items::{ENodeIdx, EqGivenIdx, EqTransIdx, InstIdx, QuantIdx}, parsers::z3::graph::raw::{Node, NodeKind}};
+use smt_log_parser::items::QuantIdx;
 use web_sys::{Element, HtmlElement, HtmlInputElement};
 use yew::{function_component, html, use_context, Callback, Children, Component, Context, Html, NodeRef, Properties};
 
@@ -346,7 +345,7 @@ impl Filter {
     pub fn is_editable(&self) -> bool {
         match self {
             Filter::IgnoreTheorySolving | Filter::ShowMatchingLoopSubgraph | Filter::IgnoreQuantifier(None) | Filter::IgnoreAllButQuantifier(None) |
-            Filter::ShowNeighbours(..) | Filter::VisitSourceTree(..) | Filter::VisitSourceTree(..) | Filter::VisitSubTreeWithRoot(..) | Filter::ShowLongestPath(..) => false,
+            Filter::ShowNeighbours(..) | Filter::VisitSourceTree(..) | Filter::VisitSubTreeWithRoot(..) | Filter::ShowLongestPath(..) => false,
             _ => true,
         }
     }

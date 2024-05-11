@@ -5,11 +5,11 @@ pub mod matching_loop;
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
-use petgraph::{Direction};
+use petgraph::Direction;
 
-use crate::{items::{MatchKind, QuantIdx}, Graph, Result, Z3Parser};
+use crate::{Graph, Result, Z3Parser};
 
-use self::{cost::DefaultCost, depth::DefaultDepth, matching_loop::{InstOrEquality, MLGraphNode}, next_insts::DefaultNextInsts};
+use self::{cost::DefaultCost, depth::DefaultDepth, matching_loop::MLGraphNode, next_insts::DefaultNextInsts};
 
 use super::{raw::Node, InstGraph, RawNodeIndex};
 

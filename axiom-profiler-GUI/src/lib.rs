@@ -19,7 +19,6 @@ use wasm_timer::Instant;
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::html::Scope;
 use yew::prelude::*;
-use yew_router::prelude::*;
 use material_yew::{MatIcon, MatIconButton, MatDialog, WeakComponentLink};
 
 use crate::commands::CommandsProvider;
@@ -383,9 +382,10 @@ impl Component for FileDataComponent {
                 log::info!("Processing \"{file_name}\"");
                 drop(self.reader.take());
                 let parser = RcParser::new(parser);
+                let rc_parser = parser.clone();
                 let cfg = ctx.link().get_configuration().unwrap();
                 cfg.update_parser(move |p| {
-                    *p = Some(parser);
+                    *p = Some(rc_parser);
                     true
                 });
                 let file = OpenedFileInfo {
@@ -464,13 +464,14 @@ impl Component for FileDataComponent {
                     // TODO: re-add finding matching loops
                     // assert!(file.parser.graph.is_some());
                     // let parser = ctx.link().get_configuration().unwrap().config.parser.unwrap();
-                    let tmp = ctx.link().get_configuration().unwrap().config.parser.unwrap();
-                    let mut parser = tmp.parser.borrow_mut();
-                    file.parser = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone(); 
+                    // let tmp = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone();
+                    // let mut parser = tmp.parser.borrow_mut();
+                    // file.parser = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone(); 
                     if let Some(g) = &file.parser.graph {
                         file.parser.found_mls = Some(g
                         .borrow_mut()
-                        .search_matching_loops(&mut *parser))
+                        // .search_matching_loops(&mut *parser))
+                        .search_matching_loops(&mut *file.parser.parser.borrow_mut()))
                     }
                     return true;
                     // file.parser.found_mls = Some(

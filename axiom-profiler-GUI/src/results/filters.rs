@@ -1,5 +1,5 @@
-use petgraph::{visit::{Dfs, IntoNeighborsDirected, Reversed, Walker}, Direction, Graph};
-use smt_log_parser::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{InstIdx, MatchKind, QuantIdx}, parsers::z3::graph::{analysis::matching_loop::{InstOrEquality, MLGraphNode}, raw::{Node, NodeKind, RawInstGraph}, InstGraph, RawNodeIndex}, Z3Parser};
+use petgraph::{visit::{Dfs, Walker}, Direction, Graph};
+use smt_log_parser::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::QuantIdx, parsers::z3::graph::{analysis::matching_loop::MLGraphNode, raw::{Node, NodeKind, RawInstGraph}, InstGraph, RawNodeIndex}, Z3Parser};
 
 use super::svg_result::DEFAULT_NODE_COUNT;
 
@@ -70,15 +70,15 @@ impl Filter {
             }
             // TODO: implement
             Filter::SelectNthMatchingLoop(n) => {
-                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.contains(&n));
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && !node.part_of_ML.contains(&n));
+                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ml.contains(&n));
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && !node.part_of_ml.contains(&n));
                 let dot_graph = graph.nth_matching_loop_graph(n);
-                return FilterOutput::MatchingLoopGraph(dot_graph.0);
+                return FilterOutput::MatchingLoopGraph(dot_graph);
             },
             Filter::ShowMatchingLoopSubgraph => {
                 // graph.raw.reset_visibility_to(true);
-                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.len() > 0);
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ML.len() <= 0)
+                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ml.len() > 0);
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ml.len() <= 0)
                 // if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
                 //     graph.raw.reset_visibility_to(true);
                 //     for nidx in nodes {

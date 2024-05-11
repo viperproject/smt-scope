@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
 use material_yew::icon::MatIcon;
-use petgraph::{visit::{Dfs, Reversed, Walker}, Direction};
-use smt_log_parser::parsers::z3::graph::{raw::{Node, NodeKind}, RawNodeIndex};
+use petgraph::{visit::{Dfs, Walker}, Direction};
+use smt_log_parser::parsers::z3::graph::{raw::NodeKind, RawNodeIndex};
 use yew::{function_component, html, use_context, Callback, Html, MouseEvent, Properties};
 
-use crate::{configuration::ConfigurationProvider, results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT}, RcParser};
+use crate::{configuration::ConfigurationProvider, results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT}};
 
 #[derive(PartialEq, Properties)]
 pub struct AddFilterSidebarProps {

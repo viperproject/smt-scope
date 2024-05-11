@@ -1,11 +1,7 @@
-use std::{num::NonZeroU32, ops::{Index, IndexMut}};
 use std::ops::{Index, IndexMut};
 
 use fxhash::{FxHashMap, FxHashSet};
-use gloo_console::log;
 use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdgeReferences, IntoEdges, NodeFiltered, Topo}, Direction::{self, Incoming, Outgoing}};
-
-use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}};
 
 use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}, NonMaxU32};
 

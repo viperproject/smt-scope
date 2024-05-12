@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt, ops::{Index, IndexMut}};
 
 #[cfg(feature = "mem_dbg")]
-use fxhash::FxHashSet;
+// use fxhash::FxHashSet;
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::{graph::NodeIndex, visit::{Reversed, Visitable}, Direction::{self, Incoming, Outgoing}};
 
@@ -230,7 +230,7 @@ pub struct Node {
     pub inst_parents: NextInsts,
     pub inst_children: NextInsts,
     pub raw_nidx: NodeIndex<RawIx>,
-    pub part_of_ml: FxHashSet<usize>,
+    pub part_of_ml: fxhash::FxHashSet<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -251,7 +251,7 @@ pub struct Depth {
 #[derive(Debug, Clone, Default)]
 pub struct NextInsts {
     /// What are the immediate next instantiation nodes 
-    pub nodes: FxHashSet<NodeIndex<RawIx>>,
+    pub nodes: fxhash::FxHashSet<NodeIndex<RawIx>>,
 }
 
 impl Node {

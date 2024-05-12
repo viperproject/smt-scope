@@ -154,7 +154,7 @@ impl Component for FiltersState {
                 if let Filter::SelectNthMatchingLoop(n) = &filter {
                     // TODO: re-add finding matching loops
                     let graph = &ctx.props().file.parser.graph;
-                    if !graph.as_ref().is_some_and(|g| g.borrow().found_matching_loops().is_some_and(|mls| mls > *n)) {
+                    if !graph.as_ref().is_some_and(|g| (& *g.borrow()).found_matching_loops().is_some_and(|mls| mls > *n)) {
                         return modified;
                     }
                 }

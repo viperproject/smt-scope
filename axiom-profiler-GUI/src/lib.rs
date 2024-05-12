@@ -467,6 +467,9 @@ impl Component for FileDataComponent {
                     // let tmp = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone();
                     // let mut parser = tmp.parser.borrow_mut();
                     // file.parser = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone(); 
+                    let cfg = ctx.link().get_configuration().unwrap();
+                    let parser = cfg.config.parser.as_ref().unwrap();
+                    file.parser = parser.clone();
                     if let Some(g) = &file.parser.graph {
                         file.parser.found_mls = Some((&mut *g.borrow_mut())
                         // .search_matching_loops(&mut *parser))

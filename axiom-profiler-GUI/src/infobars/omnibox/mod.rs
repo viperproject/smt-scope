@@ -269,13 +269,13 @@ impl Component for Omnibox {
                 }
             }
             Msg::Select { left } => {
-                let Some(picked) = &mut self.picked else {
-                    return false;
-                };
-                if picked.nodes.is_empty() {
-                    return false;
-                }
                 if !self.is_in_ml_viewer_mode {
+                    let Some(picked) = &mut self.picked else {
+                        return false;
+                    };
+                    if picked.nodes.is_empty() {
+                        return false;
+                    }
                     let number = picked.node_idx.map(|i|
                         if left {
                             if i == 0 { picked.nodes.len() - 1 } else { i - 1 } 
@@ -286,6 +286,9 @@ impl Component for Omnibox {
                     picked.node_idx = Some(number);
                     ctx.props().select.emit(picked.nodes[number]);
                 } else {
+                    let Some(picked) = &mut self.picked else {
+                        return false;
+                    };
                     let number = picked.ml_idx.map(|i|
                         if left {
                             if i == 0 { ctx.props().found_mls.unwrap() - 1 } else { i - 1 } 
@@ -305,6 +308,7 @@ impl Component for Omnibox {
             Msg::ContextUpdated(msg) => {
                 log!(format!("Setting self.is_in_ml_viewer_mode to {}", msg.config.persistent.ml_viewer_mode));
                 self.is_in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
+                self.picked = PickedSuggestion::default_simple();
                 true
             }
         }

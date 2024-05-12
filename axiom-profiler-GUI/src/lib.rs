@@ -25,6 +25,8 @@ use crate::commands::CommandsProvider;
 use crate::configuration::{ConfigurationContext, ConfigurationProvider, Flags};
 use crate::filters::FiltersState;
 use crate::infobars::{OmnibarMessage, SearchActionResult, SidebarSectionHeader, Topbar};
+use crate::results::filters::Filter;
+use crate::filters::Msg::AddFilter;
 use crate::results::svg_result::GraphState;
 use crate::utils::{lookup::StringLookupZ3, overlay_page::{Overlay, SetVisibleCallback}};
 
@@ -175,6 +177,7 @@ pub struct FileDataComponent {
     navigation_section: NodeRef,
     help_dialog: WeakComponentLink<MatDialog>,
     insts_info_link: WeakComponentLink<graph_info::GraphInfo>,
+    filters_state_link: WeakComponentLink<FiltersState>,
     showing_help: bool,
     omnibox: NodeRef,
     sidebar_button: NodeRef,
@@ -285,6 +288,7 @@ impl Component for FileDataComponent {
             navigation_section: NodeRef::default(),
             help_dialog,
             insts_info_link: WeakComponentLink::default(),
+            filters_state_link: WeakComponentLink::default(),
             showing_help: false,
             omnibox,
             sidebar_button,
@@ -388,6 +392,7 @@ impl Component for FileDataComponent {
                     *p = Some(rc_parser);
                     true
                 });
+                cfg.reset_ml_viewer_mode();
                 let file = OpenedFileInfo {
                     file_name,
                     file_size,
@@ -528,7 +533,7 @@ impl Component for FileDataComponent {
             Some(file) => {
                 let search_matching_loops = ctx.link().callback(|_| Msg::SearchMatchingLoops);
                 html!{
-                    <FiltersState file={file.clone()} search_matching_loops={search_matching_loops}/>
+                    <FiltersState file={file.clone()} search_matching_loops={search_matching_loops} weak_link={self.filters_state_link.clone()} />
                 }
             }
             None => html!{},
@@ -560,6 +565,17 @@ impl Component for FileDataComponent {
             insts_info_link.send_message(graph_info::Msg::UserSelectedNode(idx));
             insts_info_link.send_message(graph_info::Msg::ScrollZoomSelection);
         });
+        let filters_state_link = self.filters_state_link.clone();
+        let pick_nth_ml = Callback::from({
+            let file = self.file.clone();
+            move |n: usize| {
+            if let Some(found_mls) = file.as_ref().and_then(|file| file.parser.found_mls) {
+                let Some(filters_state_link) = &*filters_state_link.borrow() else {
+                    return;
+                };
+                filters_state_link.send_message(crate::filters::Msg::AddFilter(false, Filter::SelectNthMatchingLoop(n)));
+            }
+        }});
 
         // Callbacks
         let file_select_ref = self.file_select.clone();
@@ -631,7 +647,7 @@ impl Component for FileDataComponent {
         </div></div>
     </nav>
     <div class="topbar">
-        <Topbar progress={self.progress.clone()} {message} omnibox={self.omnibox.clone()} {search} {pick} {select} />
+        <Topbar progress={self.progress.clone()} {message} omnibox={self.omnibox.clone()} {search} {pick} {select} found_mls={self.file.as_ref().and_then(|file| file.parser.found_mls)} {pick_nth_ml} />
     </div>
     <div class="alerts"></div>
     <div class={page_class}>
@@ -668,7 +684,9 @@ impl Component for FileDataComponent {
 pub fn app() -> Html {
     html! {
         <main><GlobalCallbacksProvider><CommandsProvider>
-            <ConfigurationProvider><FileDataComponent/></ConfigurationProvider>
+            <ConfigurationProvider>
+            <FileDataComponent/>
+            </ConfigurationProvider>
         </CommandsProvider></GlobalCallbacksProvider></main>
     }
 }

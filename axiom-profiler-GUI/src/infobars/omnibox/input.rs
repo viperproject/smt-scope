@@ -212,6 +212,7 @@ pub struct PickedSuggestion {
     pub suggestion_idx: usize,
     pub nodes: Vec<RawNodeIndex>,
     pub node_idx: Option<usize>,
+    pub ml_idx: Option<usize>,
 }
 impl PickedSuggestion {
     pub fn new(suggestion_idx: usize, sr: &SuggestionResult, pick: &Callback<(String, Kind), Option<Vec<RawNodeIndex>>>) -> Option<Self> {
@@ -221,6 +222,7 @@ impl PickedSuggestion {
                 suggestion_idx,
                 nodes,
                 node_idx: None,
+                ml_idx: None,
             })
         })
     }

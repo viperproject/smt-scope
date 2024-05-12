@@ -1,11 +1,12 @@
 use std::{cmp::Ordering, rc::Rc};
 
 use fxhash::FxHashMap;
+use gloo::console::log;
 use smt_log_parser::parsers::z3::graph::{visible::VisibleInstGraph, RawNodeIndex};
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::{html, prelude::Context, AttrValue, Callback, Component, ContextHandle, Html, InputEvent, KeyboardEvent, MouseEvent, NodeRef, Properties};
 
-use crate::{commands::{Command, CommandId, CommandRef, Commands, CommandsContext}, infobars::topbar::OmnibarMessage, results::svg_result::RenderingState, utils::lookup::{CommandsWithName, Entry, Kind, Matches, StringLookupCommands}, CallbackRef, GlobalCallbacksContext, LoadingState, RcParser, SIZE_NAMES};
+use crate::{commands::{Command, CommandId, CommandRef, Commands, CommandsContext}, configuration::ConfigurationProvider, infobars::topbar::OmnibarMessage, results::svg_result::RenderingState, utils::lookup::{CommandsWithName, Entry, Kind, Matches, StringLookupCommands}, CallbackRef, GlobalCallbacksContext, LoadingState, RcParser, SIZE_NAMES};
 
 use self::input::{OmniboxInput, PickedSuggestion, SuggestionResult, HighlightedString};
 
@@ -21,6 +22,8 @@ pub struct OmniboxProps {
     pub search: Callback<String, Option<SearchActionResult>>,
     pub pick: Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
     pub select: Callback<RawNodeIndex>,
+    pub found_mls: Option<usize>,
+    pub pick_nth_ml: Callback<usize>,
 }
 
 pub enum Msg {
@@ -31,6 +34,7 @@ pub enum Msg {
     Select { left: bool },
     Focus(bool),
     CommandsUpdated(Rc<Commands>),
+    ContextUpdated(Rc<ConfigurationProvider>),
 }
 
 pub struct Omnibox {
@@ -49,6 +53,8 @@ pub struct Omnibox {
     _handle: ContextHandle<Rc<Commands>>,
     _callback_refs: [CallbackRef; 1],
     _commands_search: [CommandRef; 2],
+    is_in_ml_viewer_mode: bool,
+    _context_listener: ContextHandle<Rc<ConfigurationProvider>>,
 }
 
 impl Omnibox {
@@ -93,7 +99,11 @@ impl Component for Omnibox {
         };
         let prev_search = (commands.register)(prev_search);
         let _commands_search = [next_search, prev_search];
-
+        let (msg, context_listener) = ctx
+            .link()
+            .context(ctx.link().callback(Msg::ContextUpdated))
+            .expect("No message context provided");
+        log!(format!("Creating Omnibox component with is_in_viewre_mode = {}", msg.config.persistent.ml_viewer_mode));
         Self {
             focused: false,
             command_mode: false,
@@ -110,6 +120,8 @@ impl Component for Omnibox {
             _handle,
             _callback_refs,
             _commands_search,
+            is_in_ml_viewer_mode: msg.config.persistent.ml_viewer_mode,
+            _context_listener: context_listener,
         }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
@@ -263,20 +275,37 @@ impl Component for Omnibox {
                 if picked.nodes.is_empty() {
                     return false;
                 }
-                let number = picked.node_idx.map(|i|
-                    if left {
-                        if i == 0 { picked.nodes.len() - 1 } else { i - 1 } 
-                    } else {
-                        if i + 1 == picked.nodes.len() { 0 } else { i + 1 }
-                    }
-                ).unwrap_or_default();
-                picked.node_idx = Some(number);
-                ctx.props().select.emit(picked.nodes[number]);
+                if !self.is_in_ml_viewer_mode {
+                    let number = picked.node_idx.map(|i|
+                        if left {
+                            if i == 0 { picked.nodes.len() - 1 } else { i - 1 } 
+                        } else {
+                            if i + 1 == picked.nodes.len() { 0 } else { i + 1 }
+                        }
+                    ).unwrap_or_default();
+                    picked.node_idx = Some(number);
+                    ctx.props().select.emit(picked.nodes[number]);
+                } else {
+                    let number = picked.ml_idx.map(|i|
+                        if left {
+                            if i == 0 { ctx.props().found_mls.unwrap() - 1 } else { i - 1 } 
+                        } else {
+                            if i + 1 == ctx.props().found_mls.unwrap() { 0 } else { i + 1 }
+                        }
+                    ).unwrap_or_default();
+                    picked.ml_idx = Some(number);
+                    ctx.props().pick_nth_ml.emit(picked.ml_idx.unwrap());
+                }
                 true
             }
             Msg::CommandsUpdated(commands) => {
                 self.all_commands = StringLookupCommands::with_commands(commands.commands.iter().cloned());
                 self.command_mode
+            }
+            Msg::ContextUpdated(msg) => {
+                log!(format!("Setting self.is_in_ml_viewer_mode to {}", msg.config.persistent.ml_viewer_mode));
+                self.is_in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
+                true
             }
         }
     }
@@ -340,11 +369,23 @@ impl Component for Omnibox {
         } else {
             html! { {icon} }
         };
-        let placeholder = omnibox_info.unwrap_or_else(|| if self.command_mode {
-            AttrValue::from("Filter commands...")
-        } else {
-            AttrValue::from("Search or type '>' for commands")
-        });
+        // let placeholder = omnibox_info.unwrap_or_else(|| if self.command_mode {
+        //     AttrValue::from("Filter commands...")
+        // } else {
+        //     AttrValue::from("Search or type '>' for commands")
+        // });
+        let placeholder = 
+            omnibox_info.unwrap_or_else(|| if self.command_mode {
+                AttrValue::from("Filter commands...")
+            } else if !self.is_in_ml_viewer_mode {
+                AttrValue::from("Search or type '>' for commands")
+            } else {
+                match ctx.props().found_mls.unwrap() {
+                    0 => AttrValue::from(format!("No matching loops found")),
+                    1 => AttrValue::from(format!("Found {} potential matching loop", ctx.props().found_mls.unwrap())),
+                    n => AttrValue::from(format!("Found {} potential matching loops", n)),
+                }
+            });
         let onfocusin = ctx.link().callback(|_| Msg::Focus(true));
         let onfocusout = ctx.link().callback(|_| Msg::Focus(false));
         let oninput = ctx.link().callback(Msg::Input);
@@ -412,16 +453,29 @@ impl Component for Omnibox {
             ev.stop_propagation(); ev.cancel_bubble();
         });
         let test = self.picked.as_ref().map(|picked| {
-            let node_idx = picked.node_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
-            let left = ctx.link().callback(|_| Msg::Select { left: true });
-            let right = ctx.link().callback(|_| Msg::Select { left: false });
-            html! {
-            <>
-                <div class="current">{node_idx}{" / "}{picked.nodes.len()}</div>
-                <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
-                <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
-            </>
-            }
+            // if !self.is_in_ml_viewer_mode {
+                let node_idx = picked.node_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
+                let left = ctx.link().callback(|_| Msg::Select { left: true });
+                let right = ctx.link().callback(|_| Msg::Select { left: false });
+                html! {
+                <>
+                    <div class="current">{node_idx}{" / "}{picked.nodes.len()}</div>
+                    <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
+                    <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
+                </>
+                }
+            // } else {
+            //     let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
+            //     let left = ctx.link().callback(|_| Msg::Select { left: true });
+            //     let right = ctx.link().callback(|_| Msg::Select { left: false });
+            //     html! {
+            //     <>
+            //         <div class="current">{ml_idx}{" / "}{ctx.props().found_mls.unwrap()}</div>
+            //         <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
+            //         <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
+            //     </>
+            //     }
+            // }
         });
 
         let omnibox = ctx.props().omnibox.clone();

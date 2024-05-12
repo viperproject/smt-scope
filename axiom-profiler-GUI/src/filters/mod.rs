@@ -12,11 +12,13 @@ use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Propert
 use crate::{configuration::ConfigurationContext, filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, utils::{indexer::Indexer, toggle_list::ToggleList}, OpenedFileInfo, SIZE_NAMES};
 
 use self::manage_filter::DragState;
+use material_yew::WeakComponentLink;
 
 #[derive(Properties, PartialEq)]
 pub struct FiltersInput {
     pub file: OpenedFileInfo,
     pub search_matching_loops: Callback<()>,
+    pub weak_link: WeakComponentLink<FiltersState>,
 }
 
 pub enum Msg {
@@ -75,6 +77,10 @@ impl Component for FiltersState {
     type Properties = FiltersInput;
 
     fn create(ctx: &Context<Self>) -> Self {
+        ctx.props()
+            .weak_link
+            .borrow_mut()
+            .replace(ctx.link().clone());
         *ctx.props().file.filter.borrow_mut() = Some(ctx.link().clone());
         let disabler_chain = DEFAULT_DISABLER_CHAIN.to_vec();
         let filter_chain = DEFAULT_FILTER_CHAIN.to_vec();

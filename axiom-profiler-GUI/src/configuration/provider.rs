@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use gloo::storage::Storage;
+use gloo::{console::log, storage::Storage};
 use smt_log_parser::display_with::DisplayConfiguration;
 use yew::{html, prelude::{Context, Html}, Callback, Children, Component, ContextProvider, Properties};
 
@@ -64,6 +64,9 @@ impl ConfigurationProvider {
     }pub fn update_parser(&self, f: impl FnOnce(&mut Option<RcParser>) -> bool + 'static) {
         self.update.update(|cfg| f(&mut cfg.parser));
     }
+    pub fn reset_ml_viewer_mode(&self) {
+        self.update.update(|cfg| {cfg.persistent.ml_viewer_mode = false; true});
+    }
 }
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -118,6 +121,7 @@ impl Component for ConfigurationProvider {
         if let Ok(cached) = gloo::storage::LocalStorage::get::<PersistentConfiguration>("config") {
             // log::warn!("ConfigurationProvider loaded: {cached:?}");
             config.persistent = cached;
+            config.persistent.ml_viewer_mode = false;
         }
         let update = Callback::from(move |config| link.send_message(config));
         Self {

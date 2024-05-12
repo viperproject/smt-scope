@@ -452,8 +452,7 @@ impl Component for Omnibox {
         let onkeyup = Callback::from(|ev: KeyboardEvent| {
             ev.stop_propagation(); ev.cancel_bubble();
         });
-        let test = self.picked.as_ref().map(|picked| {
-            // if !self.is_in_ml_viewer_mode {
+        let test = if !self.is_in_ml_viewer_mode { self.picked.as_ref().map(|picked| {
                 let node_idx = picked.node_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
                 let left = ctx.link().callback(|_| Msg::Select { left: true });
                 let right = ctx.link().callback(|_| Msg::Select { left: false });
@@ -464,20 +463,19 @@ impl Component for Omnibox {
                     <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
                 </>
                 }
-            // } else {
-            //     let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
-            //     let left = ctx.link().callback(|_| Msg::Select { left: true });
-            //     let right = ctx.link().callback(|_| Msg::Select { left: false });
-            //     html! {
-            //     <>
-            //         <div class="current">{ml_idx}{" / "}{ctx.props().found_mls.unwrap()}</div>
-            //         <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
-            //         <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
-            //     </>
-            //     }
-            // }
-        });
-
+        }) } else { self.picked.as_ref().map(|picked| {
+            let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
+            let left = ctx.link().callback(|_| Msg::Select { left: true });
+            let right = ctx.link().callback(|_| Msg::Select { left: false });
+            html! {
+            <>
+                <div class="current">{ml_idx}{" / "}{ctx.props().found_mls.unwrap()}</div>
+                <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
+                <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
+            </>
+            }
+        })
+        };
         let omnibox = ctx.props().omnibox.clone();
         let input = (!omnibox_disabled).then(|| self.input.clone()).unwrap_or_default();
         html! {

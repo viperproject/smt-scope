@@ -75,6 +75,7 @@ pub struct Configuration {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PersistentConfiguration {
     pub display: DisplayConfiguration,
+    pub ml_viewer_mode: bool, 
 }
 impl PersistentConfiguration {
     pub const fn default_const() -> Self {
@@ -89,6 +90,7 @@ impl PersistentConfiguration {
         };
         Self {
             display,
+            ml_viewer_mode: false,
         }
     }
 }

@@ -3,12 +3,13 @@ mod manage_filter;
 
 use std::fmt::Display;
 
+use gloo::console::log;
 use material_yew::icon::MatIcon;
 use petgraph::Direction;
 use smt_log_parser::parsers::{z3::graph::{raw::NodeKind, RawNodeIndex}, ParseState};
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
-use crate::{filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, utils::{indexer::Indexer, toggle_list::ToggleList}, OpenedFileInfo, SIZE_NAMES};
+use crate::{configuration::ConfigurationContext, filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, utils::{indexer::Indexer, toggle_list::ToggleList}, OpenedFileInfo, SIZE_NAMES};
 
 use self::manage_filter::DragState;
 
@@ -29,6 +30,7 @@ pub enum Msg {
     EndEdit(usize, Filter),
     AddFilter(bool, Filter),
     ToggleDisabler(usize),
+    ToggleMlViewerMode,
 }
 
 pub struct FiltersState {
@@ -182,6 +184,17 @@ impl Component for FiltersState {
                 self.disabler_chain[idx].1 = !self.disabler_chain[idx].1;
                 self.reset_disabled(&ctx.props().file);
                 false
+            },
+            Msg::ToggleMlViewerMode => {
+                let search_matching_loops = ctx.props().search_matching_loops.clone();
+                let found_mls = ctx.props().file.parser.found_mls;
+                if let None = found_mls {
+                    search_matching_loops.emit(());
+                }
+                let link = ctx.link().clone();
+                let cfg = link.get_configuration().unwrap();
+                cfg.update.update(|cfg| { cfg.persistent.ml_viewer_mode = !cfg.persistent.ml_viewer_mode; true });
+                true
             }
         }
     }
@@ -251,6 +264,16 @@ impl Component for FiltersState {
                 }
             }
         });
+        let toggle_ml_viewer_mode = ctx.link().callback(|_| Msg::ToggleMlViewerMode); 
+        let ml_viewer_mode = if ctx.link().get_configuration().unwrap().config.persistent.ml_viewer_mode {
+            html! {
+                <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"close"}</MatIcon></div>{"Exit matching loop viewer"}</a></li>
+            }
+        } else {
+            html! {
+                <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"loop"}</MatIcon></div>{"View matching loops"}</a></li>
+            }
+        }; 
         // let found_mls = None;
         // let matching_loops = "";
         let reset = ctx.link().callback(|e: MouseEvent| {
@@ -322,6 +345,7 @@ impl Component for FiltersState {
                 <AddFilterSidebar new_filter={new_filter} found_mls={found_mls} nodes={Vec::new()} general_filters={true}/>
                 {matching_loops}
                 {matching_loop_clicker}
+                {ml_viewer_mode}
                 <li><a draggable="false" href="#" onclick={reset}><div class="material-icons"><MatIcon>{"restore"}</MatIcon></div>{"Reset operations"}</a></li>
                 {undo}
             </ul></SidebarSectionHeader>

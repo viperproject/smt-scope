@@ -1,39 +1,38 @@
 use std::{cmp::Ordering, rc::Rc};
 
 use fxhash::FxHashMap;
+use gloo::console::log;
 use smt_log_parser::parsers::z3::graph::{visible::VisibleInstGraph, RawNodeIndex};
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::{html, prelude::Context, AttrValue, Callback, Component, ContextHandle, Html, InputEvent, KeyboardEvent, MouseEvent, NodeRef, Properties};
 
-use crate::{commands::{Command, CommandId, CommandRef, Commands, CommandsContext}, infobars::topbar::OmnibarMessage, results::svg_result::RenderingState, utils::lookup::{CommandsWithName, Entry, Kind, Matches, StringLookupCommands}, CallbackRef, GlobalCallbacksContext, LoadingState, RcParser, SIZE_NAMES};
+use crate::{commands::{Command, CommandId, CommandRef, Commands, CommandsContext}, configuration::ConfigurationProvider, infobars::topbar::OmnibarMessage, results::svg_result::RenderingState, utils::lookup::{CommandsWithName, Entry, Kind, Matches, StringLookupCommands}, CallbackRef, GlobalCallbacksContext, LoadingState, RcParser, SIZE_NAMES};
 
-use self::input::{OmniboxInput, PickedSuggestion, SuggestionResult, HighlightedString};
+use self::input::{MlOmniboxInput, PickedSuggestion, SuggestionResult, HighlightedString};
 
 pub mod input;
 
 const LAST_USED_DISPLAY: usize = 6;
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct OmniboxProps {
+pub struct MlOmniboxProps {
     pub progress: LoadingState,
     pub message: Option<OmnibarMessage>,
     pub omnibox: NodeRef,
-    pub search: Callback<String, Option<SearchActionResult>>,
     pub pick: Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
     pub select: Callback<RawNodeIndex>,
+    pub found_mls: Option<usize>,
+    pub pick_nth_ml: Callback<usize>,
 }
 
 pub enum Msg {
-    Input(InputEvent),
-    KeyDownTyping(KeyboardEvent),
     KeyDownGlobal(KeyboardEvent),
-    Picked(usize),
     Select { left: bool },
-    Focus(bool),
     CommandsUpdated(Rc<Commands>),
+    ContextUpdated(Rc<ConfigurationProvider>),
 }
 
-pub struct Omnibox {
+pub struct MlOmnibox {
     focused: bool,
     command_mode: bool,
     input: Option<String>,
@@ -49,9 +48,11 @@ pub struct Omnibox {
     _handle: ContextHandle<Rc<Commands>>,
     _callback_refs: [CallbackRef; 1],
     _commands_search: [CommandRef; 2],
+    is_in_ml_viewer_mode: bool,
+    _context_listener: ContextHandle<Rc<ConfigurationProvider>>,
 }
 
-impl Omnibox {
+impl MlOmnibox {
     pub fn set_picked(&mut self, picked: Option<PickedSuggestion>) {
         if self.picked.is_none() && picked.is_none() {
             return;
@@ -65,9 +66,9 @@ impl Omnibox {
     }
 }
 
-impl Component for Omnibox {
+impl Component for MlOmnibox {
     type Message = Msg;
-    type Properties = OmniboxProps;
+    type Properties = MlOmniboxProps;
 
     fn create(ctx: &Context<Self>) -> Self {
         // Global callbacks
@@ -93,7 +94,11 @@ impl Component for Omnibox {
         };
         let prev_search = (commands.register)(prev_search);
         let _commands_search = [next_search, prev_search];
-
+        let (msg, context_listener) = ctx
+            .link()
+            .context(ctx.link().callback(Msg::ContextUpdated))
+            .expect("No message context provided");
+        log!(format!("Creating MlOmnibox component with is_in_viewre_mode = {}", msg.config.persistent.ml_viewer_mode));
         Self {
             focused: false,
             command_mode: false,
@@ -110,13 +115,15 @@ impl Component for Omnibox {
             _handle,
             _callback_refs,
             _commands_search,
+            is_in_ml_viewer_mode: msg.config.persistent.ml_viewer_mode,
+            _context_listener: context_listener,
         }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         if ctx.props() == old_props {
             return false;
         }
-        if ctx.props().progress != old_props.progress {
+        if ctx.props().progress != old_props.progress && !self.is_in_ml_viewer_mode {
             self.focused = false;
             self.command_mode = false;
             self.input = None;
@@ -137,151 +144,58 @@ impl Component for Omnibox {
                 }
                 _ => false,
             },
-            Msg::KeyDownTyping(ev) => match ev.key().as_str() {
-                "Backspace" => {
-                    if self.input.is_some() {
-                        return false;
-                    }
-                    if self.command_mode {
-                        self.highlighted = 0;
-                        self.command_mode = false;
-                        ctx.link().send_message(Msg::Focus(true));
-                        true
-                    } else if self.focused {
-                        self.highlighted = 0;
-                        self.focused = false;
-                        true
-                    } else {
-                        // Should not be reachable
-                        false
-                    }
-                }
-                "Escape" => {
-                    self.highlighted = 0;
-                    self.command_mode = false;
-                    self.focused = false;
-                    self.actions = None;
-                    self.input = None;
-                    true
-                }
-                "Enter" => {
-                    ctx.link().send_message(Msg::Picked(self.highlighted));
-                    false
-                }
-                "ArrowUp" => {
-                    if self.highlighted == 0 {
-                        return false;
-                    }
-                    ev.prevent_default();
-                    self.highlighted -= 1;
-                    true
-                }
-                "ArrowDown" => {
-                    let max_val = if self.command_mode {
-                        self.commands.as_ref().map(|c| c.enabled_commands).unwrap_or_default()
-                    } else {
-                        self.actions.as_ref().map(SuggestionResult::suggestion_count).unwrap_or_default()
-                    };
-                    if self.highlighted + 1 >= max_val {
-                        return false;
-                    }
-                    ev.prevent_default();
-                    self.highlighted += 1;
-                    true
-                }
-                _ => false,
-            },
-            Msg::Input(_ev) => {
-                self.highlighted = 0;
-                let query = ctx.props().omnibox.cast::<HtmlInputElement>().map(|r| r.value()).unwrap_or_default();
-
-                if self.command_mode {
-                    self.set_picked(None);
-                    self.input = Some(query).filter(|q| !q.is_empty());
-
-                    let input = self.input.as_deref().unwrap_or_default();
-                    self.commands = CommandSearchResult::new(input, &self.all_commands, &self.last_used);
-                } else if query == ">" {
-                    self.command_mode = true;
-
-                    self.actions = None;
-                    self.set_picked(None);
-                    self.input = None;
-                    if let Some(omnibox) = ctx.props().omnibox.cast::<HtmlInputElement>() {
-                        omnibox.set_value("");
-                    }
-                    self.commands = CommandSearchResult::new("", &self.all_commands, &self.last_used);
-                } else {
-                    self.input = Some(query).filter(|q| !q.is_empty());
-
-                    let input = self.input.as_deref().unwrap_or_default();
-                    self.actions = ctx.props().search.emit(input.to_string()).map(SuggestionResult::new);
-                    self.set_picked(PickedSuggestion::default(self.actions.as_ref(), &ctx.props().pick));
-                }
-                true
-            }
-            Msg::Focus(focused) => {
-                self.highlighted = self.picked.as_ref().map(|s| s.suggestion_idx).unwrap_or_default();
-                self.focused = focused;
-                if self.focused {
-                    let input = self.input.as_deref().unwrap_or_default();
-                    let new_actions = ctx.props().search.emit(input.to_string()).map(SuggestionResult::new);
-                    let old_actions = std::mem::replace(&mut self.actions, new_actions);
-                    if old_actions != self.actions {
-                        self.set_picked(PickedSuggestion::default(self.actions.as_ref(), &ctx.props().pick));
-                    }
-                } else if self.command_mode {
-                    self.command_mode = false;
-                    self.input = None;
-                }
-                true
-            }
-            Msg::Picked(idx) => {
-                if self.command_mode {
-                    ctx.link().send_message(Msg::Focus(false));
-                    if let Some(c) = self.commands.as_ref().and_then(|c| c.commands.get(idx)) {
-                        if let Some(old) = self.last_used.iter().position(|(id, _)| id == &c.id) {
-                            self.last_used.remove(old);
-                        }
-                        self.last_used.push((c.id, self.commands_used));
-                        self.commands_used += 1;
-                        c.command.execute.emit(());
-                    }
-                    return false;
-                } else {
-                    self.focused = false;
-
-                    self.set_picked(self.actions.as_ref().and_then(|sr| PickedSuggestion::new(idx, sr, &ctx.props().pick)));
-                    self.input = self.picked.as_ref().map(|s| s.name.clone());
-                    true
-                }
-            }
             Msg::Select { left } => {
-                let Some(picked) = &mut self.picked else {
-                    return false;
-                };
-                if picked.nodes.is_empty() {
-                    return false;
-                }
-                let number = picked.node_idx.map(|i|
-                    if left {
-                        if i == 0 { picked.nodes.len() - 1 } else { i - 1 } 
-                    } else {
-                        if i + 1 == picked.nodes.len() { 0 } else { i + 1 }
+                if !self.is_in_ml_viewer_mode {
+                    let Some(picked) = &mut self.picked else {
+                        return false;
+                    };
+                    if picked.nodes.is_empty() {
+                        return false;
                     }
-                ).unwrap_or_default();
-                picked.node_idx = Some(number);
-                ctx.props().select.emit(picked.nodes[number]);
+                    let number = picked.node_idx.map(|i|
+                        if left {
+                            if i == 0 { picked.nodes.len() - 1 } else { i - 1 } 
+                        } else {
+                            if i + 1 == picked.nodes.len() { 0 } else { i + 1 }
+                        }
+                    ).unwrap_or_default();
+                    picked.node_idx = Some(number);
+                    ctx.props().select.emit(picked.nodes[number]);
+                } else {
+                    let Some(picked) = &mut self.picked else {
+                        return false;
+                    };
+                    let number = picked.ml_idx.map(|i|
+                        if left {
+                            if i == 0 { ctx.props().found_mls.unwrap() - 1 } else { i - 1 } 
+                        } else {
+                            if i + 1 == ctx.props().found_mls.unwrap() { 0 } else { i + 1 }
+                        }
+                    ).unwrap_or_default();
+                    picked.ml_idx = Some(number);
+                    ctx.props().pick_nth_ml.emit(picked.ml_idx.unwrap());
+                }
                 true
             }
             Msg::CommandsUpdated(commands) => {
                 self.all_commands = StringLookupCommands::with_commands(commands.commands.iter().cloned());
                 self.command_mode
             }
+            Msg::ContextUpdated(msg) => {
+                log!(format!("Setting self.is_in_ml_viewer_mode to {}", msg.config.persistent.ml_viewer_mode));
+                if self.is_in_ml_viewer_mode != msg.config.persistent.ml_viewer_mode {
+                    self.is_in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
+                    self.picked = PickedSuggestion::default_simple();
+                    true
+                } else {
+                    false
+                } 
+            }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        log!("In view()");
         let mut omnibox_info = ctx.props().message.as_ref().map(|m| AttrValue::from(m.message.clone()));
         let mut icon = ctx.props().message.as_ref().is_some_and(|m| m.is_error).then(|| "error");
         let mut callback = None;
@@ -340,98 +254,60 @@ impl Component for Omnibox {
         } else {
             html! { {icon} }
         };
-        let placeholder = omnibox_info.unwrap_or_else(|| if self.command_mode {
-            AttrValue::from("Filter commands...")
-        } else {
-            AttrValue::from("Search or type '>' for commands")
-        });
-        let onfocusin = ctx.link().callback(|_| Msg::Focus(true));
-        let onfocusout = ctx.link().callback(|_| Msg::Focus(false));
-        let oninput = ctx.link().callback(Msg::Input);
-        let dropdown = self.command_mode || (self.focused && (self.input.is_some() || self.actions.is_some()));
-        let dropdown = dropdown.then(|| {
-            let inner = if self.command_mode {
-                let idx = &mut 0;
-                let commands = self.commands.as_ref().map(|commands| {
-                    let query_len = commands.query.len();
-                    commands.commands.iter().map(move |command| {
-                        let i = (!command.command.disabled).then(|| {
-                            let i = *idx;
-                            *idx += 1;
-                            i
-                        });
-                        let highlighted = Some(self.highlighted) == i;
-                        let class = if highlighted {
-                            "omnibox-highlighted"
-                        } else if command.command.disabled {
-                            "omnibox-disabled"
-                        } else {
-                            "can-hover"
-                        };
-                        let scroll_into_view = highlighted.then(|| self.scroll_into_view.clone()).unwrap_or_default();
-
-                        let onmousedown = i.map(|i| ctx.link().callback(move |_| Msg::Picked(i)));
-                        let start = command.idx * query_len;
-                        let name = HighlightedString(&command.command.name, &commands.indices[start..start + query_len]).to_html();
-                        let last_used = command.last_used.map(|_| html! { <span class="tag">{"recently used"}</span> });
-                        let keyboard_shortcut = Some(&command.command.keyboard_shortcut).filter(|s| !s.is_empty()).map(|s| {
-                            let s = s.iter().map(|s| html! {
-                                <span class="pf-keycap">{match *s {
-                                    "Cmd" => html! {<i class="material-icons">{"keyboard_command_key"}</i>},
-                                    "Alt" => html! {<i class="material-icons">{"alt"}</i>},
-                                    "Ctrl" => html! {<i class="material-icons">{"control"}</i>},
-                                    "Enter" => html! {<i class="material-icons">{"keyboard_return"}</i>},
-                                    s if s.len() == 1 => html! {{s.to_uppercase()}},
-                                    s => html! {{s.to_lowercase()}},
-                                }}</span>
-                            });
-                            html! { <span class="hotkey">{for s}</span> }
-                        });
-                        html! {
-                            <li ref={scroll_into_view} {class} {onmousedown}>
-                                <span class="option-title">{name}</span>
-                                {last_used}
-                                {keyboard_shortcut}
-                            </li>
-                        }
-                    })
-                });
-                self.wrapper(commands)
+        // let placeholder = omnibox_info.unwrap_or_else(|| if self.command_mode {
+        //     AttrValue::from("Filter commands...")
+        // } else {
+        //     AttrValue::from("Search or type '>' for commands")
+        // });
+        let placeholder = 
+            omnibox_info.unwrap_or_else(|| if self.command_mode {
+                AttrValue::from("2: Filter commands...")
+            } else if !self.is_in_ml_viewer_mode {
+                AttrValue::from("2: Search or type '>' for commands")
             } else {
-                let onclick = |idx| ctx.link().callback(move |_| Msg::Picked(idx));
-                self.wrapper(SuggestionResult::as_html(self.actions.as_ref(), self.highlighted, &self.scroll_into_view, onclick))
-            };
-            html! {
-                <div class="omnibox-popup"><div class="omnibox-popup-content">{inner}</div></div>
-            }
-        });
-        let onkeydown = ctx.link().callback(|ev: KeyboardEvent| {
-            ev.stop_propagation(); ev.cancel_bubble(); Msg::KeyDownTyping(ev)
-        });
+                match ctx.props().found_mls.unwrap() {
+                    0 => AttrValue::from(format!("No matching loops found")),
+                    1 => AttrValue::from(format!("Found {} potential matching loop", ctx.props().found_mls.unwrap())),
+                    n => AttrValue::from(format!("Found {} potential matching loops", n)),
+                }
+            });
+        let dropdown = self.command_mode || (self.focused && (self.input.is_some() || self.actions.is_some()));
         let onkeyup = Callback::from(|ev: KeyboardEvent| {
             ev.stop_propagation(); ev.cancel_bubble();
         });
-        let test = self.picked.as_ref().map(|picked| {
-            let node_idx = picked.node_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
+        let test = if !self.is_in_ml_viewer_mode { self.picked.as_ref().map(|picked| {
+            log!("1: Creating test-VNode in view()");
+                let node_idx = picked.node_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
+                let left = ctx.link().callback(|_| Msg::Select { left: true });
+                let right = ctx.link().callback(|_| Msg::Select { left: false });
+                html! {
+                <>
+                    <div class="current">{node_idx}{" / "}{picked.nodes.len()}</div>
+                    <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
+                    <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
+                </>
+                }
+        }) } else { self.picked.as_ref().map(|picked| {
+            log!("2: Creating test-VNode in view()");
+            let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
             let left = ctx.link().callback(|_| Msg::Select { left: true });
             let right = ctx.link().callback(|_| Msg::Select { left: false });
             html! {
             <>
-                <div class="current">{node_idx}{" / "}{picked.nodes.len()}</div>
+                <div class="current">{ml_idx}{" / "}{ctx.props().found_mls.unwrap()}</div>
                 <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
                 <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
             </>
             }
-        });
-
+        })
+        };
         let omnibox = ctx.props().omnibox.clone();
         let input = (!omnibox_disabled).then(|| self.input.clone()).unwrap_or_default();
         html! {
-            <div class="omnibox" {onkeydown} {onkeyup}>
+            <div class="omnibox" {onkeyup}>
                 <div class="icon">{icon}</div>
-                <OmniboxInput {omnibox} {placeholder} {omnibox_disabled} focused={self.focused} {input} {onfocusin} {onfocusout} {oninput} />
+                <MlOmniboxInput {omnibox} {placeholder} {omnibox_disabled} focused={self.focused} {input} />
                 <div class="stepthrough">{test}</div>
-                <div>{dropdown}</div>
             </div>
         }
     }
@@ -582,7 +458,7 @@ impl Ord for CommandAction {
     }
 }
 
-impl Omnibox {
+impl MlOmnibox {
     fn wrapper(&self, inner: Option<impl Iterator<Item = Html>>) -> Html {
         inner.map(|inner| html! {
                 <div class="omnibox-dropdown"><div ref={&self.scroll_container} class="omnibox-options-container">{for inner}</div>

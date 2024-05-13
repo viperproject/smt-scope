@@ -8,19 +8,16 @@ use crate::utils::lookup::Kind;
 use super::SearchAction;
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct OmniboxInputProps {
+pub struct MlOmniboxInputProps {
     pub omnibox: NodeRef,
     pub placeholder: AttrValue,
     pub omnibox_disabled: bool,
     pub focused: bool,
     pub input: Option<String>,
-    pub onfocusin: Callback<FocusEvent>,
-    pub onfocusout: Callback<FocusEvent>,
-    pub oninput: Callback<InputEvent>,
 }
 
 #[function_component]
-pub fn OmniboxInput(props: &OmniboxInputProps) -> Html {
+pub fn MlOmniboxInput(props: &MlOmniboxInputProps) -> Html {
     let focused = use_mut_ref(|| false);
     let old_focused = *focused.borrow();
     use_effect_with_deps(
@@ -41,7 +38,7 @@ pub fn OmniboxInput(props: &OmniboxInputProps) -> Html {
         (props.omnibox.clone(), props.input.clone(), props.focused),
     );
     *focused.borrow_mut() = props.focused;
-    html!{ <input ref={props.omnibox.clone()} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} onfocusin={&props.onfocusin} onfocusout={&props.onfocusout} oninput={&props.oninput}/> }
+    html!{ <input ref={props.omnibox.clone()} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} /> }
 }
 
 #[derive(Debug)]
@@ -212,6 +209,7 @@ pub struct PickedSuggestion {
     pub suggestion_idx: usize,
     pub nodes: Vec<RawNodeIndex>,
     pub node_idx: Option<usize>,
+    pub ml_idx: Option<usize>,
 }
 impl PickedSuggestion {
     pub fn new(suggestion_idx: usize, sr: &SuggestionResult, pick: &Callback<(String, Kind), Option<Vec<RawNodeIndex>>>) -> Option<Self> {
@@ -221,10 +219,20 @@ impl PickedSuggestion {
                 suggestion_idx,
                 nodes,
                 node_idx: None,
+                ml_idx: None,
             })
         })
     }
     pub fn default(sr: Option<&SuggestionResult>, pick: &Callback<(String, Kind), Option<Vec<RawNodeIndex>>>) -> Option<Self> {
         sr.and_then(|sr| sr.exact_match.and_then(|suggestion_idx| Self::new(suggestion_idx, sr, pick)))
+    }
+    pub fn default_simple() -> Option<Self> {
+        Some(Self {
+            name: "".to_string(),
+            suggestion_idx: 0,
+            nodes: vec![],
+            node_idx: None,
+            ml_idx: None,
+        })
     }
 }

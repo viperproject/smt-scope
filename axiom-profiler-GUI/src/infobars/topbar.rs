@@ -2,7 +2,7 @@ use material_yew::linear_progress::MatLinearProgress;
 use smt_log_parser::parsers::z3::graph::RawNodeIndex;
 use yew::{function_component, html, use_context, Callback, Html, NodeRef, Properties};
 
-use crate::{configuration::ConfigurationProvider, infobars::{Omnibox, SearchActionResult}, utils::lookup::Kind, LoadingState};
+use crate::{configuration::ConfigurationProvider, infobars::{ml_omnibox::MlOmnibox, Omnibox, SearchActionResult}, utils::lookup::Kind, LoadingState};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OmnibarMessage {
@@ -61,9 +61,18 @@ pub fn Topbar(props: &TopbarProps) -> Html {
         indeterminate = false;
     }
     let ml_viewer_mode = use_context::<std::rc::Rc<ConfigurationProvider> >().expect("no ctx found");
+    let omnibox = if ml_viewer_mode.config.persistent.ml_viewer_mode {
+        html! {
+            <MlOmnibox progress={props.progress.clone()} message={props.message.clone()} omnibox={props.omnibox.clone()} pick={props.pick.clone()} select={props.select.clone()} found_mls={props.found_mls} pick_nth_ml={props.pick_nth_ml.clone()} />
+        }
+    } else {
+        html! {
+            <Omnibox progress={props.progress.clone()} message={props.message.clone()} omnibox={props.omnibox.clone()} search={props.search.clone()} pick={props.pick.clone()} select={props.select.clone()} />
+        }
+    };
     html! {
     <>
-        <Omnibox progress={props.progress.clone()} message={props.message.clone()} omnibox={props.omnibox.clone()} search={props.search.clone()} pick={props.pick.clone()} select={props.select.clone()} found_mls={props.found_mls} pick_nth_ml={props.pick_nth_ml.clone()} />
+        {omnibox}
         <div {class}><MatLinearProgress {closed} {indeterminate} {progress} {buffer}/></div>
     </>
     }

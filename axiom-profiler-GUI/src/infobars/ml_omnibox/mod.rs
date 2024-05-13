@@ -12,7 +12,6 @@ use self::input::{MlOmniboxInput, PickedSuggestion, SuggestionResult, Highlighte
 
 pub mod input;
 
-const LAST_USED_DISPLAY: usize = 6;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct MlOmniboxProps {
@@ -27,25 +26,19 @@ pub enum Msg {
     KeyDownGlobal(KeyboardEvent),
     Select { left: bool },
     CommandsUpdated(Rc<Commands>),
-    ContextUpdated(Rc<ConfigurationProvider>),
 }
 
 pub struct MlOmnibox {
     focused: bool,
     command_mode: bool,
     input: Option<String>,
-    highlighted: usize,
     picked: Option<PickedSuggestion>,
-    actions: Option<SuggestionResult>,
     all_commands: StringLookupCommands,
-    commands: Option<CommandSearchResult>,
     scroll_container: NodeRef,
     scroll_into_view: NodeRef,
     _handle: ContextHandle<Rc<Commands>>,
     _callback_refs: [CallbackRef; 1],
     _commands_search: [CommandRef; 2],
-    is_in_ml_viewer_mode: bool,
-    _context_listener: ContextHandle<Rc<ConfigurationProvider>>,
 }
 
 impl MlOmnibox {
@@ -90,44 +83,18 @@ impl Component for MlOmnibox {
         };
         let prev_search = (commands.register)(prev_search);
         let _commands_search = [next_search, prev_search];
-        let (msg, context_listener) = ctx
-            .link()
-            .context(ctx.link().callback(Msg::ContextUpdated))
-            .expect("No message context provided");
-        log!(format!("Creating MlOmnibox component with is_in_viewre_mode = {}", msg.config.persistent.ml_viewer_mode));
-        log!(format!("{} potential matching loops have been found", ctx.props().found_mls));
         Self {
             focused: false,
             command_mode: false,
             input: None,
-            highlighted: 0,
             picked: PickedSuggestion::default_simple(ctx.props().found_mls),
-            actions: None,
             all_commands,
-            commands: None,
             scroll_container: NodeRef::default(),
             scroll_into_view: NodeRef::default(),
             _handle,
             _callback_refs,
             _commands_search,
-            is_in_ml_viewer_mode: msg.config.persistent.ml_viewer_mode,
-            _context_listener: context_listener,
         }
-    }
-    fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        if ctx.props() == old_props {
-            return false;
-        }
-        if ctx.props().progress != old_props.progress && !self.is_in_ml_viewer_mode {
-            self.focused = false;
-            self.command_mode = false;
-            self.input = None;
-            self.highlighted = 0;
-            self.picked = None;
-            self.actions = None;
-            self.commands = None;
-        }
-        true
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -157,16 +124,6 @@ impl Component for MlOmnibox {
             Msg::CommandsUpdated(commands) => {
                 self.all_commands = StringLookupCommands::with_commands(commands.commands.iter().cloned());
                 self.command_mode
-            }
-            Msg::ContextUpdated(msg) => {
-                false
-                // if self.is_in_ml_viewer_mode != msg.config.persistent.ml_viewer_mode {
-                //     self.is_in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
-                //     self.picked = PickedSuggestion::default_simple();
-                //     true
-                // } else {
-                //     false
-                // } 
             }
         }
     }
@@ -234,12 +191,10 @@ impl Component for MlOmnibox {
         let placeholder = 
             omnibox_info.unwrap_or_else(|| if self.command_mode {
                 AttrValue::from("Filter commands...")
-            } else if !self.is_in_ml_viewer_mode {
-                AttrValue::from("Search or type '>' for commands")
             } else {
                 match ctx.props().found_mls {
                     0 => AttrValue::from(format!("No matching loops found")),
-                    1 => AttrValue::from(format!("Found {} potential matching loop", ctx.props().found_mls)),
+                    1 => AttrValue::from(format!("Found 1 potential matching loop")),
                     n => AttrValue::from(format!("Found {} potential matching loops", n)),
                 }
             });
@@ -247,7 +202,6 @@ impl Component for MlOmnibox {
             ev.stop_propagation(); ev.cancel_bubble();
         });
         let test = if ctx.props().found_mls > 0 { self.picked.as_ref().map(|picked| {
-            log!("2: Creating test-VNode in view()");
             let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
             let left = ctx.link().callback(|_| Msg::Select { left: true });
             let right = ctx.link().callback(|_| Msg::Select { left: false });

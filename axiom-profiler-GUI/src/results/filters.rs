@@ -70,6 +70,16 @@ impl Filter {
             }
             // TODO: implement
             Filter::SelectNthMatchingLoop(n) => {
+                graph.raw.reset_visibility_to(true);
+                let nth_ml_endnode = graph.analysis.matching_loop_end_nodes.as_ref().unwrap().get(n).unwrap();
+                let nodes_of_nth_matching_loop = graph.raw.graph.node_indices().filter(|nx| graph.raw.graph[*nx].part_of_ml.contains(&n)).collect::<fxhash::FxHashSet<petgraph::graph::NodeIndex<smt_log_parser::parsers::z3::graph::raw::RawIx>>>();
+                let relevant_non_qi_nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nth_ml_endnode.0)
+                    .iter(graph.raw.rev())
+                    .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
+                    .filter(|nx| graph.raw.graph[*nx].inst_children.nodes.intersection(&nodes_of_nth_matching_loop).count() > 0 && graph.raw.graph[*nx].inst_parents.nodes.intersection(&nodes_of_nth_matching_loop).count() > 0)
+                    .map(RawNodeIndex)
+                    .collect();
+                graph.raw.set_visibility_many(false, relevant_non_qi_nodes.into_iter());
                 graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ml.contains(&n));
                 graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && !node.part_of_ml.contains(&n));
                 let dot_graph = graph.nth_matching_loop_graph(n);

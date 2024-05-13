@@ -226,13 +226,13 @@ impl PickedSuggestion {
     pub fn default(sr: Option<&SuggestionResult>, pick: &Callback<(String, Kind), Option<Vec<RawNodeIndex>>>) -> Option<Self> {
         sr.and_then(|sr| sr.exact_match.and_then(|suggestion_idx| Self::new(suggestion_idx, sr, pick)))
     }
-    pub fn default_simple() -> Option<Self> {
+    pub fn default_simple(ml_idx: usize) -> Option<Self> {
         Some(Self {
             name: "".to_string(),
             suggestion_idx: 0,
             nodes: vec![],
             node_idx: None,
-            ml_idx: None,
+            ml_idx: if ml_idx > 0 { Some(0) } else { None },
         })
     }
 }

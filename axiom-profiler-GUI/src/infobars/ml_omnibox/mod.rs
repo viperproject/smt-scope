@@ -19,8 +19,6 @@ pub struct MlOmniboxProps {
     pub progress: LoadingState,
     pub message: Option<OmnibarMessage>,
     pub omnibox: NodeRef,
-    pub pick: Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
-    pub select: Callback<RawNodeIndex>,
     pub found_mls: Option<usize>,
     pub pick_nth_ml: Callback<usize>,
 }
@@ -41,8 +39,6 @@ pub struct MlOmnibox {
     actions: Option<SuggestionResult>,
     all_commands: StringLookupCommands,
     commands: Option<CommandSearchResult>,
-    commands_used: usize,
-    last_used: Vec<(CommandId, usize)>,
     scroll_container: NodeRef,
     scroll_into_view: NodeRef,
     _handle: ContextHandle<Rc<Commands>>,
@@ -104,12 +100,10 @@ impl Component for MlOmnibox {
             command_mode: false,
             input: None,
             highlighted: 0,
-            picked: None,
+            picked: PickedSuggestion::default_simple(),
             actions: None,
             all_commands,
             commands: None,
-            commands_used: 0,
-            last_used: Vec::new(),
             scroll_container: NodeRef::default(),
             scroll_into_view: NodeRef::default(),
             _handle,
@@ -145,36 +139,18 @@ impl Component for MlOmnibox {
                 _ => false,
             },
             Msg::Select { left } => {
-                if !self.is_in_ml_viewer_mode {
-                    let Some(picked) = &mut self.picked else {
-                        return false;
-                    };
-                    if picked.nodes.is_empty() {
-                        return false;
+                let Some(picked) = &mut self.picked else {
+                    return false;
+                };
+                let number = picked.ml_idx.map(|i|
+                    if left {
+                        if i == 0 { ctx.props().found_mls.unwrap() - 1 } else { i - 1 } 
+                    } else {
+                        if i + 1 == ctx.props().found_mls.unwrap() { 0 } else { i + 1 }
                     }
-                    let number = picked.node_idx.map(|i|
-                        if left {
-                            if i == 0 { picked.nodes.len() - 1 } else { i - 1 } 
-                        } else {
-                            if i + 1 == picked.nodes.len() { 0 } else { i + 1 }
-                        }
-                    ).unwrap_or_default();
-                    picked.node_idx = Some(number);
-                    ctx.props().select.emit(picked.nodes[number]);
-                } else {
-                    let Some(picked) = &mut self.picked else {
-                        return false;
-                    };
-                    let number = picked.ml_idx.map(|i|
-                        if left {
-                            if i == 0 { ctx.props().found_mls.unwrap() - 1 } else { i - 1 } 
-                        } else {
-                            if i + 1 == ctx.props().found_mls.unwrap() { 0 } else { i + 1 }
-                        }
-                    ).unwrap_or_default();
-                    picked.ml_idx = Some(number);
-                    ctx.props().pick_nth_ml.emit(picked.ml_idx.unwrap());
-                }
+                ).unwrap_or_default();
+                picked.ml_idx = Some(number);
+                ctx.props().pick_nth_ml.emit(picked.ml_idx.unwrap());
                 true
             }
             Msg::CommandsUpdated(commands) => {
@@ -254,16 +230,11 @@ impl Component for MlOmnibox {
         } else {
             html! { {icon} }
         };
-        // let placeholder = omnibox_info.unwrap_or_else(|| if self.command_mode {
-        //     AttrValue::from("Filter commands...")
-        // } else {
-        //     AttrValue::from("Search or type '>' for commands")
-        // });
         let placeholder = 
             omnibox_info.unwrap_or_else(|| if self.command_mode {
-                AttrValue::from("2: Filter commands...")
+                AttrValue::from("Filter commands...")
             } else if !self.is_in_ml_viewer_mode {
-                AttrValue::from("2: Search or type '>' for commands")
+                AttrValue::from("Search or type '>' for commands")
             } else {
                 match ctx.props().found_mls.unwrap() {
                     0 => AttrValue::from(format!("No matching loops found")),
@@ -271,7 +242,6 @@ impl Component for MlOmnibox {
                     n => AttrValue::from(format!("Found {} potential matching loops", n)),
                 }
             });
-        let dropdown = self.command_mode || (self.focused && (self.input.is_some() || self.actions.is_some()));
         let onkeyup = Callback::from(|ev: KeyboardEvent| {
             ev.stop_propagation(); ev.cancel_bubble();
         });
@@ -306,7 +276,7 @@ impl Component for MlOmnibox {
         html! {
             <div class="omnibox" {onkeyup}>
                 <div class="icon">{icon}</div>
-                <MlOmniboxInput {omnibox} {placeholder} {omnibox_disabled} focused={self.focused} {input} />
+                <MlOmniboxInput {omnibox} {placeholder} omnibox_disabled={true} focused={self.focused} {input} />
                 <div class="stepthrough">{test}</div>
             </div>
         }
@@ -339,43 +309,6 @@ pub struct SearchActionResult {
     pub groups: Vec<SearchActionGroup>,
 }
 
-impl SearchActionResult {
-    pub fn new(query: String, matches: Matches<'_, FxHashMap<Kind, Entry>>, parser: &RcParser, visible: Option<&VisibleInstGraph>) -> Self {
-        let groups = matches.matches
-        .into_iter()
-        .enumerate()
-        .map(|(idx, (score, matched, values))| {
-            let actions = values.iter().map(|(kind, entry)| {
-                let visible = if let (Some(graph), Some(visible)) = (&parser.graph, visible) {
-                    entry.count_visible(&*graph.borrow(), visible)
-                } else {
-                    0
-                };
-                let hue = entry.qidx.map(|qidx| parser.colour_map.get_rbg_hue(Some(qidx)));
-                let arguments = entry.tidx.map(|tidx| (& *parser.parser.borrow())[tidx].child_ids.len());
-                SearchAction {
-                    count: entry.count(),
-                    visible,
-                    kind: *kind,
-                    hue,
-                    arguments,
-                }
-            }).collect();
-            SearchActionGroup {
-                score,
-                idx,
-                name: matched.to_string(),
-                actions,
-            }
-        }).collect();
-        SearchActionResult {
-            query,
-            indices: matches.indices,
-            groups,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct SearchActionGroup {
     pub score: u16,
@@ -402,39 +335,6 @@ pub struct CommandSearchResult {
     pub commands: Vec<CommandAction>,
 }
 
-impl CommandSearchResult {
-    fn new(query: &str, search: &StringLookupCommands, last_used: &[(CommandId, usize)]) -> Option<Self> {
-        let last_used = if last_used.len() < LAST_USED_DISPLAY {
-            last_used
-        } else {
-            &last_used[last_used.len() - LAST_USED_DISPLAY..]
-        };
-
-        let mut enabled_commands = 0;
-        let matches = search.get_fuzzy(query);
-        Some(matches).filter(|matches| !matches.matches.is_empty()).map(|matches| {
-            let mut commands = matches.matches.into_iter().enumerate().flat_map(|(idx, (score, _, commands))| {
-                let commands = match commands {
-                    CommandsWithName::Single(single) => vec![single.clone()],
-                    CommandsWithName::Multiple(many) => many.clone(),
-                };
-                enabled_commands += commands.iter().filter(|(_, c)| !c.disabled).count();
-                commands.into_iter().map(move |(id, command)| {
-                    let last_used = last_used.iter().rev().position(|(last_id, _)| last_id == &id);
-                    CommandAction { idx, score, id, command, last_used }
-                })
-            }).collect::<Vec<_>>();
-            commands.sort();
-            CommandSearchResult {
-                query: query.to_string(),
-                indices: matches.indices,
-                enabled_commands,
-                commands,
-            }
-        })
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommandAction {
     pub idx: usize,
@@ -458,27 +358,3 @@ impl Ord for CommandAction {
     }
 }
 
-impl MlOmnibox {
-    fn wrapper(&self, inner: Option<impl Iterator<Item = Html>>) -> Html {
-        inner.map(|inner| html! {
-                <div class="omnibox-dropdown"><div ref={&self.scroll_container} class="omnibox-options-container">{for inner}</div>
-                    <div class="omnibox-dropdown-footer">
-                        <section><span class="dd-keycap"><i class="icon">{"arrow_upward"}</i></span>{" "}<span class="dd-keycap"><i class="icon">{"arrow_downward"}</i></span>{" to navigate"}</section>
-                        <section><span class="dd-keycap"><i class="icon">{"keyboard_return"}</i></span>{" to "}{if self.command_mode { "use" } else {"select"}}</section>
-                        <section><span class="dd-keycap">{"esc"}</span>{" to dismiss"}</section>
-                    </div>
-                </div>
-            })
-            .unwrap_or_else(||{
-                let is_filtering = self.actions.as_ref().map(|s| !s.query.is_empty()).unwrap_or_default();
-                html! {
-                        <div class="omnibox-empty-state">
-                            <i class="material-icons">{"search"}</i>
-                            <div class="omnibox-empty-state-title">{"No "}{if is_filtering { "matching " } else { "" }}{if self.command_mode { "commands" } else { "results" }}{"..."}</div>
-                            <div class="omnibox-empty-state-content"></div>
-                        </div>
-                    }
-                }
-            )
-    }
-}

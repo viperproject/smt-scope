@@ -307,6 +307,7 @@ impl Component for FileDataComponent {
                 // remove any old parser in the configuration
                 let cfg = ctx.link().get_configuration().unwrap();
                 cfg.update_parser(|p| p.take().is_some());
+                cfg.reset_ml_viewer_mode();
                 // hide the flags page if shown
                 self.flags_visible.borrow().emit(Some(false));
 

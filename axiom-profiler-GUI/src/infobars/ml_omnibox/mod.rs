@@ -158,7 +158,6 @@ impl Component for MlOmnibox {
                 self.command_mode
             }
             Msg::ContextUpdated(msg) => {
-                log!(format!("Setting self.is_in_ml_viewer_mode to {}", msg.config.persistent.ml_viewer_mode));
                 if self.is_in_ml_viewer_mode != msg.config.persistent.ml_viewer_mode {
                     self.is_in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
                     self.picked = PickedSuggestion::default_simple();

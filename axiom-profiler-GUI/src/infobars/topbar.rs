@@ -61,11 +61,9 @@ pub fn Topbar(props: &TopbarProps) -> Html {
         indeterminate = false;
     }
     let ml_viewer_mode = use_context::<std::rc::Rc<ConfigurationProvider> >().expect("no ctx found");
-    let in_ml_viewer_mode = ml_viewer_mode.config.persistent.ml_viewer_mode;
     html! {
     <>
         <Omnibox progress={props.progress.clone()} message={props.message.clone()} omnibox={props.omnibox.clone()} search={props.search.clone()} pick={props.pick.clone()} select={props.select.clone()} found_mls={props.found_mls} pick_nth_ml={props.pick_nth_ml.clone()} />
-        // <Omnibox progress={props.progress.clone()} message={props.message.clone()} omnibox={props.omnibox.clone()} search={props.search.clone()} pick={props.pick.clone()} select={props.select.clone()} />
         <div {class}><MatLinearProgress {closed} {indeterminate} {progress} {buffer}/></div>
     </>
     }

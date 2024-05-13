@@ -128,7 +128,7 @@ impl Component for Omnibox {
         if ctx.props() == old_props {
             return false;
         }
-        if ctx.props().progress != old_props.progress {
+        if ctx.props().progress != old_props.progress && !self.is_in_ml_viewer_mode {
             self.focused = false;
             self.command_mode = false;
             self.input = None;
@@ -307,14 +307,19 @@ impl Component for Omnibox {
             }
             Msg::ContextUpdated(msg) => {
                 log!(format!("Setting self.is_in_ml_viewer_mode to {}", msg.config.persistent.ml_viewer_mode));
-                self.is_in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
-                self.picked = PickedSuggestion::default_simple();
-                true
+                if self.is_in_ml_viewer_mode != msg.config.persistent.ml_viewer_mode {
+                    self.is_in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
+                    self.picked = PickedSuggestion::default_simple();
+                    true
+                } else {
+                    false
+                } 
             }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        log!("In view()");
         let mut omnibox_info = ctx.props().message.as_ref().map(|m| AttrValue::from(m.message.clone()));
         let mut icon = ctx.props().message.as_ref().is_some_and(|m| m.is_error).then(|| "error");
         let mut callback = None;
@@ -457,6 +462,7 @@ impl Component for Omnibox {
             ev.stop_propagation(); ev.cancel_bubble();
         });
         let test = if !self.is_in_ml_viewer_mode { self.picked.as_ref().map(|picked| {
+            log!("1: Creating test-VNode in view()");
                 let node_idx = picked.node_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
                 let left = ctx.link().callback(|_| Msg::Select { left: true });
                 let right = ctx.link().callback(|_| Msg::Select { left: false });
@@ -468,6 +474,7 @@ impl Component for Omnibox {
                 </>
                 }
         }) } else { self.picked.as_ref().map(|picked| {
+            log!("2: Creating test-VNode in view()");
             let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
             let left = ctx.link().callback(|_| Msg::Select { left: true });
             let right = ctx.link().callback(|_| Msg::Select { left: false });

@@ -246,19 +246,7 @@ impl Component for MlOmnibox {
         let onkeyup = Callback::from(|ev: KeyboardEvent| {
             ev.stop_propagation(); ev.cancel_bubble();
         });
-        let test = if !self.is_in_ml_viewer_mode { self.picked.as_ref().map(|picked| {
-            log!("1: Creating test-VNode in view()");
-                let node_idx = picked.node_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
-                let left = ctx.link().callback(|_| Msg::Select { left: true });
-                let right = ctx.link().callback(|_| Msg::Select { left: false });
-                html! {
-                <>
-                    <div class="current">{node_idx}{" / "}{picked.nodes.len()}</div>
-                    <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
-                    <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
-                </>
-                }
-        }) } else if ctx.props().found_mls > 0 { self.picked.as_ref().map(|picked| {
+        let test = if ctx.props().found_mls > 0 { self.picked.as_ref().map(|picked| {
             log!("2: Creating test-VNode in view()");
             let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
             let left = ctx.link().callback(|_| Msg::Select { left: true });

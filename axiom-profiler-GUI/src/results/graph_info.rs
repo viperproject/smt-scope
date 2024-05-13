@@ -1,4 +1,6 @@
-use crate::{configuration::ConfigurationContext, utils::split_div::SplitDiv};
+use std::rc::Rc;
+
+use crate::{configuration::{ConfigurationContext, ConfigurationProvider}, utils::split_div::SplitDiv};
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
@@ -16,6 +18,8 @@ pub struct GraphInfo {
     generalized_terms: Vec<String>,
     graph_container: WeakComponentLink<graph_container::GraphContainer>,
     displayed_matching_loop_graph: Option<AttrValue>,
+    in_ml_viewer_mode: bool,
+    _context_listener: ContextHandle<Rc<ConfigurationProvider>>,
 }
 
 fn toggle_selected<T: Copy + Eq + std::hash::Hash>(map: &mut IndexMap<T, bool>, entry: T) -> Vec<T> {
@@ -53,6 +57,7 @@ pub enum Msg {
     SelectAll,
     ShowGeneralizedTerms(Vec<String>),
     ShowMatchingLoopGraph(AttrValue),
+    ContextUpdated(Rc<ConfigurationProvider>),
 }
 
 #[derive(Properties, PartialEq)]
@@ -79,12 +84,18 @@ impl Component for GraphInfo {
             .weak_link
             .borrow_mut()
             .replace(ctx.link().clone());
+        let (msg, context_listener) = ctx
+            .link()
+            .context(ctx.link().callback(Msg::ContextUpdated))
+            .expect("No message context provided");
         Self {
             selected_nodes: ctx.props().selected_nodes.iter().copied().map(|n| (n, false)).collect(),
             selected_edges: ctx.props().selected_edges.iter().copied().map(|e| (e, false)).collect(),
             generalized_terms: Vec::new(),
             graph_container: WeakComponentLink::default(),
             displayed_matching_loop_graph: None,
+            in_ml_viewer_mode: msg.config.persistent.ml_viewer_mode,
+            _context_listener: context_listener,
         }
     }
 
@@ -163,6 +174,14 @@ impl Component for GraphInfo {
                 graph_container.send_message(msg);
                 false
             }
+            Msg::ContextUpdated(msg) => {
+                if self.in_ml_viewer_mode != msg.config.persistent.ml_viewer_mode {
+                    self.in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
+                    true
+                } else {
+                    false
+                } 
+            }
         }
     }
 
@@ -184,7 +203,7 @@ impl Component for GraphInfo {
             <li>{term}</li>
         });
         let outdated = ctx.props().outdated.then(|| html! {<div class="outdated"></div>});
-        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty();
+        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty() && !self.in_ml_viewer_mode;
         let left_bound = if hide_right_bar { 1.0 } else { 0.3 };
         html! {
             <>

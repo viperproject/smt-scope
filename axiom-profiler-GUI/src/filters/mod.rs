@@ -233,43 +233,6 @@ impl Component for FiltersState {
         let will_delete = ctx.link().callback(Msg::WillDelete);
         // TODO: re-add finding matching loops
         let found_mls = ctx.props().file.parser.found_mls;
-        // let found_mls = None;
-        let matching_loops = found_mls.is_none().then(|| {
-            let search_matching_loops = ctx.props().search_matching_loops.clone();
-            let show_first = ctx.link().callback(|edit| Msg::AddFilter(edit, Filter::SelectNthMatchingLoop(0)));
-            let matching_loops = Callback::from(move |e: MouseEvent| {
-                e.prevent_default();
-                search_matching_loops.emit(());
-                show_first.emit(false);
-            });
-            html! {
-                <li><a draggable="false" href="#" onclick={matching_loops}><div class="material-icons"><MatIcon>{"youtube_searched_for"}</MatIcon></div>{"Search matching loops"}</a></li>
-            }
-        });
-        let matching_loop_clicker = found_mls.is_some().then(|| {
-            if found_mls.unwrap() > 0 {
-                let label = match found_mls {
-                    Some(1) => format!("Found 1 potential matching loop"),
-                    Some(n) => format!("Found {} potential matching loops", n),
-                    None => unreachable!(),
-                };
-                html! {
-                    <li>
-                        <a>
-                        <Indexer {label} index_consumer={ctx.link().callback(|n| Msg::AddFilter(false, Filter::SelectNthMatchingLoop(n)))} min={1} max={found_mls.unwrap()} />
-                        </a>
-                    </li>
-                }
-            } else {
-                html! {
-                    <li>
-                        <a>
-                        <p>{"No matching loops found"}</p>
-                        </a>
-                    </li>
-                }
-            }
-        });
         let toggle_ml_viewer_mode = ctx.link().callback(|_| Msg::ToggleMlViewerMode); 
         let ml_viewer_mode = if ctx.link().get_configuration().unwrap().config.persistent.ml_viewer_mode {
             html! {
@@ -280,8 +243,6 @@ impl Component for FiltersState {
                 <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"loop"}</MatIcon></div>{"View matching loops"}</a></li>
             }
         }; 
-        // let found_mls = None;
-        // let matching_loops = "";
         let reset = ctx.link().callback(|e: MouseEvent| {
             e.prevent_default();
             Msg::ResetOperations
@@ -349,8 +310,6 @@ impl Component for FiltersState {
             <SidebarSectionHeader header_text="Current Trace" collapsed_text="Actions on the current trace"><ul>
                 <li><a draggable="false" class="trace-file-name">{details}</a></li>
                 <AddFilterSidebar new_filter={new_filter} found_mls={found_mls} nodes={Vec::new()} general_filters={true}/>
-                {matching_loops}
-                {matching_loop_clicker}
                 {ml_viewer_mode}
                 <li><a draggable="false" href="#" onclick={reset}><div class="material-icons"><MatIcon>{"restore"}</MatIcon></div>{"Reset operations"}</a></li>
                 {undo}

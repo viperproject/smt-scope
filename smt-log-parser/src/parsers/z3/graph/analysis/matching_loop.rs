@@ -18,19 +18,6 @@ struct MlEquality {
 
 impl MlEquality {
     pub fn merge_with(&mut self, from: TermIdx, to: TermIdx, creators: Vec<(QuantIdx, TermIdx)>, parser: &mut Z3Parser) {
-        // let ctxt = DisplayCtxt {
-        //     parser: &parser,
-        //     config: DisplayConfiguration {
-        //         display_term_ids: false,
-        //         display_quantifier_name: false,
-        //         use_mathematical_symbols: true,
-        //         html: true,
-        //         // Set manually elsewhere
-        //         enode_char_limit: 0,
-        //         limit_enode_chars: false,
-        //     },
-        // };
-        // log!(format!("Generalising {} = {} with {} = {}", self.from.with(&ctxt), self.to.with(&ctxt), from.with(&ctxt), to.with(&ctxt)));
         if let Some(term) = parser.terms.generalise(&mut parser.strings, vec![self.from, from]) {
             self.from = term;
         }
@@ -71,7 +58,6 @@ impl MlMatchedTerm {
                 limit_enode_chars: false,
                 },
         };
-        // log!(format!("Generalising {} with {}", self.matched.with(&ctxt), matched.with(&ctxt)));
         if let Some(term) = parser.terms.generalise(&mut parser.strings, vec![self.matched, matched]) {
             self.matched = term;
         }
@@ -86,10 +72,10 @@ struct AbstractInst {
     // abstract instantiation defined by quantifier and trigger
     id: (QuantIdx, TermIdx),
     // stores the generalised blame terms and which (generalised) instantiation created it (indirectly)  
-    // the first element in each tuple is a vector that will be mapped to a generalized term
+    // the first element in each tuple is a vector that will be mapped to a generalised term
     matched_terms: FxHashMap<usize, MlMatchedTerm>,
     // stores the generalised equalities and which (generalised) instantiation created it (indirectly)  
-    // the first element in each tuple is a vector that will be mapped to a generalized term
+    // the first element in each tuple is a vector that will be mapped to a generalised term
     equalities: FxHashMap<usize, MlEquality>,
 }
 
@@ -227,7 +213,6 @@ impl InstGraph {
     pub fn nth_matching_loop_graph(&mut self, n: usize) -> petgraph::Graph<(String, MLGraphNode), ()> {
         if let Some(ml_graph) = self.analysis.matching_loop_graphs.get(n) {
             ml_graph.deref().clone()
-            // Graph(ml_graph.0.clone())
         } else {
             petgraph::Graph::default().clone()
         }
@@ -249,30 +234,14 @@ impl InstGraph {
     }
 
     pub fn compute_nth_matching_loop_graph(&mut self, n: usize, parser: &mut Z3Parser) -> Graph<(String, MLGraphNode), ()> {
-        // filter out graph to only view the nodes that belong to nth matching loop
-        self.raw.reset_visibility_to(true);
-        // make the nodes of the n-th matching loop visible
         let nodes_of_nth_matching_loop = self.raw.graph.node_indices().filter(|nx| self.raw.graph[*nx].part_of_ml.contains(&n)).collect::<FxHashSet<NodeIndex<RawIx>>>();
-        self.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ml.contains(&n));
-        // identify the blame terms of the nodes of the n-th matching loop that have both an ancestor and a descendant that is part of the n-th matching loop and make them visible
-        let relevant_blame_terms = nodes_of_nth_matching_loop.iter().flat_map(|nx| 
-            self.raw.graph
-                .neighbors_directed(*nx, Incoming)
-                .filter(|nx| self.raw.graph[*nx].kind().inst().is_none())
-                .filter(|nx| self.raw.graph[*nx].inst_children.nodes.intersection(&nodes_of_nth_matching_loop).count() > 0 && self.raw.graph[*nx].inst_parents.nodes.intersection(&nodes_of_nth_matching_loop).count() > 0)
-                .map(|nx| RawNodeIndex(nx))
-        ).collect::<Vec<RawNodeIndex>>();
-        self.raw.set_visibility_many(false, relevant_blame_terms.iter().cloned());
-        let potential_ml = self.to_visible();
-        // generalise the blame terms and equalities
-        // let mut equality_term_buckets: FxHashMap<((QuantIdx, TermIdx), (QuantIdx, TermIdx)), Vec<(TermIdx, TermIdx)>> = HashMap::default();
-        // let mut enode_term_buckets: FxHashMap<((QuantIdx, TermIdx), (QuantIdx, TermIdx)), Vec<TermIdx>> = HashMap::default();
+        // here we "fold" a potential matching loop into an abstract instantiation graph that represents the repeating pattern of the potential matching loop  
+        // an abstract instantiation is defined by the quantifier and the pattern used for the pattern match
         let mut abstract_insts: FxHashMap<(QuantIdx, TermIdx), AbstractInst> = HashMap::default();
-        for nx in potential_ml.graph.node_indices() {
-            let idx = potential_ml.graph[nx].idx;
-            let node_kind = self.raw.graph[idx.0].kind();
+        // for each abstract instantiation, we identify the matched terms and the blamed equalities
+        for nx in nodes_of_nth_matching_loop {
+            let node_kind = self.raw.graph[nx].kind();
             if let NodeKind::Instantiation(inst) = node_kind {
-                // log!(format!("Processing i{}", inst));
                 let match_ = &parser[parser[*inst].match_];
                 let pattern = match_.kind.pattern().unwrap();
                 // here we have pairs (trigger, matched) where 
@@ -281,81 +250,50 @@ impl InstGraph {
                 let trigger_matches = parser[pattern].child_ids.iter().zip(match_.trigger_matches());
                 let (matched_terms, equalities): (Vec<ENodeIdx>, Vec<Vec<EqTransIdx>>) = trigger_matches.map(|(_, matched)| (matched.enode(), matched.equalities().collect())).unzip();
                 let quant = match_.kind.quant_idx().unwrap();
-                // if let Some(abstract_inst) = abstract_insts.get_mut(&(quant, pattern)) {
-                    for (n, matched_term) in matched_terms.iter().enumerate() {
-                        // let parent_enode_owners: Vec<_> = potential_ml.graph.neighbors_directed(nx, Incoming).filter_map(|idx| {
-                        //     let idx = potential_ml.graph[idx].idx;
-                        //     let node_kind = self.raw.graph[idx.0].kind();  
-                        //     if let Some(enode) = node_kind.enode() {
-                        //         Some(parser[enode].owner)
-                        //     } else {
-                        //         None
-                        //     }
-                        // }).collect();
-                        let creator = parser[*matched_term].created_by;
-                        if let Some(inst) = creator {
-                            let match_ = &parser[parser[inst].match_];
-                            let creator_pattern = match_.kind.pattern().unwrap();
-                            let creator_quant = match_.kind.quant_idx().unwrap();
-                            let blame_term = parser[*matched_term].owner;
-                            // if parent_enode_owners.contains(&blame_term) {
-                                if let Some(abstract_inst) = abstract_insts.get_mut(&(quant, pattern)) {
-                                    abstract_inst.merge_nth_blame_term(n, blame_term, creator_quant, creator_pattern, parser)
-                                } else {
-                                    abstract_insts.insert((quant, pattern), AbstractInst::from((quant, pattern)));
-                                    abstract_insts.get_mut(&(quant, pattern)).unwrap().merge_nth_blame_term(n, blame_term, creator_quant, creator_pattern, parser)
-                                }
-                            // }
+                for (n, matched_term) in matched_terms.iter().enumerate() {
+                    let creator = parser[*matched_term].created_by;
+                    if let Some(inst) = creator {
+                        let match_ = &parser[parser[inst].match_];
+                        let creator_pattern = match_.kind.pattern().unwrap();
+                        let creator_quant = match_.kind.quant_idx().unwrap();
+                        let blame_term = parser[*matched_term].owner;
+                        if let Some(abstract_inst) = abstract_insts.get_mut(&(quant, pattern)) {
+                            abstract_inst.merge_nth_blame_term(n, blame_term, creator_quant, creator_pattern, parser)
+                        } else {
+                            abstract_insts.insert((quant, pattern), AbstractInst::from((quant, pattern)));
+                            abstract_insts.get_mut(&(quant, pattern)).unwrap().merge_nth_blame_term(n, blame_term, creator_quant, creator_pattern, parser)
                         }
                     }
-                    for (n, equality) in equalities.iter().enumerate() {
-                        for (i, eq) in equality.iter().enumerate() {
-                            // should first check that eq = (from, to) occurs as an equality in the ML-graph, so need to 
-                            // collect all incoming equalities of the current node
-                            let creator_insts: Vec<(QuantIdx, TermIdx)> = parser[*eq].get_creator_insts(parser).iter().filter_map(|iidx| {
-                                if let Some(inst) = iidx {
-                                    let match_ = &parser[parser[*inst].match_];
-                                    let creator_pattern = match_.kind.pattern().unwrap();
-                                    let creator_quant = match_.kind.quant_idx().unwrap();
-                                    Some((creator_quant, creator_pattern))
-                                } else {
-                                    None
-                                }
-                            }).collect();
+                }
+                for (n, equality) in equalities.iter().enumerate() {
+                    for (i, eq) in equality.iter().enumerate() {
+                        let creator_insts: Vec<(QuantIdx, TermIdx)> = parser[*eq].get_creator_insts(parser).iter().filter_map(|iidx| {
+                            if let Some(inst) = iidx {
+                                let match_ = &parser[parser[*inst].match_];
+                                let creator_pattern = match_.kind.pattern().unwrap();
+                                let creator_quant = match_.kind.quant_idx().unwrap();
+                                Some((creator_quant, creator_pattern))
+                            } else {
+                                None
+                            }
+                        }).collect();
+                        if creator_insts.len() > 0 {
                             let from = parser[*eq].from;
                             let from_term = parser[from].owner;
                             let to = parser[*eq].to;
                             let to_term = parser[to].owner;
-                            // let ctxt = DisplayCtxt {
-                            //     parser: &parser,
-                            //     config: DisplayConfiguration {
-                            //         display_term_ids: false,
-                            //         display_quantifier_name: false,
-                            //         use_mathematical_symbols: true,
-                            //         html: true,
-                            //         // Set manually elsewhere
-                            //         enode_char_limit: 0,
-                            //         limit_enode_chars: false,
-                            //         },
-                            // };
-                            // if from_term != to_term {
-                                if let Some(abstract_inst) = abstract_insts.get_mut(&(quant, pattern)) {
-                                    // log!(format!("1: Merging {} = {} into QI {}", from_term.with(&ctxt), to_term.with(&ctxt), parser[quant].kind.with(&ctxt)));
-                                    abstract_inst.merge_nth_equalities(n+i, from_term, to_term, creator_insts, parser)
-                                } else {
-                                    // log!(format!("2: Merging {} = {} into QI {}", from_term.with(&ctxt), to_term.with(&ctxt), parser[quant].kind.with(&ctxt)));
-                                    abstract_insts.insert((quant, pattern), AbstractInst::from((quant, pattern)));
-                                    abstract_insts.get_mut(&(quant, pattern)).unwrap().merge_nth_equalities(n, from_term, to_term, creator_insts, parser)
-                                }
-                            // }
+                            if let Some(abstract_inst) = abstract_insts.get_mut(&(quant, pattern)) {
+                                abstract_inst.merge_nth_equalities(n+i, from_term, to_term, creator_insts, parser)
+                            } else {
+                                abstract_insts.insert((quant, pattern), AbstractInst::from((quant, pattern)));
+                                abstract_insts.get_mut(&(quant, pattern)).unwrap().merge_nth_equalities(n+i, from_term, to_term, creator_insts, parser)
+                            }
                         }
+
                     }
-                // }
+                }
             }
         } 
-        for abstract_ints in abstract_insts.values() {
-            log!(format!("{}", abstract_ints.to_string(false, parser)))
-        }
         let mut ml_graph: Graph<(String, MLGraphNode), ()> = Graph::with_capacity(0, 0);
         let mut nx_of_gen_term: FxHashMap<String, NodeIndex> = HashMap::default();
         let mut nx_of_abstract_inst: FxHashMap<(QuantIdx, TermIdx), NodeIndex> = HashMap::default();
@@ -380,7 +318,7 @@ impl InstGraph {
                         // Set manually elsewhere
                         enode_char_limit: 0,
                         limit_enode_chars: false,
-                        },
+                    },
                 };
                 let pretty_matched_term = format!("{}", matched_term.matched.with(&ctxt));
                 let matched_term_nx = if let Some(nx) = nx_of_gen_term.get(&pretty_matched_term) {
@@ -406,7 +344,6 @@ impl InstGraph {
                         nx_of_abstract_inst.insert((creator_abstract_inst.id.0, creator_abstract_inst.id.1), nx);
                         nx
                     }
-
                 };
                 ml_graph.update_edge(matched_term_creator_nx, matched_term_nx, ());
             }

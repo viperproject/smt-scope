@@ -129,7 +129,6 @@ impl Component for MlOmnibox {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        log!("In view()");
         let mut omnibox_info = ctx.props().message.as_ref().map(|m| AttrValue::from(m.message.clone()));
         let mut icon = ctx.props().message.as_ref().is_some_and(|m| m.is_error).then(|| "error");
         let mut callback = None;

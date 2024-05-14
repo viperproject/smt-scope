@@ -203,7 +203,7 @@ impl Component for GraphInfo {
             <li>{term}</li>
         });
         let outdated = ctx.props().outdated.then(|| html! {<div class="outdated"></div>});
-        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty() && !self.in_ml_viewer_mode;
+        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty() && !(self.in_ml_viewer_mode && self.displayed_matching_loop_graph.is_some());
         let left_bound = if hide_right_bar { 1.0 } else { 0.3 };
         html! {
             <>

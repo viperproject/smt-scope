@@ -90,6 +90,8 @@ impl PersistentConfiguration {
             // Set manually elsewhere
             enode_char_limit: 0,
             limit_enode_chars: false,
+            ast_depth_limit: 0,
+            limit_ast_depth: false,
         };
         Self {
             display,

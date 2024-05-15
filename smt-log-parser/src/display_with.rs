@@ -89,6 +89,8 @@ pub struct DisplayConfiguration {
     // `enode_char_limit` will be truncated.
     pub enode_char_limit: usize,
     pub limit_enode_chars: bool,
+    pub ast_depth_limit: usize,
+    pub limit_ast_depth: bool,
 }
 
 mod private {
@@ -100,6 +102,7 @@ mod private {
         children: &'a [TermIdx],
         quant: Vec<&'a Quantifier>,
         bind_power: u8,
+        ast_depth: usize,
     }
     impl<'a> DisplayData<'a> {
         pub(super) fn new(term: TermIdx) -> Self {
@@ -108,6 +111,7 @@ mod private {
                 children: &[],
                 quant: Vec::new(),
                 bind_power: super::NO_BIND,
+                ast_depth: 0,
             }
         }
         pub(super) fn with_children<T>(
@@ -166,8 +170,18 @@ mod private {
                 })
                 .copied()
         }
+        pub(super) fn inc_ast_depth(&mut self) {
+            self.ast_depth += 1;
+        }
+        pub(super) fn dec_ast_depth(&mut self) {
+            self.ast_depth -= 1;
+        }
+        pub(super) fn get_ast_depth(&mut self) -> usize {
+            self.ast_depth
+        }
     }
 }
+use gloo_console::log;
 use private::*;
 // lower inside higher needs brackets around the lower
 const NO_BIND: u8 = 0;
@@ -397,7 +411,15 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind 
 }
 
 fn display_child<'a, 'b, 'c, 'd>(f: &mut fmt::Formatter<'_>, child: TermIdx, ctxt: &'a DisplayCtxt<'b>, data: &'c mut DisplayData<'b>) -> fmt::Result {
-    data.with_term(child, |data| write!(f, "{}", ctxt.parser[child].with_data(ctxt, data)))
+    data.inc_ast_depth();
+    let res = if ctxt.config.limit_ast_depth && data.get_ast_depth() >= ctxt.config.ast_depth_limit {
+    // let res = if data.get_ast_depth() < 1 {
+        data.with_term(child, |data| write!(f, "..."))
+    } else {
+        data.with_term(child, |data| write!(f, "{}", ctxt.parser[child].with_data(ctxt, data)))
+    };
+    data.dec_ast_depth();
+    res
 }
 
 enum ProofOrAppKind<'a> {

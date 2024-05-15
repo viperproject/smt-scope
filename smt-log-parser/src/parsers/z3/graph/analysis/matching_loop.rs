@@ -9,6 +9,7 @@ use super::RawNodeIndex;
 // use matching_loop_graph::*;
 
 pub const MIN_MATCHING_LOOP_LENGTH: usize = 3;
+const AST_DEPTH_LIMIT: usize = 5;
 
 struct MlEquality {
     from: TermIdx,
@@ -56,6 +57,8 @@ impl MlMatchedTerm {
                 // Set manually elsewhere
                 enode_char_limit: 0,
                 limit_enode_chars: false,
+                ast_depth_limit: AST_DEPTH_LIMIT,
+                limit_ast_depth: false,
                 },
         };
         if let Some(term) = parser.terms.generalise(&mut parser.strings, vec![self.matched, matched]) {
@@ -110,6 +113,8 @@ impl AbstractInst {
                 // Set manually elsewhere
                 enode_char_limit: 0,
                 limit_enode_chars: false,
+                ast_depth_limit: AST_DEPTH_LIMIT,
+                limit_ast_depth: false,
                 },
         };
         let matched_terms = self.matched_terms.values().map(|mterm| format!("{} created by {}", mterm.matched.with(&ctxt), parser[mterm.creator.0].kind.with(&ctxt))).collect::<Vec<String>>().join(", ");
@@ -318,9 +323,13 @@ impl InstGraph {
                         // Set manually elsewhere
                         enode_char_limit: 0,
                         limit_enode_chars: false,
+                        ast_depth_limit: AST_DEPTH_LIMIT,
+                        limit_ast_depth: true,
                     },
                 };
+                log!("Calling with on blamed term...");
                 let pretty_matched_term = format!("{}", matched_term.matched.with(&ctxt));
+                log!(format!("{}", pretty_matched_term));
                 let matched_term_nx = if let Some(nx) = nx_of_gen_term.get(&pretty_matched_term) {
                     *nx
                 } else {
@@ -358,6 +367,8 @@ impl InstGraph {
                         // Set manually elsewhere
                         enode_char_limit: 0,
                         limit_enode_chars: false,
+                        ast_depth_limit: AST_DEPTH_LIMIT,
+                        limit_ast_depth: true,
                         },
                 };
                 if eq.from != eq.to {

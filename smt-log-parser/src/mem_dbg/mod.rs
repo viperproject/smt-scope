@@ -82,6 +82,9 @@ macro_rules! derive_non_max {
                     None => None,
                 }
             }
+            pub const unsafe fn new_unchecked(value: $prim) -> Self {
+                Self(nonmax::$name::new_unchecked(value))
+            }
             pub const fn get(self) -> $prim {
                 self.0.get()
             }

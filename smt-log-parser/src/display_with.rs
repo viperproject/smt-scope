@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt};
 
-use crate::{items::*, parsers::z3::z3parser::Z3Parser, StringTable};
+use crate::{items::*, parsers::z3::z3parser::Z3Parser, StringTable, NonMaxU32};
 
 ////////////
 // General
@@ -85,15 +85,14 @@ pub struct DisplayConfiguration {
     /// Use tags for formatting
     pub html: bool,
 
-    // If `limit_enode_chars` is true, then any term longer than
-    // `enode_char_limit` will be truncated.
-    pub enode_char_limit: usize,
-    pub limit_enode_chars: bool,
-    pub ast_depth_limit: usize,
-    pub limit_ast_depth: bool,
+    // If `enode_char_limit` is Some, then any term longer than
+    // the limit will be truncated.
+    pub enode_char_limit: Option<NonMaxU32>,
+    pub ast_depth_limit: Option<NonMaxU32>,
 }
 
 mod private {
+
     use super::*;
 
     #[derive(Debug, Clone)]
@@ -102,7 +101,7 @@ mod private {
         children: &'a [TermIdx],
         quant: Vec<&'a Quantifier>,
         bind_power: u8,
-        ast_depth: usize,
+        ast_depth: u32,
     }
     impl<'a> DisplayData<'a> {
         pub(super) fn new(term: TermIdx) -> Self {
@@ -170,8 +169,8 @@ mod private {
                 })
                 .copied()
         }
-        pub(super) fn incr_ast_depth_with_limit<T>(&mut self, limit: usize, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
-            if self.ast_depth >= limit {
+        pub(super) fn incr_ast_depth_with_limit<T>(&mut self, limit: Option<NonMaxU32>, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
+            if limit.is_some_and(|limit| self.ast_depth >= limit.get()) {
                 return None;
             }
             self.ast_depth += 1;
@@ -181,6 +180,7 @@ mod private {
         }
     }
 }
+
 use private::*;
 // lower inside higher needs brackets around the lower
 const NO_BIND: u8 = 0;
@@ -212,12 +212,12 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for ENodeIdx {
         ctxt: &DisplayCtxt<'_>,
         data: &mut (),
     ) -> fmt::Result {
-        if ctxt.config.limit_enode_chars {
+        if let Some(enode_char_limit) = ctxt.config.enode_char_limit {
             let owner = ctxt.parser[self].owner.with_data(ctxt, data).to_string();
-            if owner.len() <= ctxt.config.enode_char_limit {
+            if owner.len() <= enode_char_limit.get() as usize {
                 write!(f, "{owner}")
             } else {
-                write!(f, "{}...", &owner[..ctxt.config.enode_char_limit - 3])
+                write!(f, "{}...", &owner[..enode_char_limit.get() as usize - 3])
             }
         } else {
             ctxt.parser[self].owner.fmt_with(f, ctxt, data)

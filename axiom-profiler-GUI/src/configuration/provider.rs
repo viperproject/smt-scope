@@ -88,10 +88,8 @@ impl PersistentConfiguration {
             use_mathematical_symbols: true,
             html: true,
             // Set manually elsewhere
-            enode_char_limit: 0,
-            limit_enode_chars: false,
-            ast_depth_limit: 0,
-            limit_ast_depth: false,
+            enode_char_limit: None,
+            ast_depth_limit: None,
         };
         Self {
             display,

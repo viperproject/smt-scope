@@ -4,12 +4,12 @@ use fxhash::{FxHashMap, FxHashSet};
 use gloo_console::log;
 use petgraph::{graph::NodeIndex, visit::Dfs, Direction::{Incoming, Outgoing}};
 
-use crate::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{ENodeIdx, EqTransIdx, InstIdx, MatchKind, QuantIdx, TermIdx}, parsers::z3::graph::{raw::{Node, NodeKind, RawIx}, visible::VisibleEdge, InstGraph}, Graph, Z3Parser};
+use crate::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{ENodeIdx, EqTransIdx, InstIdx, MatchKind, QuantIdx, TermIdx}, parsers::z3::graph::{raw::{Node, NodeKind, RawIx}, visible::VisibleEdge, InstGraph}, Graph, Z3Parser, NonMaxU32};
 use super::RawNodeIndex;
 // use matching_loop_graph::*;
 
 pub const MIN_MATCHING_LOOP_LENGTH: usize = 3;
-const AST_DEPTH_LIMIT: usize = 5;
+const AST_DEPTH_LIMIT: NonMaxU32 = unsafe { NonMaxU32::new_unchecked(5) };
 
 struct MlEquality {
     from: TermIdx,
@@ -54,12 +54,9 @@ impl MlMatchedTerm {
                 display_quantifier_name: false,
                 use_mathematical_symbols: true,
                 html: true,
-                // Set manually elsewhere
-                enode_char_limit: 0,
-                limit_enode_chars: false,
-                ast_depth_limit: AST_DEPTH_LIMIT,
-                limit_ast_depth: false,
-                },
+                enode_char_limit: None,
+                ast_depth_limit: None,
+            },
         };
         if let Some(term) = parser.terms.generalise(&mut parser.strings, vec![self.matched, matched]) {
             self.matched = term;
@@ -110,12 +107,9 @@ impl AbstractInst {
                 display_quantifier_name: false,
                 use_mathematical_symbols: true,
                 html: true,
-                // Set manually elsewhere
-                enode_char_limit: 0,
-                limit_enode_chars: false,
-                ast_depth_limit: AST_DEPTH_LIMIT,
-                limit_ast_depth: false,
-                },
+                enode_char_limit: None,
+                ast_depth_limit: None,
+            },
         };
         let matched_terms = self.matched_terms.values().map(|mterm| format!("{} created by {}", mterm.matched.with(&ctxt), parser[mterm.creator.0].kind.with(&ctxt))).collect::<Vec<String>>().join(", ");
         let equalities = self.equalities.values().map(|meq| format!("{} = {} created by {}", meq.from.with(&ctxt), meq.to.with(&ctxt), meq.creators.iter().map(|cr| format!("{}", parser[cr.0].kind.with(&ctxt))).collect::<Vec<String>>().join(", "))).collect::<Vec<String>>().join(", ");
@@ -320,11 +314,8 @@ impl InstGraph {
                         display_quantifier_name: false,
                         use_mathematical_symbols: true,
                         html: true,
-                        // Set manually elsewhere
-                        enode_char_limit: 0,
-                        limit_enode_chars: false,
-                        ast_depth_limit: AST_DEPTH_LIMIT,
-                        limit_ast_depth: true,
+                        enode_char_limit: None,
+                        ast_depth_limit: Some(AST_DEPTH_LIMIT),
                     },
                 };
                 log!("Calling with on blamed term...");
@@ -364,12 +355,9 @@ impl InstGraph {
                         display_quantifier_name: false,
                         use_mathematical_symbols: true,
                         html: true,
-                        // Set manually elsewhere
-                        enode_char_limit: 0,
-                        limit_enode_chars: false,
-                        ast_depth_limit: AST_DEPTH_LIMIT,
-                        limit_ast_depth: true,
-                        },
+                        enode_char_limit: None,
+                        ast_depth_limit: Some(AST_DEPTH_LIMIT),
+                    },
                 };
                 if eq.from != eq.to {
                     let pretty_eq = format!("{} = {}", eq.from.with(&ctxt), eq.to.with(&ctxt));

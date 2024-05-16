@@ -4,7 +4,7 @@ use fxhash::{FxHashMap, FxHashSet};
 use gloo_console::log;
 use petgraph::{graph::NodeIndex, visit::Dfs, Direction::{Incoming, Outgoing}};
 
-use crate::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{ENodeIdx, EqTransIdx, InstIdx, MatchKind, QuantIdx, TermIdx}, parsers::z3::graph::{raw::{Node, NodeKind, RawIx}, visible::VisibleEdge, InstGraph}, Graph, Z3Parser, NonMaxU32};
+use crate::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, formatter::TermDisplayContext, items::{ENodeIdx, EqTransIdx, InstIdx, MatchKind, QuantIdx, TermIdx}, parsers::z3::graph::{raw::{Node, NodeKind, RawIx}, visible::VisibleEdge, InstGraph}, Graph, NonMaxU32, Z3Parser};
 use super::RawNodeIndex;
 // use matching_loop_graph::*;
 
@@ -47,17 +47,6 @@ impl MlMatchedTerm {
     // TODO: maybe only generalise the terms in the very end? Otherwise we are creating lots of unnecessary generalised
     // terms that we won't even make use of
     pub fn merge_with(&mut self, matched: TermIdx, quant: QuantIdx, pattern: TermIdx, parser: &mut Z3Parser) {
-        let _ctxt = DisplayCtxt {
-            parser: &parser,
-            config: DisplayConfiguration {
-                display_term_ids: false,
-                display_quantifier_name: false,
-                use_mathematical_symbols: true,
-                html: true,
-                enode_char_limit: None,
-                ast_depth_limit: None,
-            },
-        };
         if let Some(term) = parser.terms.generalise(&mut parser.strings, vec![self.matched, matched]) {
             self.matched = term;
         }
@@ -99,13 +88,15 @@ impl AbstractInst {
         }
     }
     pub fn to_string(&self, compact: bool, parser: &mut Z3Parser) -> String {
-        let generalised_pattern = parser.terms.generalise_pattern(&mut parser.strings, self.id.1);  
+        let generalised_pattern = parser.terms.generalise_pattern(&mut parser.strings, self.id.1);
+        // TODO: this should be passed from the outside
         let ctxt = DisplayCtxt {
             parser: &parser,
+            term_display: &TermDisplayContext::default(),
             config: DisplayConfiguration {
                 display_term_ids: false,
                 display_quantifier_name: false,
-                use_mathematical_symbols: true,
+                replace_symbols: crate::display_with::SymbolReplacement::Math,
                 html: true,
                 enode_char_limit: None,
                 ast_depth_limit: None,
@@ -232,7 +223,7 @@ impl InstGraph {
             };
     }
 
-    pub fn compute_nth_matching_loop_graph(&mut self, n: usize, parser: &mut Z3Parser) -> Graph<(String, MLGraphNode), ()> {
+    pub fn compute_nth_matching_loop_graph(&self, n: usize, parser: &mut Z3Parser) -> Graph<(String, MLGraphNode), ()> {
         let nodes_of_nth_matching_loop = self.raw.graph.node_indices().filter(|nx| self.raw.graph[*nx].part_of_ml.contains(&n)).collect::<FxHashSet<NodeIndex<RawIx>>>();
         // here we "fold" a potential matching loop into an abstract instantiation graph that represents the repeating pattern of the potential matching loop  
         // an abstract instantiation is defined by the quantifier and the pattern used for the pattern match
@@ -309,10 +300,11 @@ impl InstGraph {
             for matched_term in abstract_inst.matched_terms.values() {
                 let ctxt = DisplayCtxt {
                     parser: &parser,
+                    term_display: &TermDisplayContext::default(),
                     config: DisplayConfiguration {
                         display_term_ids: false,
                         display_quantifier_name: false,
-                        use_mathematical_symbols: true,
+                        replace_symbols: crate::display_with::SymbolReplacement::Math,
                         html: true,
                         enode_char_limit: None,
                         ast_depth_limit: Some(AST_DEPTH_LIMIT),
@@ -350,10 +342,11 @@ impl InstGraph {
             for eq in abstract_inst.equalities.values() {
                 let ctxt = DisplayCtxt {
                     parser: &parser,
+                    term_display: &TermDisplayContext::default(),
                     config: DisplayConfiguration {
                         display_term_ids: false,
                         display_quantifier_name: false,
-                        use_mathematical_symbols: true,
+                        replace_symbols: crate::display_with::SymbolReplacement::Math,
                         html: true,
                         enode_char_limit: None,
                         ast_depth_limit: Some(AST_DEPTH_LIMIT),

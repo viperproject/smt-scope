@@ -7,6 +7,8 @@ pub mod parsers;
 /// Pretty printing for items.
 #[cfg(feature = "display")]
 pub mod display_with;
+#[cfg(feature = "display")]
+pub mod formatter;
 
 mod error;
 mod mem_dbg;

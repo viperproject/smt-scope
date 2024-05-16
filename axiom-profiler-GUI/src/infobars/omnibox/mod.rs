@@ -113,9 +113,7 @@ impl Component for Omnibox {
         }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        if ctx.props() == old_props {
-            return false;
-        }
+        debug_assert!(ctx.props() != old_props);
         if ctx.props().progress != old_props.progress {
             self.focused = false;
             self.command_mode = false;

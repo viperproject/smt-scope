@@ -1,7 +1,7 @@
 mod add_filter;
 mod manage_filter;
 
-use std::fmt::Display;
+use std::{borrow::Borrow, fmt::Display};
 
 use gloo::console::log;
 use material_yew::icon::MatIcon;
@@ -9,7 +9,7 @@ use petgraph::Direction;
 use smt_log_parser::parsers::{z3::graph::{raw::NodeKind, RawNodeIndex}, ParseState};
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
-use crate::{configuration::ConfigurationContext, filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, utils::{indexer::Indexer, toggle_list::ToggleList}, OpenedFileInfo, SIZE_NAMES};
+use crate::{filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, state::StateContext, utils::toggle_list::ToggleList, OpenedFileInfo, RcParser, SIZE_NAMES};
 
 use self::manage_filter::DragState;
 use material_yew::WeakComponentLink;
@@ -160,9 +160,9 @@ impl Component for FiltersState {
                     modified = true;
                 }
                 if let Filter::SelectNthMatchingLoop(n) = &filter {
-                    // TODO: re-add finding matching loops
-                    let graph = &ctx.props().file.parser.graph;
-                    if !graph.as_ref().is_some_and(|g| (& *g.borrow()).found_matching_loops().is_some_and(|mls| mls > *n)) {
+                    let state = ctx.link().get_state().unwrap();
+                    let graph = &state.state.parser.as_ref().unwrap().graph;
+                    if !graph.as_ref().is_some_and(|g| (**g).borrow().found_matching_loops().is_some_and(|mls| mls > *n)) {
                         return modified;
                     }
                 }
@@ -171,10 +171,10 @@ impl Component for FiltersState {
             }
             Msg::AddFilter(edit, filter) => {
                 if let Filter::SelectNthMatchingLoop(n) = &filter {
-                    // TODO: re-add finding matching loops
-                    let graph = &ctx.props().file.parser.graph;
+                    let state = ctx.link().get_state().unwrap();
+                    let graph = &state.state.parser.as_ref().unwrap().graph;
                     // This relies on the fact that the graph is updated before the `AddFilter` is
-                    if !graph.as_ref().is_some_and(|g| g.borrow().found_matching_loops().is_some_and(|mls| mls > *n)) {
+                    if !graph.as_ref().is_some_and(|g| (**g).borrow().found_matching_loops().is_some_and(|mls| mls > *n)) {
                         return false;
                     }
                 }
@@ -193,30 +193,32 @@ impl Component for FiltersState {
             },
             Msg::ToggleMlViewerMode => {
                 let search_matching_loops = ctx.props().search_matching_loops.clone();
-                let found_mls = ctx.props().file.parser.found_mls;
+
+                let state = ctx.link().get_state().unwrap();
+                let found_mls = &state.state.parser.as_ref().unwrap().found_mls;
                 if let None = found_mls {
                     search_matching_loops.emit(());
                 }
-                let link = ctx.link().clone();
-                let cfg = link.get_configuration().unwrap();
-                cfg.update.update(|cfg| { cfg.persistent.ml_viewer_mode = !cfg.persistent.ml_viewer_mode; true });
+                state.set_ml_viewer_mode(!state.state.ml_viewer_mode);
                 true
             }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let data = ctx.link().get_state().unwrap();
+        let info = data.state.file_info.as_ref().unwrap();
         let file = &ctx.props().file;
-        let (size, unit) = file_size_display(file.file_size);
+        let (size, unit) = file_size_display(info.size);
         let details = match &file.parser_state {
             ParseState::Paused(_, state) => {
                 let (parse_size, parse_unit) = file_size_display(state.bytes_read as u64);
-                format!("{} ({parse_size} {parse_unit}/{size} {unit})", file.file_name)
+                format!("{} ({parse_size} {parse_unit}/{size} {unit})", info.name)
             }
             ParseState::Completed { .. } =>
-                format!("{} ({size} {unit})", file.file_name),
+                format!("{} ({size} {unit})", info.name),
             ParseState::Error(err) =>
-                format!("{} (error {err:?})", file.file_name),
+                format!("{} (error {err:?})", info.name),
         };
         // Existing ops
         let elem_hashes: Vec<_> = self.filter_chain.iter().map(Filter::get_hash).collect();
@@ -231,10 +233,11 @@ impl Component for FiltersState {
         }).collect();
         let drag = ctx.link().callback(Msg::Drag);
         let will_delete = ctx.link().callback(Msg::WillDelete);
-        // TODO: re-add finding matching loops
-        let found_mls = ctx.props().file.parser.found_mls;
+        
+        let state = ctx.link().get_state().unwrap();
+        let found_mls = &state.state.parser.as_ref().unwrap().found_mls;
         let toggle_ml_viewer_mode = ctx.link().callback(|_| Msg::ToggleMlViewerMode); 
-        let ml_viewer_mode = if ctx.link().get_configuration().unwrap().config.persistent.ml_viewer_mode {
+        let ml_viewer_mode = if state.state.ml_viewer_mode {
             html! {
                 <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"close"}</MatIcon></div>{"Exit matching loop viewer"}</a></li>
             }
@@ -289,8 +292,7 @@ impl Component for FiltersState {
         };
         let graph_details = file.rendered.as_ref().map(|g| {
             let class = if self.dragging { "hidden" } else { "" };
-            // TODO: re-add finding matching loops
-            let mls = ctx.props().file.parser.found_mls.map(|mls| format!(", {mls} mtch loops")).unwrap_or_default();
+            let mls = found_mls.map(|mls| format!(", {mls} mtch loops")).unwrap_or_default();
             let details = format!("{} nodes, {} edges{mls}", g.graph.graph.node_count(), g.graph.graph.edge_count());
             html! { <li class={class}><a draggable="false" class="trace-file-name">{details}</a></li> }
         });

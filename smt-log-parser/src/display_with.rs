@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt};
 
-use crate::{items::*, parsers::z3::z3parser::Z3Parser, StringTable, NonMaxU32};
+use crate::{formatter::{BindPowerPair, ChildIndex, MatchResult, SubFormatter, TermDisplayContext, QUANT_BIND}, items::*, parsers::z3::z3parser::Z3Parser, NonMaxU32, StringTable};
 
 ////////////
 // General
@@ -73,7 +73,26 @@ impl<'a, 'b, Ctxt, Data, T: DisplayWithCtxt<Ctxt, Data> + Copy> fmt::Display
 
 pub struct DisplayCtxt<'a> {
     pub parser: &'a Z3Parser,
+    pub term_display: &'a TermDisplayContext,
     pub config: DisplayConfiguration,
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SymbolReplacement {
+    Math,
+    Code,
+    None,
+}
+
+impl SymbolReplacement {
+    pub fn as_math(self) -> Option<bool> {
+        match self {
+            SymbolReplacement::Math => Some(true),
+            SymbolReplacement::Code => Some(false),
+            SymbolReplacement::None => None,
+        }
+    }
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -81,7 +100,7 @@ pub struct DisplayCtxt<'a> {
 pub struct DisplayConfiguration {
     pub display_term_ids: bool,
     pub display_quantifier_name: bool,
-    pub use_mathematical_symbols: bool,
+    pub replace_symbols: SymbolReplacement,
     /// Use tags for formatting
     pub html: bool,
 
@@ -92,6 +111,7 @@ pub struct DisplayConfiguration {
 }
 
 mod private {
+    use crate::formatter::DEFAULT_BIND_POWER;
 
     use super::*;
 
@@ -100,7 +120,7 @@ mod private {
         pub(super) term: TermIdx,
         children: &'a [TermIdx],
         quant: Vec<&'a Quantifier>,
-        bind_power: u8,
+        bind_power: BindPowerPair,
         ast_depth: u32,
     }
     impl<'a> DisplayData<'a> {
@@ -109,7 +129,7 @@ mod private {
                 term,
                 children: &[],
                 quant: Vec::new(),
-                bind_power: super::NO_BIND,
+                bind_power: BindPowerPair::symmetric(DEFAULT_BIND_POWER),
                 ast_depth: 0,
             }
         }
@@ -133,13 +153,30 @@ mod private {
             self.quant.pop();
             result
         }
-        pub(super) fn with_bind_power<T>(
+
+        pub(super) fn with_outer_bind_power<'b>(
             &mut self,
-            bind_power: u8,
-            f: impl FnOnce(&mut Self, u8) -> T,
+            f: &mut fmt::Formatter<'b>,
+            bind_power: BindPowerPair,
+            inner: impl FnOnce(&mut Self, &mut fmt::Formatter<'b>) -> fmt::Result,
+        ) -> fmt::Result {
+            let needs_brackets = bind_power.is_smaller(&self.bind_power);
+            if needs_brackets {
+                write!(f, "(")?;
+            }
+            inner(self, f)?;
+            if needs_brackets {
+                write!(f, ")")?;
+            }
+            Ok(())
+        }
+        pub(super) fn with_inner_bind_power<'f, 'b, T>(
+            &mut self,
+            bind_power: BindPowerPair,
+            f: impl FnOnce(&mut Self) -> T,
         ) -> T {
             let old = std::mem::replace(&mut self.bind_power, bind_power);
-            let result = f(self, old);
+            let result = f(self);
             self.bind_power = old;
             result
         }
@@ -182,26 +219,26 @@ mod private {
 }
 
 use private::*;
-// lower inside higher needs brackets around the lower
-const NO_BIND: u8 = 0;
-const QUANT_BIND: u8 = 3;
-const TERNARY_BIND: u8 = 7;
-const INFIX_BIND: u8 = 15;
-const PREFIX_BIND: u8 = 31;
 
 ////////////
 // Item Idx defs
 ////////////
 
-impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for TermIdx {
+impl DisplayWithCtxt<DisplayCtxt<'_>, Option<QuantIdx>> for TermIdx {
     fn fmt_with(
         self,
         f: &mut fmt::Formatter<'_>,
         ctxt: &DisplayCtxt<'_>,
-        _data: &mut (),
+        quant: &mut Option<QuantIdx>,
     ) -> fmt::Result {
         let mut data = DisplayData::new(self);
-        write!(f, "{}", ctxt.parser[self].with_data(ctxt, &mut data))
+        if let Some(quant) = quant {
+            data.with_quant(&ctxt.parser[*quant], |data| {
+                write!(f, "{}", ctxt.parser[self].with_data(ctxt, data))
+            })
+        } else {
+            write!(f, "{}", ctxt.parser[self].with_data(ctxt, &mut data))
+        }
     }
 }
 
@@ -210,17 +247,17 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for ENodeIdx {
         self,
         f: &mut fmt::Formatter<'_>,
         ctxt: &DisplayCtxt<'_>,
-        data: &mut (),
+        _data: &mut (),
     ) -> fmt::Result {
         if let Some(enode_char_limit) = ctxt.config.enode_char_limit {
-            let owner = ctxt.parser[self].owner.with_data(ctxt, data).to_string();
+            let owner = ctxt.parser[self].owner.with_data(ctxt, &mut None).to_string();
             if owner.len() <= enode_char_limit.get() as usize {
                 write!(f, "{owner}")
             } else {
                 write!(f, "{}...", &owner[..enode_char_limit.get() as usize - 3])
             }
         } else {
-            ctxt.parser[self].owner.fmt_with(f, ctxt, data)
+            ctxt.parser[self].owner.fmt_with(f, ctxt, &mut None)
         }
     }
 }
@@ -230,11 +267,11 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for QuantIdx {
         self,
         f: &mut fmt::Formatter<'_>,
         ctxt: &DisplayCtxt<'_>,
-        data: &mut (),
+        _data: &mut (),
     ) -> fmt::Result {
         let quant = &ctxt.parser[self];
         if let Some(term) = quant.term {
-            term.fmt_with(f, ctxt, data)
+            term.fmt_with(f, ctxt, &mut None)
         } else {
             let QuantKind::Other(name) = quant.kind else {
                 panic!()
@@ -319,7 +356,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &QuantKind {
     ) -> fmt::Result {
         match *self {
             QuantKind::Other(kind) => write!(f, "{}", &ctxt.parser[kind]),
-            QuantKind::Lambda => if ctxt.config.use_mathematical_symbols {
+            QuantKind::Lambda => if matches!(ctxt.config.replace_symbols, SymbolReplacement::Math) {
                 write!(f, "λ")
             } else if ctxt.config.html {
                 write!(f, "&lt;null&gt;")
@@ -358,7 +395,13 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a Term 
 
             }
             if let Some(meaning) = ctxt.parser.meaning(data.term) {
+                if ctxt.config.html {
+                    write!(f, "<i style=\"color:#666\">")?;
+                }
                 write!(f, "{}", meaning.with_data(ctxt, data))?;
+                if ctxt.config.html {
+                    write!(f, "</i>")?;
+                }
             } else {
                 write!(f, "{}", self.kind.with_data(ctxt, data))?;
             }
@@ -372,7 +415,7 @@ impl VarNames {
     pub fn get_name<'a>(strings: &'a StringTable, this: Option<&Self>, idx: usize, config: &DisplayConfiguration) -> Cow<'a, str> {
         let name = match this {
             Some(Self::NameAndType(names)) => Cow::Borrowed(&strings[*names[idx].0]),
-            None | Some(Self::TypeOnly(_)) => Cow::Owned(if config.use_mathematical_symbols {
+            None | Some(Self::TypeOnly(_)) => Cow::Owned(if matches!(config.replace_symbols, SymbolReplacement::Math) {
                 format!("•{idx}")
             } else {
                 format!("qvar_{idx}")
@@ -381,7 +424,7 @@ impl VarNames {
         if config.html {
             const COLORS: [&str; 9] = ["blue", "green", "olive", "maroon", "teal", "purple", "red", "fuchsia", "navy"];
             let color = COLORS[idx % COLORS.len()];
-            let name = format!("<div style=\"color:{color};display:inline\">{name}</div>");
+            let name = format!("<span style=\"color:{color}\">{name}</span>");
             Cow::Owned(name)
         } else {
             name
@@ -417,14 +460,6 @@ fn display_child<'a, 'b, 'c, 'd>(f: &mut fmt::Formatter<'_>, child: TermIdx, ctx
     })
 }
 
-enum ProofOrAppKind<'a> {
-    Unary(&'a str),
-    Inline(&'a str),
-    Ternary(&'a str, &'a str),
-    Pattern,
-    OtherApp(&'a str),
-    Proof(&'a str),
-}
 impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a ProofOrApp {
     fn fmt_with(
         self,
@@ -432,99 +467,107 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a ProofOrAp
         ctxt: &DisplayCtxt<'b>,
         data: &mut DisplayData<'b>,
     ) -> fmt::Result {
-        let math = ctxt.config.use_mathematical_symbols;
-        use ProofOrAppKind::*;
         let name = &ctxt.parser[self.name];
-        let kind = match name {
-            name if self.is_proof => Proof(name),
-            "not" => Unary(if math { "¬" } else { "!" }),
-            "-" if data.children().len() == 1 => Unary("-"),
-
-            "and" => Inline(if math { "∧" } else { "&&" }),
-            "or" => Inline(if math { "∨" } else { "||" }),
-            "<=" => Inline(if math { "≤" } else { "<=" }),
-            ">=" => Inline(if math { "≥" } else { ">=" }),
-            op @ ("=" | "+" | "-" | "*" | "/" | "<" | ">") => Inline(op),
-
-            "if" => Ternary("?", ":"),
-
-            "pattern" => Pattern,
-
-            name => OtherApp(name),
-        };
-        match kind {
-            Unary(op) => data.with_bind_power(PREFIX_BIND, |data, bind_power| {
-                assert!(bind_power <= PREFIX_BIND);
-                assert_eq!(data.children().len(), 1);
-                let child = data.children()[0];
-                write!(f, "{op}")?;
-                display_child(f, child, ctxt, data)
-                
-            }),
-            Inline(op) => data.with_bind_power(INFIX_BIND, |data, bind_power| {
-                let need_brackets = bind_power >= INFIX_BIND;
-                if need_brackets {
-                    write!(f, "(")?;
+        let children = NonMaxU32::new(data.children().len() as u32).unwrap();
+        let match_ = ctxt.term_display.match_str(name, children);
+        match_.fmt_with(f, ctxt, data)
+    }
+}
+impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResult<'a, 'a> {
+    fn fmt_with(self, f: &mut fmt::Formatter<'_>, ctxt: &DisplayCtxt<'b>, data: &mut DisplayData<'b>) -> fmt::Result {
+        data.with_outer_bind_power(f, self.formatter.bind_power, |data, f| {
+            let get_capture = |idx: NonMaxU32| {
+                if idx == NonMaxU32::ZERO {
+                    Some(self.haystack)
+                } else {
+                    self.captures.as_ref().and_then(|c| c.get(idx.get() as usize).map(|c| c.as_str()))
                 }
-                for (idx, child) in data.children().iter().enumerate() {
-                    if idx != 0 {
-                        write!(f, " {op} ")?;
+            };
+            fn get_child(index: ChildIndex, data: &DisplayData) -> Option<usize> {
+                if index.0.is_negative() {
+                    data.children().len().checked_sub(index.0.wrapping_abs() as u32 as usize)
+                } else {
+                    let index = index.0 as usize;
+                    (index < data.children().len()).then(|| index)
+                }
+            }
+
+            for output in &self.formatter.outputs {
+                match output {
+                    SubFormatter::String(s) =>
+                        write!(f, "{s}")?,
+                    SubFormatter::Capture(idx) => {
+                        let Some(capture) = get_capture(*idx) else {
+                            continue;
+                        };
+                        if let Some(as_math) = ctxt.config.replace_symbols.as_math() {
+                            match capture {
+                                "and" if as_math => write!(f, "∧")?,
+                                "and" if !as_math => write!(f, "&&")?,
+                                "or" if as_math => write!(f, "∨")?,
+                                "or" if !as_math => write!(f, "||")?,
+                                "not" if as_math => write!(f, "¬")?,
+                                "not" if !as_math => write!(f, "!")?,
+                                "<=" if as_math => write!(f, "≤")?,
+                                ">=" if as_math => write!(f, "≥")?,
+                                _ => write!(f, "{capture}")?,
+                            }
+                        } else {
+                            write!(f, "{capture}")?
+                        }
                     }
-                    display_child(f, *child, ctxt, data)?;
-                }
-                if need_brackets {
-                    write!(f, ")")?;
-                }
-                Ok(())
-            }),
-            // `if` -> `$[#0|7] ? $[#1|7] : $[#2|7]_7`
-            Ternary(op1, op2) => data.with_bind_power(TERNARY_BIND, |data, bind_power| {
-                let need_brackets = bind_power >= TERNARY_BIND;
-                if need_brackets {
-                    write!(f, "(")?;
-                }
-                assert_eq!(data.children().len(), 3);
-                let cond = data.children()[0];
-                display_child(f, cond, ctxt, data)?;
-                write!(f, " {op1} ")?;
-                let then = data.children()[1];
-                display_child(f, then, ctxt, data)?;
-                write!(f, " {op2} ")?;
-                let else_ = data.children()[2];
-                display_child(f, else_, ctxt, data)?;
-                if need_brackets {
-                    write!(f, ")")?;
-                }
-                Ok(())
-            }),
-            // `pattern` -> `{ $(#0:-0|0|, ) }_256`
-            Pattern => data.with_bind_power(NO_BIND, |data, _| {
-                // BIND_POWER is highest
-                write!(f, "{{")?;
-                for (idx, child) in data.children().iter().enumerate() {
-                    if idx != 0 {
-                        write!(f, ", ")?;
+                    SubFormatter::Single { index, bind_power } => {
+                        let Some(child) = get_child(*index, data) else {
+                            continue;
+                        };
+                        let child = data.children()[child];
+                        data.with_inner_bind_power(*bind_power, |data| {
+                            display_child(f, child, ctxt, data)
+                        })?;
                     }
-                    display_child(f, *child, ctxt, data)?;
-                }
-                write!(f, "}}")
-            }),
-            OtherApp(name) | Proof(name) => data.with_bind_power(NO_BIND, |data, _| {
-                // BIND_POWER is highest
-                write!(f, "{name}")?;
-                if data.children().is_empty() {
-                    return Ok(());
-                }
-                write!(f, "(")?;
-                for (idx, child) in data.children().iter().enumerate() {
-                    if idx != 0 {
-                        write!(f, ", ")?;
+                    SubFormatter::Repeat(r) => {
+                        let (Some(from), Some(to)) = (get_child(r.from, data), get_child(r.to, data)) else {
+                            continue;
+                        };
+                        if !r.from.0.is_negative() && r.to.0.is_negative() && from > to {
+                            continue;
+                        }
+                        if r.from.0.is_negative() && !r.to.0.is_negative() && from < to {
+                            continue;
+                        }
+                        let forwards = from <= to;
+                        // The range is inclusive on both ends
+                        let mut curr = if forwards { from.wrapping_sub(1) } else { from.wrapping_add(1) };
+                        let iter = std::iter::from_fn(move || {
+                            if curr == to {
+                                None
+                            } else {
+                                curr = if forwards { curr.wrapping_add(1) } else { curr.wrapping_sub(1) };
+                                Some(curr)
+                            }
+                        });
+                        write!(f, "{}", r.left_sep)?;
+                        let mut bind_power = BindPowerPair::asymmetric(r.left, r.middle.left);
+                        for child in iter {
+                            let is_final = child == to;
+                            if is_final {
+                                bind_power.right = r.right;
+                            }
+                            let child = data.children()[child];
+                            data.with_inner_bind_power(bind_power, |data| {
+                                display_child(f, child, ctxt, data)
+                            })?;
+                            if !is_final {
+                                write!(f, "{}", r.middle_sep)?;
+                                bind_power.left = r.middle.right;
+                            }
+                        }
+                        write!(f, "{}", r.right_sep)?
                     }
-                    display_child(f, *child, ctxt, data)?;
                 }
-                write!(f, ")")
-            }),
-        }
+            }
+            Ok(())
+        })
     }
 }
 
@@ -555,12 +598,8 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
         // want to replace the quantified variables by their names
         // for this, we need to store the quantifier in the context
         data.with_quant(self, |data| {
-            data.with_bind_power(QUANT_BIND, |data, bind_power| {
-                let need_brackets = bind_power > QUANT_BIND;
-                if need_brackets {
-                    write!(f, "(")?;
-                }
-                if ctxt.config.use_mathematical_symbols {
+            data.with_outer_bind_power(f, QUANT_BIND, |data, f| {
+                if matches!(ctxt.config.replace_symbols, SymbolReplacement::Math) {
                     write!(f, "∀ ")?;
                 } else {
                     write!(f, "FORALL ")?;
@@ -576,7 +615,7 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                     }
                     write!(f, "{name}{ty}")?;
                 }
-                let sep = if ctxt.config.use_mathematical_symbols {
+                let sep = if matches!(ctxt.config.replace_symbols, SymbolReplacement::Math) {
                     "."
                 } else {
                     " ::"
@@ -584,10 +623,8 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                 write!(f, "{sep}")?;
                 for child in data.children() {
                     write!(f, " ")?;
+                    // TODO: binding power!
                     display_child(f, *child, ctxt, data)?;
-                }
-                if need_brackets {
-                    write!(f, ")")?;
                 }
                 Ok(())
             })

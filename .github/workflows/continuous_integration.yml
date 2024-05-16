@@ -44,7 +44,7 @@ jobs:
     - uses: actions/cache/restore@v3
       with:
         path: logs
-        key: logs-${{ steps.configure-z3-id.outputs.z3_v_clean }}-${{ hashFiles('smt-problems/**/*.smt2') }}
+        key: use-restore-key-instead
         restore-keys: logs-${{ steps.configure-z3-id.outputs.z3_v_clean }}-
     - id: check-logs-cached
       run: ls -la logs

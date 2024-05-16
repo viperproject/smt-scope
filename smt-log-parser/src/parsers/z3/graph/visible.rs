@@ -65,9 +65,9 @@ impl InstGraph {
         let node_map = |idx, node: &Node| node.visible().then(|| VisibleNode {
             idx,
             // hidden_parents: self.raw.neighbors_directed(idx, Direction::Incoming).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
-            hidden_parents: self.raw.graph[idx.0].inst_parents.nodes.iter().filter(|&n| self.raw.graph[*n].hidden()).count() as u32,
+            hidden_parents: self.raw.graph[idx.0].inst_parents.nodes.iter().filter(|&n| self.raw[*n].hidden()).count() as u32,
             // hidden_children: self.raw.neighbors_directed(idx, Direction::Outgoing).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
-            hidden_children: self.raw.graph[idx.0].inst_children.nodes.iter().filter(|&n| self.raw.graph[*n].hidden()).count() as u32,
+            hidden_children: self.raw.graph[idx.0].inst_children.nodes.iter().filter(|&n| self.raw[*n].hidden()).count() as u32,
             max_depth: 0 
         });
         for (i, node) in self.raw.graph.node_weights().into_iter().enumerate() {
@@ -75,24 +75,13 @@ impl InstGraph {
                 node_index_map[i] = graph.add_node(nw);
             }
         }
-        // let edge_map = |idx, _| Some(VisibleEdge::Direct(idx));
-        // for (i, edge) in self.raw.graph.edge_references().enumerate() {
-        //     // skip edge if any endpoint was removed
-        //     let source = node_index_map[edge.source().index()];
-        //     let target = node_index_map[edge.target().index()];
-        //     if source != NodeIndex::end() && target != NodeIndex::end() {
-        //         if let Some(ew) = edge_map(RawEdgeIndex(EdgeIndex::new(i)), edge.weight()) {
-        //             graph.add_edge(source, target, ew);
-        //         }
-        //     }
-        // }
         // assumes that inst-nodes in self.raw.graph are ordered in topological order
         let mut edge_idx = 0;
         for (i, node) in self.raw.graph.node_weights().into_iter().enumerate() {
             let from = node_index_map[i];
             if from != NodeIndex::end() {
                 for next_inst in node.inst_children.nodes.clone() {
-                    let to = node_index_map[next_inst.index()]; 
+                    let to = node_index_map[next_inst.0.index()]; 
                     if to != NodeIndex::end() {
                         graph.add_edge(from, to, VisibleEdge::Direct(RawEdgeIndex(EdgeIndex::new(edge_idx))));
                         edge_idx += 1;
@@ -100,16 +89,6 @@ impl InstGraph {
                 }
             }
         }
-        // for edge in graph.edge_indices() {
-        //     let from = graph.edge_endpoints(edge).unwrap().0;
-        //     let to = graph.edge_endpoints(edge).unwrap().0;
-        //     // let old_from = self.graph.node_weight(from).unwrap().idx;
-        //     // let old_to = self.graph.node_weight(to).unwrap().idx;
-        //     // log!(format!("Graph has edge from {} to {}", old_from.0.index(), old_to.0.index()));
-        //     log!(format!("Graph has edge from {} to {}", from.index(), to.index()));
-        // }
-        // log!(format!("Graph has {} edges and {} nodes", graph.edge_count(), graph.node_count()));
-        // log!(format!("Reconnecting graph:"));
         let reverse: FxHashMap<_, _> = graph.node_indices().map(VisibleNodeIndex).map(|idx| (graph[idx.0].idx, idx)).collect();
         let mut self_ = VisibleInstGraph { graph, reverse, generation: self.raw.stats.generation };
         self_.reconnect_simplified(self);

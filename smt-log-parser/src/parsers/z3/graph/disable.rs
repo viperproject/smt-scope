@@ -18,9 +18,9 @@ impl InstGraph {
 
     pub fn disabled_nodes(&self) -> FxHashSet<RawNodeIndex> {
         let mut disabled_nodes = HashSet::default();
-        for node in self.raw.graph.node_weights() {
-            if node.disabled() {
-                disabled_nodes.insert(RawNodeIndex(node.raw_nidx));
+        for node in self.raw.graph.node_indices() {
+            if self.raw.graph[node].disabled() {
+                disabled_nodes.insert(RawNodeIndex(node));
             }
         }
         disabled_nodes

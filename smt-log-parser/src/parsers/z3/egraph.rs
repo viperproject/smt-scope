@@ -110,7 +110,7 @@ impl EGraph {
             // Handle the easy and common case of `(#n #n)` separately
             self.equalities.transitive.raw.try_reserve(1)?;
             Ok(*self.enodes[from].self_transitive.get_or_insert_with(|| {
-                self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(from, to))
+                self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(to))
             }))
         } else {
             self.construct_trans_equality(from, to, stack, can_mismatch)
@@ -181,7 +181,7 @@ impl EGraph {
                         // These two nodes are no longer equal (this is an old
                         // transitive equality that is no longer valid).
                         self.equalities.transitive.raw.try_reserve(1)?;
-                        let trans = self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(from, to));
+                        let trans = self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(to));
                         o.insert(trans);
                         trans
                     } else {
@@ -190,7 +190,7 @@ impl EGraph {
                 }
                 Entry::Vacant(v) => {
                     self.equalities.transitive.raw.try_reserve(1)?;
-                    let trans = self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(from, to));
+                    let trans = self.equalities.transitive.push_and_get_key(TransitiveExpl::empty(to));
                     *v.insert(trans)
                 }
             };
@@ -219,7 +219,7 @@ impl EGraph {
                 }
             }
             let solution = TransitiveExplSegment { forward, kind: TransitiveExplSegmentKind::Transitive(solution) };
-            TransitiveExpl::new([solution].into_iter(), 1, from, to)?
+            TransitiveExpl::new([solution].into_iter(), 1, to)?
         } else {
             for idx in 1..edges_len {
                 graph.add_trans_from(idx, self);
@@ -243,7 +243,7 @@ impl EGraph {
                 let kind = &graph.graph[edge.unwrap()];
                 edge = graph.graph[graph.graph.edge_endpoints(edge.unwrap()).unwrap().1].1;
                 kind
-            }).copied(), edges_len, from, to)?
+            }).copied(), edges_len, to)?
         };
         let trans = self.insert_trans_equality(trans, stack)?;
         debug_assert_eq!(self.equalities.walk_to(from, trans), to);
@@ -335,6 +335,22 @@ pub struct Equalities {
 }
 
 impl Equalities {
+    pub fn from(&self, eq: EqTransIdx) -> ENodeIdx {
+        let eq = &self.transitive[eq];
+        eq.path.first().map(|seg| match seg {
+            TransitiveExplSegment { kind: TransitiveExplSegmentKind::Given(eq, _), forward } => if *forward {
+                    self.given[*eq].from()
+                } else {
+                    self.given[*eq].to()
+                },
+            TransitiveExplSegment { kind: TransitiveExplSegmentKind::Transitive(eq), forward } => if *forward {
+                    self.from(*eq)
+                } else {
+                    self.transitive[*eq].to
+                },
+        }).unwrap_or(eq.to)
+    }
+
     pub fn walk_trans<E>(&self, fwd: bool, eq: EqTransIdx, f: &mut impl FnMut(EqGivenIdx, bool) -> std::result::Result<(), E>) -> std::result::Result<(), E> {
         let mut all = self.transitive[eq].all(fwd);
         while let Some(next) = all.next() {

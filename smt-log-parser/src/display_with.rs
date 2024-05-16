@@ -170,18 +170,17 @@ mod private {
                 })
                 .copied()
         }
-        pub(super) fn inc_ast_depth(&mut self) {
+        pub(super) fn incr_ast_depth_with_limit<T>(&mut self, limit: usize, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
+            if self.ast_depth >= limit {
+                return None;
+            }
             self.ast_depth += 1;
-        }
-        pub(super) fn dec_ast_depth(&mut self) {
+            let result = f(self);
             self.ast_depth -= 1;
-        }
-        pub(super) fn get_ast_depth(&mut self) -> usize {
-            self.ast_depth
+            Some(result)
         }
     }
 }
-use gloo_console::log;
 use private::*;
 // lower inside higher needs brackets around the lower
 const NO_BIND: u8 = 0;
@@ -411,15 +410,11 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind 
 }
 
 fn display_child<'a, 'b, 'c, 'd>(f: &mut fmt::Formatter<'_>, child: TermIdx, ctxt: &'a DisplayCtxt<'b>, data: &'c mut DisplayData<'b>) -> fmt::Result {
-    data.inc_ast_depth();
-    let res = if ctxt.config.limit_ast_depth && data.get_ast_depth() >= ctxt.config.ast_depth_limit {
-    // let res = if data.get_ast_depth() < 1 {
-        data.with_term(child, |data| write!(f, "..."))
-    } else {
+    data.incr_ast_depth_with_limit(ctxt.config.ast_depth_limit, |data| {
         data.with_term(child, |data| write!(f, "{}", ctxt.parser[child].with_data(ctxt, data)))
-    };
-    data.dec_ast_depth();
-    res
+    }).unwrap_or_else(|| {
+        write!(f, "...")
+    })
 }
 
 enum ProofOrAppKind<'a> {

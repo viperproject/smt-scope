@@ -1,8 +1,8 @@
-use std::{collections::HashSet, fmt, ops::{Index, IndexMut}};
+use std::{fmt, ops::{Index, IndexMut}};
 
 #[cfg(feature = "mem_dbg")]
-// use fxhash::FxHashSet;
 use mem_dbg::{MemDbg, MemSize};
+use fxhash::FxHashSet;
 use petgraph::{graph::NodeIndex, visit::{Reversed, Visitable}, Direction::{self, Incoming, Outgoing}};
 
 use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, TransitiveExplSegmentKind}, DiGraph, FxHashMap, NonMaxU32, Result, TiVec, Z3Parser};
@@ -34,18 +34,15 @@ impl RawInstGraph {
         let mut graph = DiGraph::with_capacity(total_nodes, edges_lower_bound);
         let enode_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
         for enode in parser.egraph.enodes.keys() {
-            let nidx = graph.add_node(Node::new(NodeKind::ENode(enode)));
-            graph[nidx].raw_nidx = nidx;
+            graph.add_node(Node::new(NodeKind::ENode(enode)));
         }
         let eq_trans_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
         for eq_trans in parser.egraph.equalities.transitive.keys() {
-            let nidx = graph.add_node(Node::new(NodeKind::TransEquality(eq_trans)));
-            graph[nidx].raw_nidx = nidx;
+            graph.add_node(Node::new(NodeKind::TransEquality(eq_trans)));
         }
         let inst_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
         for inst in parser.insts.insts.keys() {
-            let nidx = graph.add_node(Node::new(NodeKind::Instantiation(inst)));
-            graph[nidx].raw_nidx = nidx;
+            graph.add_node(Node::new(NodeKind::Instantiation(inst)));
         }
         let mut eq_given_idx = FxHashMap::default();
         eq_given_idx.try_reserve(parser.egraph.equalities.given.len())?;
@@ -55,13 +52,11 @@ impl RawInstGraph {
                     for i in 0..uses.len() {
                         let use_ = Some(NonMaxU32::new(i as u32).unwrap());
                         let node = graph.add_node(Node::new(NodeKind::GivenEquality(eq_given, use_)));
-                        graph[node].raw_nidx = node;
                         eq_given_idx.insert((eq_given, use_), RawNodeIndex(node));
                     }
                 }
                 _ => {
                     let node = graph.add_node(Node::new(NodeKind::GivenEquality(eq_given, None)));
-                    graph[node].raw_nidx = node;
                     eq_given_idx.insert((eq_given, None), RawNodeIndex(node));
                 }
             }
@@ -186,6 +181,9 @@ impl RawInstGraph {
     pub fn visible_nodes(&self) -> usize {
         self.graph.node_count() - self.stats.hidden as usize - self.stats.disabled as usize
     }
+    pub fn node_indices(&self) -> impl Iterator<Item = RawNodeIndex> {
+        self.graph.node_indices().map(RawNodeIndex)
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -229,7 +227,6 @@ pub struct Node {
     kind: NodeKind,
     pub inst_parents: NextInsts,
     pub inst_children: NextInsts,
-    pub raw_nidx: NodeIndex<RawIx>,
     pub part_of_ml: fxhash::FxHashSet<usize>,
 }
 
@@ -251,12 +248,12 @@ pub struct Depth {
 #[derive(Debug, Clone, Default)]
 pub struct NextInsts {
     /// What are the immediate next instantiation nodes 
-    pub nodes: fxhash::FxHashSet<NodeIndex<RawIx>>,
+    pub nodes: FxHashSet<RawNodeIndex>,
 }
 
 impl Node {
     fn new(kind: NodeKind) -> Self {
-        Self { state: NodeState::Hidden, cost: 0.0, fwd_depth: Depth::default(), bwd_depth: Depth::default(), subgraph: None, kind, inst_parents: NextInsts { nodes: HashSet::default() }, inst_children: NextInsts { nodes: HashSet::default() }, raw_nidx: NodeIndex::default(), part_of_ml: HashSet::default() }
+        Self { state: NodeState::Hidden, cost: 0.0, fwd_depth: Depth::default(), bwd_depth: Depth::default(), subgraph: None, kind, inst_parents: NextInsts { nodes: FxHashSet::default() }, inst_children: NextInsts { nodes: FxHashSet::default() }, part_of_ml: FxHashSet::default() }
     }
     pub fn kind(&self) -> &NodeKind {
         &self.kind

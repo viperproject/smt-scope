@@ -4,10 +4,7 @@ use crate::{configuration::{ConfigurationContext, ConfigurationProvider}, utils:
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
-use smt_log_parser::
-    parsers::z3::graph::{RawNodeIndex, VisibleEdgeIndex}
-    // parsers::z3::inst_graph::{EdgeInfo, InstInfo},
-;
+use smt_log_parser::parsers::z3::graph::{RawNodeIndex, VisibleEdgeIndex};
 use yew::prelude::*;
 
 use super::{graph::graph_container, node_info::{SelectedEdgesInfo, SelectedNodesInfo}, svg_result::RenderedGraph};
@@ -232,7 +229,6 @@ impl Component for GraphInfo {
                     } else {
                         html!{}
                     }}
-                    // <DisplayedMLGraph displayed_ml_index={self.displayed_ml_index} rendered={ctx.props().rendered.clone()}/>
                     // TODO: re-add matching loops
                     // <h2>{"Information about displayed matching loop:"}</h2>
                     // <div>

@@ -572,7 +572,6 @@ pub struct TransitiveExpl {
     pub path: Box<[TransitiveExplSegment]>,
     pub given_len: usize,
     pub to: ENodeIdx,
-    pub from: ENodeIdx,
 }
 pub enum TransitiveExplIter<'a> {
     Forward(std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>),
@@ -588,14 +587,14 @@ impl<'a> TransitiveExplIter<'a> {
 }
 
 impl TransitiveExpl {
-    pub fn new(i: impl Iterator<Item = TransitiveExplSegment> + ExactSizeIterator, given_len: usize, from: ENodeIdx, to: ENodeIdx) -> Result<Self> {
+    pub fn new(i: impl Iterator<Item = TransitiveExplSegment> + ExactSizeIterator, given_len: usize, to: ENodeIdx) -> Result<Self> {
         let mut path = Vec::new();
         path.try_reserve_exact(i.len())?;
         path.extend(i);
-        Ok(Self { path: path.into_boxed_slice(), given_len, to, from })
+        Ok(Self { path: path.into_boxed_slice(), given_len, to })
     }
-    pub fn empty(from: ENodeIdx, to: ENodeIdx) -> Self {
-        Self { path: Box::new([]), given_len: 0, to, from }
+    pub fn empty(to: ENodeIdx) -> Self {
+        Self { path: Box::new([]), given_len: 0, to }
     }
     pub fn all(&self, fwd: bool) -> TransitiveExplIter {
         let iter = self.path.iter().copied();
@@ -617,18 +616,6 @@ impl TransitiveExpl {
             },
         }).collect()
     }
-    // pub fn get_creator_insts_(&self, parser: &Z3Parser) -> impl Iterator<Item = Option<InstIdx>> {
-    //     self.path.iter().flat_map(move |expl_seg| match expl_seg.kind {
-    //         TransitiveExplSegmentKind::Given(eq_idx, _) => match parser[eq_idx] {
-    //             EqualityExpl::Literal { eq, ..} => std::iter::once::<Option<InstIdx>>(parser[eq].created_by),
-    //             _ => std::iter::once::<Option<InstIdx>>(None)
-    //         },
-    //         TransitiveExplSegmentKind::Transitive(eq_idx) => {
-    //             let trans_expl = &parser[eq_idx];
-    //             trans_expl.get_creator_insts_(parser)
-    //         },
-    //     })
-    // }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]

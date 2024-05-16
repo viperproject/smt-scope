@@ -454,19 +454,6 @@ impl Component for SVGResult {
                                 Config::GraphContentOnly
                             ],
                             &|_, _| "".to_string(),
-                            // &|_, edge_data| format!(
-                            //     // edge_data.weight(),
-                            //     // match edge_data.weight() {
-                            //     //     InstOrEquality::Inst(_, _) => "solid, bold",
-                            //     //     InstOrEquality::Equality => "solid",
-                            //     // },
-                            //     // match edge_data.weight() {
-                            //     //     // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind)),
-                            //     //     InstOrEquality::Inst(_, mkind) => format!("{} {} {NODE_COLOUR_VALUE}", self.colour_map.get_graphviz_hue(&mkind), NODE_COLOUR_SATURATION + 0.2),
-                            //     //     // InstOrEquality::Inst(_, mkind) => format!("{}", self.colour_map.get_graphviz_hue(&mkind, NODE_COLOUR_SATURATION + 0.2)),
-                            //     //     InstOrEquality::Equality => "black:white:black".to_string(),
-                            //     // }
-                            // ),
                             &|_, (_, node_data)| {
                                 format!("label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
                                         node_data.0,
@@ -479,19 +466,11 @@ impl Component for SVGResult {
                                             MLGraphNode::ENode => format!("lightgrey"),
                                             MLGraphNode::Equality => format!("white"),
                                         }
-                                        // if let Some(match_kind) = &node_data.1 {
-                                        //     let hue = self.colour_map.get_graphviz_hue_for_quant_idx(&match_kind);
-                                        //     format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
-                                        // } else {
-                                        //     format!("white")
-                                        // }
                                     )
                             },
                         )
                     );
-                    // ctx.props().progress.emit(Err(RenderingState::RenderingGraph));
                     ctx.props().progress.emit(GraphState::Rendering(RenderingState::RenderingGraph));
-                    // let link = self.insts_info_link.borrow().clone();
                     let link = ctx.props().insts_info_link.borrow().clone();
                     wasm_bindgen_futures::spawn_local(async move {
                         gloo_timers::future::TimeoutFuture::new(10).await;
@@ -510,10 +489,6 @@ impl Component for SVGResult {
                         let svg_text = svg.outer_html();
                         link.unwrap()
                             .send_message(GraphInfoMsg::ShowMatchingLoopGraph(AttrValue::from(svg_text)));
-                        // link.send_message(Msg::UpdateSvgText(
-                        //     AttrValue::from(svg_text),
-                        //     calculated,
-                        // ));
                     });
                     // only need to re-render once the new SVG has been set
                    true 

@@ -39,7 +39,6 @@ impl InstGraph {
     pub fn visible_unchanged(&self, old: &VisibleInstGraph) -> bool {
         self.raw.stats.generation == old.generation
     }
-
 }
 
 #[macro_export]

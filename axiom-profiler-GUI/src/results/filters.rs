@@ -72,7 +72,7 @@ impl Filter {
             Filter::SelectNthMatchingLoop(n) => {
                 graph.raw.reset_visibility_to(true);
                 let nth_ml_endnode = graph.analysis.matching_loop_end_nodes.as_ref().unwrap().get(n).unwrap();
-                let nodes_of_nth_matching_loop = graph.raw.graph.node_indices().filter(|nx| graph.raw.graph[*nx].part_of_ml.contains(&n)).collect::<fxhash::FxHashSet<petgraph::graph::NodeIndex<smt_log_parser::parsers::z3::graph::raw::RawIx>>>();
+                let nodes_of_nth_matching_loop = graph.raw.node_indices().filter(|nx| graph.raw[*nx].part_of_ml.contains(&n)).collect::<fxhash::FxHashSet<_>>();
                 let relevant_non_qi_nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nth_ml_endnode.0)
                     .iter(graph.raw.rev())
                     .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())

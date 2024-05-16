@@ -23,9 +23,8 @@ pub struct Analysis {
     // Most to least
     pub fwd_depth_min: Vec<RawNodeIndex>,
     // // Most to least
-    // pub(super) max_depth: Vec<NodeIndex>,
+    // pub(super) max_depth: Vec<RawNodeIndex>,
     pub matching_loop_end_nodes: Option<Vec<RawNodeIndex>>,
-    // pub matching_loop_subgraph: VisibleInstGraph,
     pub matching_loop_graphs: Vec<Graph<(String, MLGraphNode), ()>>,
 }
 
@@ -84,7 +83,7 @@ impl InstGraph {
                 let mut neighbors = self.raw.graph.neighbors_directed(idx.0, I::direction()).detach();
                 let mut i = 0;
                 while let Some((_, neighbor)) = neighbors.next(&self.raw.graph) {
-                    let transfer = initialiser.transfer(&self.raw.graph[idx.0], i, &incoming);
+                    let transfer = initialiser.transfer(&self.raw.graph[idx.0], RawNodeIndex(idx.0), i, &incoming);
                     initialiser.add(&mut self.raw.graph[neighbor], transfer);
                     i += 1;
                 }
@@ -147,7 +146,7 @@ pub trait Initialiser<const FORWARD: bool, const ID: u8> {
 pub trait TransferInitialiser<const FORWARD: bool, const ID: u8>: Initialiser<FORWARD, ID> {
     type Observed;
     fn observe(&mut self, node: &Node, parser: &Z3Parser) -> Self::Observed;
-    fn transfer(&mut self, from: &Node, to_idx: usize, to_all: &[Self::Observed]) -> Self::Value;
+    fn transfer(&mut self, from: &Node, from_idx: RawNodeIndex, to_idx: usize, to_all: &[Self::Observed]) -> Self::Value;
     fn add(&mut self, node: &mut Node, value: Self::Value);
 }
 /// Initialiser where values are transferred from the neighbors to the current node.

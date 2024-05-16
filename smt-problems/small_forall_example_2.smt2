@@ -1,6 +1,3 @@
-(declare-const x (_ BitVec 64))
-(declare-const y (_ BitVec 64))
-(assert (forall ((x (_ BitVec 64)) (y (_ BitVec 64)))
-    (= (bvsub (bvadd x y) (bvshl (bvand x y) (_ bv1 64))) (bvxor x y))))
-
-(check-sat)
+version https://git-lfs.github.com/spec/v1
+oid sha256:71a1e0959eb4d6d2b532d4689bb0daea2e373893d944965f4018f2af3b3b29dd
+size 210

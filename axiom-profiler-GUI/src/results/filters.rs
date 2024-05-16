@@ -34,7 +34,7 @@ pub enum Filter {
 }
 
 impl Filter {
-    pub fn apply(self, graph: &mut InstGraph, parser: &Z3Parser, config: &DisplayConfiguration) -> FilterOutput {
+    pub fn apply<'a>(self, graph: &mut InstGraph, parser: &'a Z3Parser, config: impl FnOnce(&'a Z3Parser) -> DisplayCtxt<'a>) -> FilterOutput {
         match self {
             Filter::MaxNodeIdx(max) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() >= max),
             Filter::MinNodeIdx(min) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() < min),
@@ -63,7 +63,7 @@ impl Filter {
             Filter::ShowLongestPath(nidx) =>
                 return FilterOutput::LongestPath(graph.raw.show_longest_path_through(nidx)),
             Filter::ShowNamedQuantifier(name) => {
-                let ctxt = DisplayCtxt { parser, config: config.clone() };
+                let ctxt = config(parser);
                 graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i|
                     parser[parser[i].match_].kind.quant_idx().map(|q| parser[q].kind.with(&ctxt).to_string()).is_some_and(|s| s == name)
                 ))

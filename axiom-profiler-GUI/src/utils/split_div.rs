@@ -77,10 +77,8 @@ impl Component for SplitDiv {
         }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
+        debug_assert!(ctx.props() != old_props);
         let new_pros = ctx.props();
-        if new_pros == old_props {
-            return false;
-        }
         let new_disabled = ctx.props().left_bound == ctx.props().right_bound;
         let old_disabled = old_props.left_bound == old_props.right_bound;
         if new_disabled != old_disabled {

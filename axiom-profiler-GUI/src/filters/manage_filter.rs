@@ -6,7 +6,7 @@ use smt_log_parser::items::QuantIdx;
 use web_sys::{Element, HtmlElement, HtmlInputElement};
 use yew::{function_component, html, use_context, Callback, Children, Component, Context, Html, NodeRef, Properties};
 
-use crate::{configuration::ConfigurationProvider, mouse_position, results::filters::Filter, PREVENT_DEFAULT_DRAG_OVER};
+use crate::{mouse_position, results::filters::Filter, state::StateProvider, PREVENT_DEFAULT_DRAG_OVER};
 
 pub enum Msg {
     OnDragStart(usize, usize),
@@ -291,8 +291,8 @@ pub struct ExistingFilterProps {
 
 #[function_component]
 pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
-    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let graph = cfg.config.parser.as_ref().and_then(|p| p.graph.as_ref());
+    let data = use_context::<Rc<StateProvider>>().unwrap();
+    let graph = data.state.parser.as_ref().and_then(|p| p.graph.as_ref());
     let fc = |i| graph.as_ref().map(|g| {
         *g.borrow().raw[i].kind()
     }).unwrap();

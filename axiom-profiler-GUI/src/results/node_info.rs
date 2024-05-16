@@ -3,7 +3,7 @@ use std::rc::Rc;
 use smt_log_parser::{display_with::{DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, VarNames}, parsers::z3::graph::{raw::{EdgeKind, Node, NodeKind}, visible::{VisibleEdge, VisibleEdgeKind}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, NonMaxU32};
 use yew::{function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties};
 
-use crate::configuration::ConfigurationProvider;
+use crate::{configuration::ConfigurationProvider, state::StateProvider};
 
 use super::svg_result::RenderedGraph;
 
@@ -59,6 +59,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
     pub fn tooltip(&self, html: bool, char_limit: Option<NonMaxU32>) -> String {
         let mut ctxt = DisplayCtxt {
             parser: self.ctxt.parser,
+            term_display: self.ctxt.term_display,
             config: self.ctxt.config.clone(),
         };
         ctxt.config.html = html;
@@ -98,10 +99,11 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             return None
         };
         let match_ = &self.ctxt.parser[self.ctxt.parser[inst].match_];
+        let mut qidx = match_.kind.quant_idx();
         let pattern = match_.kind.pattern()?;
         let trigger_matches = self.ctxt.parser[pattern].child_ids.iter().rev().zip(match_.trigger_matches());
         let mut blame: Vec<_> = trigger_matches.map(|(trigger, matched)| {
-            let trigger = trigger.with(self.ctxt).to_string();
+            let trigger = trigger.with_data(self.ctxt, &mut qidx).to_string();
             let enode = matched.enode().with(self.ctxt).to_string();
             let equalities = matched.equalities().map(|eq| eq.with(self.ctxt).to_string()).collect();
             (trigger, enode, equalities)
@@ -156,18 +158,20 @@ pub fn SelectedNodesInfo(
         on_click,
     }: &SelectedNodesInfoProps,
 ) -> Html {
+    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
+    let data = use_context::<Rc<StateProvider>>().unwrap();
+
     if selected_nodes.is_empty() {
         return html! {}
     }
-
-    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let parser = cfg.config.parser.as_ref().unwrap();
+    let parser = data.state.parser.as_ref().unwrap();
     let graph = parser.graph.as_ref().unwrap();
     let parser = &*parser.parser;
     let graph = graph.borrow();
     let ctxt = &DisplayCtxt {
         parser: &parser.borrow(),
-        config: cfg.config.persistent.display.clone(),
+        term_display: &data.state.term_display,
+        config: cfg.config.display.clone(),
     };
 
     let infos = selected_nodes
@@ -329,21 +333,23 @@ pub fn SelectedEdgesInfo(
         on_click,
     }: &SelectedEdgesInfoProps,
 ) -> Html {
+    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
+    let data = use_context::<Rc<StateProvider>>().unwrap();
+
     if selected_edges.is_empty() {
         return html! {}
     }
     let Some(rendered) = rendered else {
         return html! {}
     };
-
-    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let parser = cfg.config.parser.as_ref().unwrap();
+    let parser = data.state.parser.as_ref().unwrap();
     let graph = parser.graph.as_ref().unwrap();
     let parser = &*parser.parser;
     let graph = graph.borrow();
     let ctxt = &DisplayCtxt {
         parser: &parser.borrow(),
-        config: cfg.config.persistent.display.clone(),
+        term_display: &data.state.term_display,
+        config: cfg.config.display.clone(),
     };
 
     let infos = selected_edges

@@ -5,7 +5,7 @@ use petgraph::{visit::{Dfs, Walker}, Direction};
 use smt_log_parser::parsers::z3::graph::{raw::NodeKind, RawNodeIndex};
 use yew::{function_component, html, use_context, Callback, Html, MouseEvent, Properties};
 
-use crate::{configuration::ConfigurationProvider, results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT}};
+use crate::{results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT}, state::StateProvider, RcParser};
 
 #[derive(PartialEq, Properties)]
 pub struct AddFilterSidebarProps {
@@ -17,8 +17,8 @@ pub struct AddFilterSidebarProps {
 
 #[function_component]
 pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
-    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let Some(parser) = &cfg.config.parser else {
+    let data = use_context::<Rc<StateProvider>>().unwrap();
+    let Some(parser) = &data.state.parser else {
         return html!{}
     };
 

@@ -6,3 +6,4 @@ pub mod toggle_list;
 pub mod lookup;
 pub mod position;
 pub mod overlay_page;
+pub mod updater;

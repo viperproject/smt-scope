@@ -183,9 +183,7 @@ impl Component for GraphContainer {
         Self { graph, mouse_closures: None, resize_observer: None, drag_start: None, window: GraphWindow::default(), zoom_factor: 1.0, zoom_factor_delta: 1.0, zoom_with_mouse: false, held_keys, timeout: None, _callback_refs, _command_selection, _command_refs }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        if ctx.props() == old_props {
-            return false;
-        }
+        debug_assert!(ctx.props() != old_props);
         self.zoom_factor_delta = 1.0;
         if self.graph.as_ref().map(|g| g.1) != ctx.props().rendered.as_ref().map(|r| r.graph.generation) {
             self.graph = ctx.props().rendered.as_ref().map(|r| (Html::from_html_unchecked(r.svg_text.clone()), r.graph.generation));

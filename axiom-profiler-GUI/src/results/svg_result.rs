@@ -1,5 +1,5 @@
 use crate::{
-    configuration::ConfigurationContext, filters, results::{filters::FilterOutput, graph_info::{GraphInfo, Msg as GraphInfoMsg}, node_info::{EdgeInfo, NodeInfo}}, OpenedFileInfo
+    configuration::{Configuration, ConfigurationContext}, filters, results::{filters::FilterOutput, graph_info::{GraphInfo, Msg as GraphInfoMsg}, node_info::{EdgeInfo, NodeInfo}}, state::StateContext, OpenedFileInfo, RcParser
 };
 
 use super::{
@@ -121,8 +121,8 @@ impl Component for SVGResult {
         let link = ctx.link().clone();
         wasm_bindgen_futures::spawn_local(async move {
             gloo::timers::future::TimeoutFuture::new(10).await;
-            let cfg = link.get_configuration().unwrap();
-            let parser = cfg.config.parser.as_ref().unwrap();
+            let data = link.get_state().unwrap();
+            let parser = data.state.parser.as_ref().unwrap();
             let inst_graph = match InstGraph::new(&parser.parser.borrow()) {
                 Ok(inst_graph) => inst_graph,
                 Err(err) => {
@@ -139,10 +139,10 @@ impl Component for SVGResult {
             };
             let inst_graph = Rc::new(RefCell::new(inst_graph));
             let inst_graph_ref = inst_graph.clone();
-            cfg.update.update(|cfg| cfg.parser.as_mut().map(|p| {
+            data.update_graph(|p| {
                 p.graph = Some(inst_graph_ref);
                 true
-            }).unwrap_or_default());
+            });
             link.send_message(Msg::ConstructedGraph(inst_graph));
         });
         Self {
@@ -185,8 +185,8 @@ impl Component for SVGResult {
             self.queue.push(msg);
             return false;
         };
-        let cfg = ctx.link().get_configuration().unwrap();
-        let rc_parser = cfg.config.parser.as_ref().unwrap();
+        let data = ctx.link().get_state().unwrap();
+        let rc_parser = data.state.parser.as_ref().unwrap();
         let parser = &rc_parser.parser;
         let mut inst_graph = (**inst_graph).borrow_mut();
         let inst_graph = &mut *inst_graph;
@@ -196,7 +196,15 @@ impl Component for SVGResult {
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {:?}", filter);
-                match filter.apply(inst_graph, &parser.borrow(), &cfg.config.persistent.display) {
+                let config = |parser| {
+                    let cfg = ctx.link().get_configuration().unwrap();
+                    DisplayCtxt {
+                        parser,
+                        term_display: &data.state.term_display,
+                        config: cfg.config.display.clone(),
+                    }
+                };
+                match filter.apply(inst_graph, &parser.borrow(), config) {
                     FilterOutput::LongestPath(path) => {
                         ctx.props().selected_nodes.emit(path);
                         // self.insts_info_link
@@ -272,9 +280,11 @@ impl Component for SVGResult {
                     self.async_graph_and_filter_chain = false;
                     ctx.props().progress.emit(GraphState::Rendering(RenderingState::GraphToDot));
                     let filtered_graph = &calculated.graph;
+                    let cfg = ctx.link().get_configuration().unwrap();
                     let ctxt = &DisplayCtxt {
                         parser: &parser.borrow(),
-                        config: cfg.config.persistent.display.clone(),
+                        term_display: &data.state.term_display,
+                        config: cfg.config.display.clone(),
                     };
 
                     // Performance observations (default value is in [])
@@ -425,9 +435,11 @@ impl Component for SVGResult {
             }
             Msg::RenderMLGraph(graph) => {
                     let _filtered_graph = &graph;
+                    let cfg = ctx.link().get_configuration().unwrap();
                     let _ctxt = &DisplayCtxt {
                         parser: &parser.borrow(),
-                        config: cfg.config.persistent.display.clone(),
+                        term_display: &data.state.term_display,
+                        config: cfg.config.display.clone(),
                     };
 
                     // Performance observations (default value is in [])

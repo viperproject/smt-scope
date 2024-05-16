@@ -30,9 +30,7 @@ impl Component for Overlay {
         }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        if ctx.props() == old_props {
-            return false
-        }
+        debug_assert!(ctx.props() != old_props);
         *ctx.props().set_visible.borrow_mut() = ctx.link().callback(Msg::SetVisible);
         true
     }

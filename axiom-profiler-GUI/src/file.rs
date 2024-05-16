@@ -7,7 +7,7 @@ use wasm_bindgen::JsCast;
 use web_sys::DataTransfer;
 use yew::{html::Scope, Callback, DragEvent};
 
-use crate::{global_callbacks::GlobalCallbacks, infobars::OmnibarMessage, CallbackRef, FileDataComponent, LoadingState, Msg, ParseProgress, PREVENT_DEFAULT_DRAG_OVER};
+use crate::{global_callbacks::GlobalCallbacks, infobars::OmnibarMessage, state::{FileInfo, StateContext}, CallbackRef, FileDataComponent, LoadingState, Msg, ParseProgress, PREVENT_DEFAULT_DRAG_OVER};
 
 impl FileDataComponent {
     pub fn file_drag(registerer: &GlobalCallbacks, link: &Scope<FileDataComponent>) -> [CallbackRef; 3] {
@@ -72,6 +72,12 @@ impl FileDataComponent {
 
         let file_name = file.name();
         let file_size = file.size();
+        let (name, size) = (file_name.clone(), file_size);
+        link.get_state().unwrap().update_file_info(move |info| {
+            *info = Some(FileInfo { name, size });
+            true
+        });
+
         log::info!("Selected file \"{file_name}\"");
         *self.cancel.borrow_mut() = false;
         let cancel = self.cancel.clone();
@@ -119,7 +125,7 @@ impl FileDataComponent {
                         _ => (),
                     }
                     link.send_message(Msg::LoadingState(LoadingState::DoneParsing(finished.is_timeout(), cancel)));
-                    link.send_message(Msg::LoadedFile(file_name, file_size, parser.take_parser(), finished, cancel))
+                    link.send_message(Msg::LoadedFile(parser.take_parser(), finished, cancel))
                 });
             }
             Err((_err, _stream)) => {
@@ -170,7 +176,7 @@ impl FileDataComponent {
                             _ => (),
                         }
                         link.send_message(Msg::LoadingState(LoadingState::DoneParsing(finished.is_timeout(), cancel)));
-                        link.send_message(Msg::LoadedFile(file_name, file_size, parser.take_parser(), finished, cancel))
+                        link.send_message(Msg::LoadedFile(parser.take_parser(), finished, cancel))
                     });
                 });
                 self.reader = Some(reader);

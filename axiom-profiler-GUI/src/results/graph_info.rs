@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{configuration::{ConfigurationContext, ConfigurationProvider}, utils::split_div::SplitDiv};
+use crate::{configuration::{Configuration, ConfigurationContext, ConfigurationProvider}, state::StateProvider, utils::split_div::SplitDiv, RcParser};
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
@@ -16,7 +16,7 @@ pub struct GraphInfo {
     graph_container: WeakComponentLink<graph_container::GraphContainer>,
     displayed_matching_loop_graph: Option<AttrValue>,
     in_ml_viewer_mode: bool,
-    _context_listener: ContextHandle<Rc<ConfigurationProvider>>,
+    _context_listener: ContextHandle<Rc<StateProvider>>,
 }
 
 fn toggle_selected<T: Copy + Eq + std::hash::Hash>(map: &mut IndexMap<T, bool>, entry: T) -> Vec<T> {
@@ -54,7 +54,7 @@ pub enum Msg {
     SelectAll,
     ShowGeneralizedTerms(Vec<String>),
     ShowMatchingLoopGraph(AttrValue),
-    ContextUpdated(Rc<ConfigurationProvider>),
+    ContextUpdated(Rc<StateProvider>),
 }
 
 #[derive(Properties, PartialEq)]
@@ -81,7 +81,7 @@ impl Component for GraphInfo {
             .weak_link
             .borrow_mut()
             .replace(ctx.link().clone());
-        let (msg, context_listener) = ctx
+        let (state, context_listener) = ctx
             .link()
             .context(ctx.link().callback(Msg::ContextUpdated))
             .expect("No message context provided");
@@ -91,7 +91,7 @@ impl Component for GraphInfo {
             generalized_terms: Vec::new(),
             graph_container: WeakComponentLink::default(),
             displayed_matching_loop_graph: None,
-            in_ml_viewer_mode: msg.config.persistent.ml_viewer_mode,
+            in_ml_viewer_mode: state.state.ml_viewer_mode,
             _context_listener: context_listener,
         }
     }
@@ -172,8 +172,8 @@ impl Component for GraphInfo {
                 false
             }
             Msg::ContextUpdated(msg) => {
-                if self.in_ml_viewer_mode != msg.config.persistent.ml_viewer_mode {
-                    self.in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
+                if self.in_ml_viewer_mode != msg.state.ml_viewer_mode {
+                    self.in_ml_viewer_mode = msg.state.ml_viewer_mode;
                     true
                 } else {
                     false
@@ -191,7 +191,6 @@ impl Component for GraphInfo {
             let link = ctx.link().clone();
             Callback::from(move |edge: VisibleEdgeIndex| link.send_message(Msg::ToggleOpenEdge(edge)))
         };
-        let _ignore_term_ids = !ctx.link().get_configuration().unwrap().config.persistent.display.display_term_ids;
         let on_node_select = ctx.link().callback(Msg::UserSelectedNode);
         let on_edge_select = ctx.link().callback(Msg::UserSelectedEdge);
         let deselect_all = ctx.link().callback(|_| Msg::DeselectAll);

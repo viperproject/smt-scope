@@ -70,6 +70,13 @@ impl ConfigurationProvider {
 pub struct Configuration {
     pub parser: Option<RcParser>,
     pub persistent: PersistentConfiguration,
+    pub view: View,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
+pub enum View {
+    #[default] QuantInsts,
+    ProofSteps,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

@@ -3,10 +3,13 @@ use std::rc::Rc;
 use std::sync::{Mutex, OnceLock, RwLock};
 
 use commands::{Command, CommandRef, CommandsContext};
+use configuration::View;
 use fxhash::{FxHashMap, FxHashSet};
 use gloo::timers::callback::Timeout;
 use gloo_file::File;
 use gloo_file::{callbacks::FileReader, FileList};
+use material_yew::list::{MatListItem, SelectedDetail};
+use material_yew::select::MatSelect;
 use petgraph::visit::EdgeRef;
 use results::graph_info;
 use results::svg_result::{Msg as SVGMsg, QuantIdxToColourMap, RenderedGraph, RenderingState, SVGResult};
@@ -71,6 +74,7 @@ pub enum Msg {
     KeyDown(KeyboardEvent),
     ShowHelpToggled(bool),
     SearchMatchingLoops,
+    ChangeViewTo(SelectedDetail),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -466,6 +470,22 @@ impl Component for FileDataComponent {
                 }
                 false
             }
+            Msg::ChangeViewTo(selected) => {
+                match selected.index {
+                    material_yew::list::ListIndex::Single(Some(idx)) => {
+                        let selected_view = match idx {
+                            0 => View::QuantInsts,
+                            1 => View::ProofSteps,
+                            _ => unreachable!()
+                        };
+                        let link = ctx.link().clone();
+                        let cfg = link.get_configuration().unwrap();
+                        cfg.update.update(|cfg| { cfg.view = selected_view; true });
+                    },
+                    _ => (),
+                }
+                true
+            }
         }
     }
 
@@ -490,8 +510,27 @@ impl Component for FileDataComponent {
         let current_trace = match &self.file {
             Some(file) => {
                 let search_matching_loops = ctx.link().callback(|_| Msg::SearchMatchingLoops);
-                html!{
+                let link = ctx.link().clone();
+                let cfg = link.get_configuration().unwrap();
+                match cfg.config.view {
+                    View::QuantInsts => html!{
                     <FiltersState file={file.clone()} search_matching_loops={search_matching_loops}/>
+                },
+                    View::ProofSteps => html!{},
+                }
+            }
+            None => html!{},
+        };
+        let change_view = ctx.link().callback(Msg::ChangeViewTo); 
+        let view_selector = match &self.file {
+            Some(_) => {
+                html! {
+                <li>
+                    <MatSelect label="View" onselected={change_view}>
+                        <MatListItem value="0" selected=true>{"Quantifier instantiations"}</MatListItem>
+                        <MatListItem value="1">{"Proof steps"}</MatListItem>
+                    </MatSelect>
+                </li>
                 }
             }
             None => html!{},
@@ -578,6 +617,7 @@ impl Component for FileDataComponent {
         <div class="sidebar-scroll"><div class="sidebar-scroll-container">
             <SidebarSectionHeader header_text="Navigation" collapsed_text="Open a new trace" section={self.navigation_section.clone()}><ul>
                 <li><a href="#" draggable="false" id="open_trace_file"><div class="material-icons"><MatIcon>{"folder_open"}</MatIcon></div>{"Open trace file"}</a></li>
+                {view_selector}
             </ul></SidebarSectionHeader>
             {current_trace}
             <SidebarSectionHeader header_text="Support" collapsed_text="Documentation & Bugs"><ul>

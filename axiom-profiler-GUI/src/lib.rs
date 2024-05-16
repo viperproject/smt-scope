@@ -573,6 +573,7 @@ impl Component for FileDataComponent {
                 let Some(filters_state_link) = &*filters_state_link.borrow() else {
                     return;
                 };
+                filters_state_link.send_message(crate::filters::Msg::ClearOperations);
                 filters_state_link.send_message(crate::filters::Msg::AddFilter(false, Filter::SelectNthMatchingLoop(n)));
             }
         }});

@@ -73,9 +73,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3 # this copies the whole repository
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # needed, see GitHub Action "Changed Files"
+          lfs: true
 
       - name: Install Z3 for older version
         uses: pavpanchekha/setup-z3@1.2.2 # see GitHub Action "Install Z3"

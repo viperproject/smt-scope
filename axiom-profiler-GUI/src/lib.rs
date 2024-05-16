@@ -393,7 +393,6 @@ impl Component for FileDataComponent {
                     *p = Some(rc_parser);
                     true
                 });
-                cfg.reset_ml_viewer_mode();
                 let file = OpenedFileInfo {
                     file_name,
                     file_size,

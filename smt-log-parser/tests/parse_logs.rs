@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 use cap::Cap;
 
 use mem_dbg::*;
-use smt_log_parser::{parsers::z3::graph::InstGraph, LogParser, Z3Parser};
+use smt_log_parser::{parsers::z3::graph::Graph, LogParser, Z3Parser};
 
 #[global_allocator]
 static ALLOCATOR: Cap<std::alloc::System> = Cap::new(std::alloc::System, usize::max_value());
@@ -81,7 +81,7 @@ fn parse_all_logs() {
                 mem_limit / mb,
             );
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
-            let inst_graph = InstGraph::new(parser.parser()).unwrap();
+            let inst_graph = Graph::new(parser.parser()).unwrap();
             let elapsed = now.elapsed();
             max_analysis_ovhd = f64::max(max_analysis_ovhd, (ALLOCATOR.allocated() as u64 - middle_alloc) as f64 / parse_bytes as f64);
             println!(

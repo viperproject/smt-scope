@@ -1,5 +1,5 @@
 use petgraph::{visit::{Dfs, IntoNeighborsDirected, Reversed, Walker}, Direction};
-use smt_log_parser::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{InstIdx, QuantIdx}, parsers::z3::graph::{raw::{Node, NodeKind, RawInstGraph}, InstGraph, RawNodeIndex}, Z3Parser};
+use smt_log_parser::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::{InstIdx, QuantIdx}, parsers::z3::graph::{raw::{InstEdgeKind, InstNodeKind, Node, RawGraph}, Graph, RawNodeIndex}, Z3Parser};
 
 use super::svg_result::DEFAULT_NODE_COUNT;
 
@@ -34,7 +34,7 @@ pub enum Filter {
 }
 
 impl Filter {
-    pub fn apply(self, graph: &mut InstGraph, parser: &Z3Parser, config: &DisplayConfiguration) -> FilterOutput {
+    pub fn apply(self, graph: &mut Graph<InstNodeKind, InstEdgeKind>, parser: &Z3Parser, config: &DisplayConfiguration) -> FilterOutput {
         match self {
             Filter::MaxNodeIdx(max) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() >= max),
             Filter::MinNodeIdx(min) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() < min),
@@ -98,7 +98,7 @@ pub enum Disabler {
 }
 
 impl Disabler {
-    pub fn disable(self, idx: RawNodeIndex, graph: &RawInstGraph, _parser: &Z3Parser) -> bool {
+    pub fn disable(self, idx: RawNodeIndex, graph: &RawGraph<InstNodeKind, InstEdgeKind>, _parser: &Z3Parser) -> bool {
         let node = &graph[idx];
         match self {
             Disabler::ENodes => node.kind().enode().is_some(),
@@ -106,28 +106,28 @@ impl Disabler {
             Disabler::AllEqualities =>
                 node.kind().eq_given().is_some() || node.kind().eq_trans().is_some(),
             Disabler::Smart => match node.kind() {
-                NodeKind::ENode(_) => {
+                InstNodeKind::ENode(_) => {
                     // Should only be 0 or 1
                     let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
                     let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
                     children == 0 || (parents == 1 && children == 1)
                 },
-                NodeKind::GivenEquality(..) => {
+                InstNodeKind::GivenEquality(..) => {
                     let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
                     let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
                     children == 0 || (parents == 1 && children == 1)
                 },
-                NodeKind::TransEquality(_) => {
+                InstNodeKind::TransEquality(_) => {
                     let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
                     // Should be >= 1
                     let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
                     parents == 0 || (parents == 1 && children == 1)
                 }
-                NodeKind::Instantiation(_) => false,
+                InstNodeKind::Instantiation(_) => false,
             },
         }
     }
-    pub fn apply(many: impl Iterator<Item = Disabler> + Clone, graph: &mut InstGraph, parser: &Z3Parser) {
+    pub fn apply(many: impl Iterator<Item = Disabler> + Clone, graph: &mut Graph<InstNodeKind, InstEdgeKind>, parser: &Z3Parser) {
         graph.reset_disabled_to(parser, |node, graph| many.clone().any(|d| d.disable(node, graph, parser)));
     }
 

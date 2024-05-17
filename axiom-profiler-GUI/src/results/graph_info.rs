@@ -4,7 +4,7 @@ use material_yew::WeakComponentLink;
 use scraper::node;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
 use smt_log_parser::{
-    display_with::DisplayConfiguration, items::BlameKind, parsers::z3::graph::{raw::NodeKind, RawNodeIndex, VisibleEdgeIndex}
+    display_with::DisplayConfiguration, items::BlameKind, parsers::z3::graph::{raw::InstNodeKind, RawNodeIndex, VisibleEdgeIndex}
     // parsers::z3::inst_graph::{EdgeInfo, InstInfo},
 };
 use web_sys::HtmlElement;

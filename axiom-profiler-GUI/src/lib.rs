@@ -13,7 +13,8 @@ use material_yew::select::MatSelect;
 use petgraph::visit::EdgeRef;
 use results::graph_info;
 use results::svg_result::{Msg as SVGMsg, QuantIdxToColourMap, RenderedGraph, RenderingState, SVGResult};
-use smt_log_parser::parsers::z3::graph::{InstGraph, VisibleEdgeIndex, RawNodeIndex};
+use smt_log_parser::parsers::z3::graph::raw::{InstEdgeKind, InstNodeKind};
+use smt_log_parser::parsers::z3::graph::{Graph, VisibleEdgeIndex, RawNodeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{ParseState, ReaderState};
 use wasm_bindgen::closure::Closure;
@@ -680,7 +681,7 @@ pub struct RcParser {
     parser: Rc<Z3Parser>,
     lookup: Rc<StringLookupZ3>,
     colour_map: QuantIdxToColourMap,
-    graph: Option<Rc<RefCell<InstGraph>>>,
+    graph: Option<Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>>,
     found_mls: Option<usize>,
 }
 

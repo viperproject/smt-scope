@@ -9,7 +9,7 @@ use crate::{Result, Z3Parser};
 
 use self::{cost::DefaultCost, depth::DefaultDepth};
 
-use super::{raw::Node, InstGraph, RawNodeIndex};
+use super::{raw::{BaseAndObserve, Node}, Graph, RawNodeIndex};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
@@ -42,8 +42,8 @@ impl Analysis {
     }
 }
 
-impl InstGraph {
-    pub fn initialise_collect<I: CollectInitialiser<FORWARD, ID>, const FORWARD: bool, const ID: u8>(&mut self, mut initialiser: I, parser: &Z3Parser) {
+impl<N, E> Graph<N, E> where Node<N>: BaseAndObserve {
+    pub fn initialise_collect<I: CollectInitialiser<FORWARD, ID, N>, const FORWARD: bool, const ID: u8>(&mut self, mut initialiser: I, parser: &Z3Parser) {
         // Reset to base
         for node in self.raw.graph.node_weights_mut() {
             let base = initialiser.base(node, parser);
@@ -66,7 +66,7 @@ impl InstGraph {
         }
     }
 
-    pub fn initialise_transfer<I: TransferInitialiser<FORWARD, ID>, const FORWARD: bool, const ID: u8>(&mut self, mut initialiser: I, parser: &Z3Parser) {
+    pub fn initialise_transfer<I: TransferInitialiser<FORWARD, ID, N>, const FORWARD: bool, const ID: u8>(&mut self, mut initialiser: I, parser: &Z3Parser) {
         // Reset to base
         for node in self.raw.graph.node_weights_mut() {
             let base = initialiser.base(node, parser);
@@ -120,27 +120,27 @@ impl InstGraph {
 
 // FIXME: `ID` makes the implementations unique, but is not a great solution.
 /// FORWARD: Do a forward or reverse topological walk?
-pub trait Initialiser<const FORWARD: bool, const ID: u8> {
+pub trait Initialiser<const FORWARD: bool, const ID: u8, N> {
     /// The value that is being initialised.
     type Value: std::fmt::Debug;
 
     /// Will I get to see the incoming parents or outgoing children?
     fn direction() -> Direction;
     /// The starting value for a node.
-    fn base(&mut self, node: &Node, parser: &Z3Parser) -> Self::Value;
-    fn assign(&mut self, node: &mut Node, value: Self::Value);
+    fn base(&mut self, node: &Node<N>, parser: &Z3Parser) -> Self::Value;
+    fn assign(&mut self, node: &mut Node<N>, value: Self::Value);
 
     /// Called between initialisations of different subgraphs.
     fn reset(&mut self) {}
 }
 /// Initialiser where values are transferred from the current node to its neighbors.
-pub trait TransferInitialiser<const FORWARD: bool, const ID: u8>: Initialiser<FORWARD, ID> {
+pub trait TransferInitialiser<const FORWARD: bool, const ID: u8, N>: Initialiser<FORWARD, ID, N> {
     type Observed;
-    fn observe(&mut self, node: &Node, parser: &Z3Parser) -> Self::Observed;
-    fn transfer(&mut self, from: &Node, to_idx: usize, to_all: &[Self::Observed]) -> Self::Value;
-    fn add(&mut self, node: &mut Node, value: Self::Value);
+    fn observe(&mut self, node: &Node<N>, parser: &Z3Parser) -> Self::Observed;
+    fn transfer(&mut self, from: &Node<N>, to_idx: usize, to_all: &[Self::Observed]) -> Self::Value;
+    fn add(&mut self, node: &mut Node<N>, value: Self::Value);
 }
 /// Initialiser where values are transferred from the neighbors to the current node.
-pub trait CollectInitialiser<const FORWARD: bool, const ID: u8>: Initialiser<FORWARD, ID> {
-    fn collect<'n, T: Iterator<Item = &'n Node>>(&mut self, _node: &Node, from_all: impl Fn() -> T) -> Self::Value;
+pub trait CollectInitialiser<const FORWARD: bool, const ID: u8, N>: Initialiser<FORWARD, ID, N> {
+    fn collect<'n, T: Iterator<Item = &'n Node<N>>>(&mut self, _node: &Node<N>, from_all: impl Fn() -> T) -> Self::Value where N: 'n;
 }

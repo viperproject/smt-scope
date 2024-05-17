@@ -5,18 +5,18 @@ use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdge
 
 use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}, NonMaxU32};
 
-use super::{raw::{EdgeKind, Node, NodeKind}, InstGraph, RawEdgeIndex, RawNodeIndex};
+use super::{raw::{InstEdgeKind, Node, InstNodeKind}, Graph, RawEdgeIndex, RawNodeIndex};
 
 graph_idx!(visible_idx, VisibleNodeIndex, VisibleEdgeIndex, VisibleIx);
 
-pub struct VisibleInstGraph {
+pub struct VisibleGraph {
     pub graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx>,
     reverse: FxHashMap<RawNodeIndex, VisibleNodeIndex>,
     pub generation: u32,
 }
 
-impl InstGraph {
-    pub fn to_visible(&self) -> VisibleInstGraph {
+impl<N, E> Graph<N, E> {
+    pub fn to_visible(&self) -> VisibleGraph {
         // debug_assert_eq!(self.hidden as usize, self.graph.node_weights().filter(|n| n.hidden).count());
         
         // Code copied from `DiGraph::filter_map`, but that function does not
@@ -24,7 +24,7 @@ impl InstGraph {
         let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> = DiGraph::with_capacity(self.raw.visible_nodes(), 0);
         // mapping from old node index to new node index, end represents removed.
         let mut node_index_map = vec![NodeIndex::end(); self.raw.graph.node_count()];
-        let node_map = |idx, node: &Node| node.visible().then(|| VisibleNode {
+        let node_map = |idx, node: &Node<N>| node.visible().then(|| VisibleNode {
             idx,
             hidden_parents: self.raw.neighbors_directed(idx, Direction::Incoming).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
             hidden_children: self.raw.neighbors_directed(idx, Direction::Outgoing).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
@@ -47,18 +47,18 @@ impl InstGraph {
         }
 
         let reverse: FxHashMap<_, _> = graph.node_indices().map(VisibleNodeIndex).map(|idx| (graph[idx.0].idx, idx)).collect();
-        let mut self_ = VisibleInstGraph { graph, reverse, generation: self.raw.stats.generation };
+        let mut self_ = VisibleGraph { graph, reverse, generation: self.raw.stats.generation };
         self_.reconnect(self);
         self_
     }
 }
-impl VisibleInstGraph {
+impl VisibleGraph {
     /// Does the hidden instantiation graph contain the given node?
     pub fn contains(&self, i_idx: RawNodeIndex) -> bool {
         self.reverse.contains_key(&i_idx)
     }
 
-    fn reconnect(&mut self, igraph: &InstGraph) {
+    fn reconnect<N, E>(&mut self, igraph: &Graph<N, E>) {
         // Look for tuples of 4 indices:
         //  - `from`: a visible node
         //  - `from_child`: a hidden child of `from`
@@ -101,7 +101,7 @@ impl VisibleInstGraph {
 
                 // visible nodes are ruled out here too (`fwd_reachable` is reflexive)
                 let filter = |i| {
-                    let node: &Node = &igraph.raw.graph[i];
+                    let node: &Node<N> = &igraph.raw.graph[i];
                     node.subgraph.is_some_and(|(_, s)| !fwd_reachable.contains(s) && bwd_reachable.contains(s))
                 };
                 let filtered = NodeFiltered::from_fn(&*igraph.raw.graph, filter);
@@ -136,24 +136,24 @@ impl VisibleInstGraph {
     }
 }
 
-impl Index<VisibleNodeIndex> for VisibleInstGraph {
+impl Index<VisibleNodeIndex> for VisibleGraph {
     type Output = VisibleNode;
     fn index(&self, idx: VisibleNodeIndex) -> &Self::Output {
         &self.graph[idx.0]
     }
 }
-impl IndexMut<VisibleNodeIndex> for VisibleInstGraph {
+impl IndexMut<VisibleNodeIndex> for VisibleGraph {
     fn index_mut(&mut self, idx: VisibleNodeIndex) -> &mut Self::Output {
         &mut self.graph[idx.0]
     }
 }
-impl Index<VisibleEdgeIndex> for VisibleInstGraph {
+impl Index<VisibleEdgeIndex> for VisibleGraph {
     type Output = VisibleEdge;
     fn index(&self, idx: VisibleEdgeIndex) -> &Self::Output {
         &self.graph[idx.0]
     }
 }
-impl IndexMut<VisibleEdgeIndex> for VisibleInstGraph {
+impl IndexMut<VisibleEdgeIndex> for VisibleGraph {
     fn index_mut(&mut self, idx: VisibleEdgeIndex) -> &mut Self::Output {
         &mut self.graph[idx.0]
     }
@@ -182,7 +182,7 @@ impl std::fmt::Debug for VisibleEdge {
 }
 
 impl VisibleEdge {
-    fn indirect_nodes<'a>(&'a self, graph: &'a InstGraph) -> impl Iterator<Item = RawNodeIndex> + 'a {
+    fn indirect_nodes<'a, N, E>(&'a self, graph: &'a Graph<N, E>) -> impl Iterator<Item = RawNodeIndex> + 'a {
         let iter = match self {
             VisibleEdge::Direct(_) => None,
             VisibleEdge::Indirect(path) =>
@@ -190,10 +190,13 @@ impl VisibleEdge {
         };
         iter.into_iter().flatten().map(RawNodeIndex)
     }
-    pub fn is_indirect(&self, graph: &InstGraph) -> bool {
+    pub fn is_indirect<N, E>(&self, graph: &Graph<N, E>) -> bool {
         self.indirect_nodes(graph).any(|n| graph.raw.graph[n.0].hidden())
     }
-    pub fn kind(&self, graph: &InstGraph) -> VisibleEdgeKind {
+}
+
+impl VisibleEdge {
+    pub fn kind(&self, graph: &Graph<InstNodeKind, InstEdgeKind>) -> VisibleEdgeKind<InstEdgeKind> {
         match self {
             VisibleEdge::Direct(e) => VisibleEdgeKind::Direct(*e, graph.raw.graph[e.0]),
             VisibleEdge::Indirect(path) => {
@@ -208,11 +211,11 @@ impl VisibleEdge {
                 let edges = path.iter().map(|e| graph.raw.graph[e.0]).collect::<Vec<_>>();
                 match edges[..] {
                     // Starting at Instantiation
-                    [EdgeKind::Yield, EdgeKind::Blame { trigger_term }] =>
+                    [InstEdgeKind::Yield, InstEdgeKind::Blame { trigger_term }] =>
                         VisibleEdgeKind::YieldBlame { enode: get_kind(1).enode().unwrap(), trigger_term },
-                    [EdgeKind::Yield, EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }] =>
+                    [InstEdgeKind::Yield, InstEdgeKind::EqualityFact, InstEdgeKind::TEqualitySimple { .. }] =>
                         VisibleEdgeKind::YieldEq(get_kind(2).eq_given().unwrap()),
-                    [EdgeKind::Yield, EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }, EdgeKind::BlameEq { trigger_term, eq_order }] => {
+                    [InstEdgeKind::Yield, InstEdgeKind::EqualityFact, InstEdgeKind::TEqualitySimple { .. }, InstEdgeKind::BlameEq { trigger_term, eq_order }] => {
                         let trans = graph.raw.graph.edges_directed(get_node(3), Direction::Incoming).count();
                         let given_eq = get_kind(2).eq_given().unwrap();
                         if trans == 1 {
@@ -221,12 +224,12 @@ impl VisibleEdge {
                             VisibleEdgeKind::YieldEqOther(given_eq, edges)
                         }
                     }
-                    [EdgeKind::Yield, EdgeKind::EqualityFact, ..] =>
+                    [InstEdgeKind::Yield, InstEdgeKind::EqualityFact, ..] =>
                         VisibleEdgeKind::YieldEqOther(get_kind(2).eq_given().unwrap(), edges),
                     // Starting at ENode
-                    [EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }] =>
+                    [InstEdgeKind::EqualityFact, InstEdgeKind::TEqualitySimple { .. }] =>
                         VisibleEdgeKind::ENodeEq(get_kind(1).eq_given().unwrap()),
-                    [EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }, EdgeKind::BlameEq { trigger_term, eq_order }] => {
+                    [InstEdgeKind::EqualityFact, InstEdgeKind::TEqualitySimple { .. }, InstEdgeKind::BlameEq { trigger_term, eq_order }] => {
                         let trans = graph.raw.graph.edges_directed(get_node(2), Direction::Incoming).count();
                         let given_eq = get_kind(1).eq_given().unwrap();
                         if trans == 1 {
@@ -235,7 +238,7 @@ impl VisibleEdge {
                             VisibleEdgeKind::ENodeEqOther(given_eq, edges)
                         }
                     }
-                    [EdgeKind::EqualityFact, ..] =>
+                    [InstEdgeKind::EqualityFact, ..] =>
                         VisibleEdgeKind::ENodeEqOther(get_kind(1).eq_given().unwrap(), edges),
                     _ => VisibleEdgeKind::Unknown(*path.first().unwrap(), edges, *path.last().unwrap()),
                 }
@@ -244,8 +247,8 @@ impl VisibleEdge {
     }
 }
 
-pub enum VisibleEdgeKind {
-    Direct(RawEdgeIndex, EdgeKind),
+pub enum VisibleEdgeKind<InstEdgeKind> {
+    Direct(RawEdgeIndex, InstEdgeKind),
     /// `Instantiation` -> `ENode` -> `Instantiation`
     YieldBlame { enode: ENodeIdx, trigger_term: u16 },
     /// `Instantiation` -> `ENode` -> `GivenEquality` -> `TransEquality`
@@ -254,21 +257,21 @@ pub enum VisibleEdgeKind {
     /// `TransEquality` (only 1 parent) -> `Instantiation`
     YieldBlameEq { given_eq: (EqGivenIdx, Option<NonMaxU32>), trigger_term: u16, eq_order: u16 },
     /// `Instantiation` -> `ENode` -> `GivenEquality` -> ...
-    YieldEqOther((EqGivenIdx, Option<NonMaxU32>), Vec<EdgeKind>),
+    YieldEqOther((EqGivenIdx, Option<NonMaxU32>), Vec<InstEdgeKind>),
 
     /// `ENode` -> `GivenEquality` -> `TransEquality`
     ENodeEq((EqGivenIdx, Option<NonMaxU32>)),
     /// `ENode` -> `GivenEquality` -> `TransEquality` -> `Instantiation`
     ENodeBlameEq { given_eq: (EqGivenIdx, Option<NonMaxU32>), trigger_term: u16, eq_order: u16 },
     /// `ENode` -> `GivenEquality` -> ...
-    ENodeEqOther((EqGivenIdx, Option<NonMaxU32>), Vec<EdgeKind>),
+    ENodeEqOther((EqGivenIdx, Option<NonMaxU32>), Vec<InstEdgeKind>),
 
-    Unknown(RawEdgeIndex, Vec<EdgeKind>, RawEdgeIndex),
+    Unknown(RawEdgeIndex, Vec<InstEdgeKind>, RawEdgeIndex),
 }
 
-impl VisibleEdgeKind {
-    pub fn blame(&self, graph: &InstGraph) -> NodeKind {
-        use NodeKind::*;
+impl VisibleEdgeKind<InstEdgeKind> {
+    pub fn blame(&self, graph: &Graph<InstNodeKind, InstEdgeKind>) -> InstNodeKind {
+        use InstNodeKind::*;
         match self {
             VisibleEdgeKind::Direct(edge, _) |
             VisibleEdgeKind::Unknown(edge, ..) =>

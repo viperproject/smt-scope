@@ -1,4 +1,4 @@
-use smt_log_parser::parsers::z3::{graph::InstGraph, z3parser::Z3Parser};
+use smt_log_parser::parsers::z3::{graph::Graph, z3parser::Z3Parser};
 use smt_log_parser::parsers::LogParser;
 use std::{env, time::Duration};
 use wasm_timer::Instant;
@@ -31,7 +31,7 @@ fn main() {
             "{} parsing after {} seconds (timeout {timeout:?})",
             if timeout.is_timeout() { "Timeout" } else { "Finished" }, elapsed_time.as_secs_f32()
         );
-        let inst_graph = InstGraph::new(&result).unwrap();
+        let inst_graph = Graph::new(&result).unwrap();
         let _displayed = inst_graph.to_visible();
         let process_time = time.elapsed();
         println!(

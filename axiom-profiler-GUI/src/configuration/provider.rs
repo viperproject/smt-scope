@@ -65,7 +65,7 @@ impl ConfigurationProvider {
         self.update.update(|cfg| f(&mut cfg.parser));
     }
     pub fn reset_ml_viewer_mode(&self) {
-        self.update.update(|cfg| {cfg.persistent.ml_viewer_mode = false; true});
+        self.update.update(|cfg| {cfg.ml_viewer_mode = false; true});
     }
 }
 
@@ -73,12 +73,12 @@ impl ConfigurationProvider {
 pub struct Configuration {
     pub parser: Option<RcParser>,
     pub persistent: PersistentConfiguration,
+    pub ml_viewer_mode: bool, 
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PersistentConfiguration {
     pub display: DisplayConfiguration,
-    pub ml_viewer_mode: bool, 
 }
 impl PersistentConfiguration {
     pub const fn default_const() -> Self {
@@ -93,7 +93,6 @@ impl PersistentConfiguration {
         };
         Self {
             display,
-            ml_viewer_mode: false,
         }
     }
 }
@@ -121,7 +120,7 @@ impl Component for ConfigurationProvider {
         if let Ok(cached) = gloo::storage::LocalStorage::get::<PersistentConfiguration>("config") {
             // log::warn!("ConfigurationProvider loaded: {cached:?}");
             config.persistent = cached;
-            config.persistent.ml_viewer_mode = false;
+            config.ml_viewer_mode = false;
         }
         let update = Callback::from(move |config| link.send_message(config));
         Self {

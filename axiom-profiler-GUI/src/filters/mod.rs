@@ -204,7 +204,7 @@ impl Component for FiltersState {
                 }
                 let link = ctx.link().clone();
                 let cfg = link.get_configuration().unwrap();
-                cfg.update.update(|cfg| { cfg.persistent.ml_viewer_mode = !cfg.persistent.ml_viewer_mode; true });
+                cfg.update.update(|cfg| { cfg.ml_viewer_mode = !cfg.ml_viewer_mode; true });
                 true
             }
         }
@@ -239,7 +239,7 @@ impl Component for FiltersState {
         // TODO: re-add finding matching loops
         let found_mls = ctx.props().file.parser.found_mls;
         let toggle_ml_viewer_mode = ctx.link().callback(|_| Msg::ToggleMlViewerMode); 
-        let ml_viewer_mode = if ctx.link().get_configuration().unwrap().config.persistent.ml_viewer_mode {
+        let ml_viewer_mode = if ctx.link().get_configuration().unwrap().config.ml_viewer_mode {
             html! {
                 <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"close"}</MatIcon></div>{"Exit matching loop viewer"}</a></li>
             }
@@ -268,7 +268,7 @@ impl Component for FiltersState {
 
         // Selected nodes
         let selected_nodes = !ctx.props().file.selected_nodes.is_empty();
-        let selected_nodes = (selected_nodes && !ctx.link().get_configuration().unwrap().config.persistent.ml_viewer_mode).then(|| {
+        let selected_nodes = (selected_nodes && !ctx.link().get_configuration().unwrap().config.ml_viewer_mode).then(|| {
             let new_filter = ctx.link().callback(|f| Msg::AddFilter(false, f));
             let nodes = ctx.props().file.selected_nodes.clone();
             let header = format!("Selected {} Node{}", nodes.len(), if nodes.len() == 1 { "" } else { "s" });
@@ -310,7 +310,7 @@ impl Component for FiltersState {
                 <div class="material-icons"><MatIcon>{icon}</MatIcon></div>{action}{d.description()}
             </a> }
         });
-        let normal_mode = if ctx.link().get_configuration().unwrap().config.persistent.ml_viewer_mode {
+        let normal_mode = if ctx.link().get_configuration().unwrap().config.ml_viewer_mode {
             html!{}
         } else {
             html!{

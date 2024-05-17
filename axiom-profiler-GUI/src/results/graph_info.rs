@@ -91,7 +91,7 @@ impl Component for GraphInfo {
             generalized_terms: Vec::new(),
             graph_container: WeakComponentLink::default(),
             displayed_matching_loop_graph: None,
-            in_ml_viewer_mode: msg.config.persistent.ml_viewer_mode,
+            in_ml_viewer_mode: msg.config.ml_viewer_mode,
             _context_listener: context_listener,
         }
     }
@@ -172,8 +172,8 @@ impl Component for GraphInfo {
                 false
             }
             Msg::ContextUpdated(msg) => {
-                if self.in_ml_viewer_mode != msg.config.persistent.ml_viewer_mode {
-                    self.in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
+                if self.in_ml_viewer_mode != msg.config.ml_viewer_mode {
+                    self.in_ml_viewer_mode = msg.config.ml_viewer_mode;
                     true
                 } else {
                     false

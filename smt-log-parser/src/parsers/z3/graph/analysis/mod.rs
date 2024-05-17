@@ -25,7 +25,7 @@ pub struct Analysis {
     // // Most to least
     // pub(super) max_depth: Vec<RawNodeIndex>,
     pub matching_loop_end_nodes: Option<Vec<RawNodeIndex>>,
-    pub matching_loop_graphs: Vec<Graph<(String, MLGraphNode), ()>>,
+    pub matching_loop_graphs: Vec<Graph<MLGraphNode, ()>>,
 }
 
 impl Analysis {

@@ -1,5 +1,5 @@
 use crate::{
-    configuration::{Configuration, ConfigurationContext}, filters, results::{filters::FilterOutput, graph_info::{GraphInfo, Msg as GraphInfoMsg}, node_info::{EdgeInfo, NodeInfo}}, OpenedFileInfo, RcParser
+    configuration::{Configuration, ConfigurationContext, ConfigurationProvider, View}, filters, results::{filters::FilterOutput, graph_info::{GraphInfo, Msg as GraphInfoMsg}, node_info::{EdgeInfo, NodeInfo}}, OpenedFileInfo, RcParser
 };
 
 use super::{
@@ -14,7 +14,7 @@ use smt_log_parser::{
     display_with::DisplayCtxt, items::{BlameKind, InstIdx, MatchKind, QuantIdx}, parsers::{
         z3::{
             // inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, Node, NodeInfo, VisibleGraphInfo},
-            graph::{raw::{InstEdgeKind, InstNodeKind}, visible::{VisibleEdge, VisibleGraph}, Graph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
+            graph::{raw::{InstEdgeKind, InstNodeKind, ProofEdgeKind, ProofNodeKind}, visible::{VisibleEdge, VisibleGraph}, Graph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
         },
         LogParser,
     }
@@ -44,7 +44,8 @@ impl PartialEq for RenderedGraph {
 impl Eq for RenderedGraph {}
 
 pub enum Msg {
-    ConstructedGraph(Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>),
+    ConstructedInstGraph(Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>),
+    ConstructedProofGraph(Rc<RefCell<Graph<ProofNodeKind, ProofEdgeKind>>>),
     FailedConstructGraph(String),
     UpdateSvgText(AttrValue, VisibleGraph),
     SetPermission(GraphDimensions),
@@ -54,6 +55,7 @@ pub enum Msg {
     ResetGraph,
     UserPermission(WarningChoice),
     WorkerOutput(super::worker::WorkerOutput),
+    ViewUpdated(Rc<ConfigurationProvider>),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -68,7 +70,8 @@ pub struct GraphDimensions {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RenderingState {
-    ConstructingGraph,
+    ConstructingInstGraph,
+    ConstructingProofGraph,
     ConstructedGraph,
     GraphToDot,
     RenderingGraph,
@@ -95,7 +98,10 @@ pub struct SVGResult {
     // selected_insts: Vec<RawNodeIndex>,
     // data: Option<SVGData>,
     queue: Vec<Msg>,
-    constructed_graph: Option<Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>>,
+    constructed_inst_graph: Option<Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>>,
+    constructed_proof_graph: Option<Rc<RefCell<Graph<ProofNodeKind, ProofEdgeKind>>>>,
+    view: View,
+    _context_listener: ContextHandle<Rc<ConfigurationProvider>>,
 }
 
 #[derive(Properties, PartialEq)]
@@ -119,13 +125,18 @@ impl Component for SVGResult {
                 ctx.link().send_message_batch(old);
             }
         }
-        ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingGraph));
+        let (msg, context_listener) = ctx
+            .link()
+            .context(ctx.link().callback(Msg::ViewUpdated))
+            .expect("No context provided");
         let link = ctx.link().clone();
+        // first, we construct the instantiation graph
+        ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingInstGraph));
         wasm_bindgen_futures::spawn_local(async move {
             gloo::timers::future::TimeoutFuture::new(10).await;
             let cfg = link.get_configuration().unwrap();
             let parser = cfg.config.parser.as_ref().unwrap();
-            let inst_graph = match Graph::new(&parser.parser) {
+            let inst_graph = match Graph::<InstNodeKind, InstEdgeKind>::new(&parser.parser) {
                 Ok(inst_graph) => inst_graph,
                 Err(err) => {
                     log::error!("Failed constructing instantiation graph: {err:?}");
@@ -145,7 +156,37 @@ impl Component for SVGResult {
                 p.graph = Some(inst_graph_ref);
                 true
             }).unwrap_or_default());
-            link.send_message(Msg::ConstructedGraph(inst_graph));
+            link.send_message(Msg::ConstructedInstGraph(inst_graph));
+        });
+        // secondly, we construct the proof graph
+        ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingProofGraph));
+        let link = ctx.link().clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            gloo::timers::future::TimeoutFuture::new(10).await;
+            let cfg = link.get_configuration().unwrap();
+            let parser = cfg.config.parser.as_ref().unwrap();
+            let proof_graph = match Graph::<ProofNodeKind, ProofEdgeKind>::new(&parser.parser) {
+                Ok(proof_graph) => proof_graph,
+                Err(err) => {
+                    log::error!("Failed constructing instantiation graph: {err:?}");
+                    let error = if err.is_allocation() {
+                        "Out of memory, try stopping earlier".to_string()
+                    } else {
+                        // Should not be reachable
+                        format!("Unexpected error: {err:?}")
+                    };
+                    link.send_message(Msg::FailedConstructGraph(error));
+                    return;
+                }
+            };
+            let proof_graph = Rc::new(RefCell::new(proof_graph));
+            // let proof_graph_ref = proof_graph.clone();
+            // cfg.update.update(|cfg| cfg.parser.as_mut().map(|p| {
+            //     p.graph = Some(proof_graph_ref);
+            //     true
+            // }).unwrap_or_default());
+            // link.send_message(Msg::ConstructedGraph(proof_graph));
+            // link.send_message(Msg::ConstructedProofGraph(proof_graph));
         });
         Self {
             calculated: None,
@@ -164,17 +205,27 @@ impl Component for SVGResult {
             // selected_insts: Vec::new(),
             // data: None,
             queue: Vec::new(),
-            constructed_graph: None,
+            constructed_inst_graph: None,
+            constructed_proof_graph: None,
+            view: msg.config.view.clone(),
+            _context_listener: context_listener,
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::ConstructedGraph(parser) => {
-                self.constructed_graph = Some(parser);
+            Msg::ConstructedInstGraph(parser) => {
+                self.constructed_inst_graph = Some(parser);
                 let queue = std::mem::replace(&mut self.queue, Vec::new());
                 ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructedGraph));
                 ctx.link().send_message_batch(queue);
+                return true;
+            }
+            Msg::ConstructedProofGraph(parser) => {
+                self.constructed_proof_graph = Some(parser);
+                // let queue = std::mem::replace(&mut self.queue, Vec::new());
+                // ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructedGraph));
+                // ctx.link().send_message_batch(queue);
                 return true;
             }
             Msg::FailedConstructGraph(error) => {
@@ -183,7 +234,8 @@ impl Component for SVGResult {
             }
             _ => (),
         }
-        let Some(inst_graph) = &self.constructed_graph else {
+
+        let Some(inst_graph) = &self.constructed_inst_graph else {
             self.queue.push(msg);
             return false;
         };
@@ -193,7 +245,8 @@ impl Component for SVGResult {
         let mut inst_graph = (**inst_graph).borrow_mut();
         let inst_graph = &mut *inst_graph;
         match msg {
-            Msg::ConstructedGraph(_) => unreachable!(),
+            Msg::ConstructedInstGraph(_) => unreachable!(),
+            Msg::ConstructedProofGraph(_) => unreachable!(),
             Msg::FailedConstructGraph(_) => unreachable!(),
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
@@ -206,15 +259,6 @@ impl Component for SVGResult {
                         //     .as_ref()
                         //     .unwrap()
                         //     .send_message(GraphInfoMsg::SelectNodes(path));
-                        false
-                    }
-                    FilterOutput::MatchingLoopGeneralizedTerms(gen_terms) => {
-                        ctx.props()
-                            .insts_info_link
-                            .borrow()
-                            .as_ref()
-                            .unwrap()
-                            .send_message(GraphInfoMsg::ShowGeneralizedTerms(gen_terms));
                         false
                     }
                     FilterOutput::None => false
@@ -421,11 +465,18 @@ impl Component for SVGResult {
                 ctx.props().progress.emit(GraphState::Constructed(rendered));
                 true
             }
+            Msg::ViewUpdated(config) => {
+                if self.view == config.config.view {
+                    return false
+                }
+                self.view = config.config.view.clone();
+                true
+            }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        if self.constructed_graph.is_none() {
+        if self.constructed_inst_graph.is_none() {
             return html! {};
         };
         html! {

@@ -52,7 +52,6 @@ pub enum Msg {
     // SelectNodes(Vec<RawNodeIndex>),
     DeselectAll,
     SelectAll,
-    ShowGeneralizedTerms(Vec<String>),
 }
 
 #[derive(Properties, PartialEq)]
@@ -145,10 +144,6 @@ impl Component for GraphInfo {
             //     ctx.props().update_selected_nodes.emit(selected_nodes);
             //     true
             // }
-            Msg::ShowGeneralizedTerms(terms) => {
-                self.generalized_terms = terms;
-                true
-            }
             Msg::ScrollZoomSelection => {
                 let Some(graph_container) = &*self.graph_container.borrow() else {
                     return false;

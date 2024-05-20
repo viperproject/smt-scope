@@ -13,7 +13,7 @@ use material_yew::select::MatSelect;
 use petgraph::visit::EdgeRef;
 use results::graph_info;
 use results::svg_result::{Msg as SVGMsg, QuantIdxToColourMap, RenderedGraph, RenderingState, SVGResult};
-use smt_log_parser::parsers::z3::graph::raw::{InstEdgeKind, InstNodeKind};
+use smt_log_parser::parsers::z3::graph::raw::{InstEdgeKind, InstNodeKind, ProofEdgeKind, ProofNodeKind};
 use smt_log_parser::parsers::z3::graph::{Graph, VisibleEdgeIndex, RawNodeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{ParseState, ReaderState};

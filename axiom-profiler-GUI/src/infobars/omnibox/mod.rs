@@ -311,7 +311,8 @@ impl Component for Omnibox {
                 omnibox_info = Some(AttrValue::from(info));
             }
             LoadingState::DoneParsing(..) => (),
-            LoadingState::Rendering(RenderingState::ConstructingGraph, timeout, _) |
+            LoadingState::Rendering(RenderingState::ConstructingInstGraph, timeout, _) |
+            LoadingState::Rendering(RenderingState::ConstructingProofGraph, timeout, _) |
             LoadingState::Rendering(RenderingState::ConstructedGraph, timeout, _) => {
                 if *timeout {
                     omnibox_info = Some(AttrValue::from("Analysing partial trace"));

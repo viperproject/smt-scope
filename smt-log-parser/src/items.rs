@@ -47,6 +47,7 @@ idx!(MatchIdx, "m{}");
 idx!(EqGivenIdx, "≡{}");
 idx!(EqTransIdx, "={}");
 idx!(GraphIdx, "g{}");
+idx!(ProofIdx, "p{}");
 
 /// A Z3 term and associated data.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]

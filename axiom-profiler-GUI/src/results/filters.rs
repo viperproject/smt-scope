@@ -85,7 +85,6 @@ impl Filter {
 
 pub enum FilterOutput {
     LongestPath(Vec<RawNodeIndex>),
-    MatchingLoopGeneralizedTerms(Vec<String>),
     None
 }
 

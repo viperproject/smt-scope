@@ -14,7 +14,7 @@ use smt_log_parser::{
     display_with::DisplayCtxt, items::{BlameKind, InstIdx, MatchKind, QuantIdx}, parsers::{
         z3::{
             // inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, Node, NodeInfo, VisibleGraphInfo},
-            graph::{raw::{EdgeKind, NodeKind}, visible::{VisibleEdge, VisibleInstGraph}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
+            graph::{raw::{InstEdgeKind, InstNodeKind}, visible::{VisibleEdge, VisibleGraph}, Graph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
         },
         LogParser,
     }
@@ -32,7 +32,7 @@ pub const NODE_COLOUR_VALUE: f64 = 0.95;
 
 #[derive(Clone)]
 pub struct RenderedGraph {
-    pub graph: Rc<VisibleInstGraph>,
+    pub graph: Rc<VisibleGraph>,
     pub svg_text: AttrValue,
 }
 
@@ -44,9 +44,9 @@ impl PartialEq for RenderedGraph {
 impl Eq for RenderedGraph {}
 
 pub enum Msg {
-    ConstructedGraph(Rc<RefCell<InstGraph>>),
+    ConstructedGraph(Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>),
     FailedConstructGraph(String),
-    UpdateSvgText(AttrValue, VisibleInstGraph),
+    UpdateSvgText(AttrValue, VisibleGraph),
     SetPermission(GraphDimensions),
     SetDisabled(Vec<Disabler>),
     RenderGraph,
@@ -83,7 +83,7 @@ pub enum GraphState {
 pub struct SVGResult {
     /// Calculated visible graph stored here to avoid recalculating it when
     /// waiting for user permission.
-    calculated: Option<VisibleInstGraph>,
+    calculated: Option<VisibleGraph>,
     /// The calculated graph is moved here once rendered.
     rendered: Option<RenderedGraph>,
 
@@ -95,7 +95,7 @@ pub struct SVGResult {
     // selected_insts: Vec<RawNodeIndex>,
     // data: Option<SVGData>,
     queue: Vec<Msg>,
-    constructed_graph: Option<Rc<RefCell<InstGraph>>>,
+    constructed_graph: Option<Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>>,
 }
 
 #[derive(Properties, PartialEq)]
@@ -125,7 +125,7 @@ impl Component for SVGResult {
             gloo::timers::future::TimeoutFuture::new(10).await;
             let cfg = link.get_configuration().unwrap();
             let parser = cfg.config.parser.as_ref().unwrap();
-            let inst_graph = match InstGraph::new(&parser.parser) {
+            let inst_graph = match Graph::new(&parser.parser) {
                 Ok(inst_graph) => inst_graph,
                 Err(err) => {
                     log::error!("Failed constructing instantiation graph: {err:?}");
@@ -318,7 +318,7 @@ impl Component for SVGResult {
                                     false => "direct",
                                 };
                                 let arrowhead = match kind.blame(inst_graph) {
-                                    NodeKind::GivenEquality(..) | NodeKind::TransEquality(_) => "empty",
+                                    InstNodeKind::GivenEquality(..) | InstNodeKind::TransEquality(_) => "empty",
                                     _ => "normal",
                                 };
                                 format!(
@@ -336,7 +336,7 @@ impl Component for SVGResult {
                                 let mut fillcolor = Some("white".to_string());
                                 let label = node_data.kind().to_string();
                                 match node_data.kind() {
-                                    NodeKind::Instantiation(inst) => {
+                                    InstNodeKind::Instantiation(inst) => {
                                         let mkind = &parser[parser[*inst].match_].kind;
                                         style = Some(if mkind.is_mbqi() { "filled,dashed" } else { "filled" });
                                         let s = match (data.hidden_children, data.hidden_parents) {
@@ -349,7 +349,7 @@ impl Component for SVGResult {
                                         let hue = rc_parser.colour_map.get_rbg_hue(mkind.quant_idx()) / 360.0;
                                         fillcolor = Some(format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}"));
                                     }
-                                    NodeKind::ENode(..) => {
+                                    InstNodeKind::ENode(..) => {
                                         fillcolor = Some("lightgrey".to_string());
                                     }
                                     _ => (),

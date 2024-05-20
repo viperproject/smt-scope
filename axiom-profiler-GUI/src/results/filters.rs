@@ -36,14 +36,14 @@ pub enum Filter {
 impl Filter {
     pub fn apply(self, graph: &mut Graph<InstNodeKind, InstEdgeKind>, parser: &Z3Parser, config: &DisplayConfiguration) -> FilterOutput {
         match self {
-            Filter::MaxNodeIdx(max) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() >= max),
-            Filter::MinNodeIdx(min) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() < min),
+            Filter::MaxNodeIdx(max) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node<InstNodeKind>| idx.0.index() >= max),
+            Filter::MinNodeIdx(min) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node<InstNodeKind>| idx.0.index() < min),
             Filter::IgnoreTheorySolving =>
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.is_discovered())),
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node<InstNodeKind>| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.is_discovered())),
             Filter::IgnoreQuantifier(qidx) =>
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.quant_idx() == qidx)),
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node<InstNodeKind>| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.quant_idx() == qidx)),
             Filter::IgnoreAllButQuantifier(qidx) =>
-            graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.quant_idx() != qidx)),
+            graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node<InstNodeKind>| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.quant_idx() != qidx)),
             Filter::MaxInsts(n) => graph.keep_first_n_cost(n),
             Filter::MaxBranching(n) => graph.keep_first_n_children(n),
             Filter::ShowNeighbours(nidx, direction) => {
@@ -59,12 +59,12 @@ impl Filter {
                 graph.raw.set_visibility_many(!retain, nodes.into_iter())
             }
             Filter::MaxDepth(depth) =>
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.fwd_depth.min as usize > depth),
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node<InstNodeKind>| node.fwd_depth.min as usize > depth),
             Filter::ShowLongestPath(nidx) =>
                 return FilterOutput::LongestPath(graph.raw.show_longest_path_through(nidx)),
             Filter::ShowNamedQuantifier(name) => {
                 let ctxt = DisplayCtxt { parser, config: config.clone() };
-                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i|
+                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node<InstNodeKind>| node.kind().inst().is_some_and(|i|
                     parser[parser[i].match_].kind.quant_idx().map(|q| parser[q].kind.with(&ctxt).to_string()).is_some_and(|s| s == name)
                 ))
             }

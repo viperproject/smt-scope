@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use material_yew::icon::MatIcon;
 use petgraph::{visit::{Dfs, Reversed, Walker}, Direction};
-use smt_log_parser::parsers::z3::graph::{raw::{Node, NodeKind}, RawNodeIndex};
+use smt_log_parser::parsers::z3::graph::{raw::{Node, InstNodeKind}, RawNodeIndex};
 use yew::{function_component, html, use_context, Callback, Html, MouseEvent, Properties};
 
 use crate::{configuration::ConfigurationProvider, results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT}, RcParser};
@@ -49,7 +49,7 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
         let graph = graph.borrow();
         let nodes = props.nodes.iter().map(|n| {
             let i = match *graph.raw[*n].kind() {
-                NodeKind::Instantiation(i) => Some(i),
+                InstNodeKind::Instantiation(i) => Some(i),
                 _ => None
             };
             let q = i.and_then(|i| parser.parser[parser.parser[i].match_].kind.quant_idx());

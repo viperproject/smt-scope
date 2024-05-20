@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, rc::Rc, sync::Mutex};
 
 use fxhash::FxHashMap;
 use nucleo_matcher::{Config, Matcher, Utf32String};
-use smt_log_parser::{items::{ENodeIdx, InstIdx, QuantIdx, QuantKind, TermIdx, TermKind}, parsers::z3::graph::{raw::IndexesGraph, visible::VisibleGraph, Graph, RawNodeIndex}, IString, Z3Parser};
+use smt_log_parser::{items::{ENodeIdx, InstIdx, QuantIdx, QuantKind, TermIdx, TermKind}, parsers::z3::graph::{raw::{IndexesGraph, InstEdgeKind, InstNodeKind}, visible::VisibleGraph, Graph, RawNodeIndex}, IString, Z3Parser};
 
 use crate::commands::{Command, CommandId};
 
@@ -160,17 +160,17 @@ pub struct Entry {
     pub tidx: Option<TermIdx>,
 }
 
-impl<N, E> Entry {
+impl Entry {
     pub fn count(&self) -> usize {
         self.references.len()
     }
-    fn visible<'a>(&'a self, graph: &'a Graph<N, E>, visible: &'a VisibleGraph) -> impl Iterator<Item = RawNodeIndex> + 'a {
+    fn visible<'a>(&'a self, graph: &'a Graph<InstNodeKind, InstEdgeKind>, visible: &'a VisibleGraph) -> impl Iterator<Item = RawNodeIndex> + 'a {
         self.references.iter().map(move |&idx| idx.index(&graph.raw)).filter(move |&idx| visible.contains(idx))
     }
-    pub fn get_visible(&self, graph: &Graph<N, E>, visible: &VisibleGraph) -> Vec<RawNodeIndex> {
+    pub fn get_visible(&self, graph: &Graph<InstNodeKind, InstEdgeKind>, visible: &VisibleGraph) -> Vec<RawNodeIndex> {
         self.visible(graph, visible).collect()
     }
-    pub fn count_visible(&self, graph: &Graph<N, E>, visible: &VisibleGraph) -> usize {
+    pub fn count_visible(&self, graph: &Graph<InstNodeKind, InstEdgeKind>, visible: &VisibleGraph) -> usize {
         self.visible(graph, visible).count()
     }
 }

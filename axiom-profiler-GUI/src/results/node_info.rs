@@ -29,7 +29,7 @@ pub fn InfoLine(InfoLineProps { header, text, code }: &InfoLineProps) -> Html {
 }
 
 pub struct NodeInfo<'a, 'b> {
-    pub node: &'a Node,
+    pub node: &'a Node<InstNodeKind>,
     pub ctxt: &'b DisplayCtxt<'b>,
 }
 
@@ -39,10 +39,10 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
     }
     pub fn kind(&self) -> &'static str {
         match *self.node.kind() {
-            NodeKind::ENode(_) => "ENode",
-            NodeKind::GivenEquality(..) => "Equality",
-            NodeKind::TransEquality(_) => "Equality",
-            NodeKind::Instantiation(inst) => match &self.ctxt.parser[self.ctxt.parser[inst].match_].kind {
+            InstNodeKind::ENode(_) => "ENode",
+            InstNodeKind::GivenEquality(..) => "Equality",
+            InstNodeKind::TransEquality(_) => "Equality",
+            InstNodeKind::Instantiation(inst) => match &self.ctxt.parser[self.ctxt.parser[inst].match_].kind {
                 MatchKind::MBQI { .. } => "MBQI",
                 MatchKind::TheorySolving { .. } => "Theory Solving",
                 MatchKind::Axiom { .. } => "Axiom",
@@ -67,13 +67,13 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             ctxt.config.enode_char_limit = char_limit;
         }
         match *self.node.kind() {
-            NodeKind::ENode(enode) => {
+            InstNodeKind::ENode(enode) => {
                 ctxt.config.enode_char_limit *= 2;
                 enode.with(&ctxt).to_string()
             }
-            NodeKind::GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
-            NodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
-            NodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
+            InstNodeKind::GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
+            InstNodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
+            InstNodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
                 MatchKind::MBQI { quant, .. } =>
                     ctxt.parser[*quant].kind.with(&ctxt).to_string(),
                 MatchKind::TheorySolving { axiom_id, .. } => {
@@ -90,14 +90,14 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
     }
 
     pub fn quantifier_body(&self) -> Option<String> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
+        let InstNodeKind::Instantiation(inst) = *self.node.kind() else {
             return None
         };
         let quant_idx = self.ctxt.parser[self.ctxt.parser[inst].match_].kind.quant_idx()?;
         Some(quant_idx.with(self.ctxt).to_string())
     }
     pub fn blame(&self) -> Option<Vec<(String, String, Vec<String>)>> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
+        let InstNodeKind::Instantiation(inst) = *self.node.kind() else {
             return None
         };
         let match_ = &self.ctxt.parser[self.ctxt.parser[inst].match_];
@@ -113,7 +113,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         Some(blame)
     }
     pub fn bound_terms(&self) -> Option<Vec<String>> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
+        let InstNodeKind::Instantiation(inst) = *self.node.kind() else {
             return None
         };
         let match_ = &self.ctxt.parser[self.ctxt.parser[inst].match_];
@@ -128,7 +128,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         }).collect())
     }
     pub fn resulting_term(&self) -> Option<String> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
+        let InstNodeKind::Instantiation(inst) = *self.node.kind() else {
             return None
         };
         let resulting_term = self.ctxt.parser[inst].get_resulting_term()?;
@@ -138,7 +138,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         Some(resulting_term.with(self.ctxt).to_string())
     }
     pub fn yield_terms(&self) -> Option<Vec<String>> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
+        let InstNodeKind::Instantiation(inst) = *self.node.kind() else {
             return None
         };
         let yields_terms = self.ctxt.parser[inst].yields_terms.iter();
@@ -250,10 +250,10 @@ pub fn SelectedNodesInfo(
 
 pub struct EdgeInfo<'a, 'b> {
     pub edge: &'a VisibleEdge,
-    pub kind: &'a VisibleEdgeKind,
+    pub kind: &'a VisibleEdgeKind<InstEdgeKind>,
     pub from: RawNodeIndex,
     pub to: RawNodeIndex,
-    pub graph: &'a InstGraph,
+    pub graph: &'a Graph<InstNodeKind, InstEdgeKind>,
     pub ctxt: &'b DisplayCtxt<'b>,
 }
 
@@ -270,19 +270,19 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
     }
     pub fn kind(&self) -> String {
         match self.kind {
-            VisibleEdgeKind::Direct(_, EdgeKind::Yield) =>
+            VisibleEdgeKind::Direct(_, InstEdgeKind::Yield) =>
                 "Yield".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::Blame { trigger_term }) =>
+            VisibleEdgeKind::Direct(_, InstEdgeKind::Blame { trigger_term }) =>
                 format!("Blame trigger #{trigger_term}"),
-            VisibleEdgeKind::Direct(_, EdgeKind::BlameEq { .. }) =>
+            VisibleEdgeKind::Direct(_, InstEdgeKind::BlameEq { .. }) =>
                 "Blame Equality".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::EqualityFact) =>
+            VisibleEdgeKind::Direct(_, InstEdgeKind::EqualityFact) =>
                 "Equality Fact".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::EqualityCongruence) =>
+            VisibleEdgeKind::Direct(_, InstEdgeKind::EqualityCongruence) =>
                 "Equality Congruence".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::TEqualitySimple { forward }) =>
+            VisibleEdgeKind::Direct(_, InstEdgeKind::TEqualitySimple { forward }) =>
                 format!("Simple {}Equality", (!forward).then(|| "Reverse ").unwrap_or_default()),
-            VisibleEdgeKind::Direct(_, EdgeKind::TEqualityTransitive { forward }) =>
+            VisibleEdgeKind::Direct(_, InstEdgeKind::TEqualityTransitive { forward }) =>
                 format!("Transitive {}Equality", (!forward).then(|| "Reverse ").unwrap_or_default()),
             VisibleEdgeKind::YieldBlame { trigger_term, .. } =>
                 format!("Yield/Blame trigger #{trigger_term}"),

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use gloo::timers::callback::Timeout;
 use material_yew::icon::MatIcon;
 use petgraph::graph::NodeIndex;
-use smt_log_parser::{items::{ENodeIdx, EqGivenIdx, EqTransIdx, InstIdx, QuantIdx}, parsers::z3::graph::raw::{Node, NodeKind}};
+use smt_log_parser::{items::{ENodeIdx, EqGivenIdx, EqTransIdx, InstIdx, QuantIdx}, parsers::z3::graph::raw::{Node, InstNodeKind}};
 use web_sys::{Element, HtmlElement, HtmlInputElement};
 use yew::{function_component, html, use_context, Callback, Children, Component, Context, Html, NodeRef, Properties};
 

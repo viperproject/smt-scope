@@ -209,6 +209,13 @@ impl Component for SVGResult {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            Msg::ViewUpdated(config) => {
+                if self.view == config.config.view {
+                    return false
+                }
+                self.view = config.config.view.clone();
+                return true
+            }
             Msg::ConstructedGraph(parser) => {
                 self.constructed_inst_graph = Some(parser);
                 let queue = std::mem::replace(&mut self.queue, Vec::new());
@@ -243,6 +250,7 @@ impl Component for SVGResult {
             Msg::ConstructedGraph(_) => unreachable!(),
             Msg::ConstructedProofGraph(_) => unreachable!(),
             Msg::FailedConstructGraph(_) => unreachable!(),
+            Msg::ViewUpdated(_) => unreachable!(),
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {:?}", filter);
@@ -467,13 +475,6 @@ impl Component for SVGResult {
                 };
                 self.rendered = Some(rendered.clone());
                 ctx.props().progress.emit(GraphState::Constructed(rendered));
-                true
-            }
-            Msg::ViewUpdated(config) => {
-                if self.view == config.config.view {
-                    return false
-                }
-                self.view = config.config.view.clone();
                 true
             }
         }

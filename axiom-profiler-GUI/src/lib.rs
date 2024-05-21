@@ -13,7 +13,7 @@ use material_yew::select::MatSelect;
 use petgraph::visit::EdgeRef;
 use results::graph_info;
 use results::svg_result::{Msg as SVGMsg, QuantIdxToColourMap, RenderedGraph, RenderingState, SVGResult};
-use smt_log_parser::parsers::z3::graph::raw::{InstEdgeKind, InstNodeKind};
+use smt_log_parser::parsers::z3::graph::raw::{InstEdgeKind, InstNodeKind, ProofEdgeKind, ProofNodeKind};
 use smt_log_parser::parsers::z3::graph::{Graph, VisibleEdgeIndex, RawNodeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{ParseState, ReaderState};
@@ -682,6 +682,7 @@ pub struct RcParser {
     lookup: Rc<StringLookupZ3>,
     colour_map: QuantIdxToColourMap,
     graph: Option<Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>>,
+    proof_graph: Option<Rc<RefCell<Graph<ProofNodeKind, ProofEdgeKind>>>>,
     found_mls: Option<usize>,
 }
 
@@ -692,6 +693,7 @@ impl Clone for RcParser {
             lookup: self.lookup.clone(),
             colour_map: self.colour_map,
             graph: self.graph.clone(),
+            proof_graph: self.proof_graph.clone(),
             found_mls: self.found_mls,
         }
     }
@@ -716,6 +718,7 @@ impl RcParser {
             lookup: Rc::new(lookup),
             colour_map,
             graph: None,
+            proof_graph: None,
             found_mls: None,
         }
     }

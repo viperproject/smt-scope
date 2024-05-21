@@ -14,7 +14,7 @@ use smt_log_parser::{
     display_with::DisplayCtxt, items::{BlameKind, InstIdx, MatchKind, QuantIdx}, parsers::{
         z3::{
             // inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, Node, NodeInfo, VisibleGraphInfo},
-            graph::{raw::{InstEdgeKind, InstNodeKind}, visible::{VisibleEdge, VisibleGraph}, Graph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
+            graph::{raw::{InstEdgeKind, InstNodeKind, ProofEdgeKind, ProofNodeKind}, visible::{VisibleEdge, VisibleGraph}, Graph, RawNodeIndex, VisibleEdgeIndex}, z3parser::Z3Parser
         },
         LogParser,
     }
@@ -45,6 +45,7 @@ impl Eq for RenderedGraph {}
 
 pub enum Msg {
     ConstructedGraph(Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>),
+    ConstructedProofGraph(Rc<RefCell<Graph<ProofNodeKind, ProofEdgeKind>>>),
     FailedConstructGraph(String),
     UpdateSvgText(AttrValue, VisibleGraph),
     SetPermission(GraphDimensions),
@@ -95,7 +96,8 @@ pub struct SVGResult {
     // selected_insts: Vec<RawNodeIndex>,
     // data: Option<SVGData>,
     queue: Vec<Msg>,
-    constructed_graph: Option<Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>>,
+    constructed_inst_graph: Option<Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>>,
+    constructed_proof_graph: Option<Rc<RefCell<Graph<ProofNodeKind, ProofEdgeKind>>>>,
 }
 
 #[derive(Properties, PartialEq)]
@@ -147,6 +149,33 @@ impl Component for SVGResult {
             }).unwrap_or_default());
             link.send_message(Msg::ConstructedGraph(inst_graph));
         });
+        let link = ctx.link().clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            gloo::timers::future::TimeoutFuture::new(10).await;
+            let cfg = link.get_configuration().unwrap();
+            let parser = cfg.config.parser.as_ref().unwrap();
+            let proof_graph = match Graph::<ProofNodeKind, ProofEdgeKind>::new(&parser.parser) {
+                Ok(proof_graph) => proof_graph,
+                Err(err) => {
+                    log::error!("Failed constructing instantiation graph: {err:?}");
+                    let error = if err.is_allocation() {
+                        "Out of memory, try stopping earlier".to_string()
+                    } else {
+                        // Should not be reachable
+                        format!("Unexpected error: {err:?}")
+                    };
+                    link.send_message(Msg::FailedConstructGraph(error));
+                    return;
+                }
+            };
+            let proof_graph = Rc::new(RefCell::new(proof_graph));
+            let proof_graph_ref = proof_graph.clone();
+            cfg.update.update(|cfg| cfg.parser.as_mut().map(|p| {
+                p.proof_graph = Some(proof_graph_ref);
+                true
+            }).unwrap_or_default());
+            link.send_message(Msg::ConstructedProofGraph(proof_graph));
+        });
         Self {
             calculated: None,
             rendered: None,
@@ -164,18 +193,27 @@ impl Component for SVGResult {
             // selected_insts: Vec::new(),
             // data: None,
             queue: Vec::new(),
-            constructed_graph: None,
+            constructed_inst_graph: None,
+            constructed_proof_graph: None,
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::ConstructedGraph(parser) => {
-                self.constructed_graph = Some(parser);
+                self.constructed_inst_graph = Some(parser);
                 let queue = std::mem::replace(&mut self.queue, Vec::new());
                 ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructedGraph));
                 ctx.link().send_message_batch(queue);
                 return true;
+            }
+            Msg::ConstructedProofGraph(parser) => {
+                self.constructed_proof_graph = Some(parser);
+                // let queue = std::mem::replace(&mut self.queue, Vec::new());
+                // ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructedGraph));
+                // ctx.link().send_message_batch(queue);
+                // return true;
+                return false;
             }
             Msg::FailedConstructGraph(error) => {
                 ctx.props().progress.emit(GraphState::Failed(error));
@@ -183,7 +221,7 @@ impl Component for SVGResult {
             }
             _ => (),
         }
-        let Some(inst_graph) = &self.constructed_graph else {
+        let Some(inst_graph) = &self.constructed_inst_graph else {
             self.queue.push(msg);
             return false;
         };
@@ -194,6 +232,7 @@ impl Component for SVGResult {
         let inst_graph = &mut *inst_graph;
         match msg {
             Msg::ConstructedGraph(_) => unreachable!(),
+            Msg::ConstructedProofGraph(_) => unreachable!(),
             Msg::FailedConstructGraph(_) => unreachable!(),
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
@@ -425,7 +464,7 @@ impl Component for SVGResult {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        if self.constructed_graph.is_none() {
+        if self.constructed_inst_graph.is_none() {
             return html! {};
         };
         html! {

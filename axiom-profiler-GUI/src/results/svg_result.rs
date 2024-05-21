@@ -44,7 +44,7 @@ impl PartialEq for RenderedGraph {
 impl Eq for RenderedGraph {}
 
 pub enum Msg {
-    ConstructedInstGraph(Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>),
+    ConstructedGraph(Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>),
     ConstructedProofGraph(Rc<RefCell<Graph<ProofNodeKind, ProofEdgeKind>>>),
     FailedConstructGraph(String),
     UpdateSvgText(AttrValue, VisibleGraph),
@@ -129,6 +129,7 @@ impl Component for SVGResult {
             .link()
             .context(ctx.link().callback(Msg::ViewUpdated))
             .expect("No context provided");
+        ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingGraph));
         let link = ctx.link().clone();
         // first, we construct the instantiation graph
         ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingInstGraph));
@@ -156,10 +157,8 @@ impl Component for SVGResult {
                 p.graph = Some(inst_graph_ref);
                 true
             }).unwrap_or_default());
-            link.send_message(Msg::ConstructedInstGraph(inst_graph));
+            link.send_message(Msg::ConstructedGraph(inst_graph));
         });
-        // secondly, we construct the proof graph
-        ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingProofGraph));
         let link = ctx.link().clone();
         wasm_bindgen_futures::spawn_local(async move {
             gloo::timers::future::TimeoutFuture::new(10).await;
@@ -180,13 +179,12 @@ impl Component for SVGResult {
                 }
             };
             let proof_graph = Rc::new(RefCell::new(proof_graph));
-            // let proof_graph_ref = proof_graph.clone();
-            // cfg.update.update(|cfg| cfg.parser.as_mut().map(|p| {
-            //     p.graph = Some(proof_graph_ref);
-            //     true
-            // }).unwrap_or_default());
-            // link.send_message(Msg::ConstructedGraph(proof_graph));
-            // link.send_message(Msg::ConstructedProofGraph(proof_graph));
+            let proof_graph_ref = proof_graph.clone();
+            cfg.update.update(|cfg| cfg.parser.as_mut().map(|p| {
+                p.proof_graph = Some(proof_graph_ref);
+                true
+            }).unwrap_or_default());
+            link.send_message(Msg::ConstructedProofGraph(proof_graph));
         });
         Self {
             calculated: None,
@@ -214,7 +212,14 @@ impl Component for SVGResult {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::ConstructedInstGraph(parser) => {
+            Msg::ViewUpdated(config) => {
+                if self.view == config.config.view {
+                    return false
+                }
+                self.view = config.config.view.clone();
+                return true
+            }
+            Msg::ConstructedGraph(parser) => {
                 self.constructed_inst_graph = Some(parser);
                 let queue = std::mem::replace(&mut self.queue, Vec::new());
                 ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructedGraph));
@@ -226,7 +231,8 @@ impl Component for SVGResult {
                 // let queue = std::mem::replace(&mut self.queue, Vec::new());
                 // ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructedGraph));
                 // ctx.link().send_message_batch(queue);
-                return true;
+                // return true;
+                return false;
             }
             Msg::FailedConstructGraph(error) => {
                 ctx.props().progress.emit(GraphState::Failed(error));
@@ -234,7 +240,6 @@ impl Component for SVGResult {
             }
             _ => (),
         }
-
         let Some(inst_graph) = &self.constructed_inst_graph else {
             self.queue.push(msg);
             return false;
@@ -245,9 +250,10 @@ impl Component for SVGResult {
         let mut inst_graph = (**inst_graph).borrow_mut();
         let inst_graph = &mut *inst_graph;
         match msg {
-            Msg::ConstructedInstGraph(_) => unreachable!(),
+            Msg::ConstructedGraph(_) => unreachable!(),
             Msg::ConstructedProofGraph(_) => unreachable!(),
             Msg::FailedConstructGraph(_) => unreachable!(),
+            Msg::ViewUpdated(_) => unreachable!(),
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {:?}", filter);

@@ -682,6 +682,7 @@ pub struct RcParser {
     lookup: Rc<StringLookupZ3>,
     colour_map: QuantIdxToColourMap,
     graph: Option<Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>>,
+    proof_graph: Option<Rc<RefCell<Graph<ProofNodeKind, ProofEdgeKind>>>>,
     found_mls: Option<usize>,
 }
 
@@ -692,6 +693,7 @@ impl Clone for RcParser {
             lookup: self.lookup.clone(),
             colour_map: self.colour_map,
             graph: self.graph.clone(),
+            proof_graph: self.proof_graph.clone(),
             found_mls: self.found_mls,
         }
     }
@@ -716,6 +718,7 @@ impl RcParser {
             lookup: Rc::new(lookup),
             colour_map,
             graph: None,
+            proof_graph: None,
             found_mls: None,
         }
     }

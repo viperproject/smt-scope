@@ -3,7 +3,7 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{items::GraphIdx, Result, TiVec, Z3Parser};
 
-use self::{analysis::Analysis, raw::{InstEdgeKind, InstNodeKind, RawGraph}, subgraph::Subgraph, visible::VisibleGraph};
+use self::{analysis::Analysis, raw::{InstEdgeKind, InstNodeKind, ProofEdgeKind, ProofNodeKind, RawGraph}, subgraph::Subgraph, visible::VisibleGraph};
 
 // TODO: once the ML algo is reimplemented, delete this
 // pub mod inst_graph;
@@ -28,7 +28,22 @@ pub struct Graph<N, E> {
 
 impl Graph<InstNodeKind, InstEdgeKind> {
     pub fn new(parser: &Z3Parser) -> Result<Self> {
-        let mut raw = RawGraph::new(parser)?;
+        let mut raw = RawGraph::<InstNodeKind, InstEdgeKind>::new(parser)?;
+        let subgraphs = raw.partition()?;
+        let analysis = Analysis::new(raw.graph.node_indices().map(RawNodeIndex))?;
+        let mut self_ = Self { raw, subgraphs, analysis };
+        self_.initialise_default(parser);
+        Ok(self_)
+    }
+
+    pub fn visible_unchanged(&self, old: &VisibleGraph) -> bool {
+        self.raw.stats.generation == old.generation
+    }
+}
+
+impl Graph<ProofNodeKind, ProofEdgeKind> {
+    pub fn new(parser: &Z3Parser) -> Result<Self> {
+        let mut raw = RawGraph::<ProofNodeKind, ProofEdgeKind>::new(parser)?;
         let subgraphs = raw.partition()?;
         let analysis = Analysis::new(raw.graph.node_indices().map(RawNodeIndex))?;
         let mut self_ = Self { raw, subgraphs, analysis };

@@ -125,7 +125,7 @@ impl Component for SVGResult {
             gloo::timers::future::TimeoutFuture::new(10).await;
             let cfg = link.get_configuration().unwrap();
             let parser = cfg.config.parser.as_ref().unwrap();
-            let inst_graph = match Graph::new(&parser.parser) {
+            let inst_graph = match Graph::<InstNodeKind, InstEdgeKind>::new(&parser.parser) {
                 Ok(inst_graph) => inst_graph,
                 Err(err) => {
                     log::error!("Failed constructing instantiation graph: {err:?}");

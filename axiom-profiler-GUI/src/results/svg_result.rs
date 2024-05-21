@@ -1,5 +1,5 @@
 use crate::{
-    configuration::{Configuration, ConfigurationContext}, filters, results::{filters::FilterOutput, graph_info::{GraphInfo, Msg as GraphInfoMsg}, node_info::{EdgeInfo, NodeInfo}}, OpenedFileInfo, RcParser
+    configuration::{Configuration, ConfigurationContext, ConfigurationProvider, View}, filters, results::{filters::FilterOutput, graph_info::{GraphInfo, Msg as GraphInfoMsg}, node_info::{EdgeInfo, NodeInfo}}, OpenedFileInfo, RcParser
 };
 
 use super::{
@@ -55,6 +55,7 @@ pub enum Msg {
     ResetGraph,
     UserPermission(WarningChoice),
     WorkerOutput(super::worker::WorkerOutput),
+    ViewUpdated(Rc<ConfigurationProvider>),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -98,6 +99,8 @@ pub struct SVGResult {
     queue: Vec<Msg>,
     constructed_inst_graph: Option<Rc<RefCell<Graph<InstNodeKind, InstEdgeKind>>>>,
     constructed_proof_graph: Option<Rc<RefCell<Graph<ProofNodeKind, ProofEdgeKind>>>>,
+    view: View,
+    _context_listener: ContextHandle<Rc<ConfigurationProvider>>,
 }
 
 #[derive(Properties, PartialEq)]
@@ -121,6 +124,10 @@ impl Component for SVGResult {
                 ctx.link().send_message_batch(old);
             }
         }
+        let (msg, context_listener) = ctx
+            .link()
+            .context(ctx.link().callback(Msg::ViewUpdated))
+            .expect("No context provided");
         ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingGraph));
         let link = ctx.link().clone();
         wasm_bindgen_futures::spawn_local(async move {
@@ -195,6 +202,8 @@ impl Component for SVGResult {
             queue: Vec::new(),
             constructed_inst_graph: None,
             constructed_proof_graph: None,
+            view: msg.config.view.clone(),
+            _context_listener: context_listener,
         }
     }
 
@@ -458,6 +467,13 @@ impl Component for SVGResult {
                 };
                 self.rendered = Some(rendered.clone());
                 ctx.props().progress.emit(GraphState::Constructed(rendered));
+                true
+            }
+            Msg::ViewUpdated(config) => {
+                if self.view == config.config.view {
+                    return false
+                }
+                self.view = config.config.view.clone();
                 true
             }
         }

@@ -87,74 +87,6 @@ impl<N, E> RawGraph<N, E> {
 
 }
 
-impl RawGraph<ProofNodeKind, ProofEdgeKind> {
-    pub fn new(parser: &Z3Parser) -> Result<Self> {
-        let proof_steps = parser.terms.proof_steps(); 
-        let total_nodes = proof_steps.len(); 
-        let edges_lower_bound = 0; 
-        let mut graph = DiGraph::with_capacity(total_nodes, edges_lower_bound);
-        for proof_step in proof_steps {
-            graph.add_node(Node::new(ProofNodeKind::ProofStep(proof_step.0)));
-        }
-        let stats = GraphStats { hidden: graph.node_count() as u32, disabled: 0, generation: 0 };
-        let mut self_ = RawGraph { graph, enode_idx: RawNodeIndex::default(), eq_trans_idx: RawNodeIndex::default(), inst_idx: RawNodeIndex::default(), eq_given_idx: FxHashMap::default(), stats };
-
-        // Add instantiation blamed and yield edges
-        // for (idx, inst) in parser.insts.insts.iter_enumerated() {
-        //     for yields in inst.yields_terms.iter() {
-        //         self_.add_edge(idx, *yields, InstEdgeKind::Yield);
-        //     }
-        //     for (i, blame) in parser.insts.matches[inst.match_].trigger_matches().enumerate() {
-        //         let trigger_term = i as u16;
-        //         self_.add_edge(blame.enode(), idx, InstEdgeKind::Blame { trigger_term });
-        //         for (i, eq) in blame.equalities().enumerate() {
-        //             self_.add_edge(eq, idx, InstEdgeKind::BlameEq { trigger_term, eq_order: i as u16 });
-        //         }
-        //     }
-        // }
-
-        // // Add given equality created edges
-        // for (idx, eq) in parser.egraph.equalities.given.iter_enumerated() {
-        //     match eq {
-        //         EqualityExpl::Root { .. } => (),
-        //         EqualityExpl::Literal { eq, .. } =>
-        //             self_.add_edge(*eq, (idx, None), InstEdgeKind::EqualityFact),
-        //         EqualityExpl::Congruence { uses, .. } => for (use_, arg_eqs) in uses.iter().enumerate() {
-        //             let use_ = Some(NonMaxU32::new(use_ as u32).unwrap());
-        //             for arg_eq in arg_eqs.iter() {
-        //                 self_.add_edge(*arg_eq, (idx, use_), InstEdgeKind::EqualityCongruence);
-        //             }
-        //         },
-        //         EqualityExpl::Theory { .. } => (),
-        //         EqualityExpl::Axiom { .. } => (),
-        //         EqualityExpl::Unknown { .. } => (),
-        //     }
-        // }
-
-        // // Add transitive equality created edges
-        // for (idx, eq) in parser.egraph.equalities.transitive.iter_enumerated() {
-        //     let mut all = eq.all(true);
-        //     while let Some(parent) = all.next() {
-        //         match parent.kind {
-        //             TransitiveExplSegmentKind::Given(eq, use_) =>
-        //                 self_.add_edge((eq, use_), idx, InstEdgeKind::TEqualitySimple { forward: parent.forward }),
-        //             TransitiveExplSegmentKind::Transitive(eq) =>
-        //                 self_.add_edge(eq, idx, InstEdgeKind::TEqualityTransitive { forward: parent.forward }),
-        //         }
-        //     }
-        // }
-
-        Ok(self_)
-    }
-
-    // pub fn index(&self, kind: ProofNodeKind) -> RawNodeIndex {
-    //     match kind {
-    //         ProofNodeKind::ProofStep(step) => step.index(self),
-    //     }
-    // }
-
-}
-
 impl RawGraph<InstNodeKind, InstEdgeKind> {
     pub fn new(parser: &Z3Parser) -> Result<Self> {
         let total_nodes = parser.insts.insts.len()
@@ -535,10 +467,6 @@ pub enum InstEdgeKind {
     TEqualitySimple { forward: bool },
     /// TransEquality -> TransEquality (`TransitiveExplSegmentKind::Transitive`)
     TEqualityTransitive { forward: bool },
-}
-
-pub enum ProofEdgeKind {
-    ProofDep,
 }
 
 pub enum ProofEdgeKind {

@@ -129,7 +129,6 @@ impl Component for SVGResult {
             .link()
             .context(ctx.link().callback(Msg::ViewUpdated))
             .expect("No context provided");
-        ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingGraph));
         let link = ctx.link().clone();
         // first, we construct the instantiation graph
         ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingInstGraph));
@@ -160,6 +159,7 @@ impl Component for SVGResult {
             link.send_message(Msg::ConstructedGraph(inst_graph));
         });
         let link = ctx.link().clone();
+        ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingProofGraph));
         wasm_bindgen_futures::spawn_local(async move {
             gloo::timers::future::TimeoutFuture::new(10).await;
             let cfg = link.get_configuration().unwrap();
@@ -469,13 +469,6 @@ impl Component for SVGResult {
                 };
                 self.rendered = Some(rendered.clone());
                 ctx.props().progress.emit(GraphState::Constructed(rendered));
-                true
-            }
-            Msg::ViewUpdated(config) => {
-                if self.view == config.config.view {
-                    return false
-                }
-                self.view = config.config.view.clone();
                 true
             }
         }

@@ -2,7 +2,7 @@ use std::{fmt, ops::{Index, IndexMut}};
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
-use petgraph::{graph::NodeIndex, visit::{Reversed, Visitable}, Direction::{self, Incoming, Outgoing}};
+use petgraph::{graph::NodeIndex, visit::{IntoNodeReferences, Reversed, Visitable}, Direction::{self, Incoming, Outgoing}};
 
 use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, TermIdx, TransitiveExplSegmentKind}, DiGraph, FxHashMap, NonMaxU32, Result, TiVec, Z3Parser};
 
@@ -194,7 +194,12 @@ impl RawGraph<ProofNodeKind, ProofEdgeKind> {
         let edges_lower_bound = 0; 
         let mut graph = DiGraph::with_capacity(total_nodes, edges_lower_bound);
         for proof_step in proof_steps {
+            // TODO: currently since we don't have any filters on the ProofGraph, none of the nodes are made 
+            // visible and hence to_visible() returns an empty graph
             graph.add_node(Node::new(ProofNodeKind::ProofStep(proof_step.0)));
+            if graph.node_count() >= 100 {
+                break;
+            }
         }
         let stats = GraphStats { hidden: graph.node_count() as u32, disabled: 0, generation: 0 };
         let mut self_ = RawGraph { graph, enode_idx: RawNodeIndex::default(), eq_trans_idx: RawNodeIndex::default(), inst_idx: RawNodeIndex::default(), eq_given_idx: FxHashMap::default(), stats };
@@ -421,6 +426,13 @@ impl fmt::Display for InstNodeKind {
             InstNodeKind::TransEquality(eq) => write!(f, "{eq:?}"),
             InstNodeKind::Instantiation(inst) => write!(f, "{inst:?}"),
         }
+    }
+}
+
+impl fmt::Display for ProofNodeKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ProofNodeKind::ProofStep(idx) = self;
+        write!(f, "{idx}")
     }
 }
 

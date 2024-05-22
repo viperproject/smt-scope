@@ -18,7 +18,6 @@ pub struct RawGraph<N, E> {
     eq_trans_idx: RawNodeIndex,
     inst_idx: RawNodeIndex,
     eq_given_idx: FxHashMap<(EqGivenIdx, Option<NonMaxU32>), RawNodeIndex>,
-
     pub(super) stats: GraphStats,
 }
 
@@ -193,17 +192,20 @@ impl RawGraph<ProofNodeKind, ProofEdgeKind> {
         let total_nodes = proof_steps.len(); 
         let edges_lower_bound = 0; 
         let mut graph = DiGraph::with_capacity(total_nodes, edges_lower_bound);
-        for proof_step in proof_steps {
+        let mut proof_given_idx = FxHashMap::default();
+        for (proof_step_idx, proof_step) in proof_steps {
             // TODO: currently since we don't have any filters on the ProofGraph, none of the nodes are made 
             // visible and hence to_visible() returns an empty graph
-            graph.add_node(Node::new(ProofNodeKind::ProofStep(proof_step.0)));
-            if graph.node_count() >= 100 {
-                break;
+            let nw = Node::new_visible(ProofNodeKind::ProofStep(proof_step_idx));
+            let nx = graph.add_node(nw);
+            proof_given_idx.insert(proof_step_idx, RawNodeIndex(nx));
+            for blamed_proof_step in proof_step.child_ids.iter().take(proof_step.child_ids.len() - 1) {
+                let blamed_proof_step_idx = proof_given_idx.get(blamed_proof_step).unwrap();
+                graph.add_edge(blamed_proof_step_idx.0, nx, ProofEdgeKind::ProofDep);  
             }
         }
         let stats = GraphStats { hidden: graph.node_count() as u32, disabled: 0, generation: 0 };
         let mut self_ = RawGraph { graph, enode_idx: RawNodeIndex::default(), eq_trans_idx: RawNodeIndex::default(), inst_idx: RawNodeIndex::default(), eq_given_idx: FxHashMap::default(), stats };
-
         // Add instantiation blamed and yield edges
         // for (idx, inst) in parser.insts.insts.iter_enumerated() {
         //     for yields in inst.yields_terms.iter() {
@@ -248,7 +250,6 @@ impl RawGraph<ProofNodeKind, ProofEdgeKind> {
         //         }
         //     }
         // }
-
         Ok(self_)
     }
 
@@ -319,6 +320,9 @@ pub struct Depth {
 impl<N> Node<N> {
     fn new(kind: N) -> Self {
         Self { state: NodeState::Hidden, cost: 0.0, fwd_depth: Depth::default(), bwd_depth: Depth::default(), subgraph: None, kind }
+    }
+    fn new_visible(kind: N) -> Self {
+        Self { state: NodeState::Visible, cost: 0.0, fwd_depth: Depth::default(), bwd_depth: Depth::default(), subgraph: None, kind }
     }
     pub fn kind(&self) -> &N {
         &self.kind

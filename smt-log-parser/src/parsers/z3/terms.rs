@@ -2,7 +2,7 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    error::Either, items::{Meaning, ProofOrApp, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap, TermIdx, TermKind}, Error, FxHashMap, Result, StringTable, TiVec
+    error::Either, items::{Meaning, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap, TermIdx, TermKind}, Error, FxHashMap, Result, StringTable, TiVec
 };
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -104,7 +104,7 @@ impl Terms {
         }
     }
     pub(super) fn proof_steps(&self) -> Vec<(TermIdx, &Term)> {
-        self.terms.iter_enumerated().filter(|(tidx, term)| matches!(term.kind, TermKind::ProofOrApp(ProofOrApp { is_proof: true, name: _ }))).collect()
+        self.terms.iter_enumerated().filter(|(_, term)| matches!(term.kind, TermKind::Proof(..))).collect()
     }
 }
 

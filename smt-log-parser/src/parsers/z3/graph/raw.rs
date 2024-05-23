@@ -199,7 +199,7 @@ impl RawGraph<ProofNodeKind, ProofEdgeKind> {
             let nw = Node::new_visible(ProofNodeKind::ProofStep(proof_step_idx));
             let nx = graph.add_node(nw);
             proof_given_idx.insert(proof_step_idx, RawNodeIndex(nx));
-            for blamed_proof_step in proof_step.child_ids.iter().take(proof_step.child_ids.len() - 1) {
+            for blamed_proof_step in proof_step.child_ids.iter() {
                 let blamed_proof_step_idx = proof_given_idx.get(blamed_proof_step).unwrap();
                 graph.add_edge(blamed_proof_step_idx.0, nx, ProofEdgeKind::ProofDep);  
             }

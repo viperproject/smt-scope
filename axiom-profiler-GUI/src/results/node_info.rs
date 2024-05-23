@@ -159,17 +159,14 @@ impl<'a, 'b> NodeInfo<'a, 'b, ProofNodeKind> {
         let description = format!("<code></code>");
         Html::from_html_unchecked(AttrValue::from(description))
     }
-    pub fn prerequisites_and_result(&self) -> (Vec<String>, String) {
+    pub fn prerequisites(&self) -> Vec<String> {
         let ProofNodeKind::ProofStep(tidx) = self.node.kind();
-        let Some((result, prerequisites)) = self.ctxt.parser[*tidx].child_ids.split_last() else {
-            unreachable!()
-        }; 
-        let mut ctxt = DisplayCtxt {
-            parser: self.ctxt.parser,
-            config: self.ctxt.config.clone(),
-        };
-        (prerequisites.iter().map(|term| term.with(self.ctxt).to_string()).collect(), result.with(self.ctxt).to_string())
+        self.ctxt.parser[*tidx].child_ids.iter().map(|term| term.with(self.ctxt).to_string()).collect()
     } 
+    pub fn proof_step_result(&self) -> String {
+        let ProofNodeKind::ProofStep(tidx) = self.node.kind();
+        self.ctxt.parser[*tidx].kind.proof_step_result().unwrap().with(self.ctxt).to_string()
+    }
     pub fn proof_step_name(&self) -> Option<String> {
         let ProofNodeKind::ProofStep(tidx) = self.node.kind();
         let proof_name = self.ctxt.parser[*tidx].kind.app_name();
@@ -283,7 +280,8 @@ pub fn SelectedNodesInfo(
                     let header_text = info.kind();
                     let summary = format!("[{index}] {header_text}: ");
                     let description = info.description(None);
-                    let (prerequisites, result) = info.prerequisites_and_result();
+                    let prerequisites = info.prerequisites();
+                    let result = info.proof_step_result();
                     let prerequisites = Some(prerequisites).map(|terms| {
                         let prerequisites: Html = terms.into_iter().map(|term| html! {
                             <InfoLine header="Prerequisite" text={term} code=true />

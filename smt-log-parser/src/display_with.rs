@@ -388,7 +388,8 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind 
                 let name = VarNames::get_name(&ctxt.parser.strings, vars, idx, &ctxt.config);
                 write!(f, "{name}")
             }
-            TermKind::ProofOrApp(poa) => write!(f, "{}", poa.with_data(ctxt, data)),
+            TermKind::App(app) => write!(f, "{}", app.with_data(ctxt, data)),
+            TermKind::Proof(proof) => write!(f, "{}", proof.with_data(ctxt, data)),
             TermKind::Quant(idx) => write!(f, "{}", ctxt.parser[*idx].with_data(ctxt, data)),
             // TODO: it would be nice to display some extra information here
             TermKind::Generalised => write!(f, "_"),
@@ -400,15 +401,14 @@ fn display_child<'a, 'b, 'c, 'd>(f: &mut fmt::Formatter<'_>, child: TermIdx, ctx
     data.with_term(child, |data| write!(f, "{}", ctxt.parser[child].with_data(ctxt, data)))
 }
 
-enum ProofOrAppKind<'a> {
+enum AppKind<'a> {
     Unary(&'a str),
     Inline(&'a str),
     Ternary(&'a str, &'a str),
     Pattern,
     OtherApp(&'a str),
-    Proof(&'a str),
 }
-impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a ProofOrApp {
+impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a App {
     fn fmt_with(
         self,
         f: &mut fmt::Formatter<'_>,
@@ -416,10 +416,9 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a ProofOrAp
         data: &mut DisplayData<'b>,
     ) -> fmt::Result {
         let math = ctxt.config.use_mathematical_symbols;
-        use ProofOrAppKind::*;
+        use AppKind::*;
         let name = &ctxt.parser[self.name];
         let kind = match name {
-            name if self.is_proof => Proof(name),
             "not" => Unary(if math { "¬" } else { "!" }),
             "-" if data.children().len() == 1 => Unary("-"),
 
@@ -492,7 +491,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a ProofOrAp
                 }
                 write!(f, "}}")
             }),
-            OtherApp(name) | Proof(name) => data.with_bind_power(NO_BIND, |data, _| {
+            OtherApp(name) => data.with_bind_power(NO_BIND, |data, _| {
                 // BIND_POWER is highest
                 write!(f, "{name}")?;
                 if data.children().is_empty() {
@@ -510,7 +509,16 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a ProofOrAp
         }
     }
 }
-
+impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a Proof {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'b>,
+        _data: &mut DisplayData<'b>,
+    ) -> fmt::Result {
+        write!(f, "{}", self.result.with(ctxt))
+    }
+}
 impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Meaning {
     fn fmt_with(
         self,

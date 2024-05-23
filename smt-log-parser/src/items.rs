@@ -93,7 +93,7 @@ impl TermKind {
     }
     pub fn app_name(&self) -> Option<IString> {
         match self {
-            Self::ProofOrApp(ProofOrApp { is_proof: false, name }) => Some(*name),
+            Self::ProofOrApp(ProofOrApp { name, .. }) => Some(*name),
             _ => None,
         }
     }

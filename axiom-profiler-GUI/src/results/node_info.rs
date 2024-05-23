@@ -170,6 +170,15 @@ impl<'a, 'b> NodeInfo<'a, 'b, ProofNodeKind> {
         };
         (prerequisites.iter().map(|term| term.with(self.ctxt).to_string()).collect(), result.with(self.ctxt).to_string())
     } 
+    pub fn proof_step_name(&self) -> Option<String> {
+        let ProofNodeKind::ProofStep(tidx) = self.node.kind();
+        let proof_name = self.ctxt.parser[*tidx].kind.app_name();
+        if let Some(name) = proof_name {
+            Some(self.ctxt.parser.strings[*name].to_string())
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Properties, PartialEq)]
@@ -281,6 +290,11 @@ pub fn SelectedNodesInfo(
                         }).collect();
                         html! { <><hr/>{prerequisites}</> }
                     });
+                    let proof_step_name = info.proof_step_name().map(|name| {
+                            html!{
+                                <InfoLine header="Name of proof step" text={name} code=true />
+                            }
+                    });
                     html! {
                         <details {open}>
                         <summary {onclick}>{summary}{description}</summary>
@@ -289,6 +303,7 @@ pub fn SelectedNodesInfo(
                             <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
                             <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
                             <InfoLine header="Result of proof step" text={result} code=true />
+                            {proof_step_name}
                             {prerequisites}
                         </ul>
                         </details>

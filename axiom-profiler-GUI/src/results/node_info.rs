@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use smt_log_parser::{display_with::{DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, VarNames}, parsers::z3::graph::{raw::{InstEdgeKind, Node, InstNodeKind}, visible::{VisibleEdge, VisibleEdgeKind}, Graph, VisibleEdgeIndex, RawNodeIndex}};
+use smt_log_parser::{display_with::{DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, VarNames}, parsers::z3::graph::{raw::{InstEdgeKind, InstNodeKind, Node, ProofNodeKind}, visible::{VisibleEdge, VisibleEdgeKind}, Graph, RawNodeIndex, VisibleEdgeIndex}};
 use yew::{function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties};
 
-use crate::configuration::ConfigurationProvider;
+use crate::configuration::{ConfigurationProvider, View};
 
 use super::svg_result::RenderedGraph;
 
@@ -28,12 +28,12 @@ pub fn InfoLine(InfoLineProps { header, text, code }: &InfoLineProps) -> Html {
     }
 }
 
-pub struct NodeInfo<'a, 'b> {
-    pub node: &'a Node<InstNodeKind>,
+pub struct NodeInfo<'a, 'b, N> {
+    pub node: &'a Node<N>,
     pub ctxt: &'b DisplayCtxt<'b>,
 }
 
-impl<'a, 'b> NodeInfo<'a, 'b> {
+impl<'a, 'b> NodeInfo<'a, 'b, InstNodeKind> {
     pub fn index(&self) -> String {
         self.node.kind().to_string()
     }
@@ -146,6 +146,24 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
     }
 }
 
+impl<'a, 'b> NodeInfo<'a, 'b, ProofNodeKind> {
+    pub fn index(&self) -> String {
+        self.node.kind().to_string()
+    }
+    pub fn kind(&self) -> &'static str {
+        match *self.node.kind() {
+            ProofNodeKind::ProofStep(_) => "Proof step",
+        }
+    }
+    pub fn description(&self, char_limit: Option<usize>) -> Html {
+        let description = format!("<code></code>");
+        Html::from_html_unchecked(AttrValue::from(description))
+    }
+    pub fn prerequisites(&self) -> Option<Vec<String>> {
+        None
+    } 
+}
+
 #[derive(Properties, PartialEq)]
 pub struct SelectedNodesInfoProps {
     pub selected_nodes: Vec<(RawNodeIndex, bool)>,
@@ -166,8 +184,10 @@ pub fn SelectedNodesInfo(
     let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
     let parser = cfg.config.parser.as_ref().unwrap();
     let graph = parser.graph.as_ref().unwrap();
+    let proof_graph = parser.proof_graph.as_ref().unwrap();
     let parser = &*parser.parser;
     let graph = graph.borrow();
+    let proof_graph = proof_graph.borrow();
     let ctxt = &DisplayCtxt {
         parser,
         config: cfg.config.persistent.display.clone(),
@@ -183,59 +203,87 @@ pub fn SelectedNodesInfo(
                     on_click.emit(node)
                 })
             };
-            let info = NodeInfo { node: &graph.raw[node], ctxt };
-            let index = info.index();
-            let header_text = info.kind();
-            let summary = format!("[{index}] {header_text}: ");
-            let description = info.description((!open).then(|| 10));
-            let z3_gen = info.node.kind().inst().and_then(|i| parser[i].z3_generation).map(|g| format!(" (z3 gen {g})"));
+            match cfg.config.view {
+                View::QuantInsts => {
+                    let info = NodeInfo { node: &graph.raw[node], ctxt };
+                    let index = info.index();
+                    let header_text = info.kind();
+                    let summary = format!("[{index}] {header_text}: ");
+                    let description = info.description((!open).then(|| 10));
+                    let z3_gen = info.node.kind().inst().and_then(|i| parser[i].z3_generation).map(|g| format!(" (z3 gen {g})"));
 
-            let quantifier_body = info.quantifier_body().map(|body| html! {
-                <><hr/>
-                <InfoLine header="Body" text={body} code=true /></>
-            });
-            let blame: Option<Html> = info.blame().map(|blame| blame.into_iter().enumerate().map(|(idx, (trigger, enode, equalities))| {
-                let equalities: Html = equalities.into_iter().map(|equality| html! {
-                    <InfoLine header="Equality" text={equality} code=true />
-                }).collect();
-                html! {
-                <><hr/>
-                    <InfoLine header={format!("Trigger #{idx}")} text={trigger} code=true />
-                    <InfoLine header="Matched" text={enode} code=true />
-                    {equalities}
-                </>
-                }
-            }).collect());
-            let bound_terms = info.bound_terms().map(|terms| {
-                let bound: Html = terms.into_iter().map(|term| html! {
-                    <InfoLine header="Bound" text={term} code=true />
-                }).collect();
-                html! { <><hr/>{bound}</> }
-            });
-            let resulting_term = info.resulting_term().map(|term| html! {
-                <><hr/>
-                <InfoLine header="Resulting Term" text={term} code=true /></>
-            });
-            let yield_terms = info.yield_terms().map(|terms| {
-                let yields: Html = terms.into_iter().map(|term| html! {
-                    <InfoLine header="Yield" text={term} code=true />
-                }).collect();
-                html! { <><hr/>{yields}</> }
-            });
-            html! {
-                <details {open}>
-                <summary {onclick}>{summary}{description}</summary>
-                <ul>
-                    <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
-                    <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
-                    <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
-                    {quantifier_body}
-                    {blame}
-                    {bound_terms}
-                    {resulting_term}
-                    {yield_terms}
-                </ul>
-                </details>
+                    let quantifier_body = info.quantifier_body().map(|body| html! {
+                        <><hr/>
+                        <InfoLine header="Body" text={body} code=true /></>
+                    });
+                    let blame: Option<Html> = info.blame().map(|blame| blame.into_iter().enumerate().map(|(idx, (trigger, enode, equalities))| {
+                        let equalities: Html = equalities.into_iter().map(|equality| html! {
+                            <InfoLine header="Equality" text={equality} code=true />
+                        }).collect();
+                        html! {
+                        <><hr/>
+                            <InfoLine header={format!("Trigger #{idx}")} text={trigger} code=true />
+                            <InfoLine header="Matched" text={enode} code=true />
+                            {equalities}
+                        </>
+                        }
+                    }).collect());
+                    let bound_terms = info.bound_terms().map(|terms| {
+                        let bound: Html = terms.into_iter().map(|term| html! {
+                            <InfoLine header="Bound" text={term} code=true />
+                        }).collect();
+                        html! { <><hr/>{bound}</> }
+                    });
+                    let resulting_term = info.resulting_term().map(|term| html! {
+                        <><hr/>
+                        <InfoLine header="Resulting Term" text={term} code=true /></>
+                    });
+                    let yield_terms = info.yield_terms().map(|terms| {
+                        let yields: Html = terms.into_iter().map(|term| html! {
+                            <InfoLine header="Yield" text={term} code=true />
+                        }).collect();
+                        html! { <><hr/>{yields}</> }
+                    });
+                    html! {
+                        <details {open}>
+                        <summary {onclick}>{summary}{description}</summary>
+                        <ul>
+                            <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
+                            <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
+                            <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
+                            {quantifier_body}
+                            {blame}
+                            {bound_terms}
+                            {resulting_term}
+                            {yield_terms}
+                        </ul>
+                        </details>
+                    }
+                },
+                View::ProofSteps => {
+                    let info = NodeInfo { node: &proof_graph.raw[node], ctxt };
+                    let index = info.index();
+                    let header_text = info.kind();
+                    let summary = format!("[{index}] {header_text}: ");
+                    let description = info.description(None);
+                    let prerequisites = info.prerequisites().map(|terms| {
+                        let yields: Html = terms.into_iter().map(|term| html! {
+                            <InfoLine header="Prerequisite" text={term} code=true />
+                        }).collect();
+                        html! { <><hr/>{yields}</> }
+                    });
+                    html! {
+                        <details {open}>
+                        <summary {onclick}>{summary}{description}</summary>
+                        <ul>
+                            <InfoLine header="Cost" text={format!("{:.1}", info.node.cost)} code=false />
+                            <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
+                            <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
+                            {prerequisites}
+                        </ul>
+                        </details>
+                    }
+                },
             }
         });
     html! {

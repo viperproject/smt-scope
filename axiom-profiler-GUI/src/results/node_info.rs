@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use smt_log_parser::{display_with::{DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, VarNames}, parsers::z3::graph::{raw::{InstEdgeKind, InstNodeKind, Node, ProofNodeKind}, visible::{VisibleEdge, VisibleEdgeKind}, Graph, RawNodeIndex, VisibleEdgeIndex}};
+use smt_log_parser::{display_with::{DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, VarNames}, parsers::z3::graph::{raw::{InstEdgeKind, InstNodeKind, Node, ProofNodeKind}, visible::{VisibleEdge, VisibleEdgeKind}, Graph, RawNodeIndex, VisibleEdgeIndex}, Z3Parser};
 use yew::{function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties};
 
 use crate::configuration::{ConfigurationProvider, View};
@@ -159,8 +159,16 @@ impl<'a, 'b> NodeInfo<'a, 'b, ProofNodeKind> {
         let description = format!("<code></code>");
         Html::from_html_unchecked(AttrValue::from(description))
     }
-    pub fn prerequisites(&self) -> Option<Vec<String>> {
-        None
+    pub fn prerequisites_and_result(&self) -> (Vec<String>, String) {
+        let ProofNodeKind::ProofStep(tidx) = self.node.kind();
+        let Some((result, prerequisites)) = self.ctxt.parser[*tidx].child_ids.split_last() else {
+            unreachable!()
+        }; 
+        let mut ctxt = DisplayCtxt {
+            parser: self.ctxt.parser,
+            config: self.ctxt.config.clone(),
+        };
+        (prerequisites.iter().map(|term| term.with(self.ctxt).to_string()).collect(), result.with(self.ctxt).to_string())
     } 
 }
 
@@ -266,11 +274,12 @@ pub fn SelectedNodesInfo(
                     let header_text = info.kind();
                     let summary = format!("[{index}] {header_text}: ");
                     let description = info.description(None);
-                    let prerequisites = info.prerequisites().map(|terms| {
-                        let yields: Html = terms.into_iter().map(|term| html! {
+                    let (prerequisites, result) = info.prerequisites_and_result();
+                    let prerequisites = Some(prerequisites).map(|terms| {
+                        let prerequisites: Html = terms.into_iter().map(|term| html! {
                             <InfoLine header="Prerequisite" text={term} code=true />
                         }).collect();
-                        html! { <><hr/>{yields}</> }
+                        html! { <><hr/>{prerequisites}</> }
                     });
                     html! {
                         <details {open}>
@@ -279,6 +288,7 @@ pub fn SelectedNodesInfo(
                             <InfoLine header="Cost" text={format!("{:.1}", info.node.cost)} code=false />
                             <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
                             <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
+                            <InfoLine header="Result of proof step" text={result} code=true />
                             {prerequisites}
                         </ul>
                         </details>

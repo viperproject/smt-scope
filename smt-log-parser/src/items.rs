@@ -641,3 +641,14 @@ impl TransitiveExplSegmentKind {
         }
     }
 }
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct ProofStep {
+    pub id: Option<TermId>,
+    pub kind: TermKind,
+    // Reduces memory usage compared to a Vec
+    pub prerequisites: Box<[TermIdx]>,
+}
+

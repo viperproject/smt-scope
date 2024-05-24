@@ -12,7 +12,7 @@ pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
     (Disabler::ENodes, false),
     (Disabler::GivenEqualities, false),
     (Disabler::AllEqualities, false),
-    (Disabler::ProofSteps, false),
+    (Disabler::ProofSteps, true),
 ];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -32,6 +32,7 @@ pub enum Filter {
     ShowNamedQuantifier(String),
     SelectNthMatchingLoop(usize),
     ShowMatchingLoopSubgraph,
+    IgnoreAllButProofSteps,
 }
 
 impl Filter {
@@ -98,6 +99,9 @@ impl Filter {
                 //     }
                 // }
             },
+            Filter::IgnoreAllButProofSteps => {
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().proof_step().is_none());
+            }
         }
         FilterOutput::None
     }

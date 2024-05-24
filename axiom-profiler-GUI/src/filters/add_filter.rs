@@ -38,6 +38,7 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
             vec![Filter::MaxBranching(DEFAULT_NODE_COUNT)],
             vec![Filter::MaxDepth(6)],
             vec![Filter::ShowNamedQuantifier("name".to_string())],
+            vec![Filter::IgnoreAllButProofSteps],
             mls,
             mls_all,
         ]

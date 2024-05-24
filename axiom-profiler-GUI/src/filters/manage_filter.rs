@@ -366,6 +366,7 @@ impl Filter {
             Filter::ShowNamedQuantifier(_) => Filter::ShowNamedQuantifier(new_strings[0].clone()),
             Filter::SelectNthMatchingLoop(_) => Filter::SelectNthMatchingLoop(new_data[0].max(1) - 1),
             Filter::ShowMatchingLoopSubgraph => Filter::ShowMatchingLoopSubgraph,
+            Filter::IgnoreAllButProofSteps => Filter::IgnoreAllButProofSteps,
         }
     }
 }

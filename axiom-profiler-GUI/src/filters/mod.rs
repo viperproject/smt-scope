@@ -367,6 +367,7 @@ impl Filter {
             Filter::ShowNamedQuantifier(_) => "fingerprint",
             Filter::SelectNthMatchingLoop(_) => "repeat_one",
             Filter::ShowMatchingLoopSubgraph => "repeat",
+            Filter::IgnoreAllButProofSteps => "account_tree",
         }
     }
     pub fn short_text(&self, d: impl Fn(RawNodeIndex) -> NodeKind) -> String {
@@ -421,6 +422,9 @@ impl Filter {
             }
             Self::ShowMatchingLoopSubgraph => {
                 format!("S only likely matching loops")
+            }
+            Self::IgnoreAllButProofSteps => {
+                format!("S only proof steps")
             }
         }
     }
@@ -478,6 +482,9 @@ impl Filter {
             }
             Self::ShowMatchingLoopSubgraph => {
                 format!("{show} only nodes in any potential matching loop")
+            }
+            Self::IgnoreAllButProofSteps => {
+                format!("{show} only proof steps")
             }
         }
     }

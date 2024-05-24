@@ -143,6 +143,14 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         let yields_terms = self.ctxt.parser[inst].yields_terms.iter();
         Some(yields_terms.map(|term| term.with(self.ctxt).to_string()).collect())
     }
+    pub fn prerequisites(&self) -> Option<Vec<String>> {
+        let NodeKind::ProofStep(ps) = *self.node.kind() else {
+            return None
+        };
+        let ps_term = self.ctxt.parser.term_of_proof_step(ps).unwrap();
+        let prerequisites = self.ctxt.parser[*ps_term].child_ids.iter(); 
+        Some(prerequisites.map(|pre| pre.with(self.ctxt).to_string()).collect())
+    }
 }
 
 #[derive(Properties, PartialEq)]
@@ -221,10 +229,17 @@ pub fn SelectedNodesInfo(
                 }).collect();
                 html! { <><hr/>{yields}</> }
             });
+            let prerequisites = info.prerequisites().map(|prerequisites| {
+                let requires: Html = prerequisites.into_iter().map(|prerequisite| html! {
+                    <InfoLine header="Prerequisite" text={prerequisite} code=true />
+                }).collect();
+                html! { <>{requires}</> }
+            });
             html! {
                 <details {open}>
                 <summary {onclick}>{summary}{description}</summary>
                 <ul>
+                    {prerequisites}
                     <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
                     <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
                     <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />

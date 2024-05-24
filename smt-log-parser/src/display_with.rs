@@ -205,6 +205,19 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for TermIdx {
     }
 }
 
+impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for ProofIdx {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'_>,
+        _data: &mut (),
+    ) -> fmt::Result {
+        let tidx = ctxt.parser.term_of_proof_step(self).unwrap();
+        let mut data = DisplayData::new(*tidx);
+        write!(f, "{}", ctxt.parser[*tidx].with_data(ctxt, &mut data))
+    }
+}
+
 impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for ENodeIdx {
     fn fmt_with(
         self,

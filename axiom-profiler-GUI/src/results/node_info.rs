@@ -71,10 +71,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             }
             NodeKind::GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
             NodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
-            NodeKind::ProofStep(ps) => {
-                let idx = self.ctxt.parser.term_of_proof_step(ps).unwrap();
-                idx.with(&ctxt).to_string()
-            },
+            NodeKind::ProofStep(ps) => ps.with(&ctxt).to_string(),
             NodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
                 MatchKind::MBQI { quant, .. } =>
                     ctxt.parser[*quant].kind.with(&ctxt).to_string(),

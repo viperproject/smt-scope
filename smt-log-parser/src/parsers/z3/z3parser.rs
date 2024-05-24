@@ -231,7 +231,7 @@ impl Z3LogParser for Z3Parser {
             kind: TermKind::Quant(qidx),
             child_ids,
         };
-        let tidx = self.terms.new_term(term)?;
+        let tidx = self.terms.new_term(term, false)?;
         let q = Quantifier {
             num_vars,
             kind: quant_name,
@@ -258,7 +258,7 @@ impl Z3LogParser for Z3Parser {
             kind,
             child_ids: Default::default(),
         };
-        self.terms.new_term(term)?;
+        self.terms.new_term(term, false)?;
         Ok(())
     }
 
@@ -272,15 +272,23 @@ impl Z3LogParser for Z3Parser {
             .ok_or(Error::UnexpectedNewline)?;
         let full_id = TermId::parse(&mut self.strings, full_id)?;
         let name = IString(self.strings.get_or_intern(l.next().ok_or(Error::UnexpectedNewline)?));
-        let kind = TermKind::parse_proof_app(is_proof, name);
         // TODO: add rewrite, monotonicity cases
-        let child_ids = self.gobble_children(l)?;
+        let (child_ids, kind) = if is_proof {
+            let results = self.gobble_children(l)?;
+            let Some((result, prerequisites)) = results.split_last() else {
+                return Err(Error::UnexpectedEnd)
+            };
+            (prerequisites.into(), TermKind::parse_proof(name, *result))
+        } else {
+            let child_ids = self.gobble_children(l)?;
+            (child_ids, TermKind::parse_app(name))
+        };
         let term = Term {
             id: Some(full_id),
             kind,
             child_ids,
         };
-        self.terms.new_term(term)?;
+        self.terms.new_term(term, is_proof)?;
         Ok(())
     }
 
@@ -582,6 +590,9 @@ impl Z3Parser {
     }
     pub fn instantiations(&self) -> impl Iterator<Item = (InstIdx, &Instantiation)> {
         self.insts.insts.iter_enumerated()
+    }
+    pub fn term_of_proof_step(&self, ps: ProofIdx) -> Option<&TermIdx> {
+        self.terms.proof_steps.get(ps)
     }
 }
 

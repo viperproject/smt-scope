@@ -2,7 +2,7 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    error::Either, items::{Meaning, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap, TermIdx, TermKind}, Error, FxHashMap, Result, StringTable, TiVec
+    error::Either, items::{Meaning, ProofIdx, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap, TermIdx, TermKind}, Error, FxHashMap, Result, StringTable, TiVec
 };
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -12,6 +12,8 @@ pub struct Terms {
     terms: TiVec<TermIdx, Term>,
     meanings: FxHashMap<TermIdx, Meaning>,
     parsed_terms: Option<TermIdx>,
+    pub proof_steps: TiVec<ProofIdx, TermIdx>,
+    pub proof_step_of_term: FxHashMap<TermIdx, ProofIdx>,
 
     synthetic_terms: FxHashMap<TermAndMeaning<'static>, TermIdx>,
 }
@@ -23,17 +25,25 @@ impl Terms {
             terms: TiVec::default(),
             meanings: FxHashMap::default(),
             parsed_terms: None,
+            proof_steps: TiVec::default(),
+            proof_step_of_term: FxHashMap::default(),
 
             synthetic_terms: FxHashMap::default(),
         }
     }
 
-    pub(super) fn new_term(&mut self, term: Term) -> Result<TermIdx> {
+    pub(super) fn new_term(&mut self, term: Term, is_proof: bool) -> Result<TermIdx> {
         self.terms.raw.try_reserve(1)?;
         let id = term.id;
         let idx = self.terms.push_and_get_key(term);
         if let Some(id) = id {
             self.term_id_map.register_term(id, idx)?;
+        }
+        if is_proof {
+            self.proof_steps.raw.try_reserve(1)?;
+            let pidx = self.proof_steps.push_and_get_key(idx);
+            self.proof_step_of_term.try_reserve(1)?;
+            self.proof_step_of_term.insert(idx, pidx);
         }
         Ok(idx)
     }

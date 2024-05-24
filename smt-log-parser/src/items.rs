@@ -47,6 +47,7 @@ idx!(MatchIdx, "m{}");
 idx!(EqGivenIdx, "≡{}");
 idx!(EqTransIdx, "={}");
 idx!(GraphIdx, "g{}");
+idx!(ProofIdx, "p{}");
 
 /// A Z3 term and associated data.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -64,7 +65,8 @@ pub struct Term {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TermKind {
     Var(usize),
-    ProofOrApp(ProofOrApp),
+    Proof(Proof),
+    App(App),
     Quant(QuantIdx),
     Generalised,
 }
@@ -72,17 +74,26 @@ pub enum TermKind {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ProofOrApp {
-    pub is_proof: bool,
+pub struct App {
     pub name: IString,
+}
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Proof {
+    pub name: IString,
+    pub result: TermIdx,
 }
 
 impl TermKind {
     pub(crate) fn parse_var(value: &str) -> Result<TermKind> {
         value.parse::<usize>().map(TermKind::Var).map_err(Error::InvalidVar)
     }
-    pub(crate) fn parse_proof_app(is_proof: bool, name: IString) -> Self {
-        Self::ProofOrApp(ProofOrApp { is_proof, name })
+    pub(crate) fn parse_app(name: IString) -> Self {
+        Self::App(App { name })
+    }
+    pub(crate) fn parse_proof(name: IString, result: TermIdx) -> Self {
+        Self::Proof(Proof { name, result })
     }
     pub fn quant_idx(&self) -> Option<QuantIdx> {
         match self {
@@ -92,7 +103,7 @@ impl TermKind {
     }
     pub fn app_name(&self) -> Option<IString> {
         match self {
-            Self::ProofOrApp(ProofOrApp { is_proof: false, name }) => Some(*name),
+            Self::App(App { name}) => Some(*name),
             _ => None,
         }
     }

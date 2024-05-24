@@ -42,6 +42,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             NodeKind::ENode(_) => "ENode",
             NodeKind::GivenEquality(..) => "Equality",
             NodeKind::TransEquality(_) => "Equality",
+            NodeKind::ProofStep(_) => "Proof Step",
             NodeKind::Instantiation(inst) => match &self.ctxt.parser[self.ctxt.parser[inst].match_].kind {
                 MatchKind::MBQI { .. } => "MBQI",
                 MatchKind::TheorySolving { .. } => "Theory Solving",
@@ -70,6 +71,10 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             }
             NodeKind::GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
             NodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
+            NodeKind::ProofStep(ps) => {
+                let idx = self.ctxt.parser.term_of_proof_step(ps).unwrap();
+                idx.with(&ctxt).to_string()
+            },
             NodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
                 MatchKind::MBQI { quant, .. } =>
                     ctxt.parser[*quant].kind.with(&ctxt).to_string(),
@@ -281,6 +286,8 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
                 format!("Simple {}Equality", (!forward).then(|| "Reverse ").unwrap_or_default()),
             VisibleEdgeKind::Direct(_, EdgeKind::TEqualityTransitive { forward }) =>
                 format!("Transitive {}Equality", (!forward).then(|| "Reverse ").unwrap_or_default()),
+            VisibleEdgeKind::Direct(_, EdgeKind::ProofStep) =>
+                "Proof Step".to_string(),
             VisibleEdgeKind::YieldBlame { trigger_term, .. } =>
                 format!("Yield/Blame trigger #{trigger_term}"),
             VisibleEdgeKind::YieldEq(_) =>

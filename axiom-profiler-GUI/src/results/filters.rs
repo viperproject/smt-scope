@@ -144,7 +144,7 @@ impl Disabler {
                     let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
                     children == 0 || (parents == 1 && children == 1)
                 },
-                NodeKind::TransEquality(_) => {
+                NodeKind::TransEquality(_) | NodeKind::ProofStep(_) => {
                     let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
                     // Should be >= 1
                     let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();

@@ -12,6 +12,7 @@ pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
     (Disabler::ENodes, false),
     (Disabler::GivenEqualities, false),
     (Disabler::AllEqualities, false),
+    (Disabler::ProofSteps, false),
 ];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -122,6 +123,7 @@ pub enum Disabler {
     ENodes,
     GivenEqualities,
     AllEqualities,
+    ProofSteps,
 }
 
 impl Disabler {
@@ -152,6 +154,7 @@ impl Disabler {
                 }
                 NodeKind::Instantiation(_) => false,
             },
+            Disabler::ProofSteps => node.kind().proof_step().is_some(),
         }
     }
     pub fn apply(many: impl Iterator<Item = Disabler> + Clone, graph: &mut InstGraph, parser: &Z3Parser) {
@@ -164,6 +167,7 @@ impl Disabler {
             Disabler::ENodes => "yield terms",
             Disabler::GivenEqualities => "yield equalities",
             Disabler::AllEqualities => "all equalities",
+            Disabler::ProofSteps => "proof steps",
         }
     }
     pub fn icon(&self) -> &'static str {
@@ -172,6 +176,7 @@ impl Disabler {
             Disabler::ENodes => "functions",
             Disabler::GivenEqualities => "compare_arrows",
             Disabler::AllEqualities => "compare_arrows",
+            Disabler::ProofSteps => "compare_arrows",
         }
     }
 }

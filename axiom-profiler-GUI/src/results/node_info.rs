@@ -151,6 +151,14 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         let prerequisites = self.ctxt.parser[*ps_term].child_ids.iter(); 
         Some(prerequisites.map(|pre| pre.with(self.ctxt).to_string()).collect())
     }
+    pub fn proof_step_name(&self) -> Option<String> {
+        let NodeKind::ProofStep(ps) = *self.node.kind() else {
+            return None
+        };
+        let ps_term = self.ctxt.parser.term_of_proof_step(ps).unwrap();
+        let ps_name = self.ctxt.parser[*ps_term].kind.ps_name().unwrap(); 
+        Some(self.ctxt.parser.strings[*ps_name].to_string())
+    }
 }
 
 #[derive(Properties, PartialEq)]
@@ -235,10 +243,14 @@ pub fn SelectedNodesInfo(
                 }).collect();
                 html! { <>{requires}</> }
             });
+            let proof_step_name = info.proof_step_name().map(|ps_name| {
+                    html!{<InfoLine header="Proof Step Name" text={ps_name} code=true />}
+            });
             html! {
                 <details {open}>
                 <summary {onclick}>{summary}{description}</summary>
                 <ul>
+                    {proof_step_name}
                     {prerequisites}
                     <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
                     <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />

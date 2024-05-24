@@ -139,7 +139,7 @@ impl Disabler {
             Disabler::AllEqualities =>
                 node.kind().eq_given().is_some() || node.kind().eq_trans().is_some(),
             Disabler::Smart => match node.kind() {
-                NodeKind::ENode(_) => {
+                NodeKind::ENode(_) | NodeKind::ProofStep(_) => {
                     // Should only be 0 or 1
                     let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
                     let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
@@ -150,7 +150,7 @@ impl Disabler {
                     let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
                     children == 0 || (parents == 1 && children == 1)
                 },
-                NodeKind::TransEquality(_) | NodeKind::ProofStep(_) => {
+                NodeKind::TransEquality(_) => {
                     let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
                     // Should be >= 1
                     let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();

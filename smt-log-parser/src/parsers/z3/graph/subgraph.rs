@@ -4,7 +4,7 @@ use mem_dbg::{MemDbg, MemSize};
 use petgraph::{graph::{DiGraph, EdgeIndex, Neighbors, NodeIndex, IndexType}, Directed, Direction::{self, Incoming, Outgoing}, Undirected};
 use roaring::RoaringBitmap;
 
-use super::{raw::RawIx, RawNodeIndex};
+use super::{raw::RawIx, InstGraph, RawNodeIndex};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
@@ -133,6 +133,54 @@ impl TransitiveClosure {
 
     pub(crate) fn inner(&self) -> &Vec<RoaringBitmap> {
         &self.0
+    }
+}
+
+impl InstGraph {
+    pub fn non_visible_paths_between(&self, from: RawNodeIndex, to: RawNodeIndex) -> Option<(FxHashSet<RawNodeIndex>, Option<Vec<RawNodeIndex>>)> {
+        if from == to {
+            return Some(([to].into_iter().collect(), Some(vec![to])));
+        }
+
+        let from_node = &self.raw[from];
+        let to_node = &self.raw[to];
+        let (from_subgraph, _) = from_node.subgraph?;
+        let (to_subgraph, to_idx) = to_node.subgraph?;
+        if from_subgraph != to_subgraph {
+            return None;
+        }
+
+        let filtered = NodeFiltered::from_fn(&*self.raw.graph, |n| {
+            let node = &self.raw.graph[n];
+            !node.visible() && node.subgraph.is_some_and(|(subgraph, idx)| {
+                subgraph == from_subgraph && self.subgraphs[subgraph].reach_fwd.in_transitive_closure(idx, to_idx)
+            })
+        });
+
+        let mut paths_between: FxHashSet<_> = [to].into_iter().collect();
+        let mut simple_path = None;
+
+        let mut path = vec![from];
+        let mut stack = vec![filtered.neighbors_directed(from.0, Outgoing).map(RawNodeIndex).collect::<Vec<_>>()];
+        while let Some(mut neighbours) = stack.pop() {
+            if let Some(next) = neighbours.pop() {
+                stack.push(neighbours);
+                if paths_between.contains(&next) {
+                    paths_between.extend(path.iter().copied());
+                    if simple_path.is_none() {
+                        path.push(next);
+                        simple_path = Some(path);
+                    }
+                    path = Vec::new();
+                } else {
+                    path.push(next);
+                    stack.push(filtered.neighbors_directed(next.0, Outgoing).map(RawNodeIndex).collect::<Vec<_>>());
+                }
+            } else {
+                path.pop();
+            }
+        }
+        Some((paths_between, simple_path))
     }
 }
 

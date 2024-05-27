@@ -432,6 +432,7 @@ impl Component for ExistingFilterText {
                 if self.focus.is_none() {
                     let (s, v): (Vec<_>, Vec<_>) = self.inputs.iter().partition(|(c, _)| *c == '"');
                     let v = v.into_iter().map(|(_, input)| {
+                        // FIXME: this unwrap can sometimes panic, why?
                         let input = input.cast::<HtmlInputElement>().unwrap();
                         input.value().chars().filter(|c| c.is_digit(10)).collect::<String>().parse::<usize>().ok()
                     }).collect::<Option<_>>();

@@ -1,7 +1,7 @@
 use std::ops::{Index, IndexMut};
 
 use fxhash::{FxHashMap, FxHashSet};
-use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdgeReferences, IntoEdges, NodeFiltered, Topo}, Direction::{self, Incoming, Outgoing}};
+use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdgeReferences, Topo}, Direction::{self, Incoming, Outgoing}};
 
 use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}, NonMaxU32};
 
@@ -139,29 +139,11 @@ impl VisibleInstGraph {
                     // no visible node reachable from `s_from_child`
                     continue;
                 }
-                // we do not want to walk any nodes which cannot reach any visible node
-                let bwd_reachable = sg.reach_bwd.reachable_from_many(visible_reachable());
 
-                // visible nodes are ruled out here too (`fwd_reachable` is reflexive)
-                let filter = |i| {
-                    let node: &Node = &igraph.raw.graph[i];
-                    node.subgraph.is_some_and(|(_, s)| !fwd_reachable.contains(s) && bwd_reachable.contains(s))
-                };
-                let filtered = NodeFiltered::from_fn(&*igraph.raw.graph, filter);
+                let non_visible_reachable = sg.reach_fwd.reachable_from_many([s_from_child].into_iter()) - fwd_reachable;
+                let non_visible_reachable = non_visible_reachable.iter().map(|s| sg.nodes[s as usize].0);
 
-                let mut path = Vec::new();
-                let mut stack = vec![Some(i_from_edge)];
-                while let Some(top) = stack.pop() {
-                    // Edge between `?` -> `to_parent`
-                    let Some(i_to_parent_edge) = top else {
-                        path.pop();
-                        continue;
-                    };
-                    path.push(RawEdgeIndex(i_to_parent_edge.id()));
-                    stack.push(None);
-                    let i_to_parent = i_to_parent_edge.target();
-                    stack.extend(filtered.edges(i_to_parent).map(Some));
-
+                for i_to_parent in non_visible_reachable {
                     // Found a potential `to_parent` node, look for `to` nodes.
                     for i_to_edge in igraph.raw.graph.edges(i_to_parent) {
                         let i_to = RawNodeIndex(i_to_edge.target());
@@ -169,9 +151,7 @@ impl VisibleInstGraph {
                             continue;
                         }
                         let v_to = self.reverse[&i_to];
-                        let mut path = path.clone();
-                        path.push(RawEdgeIndex(i_to_edge.id()));
-                        self.graph.add_edge(v_from, v_to.0, VisibleEdge::Indirect(path));
+                        self.graph.add_edge(v_from, v_to.0, VisibleEdge::Indirect(RawEdgeIndex(i_from_edge.id()), RawEdgeIndex(i_to_edge.id())));
                     }
                 }
             }
@@ -215,7 +195,8 @@ impl VisibleInstGraph {
                 if subgraph_u != subgraph_v { continue; }
                 {
                     if s_u != s_v && igraph.subgraphs[subgraph_u].reach_fwd.in_transitive_closure(s_u, s_v) {
-                        self.graph.update_edge(u, v, VisibleEdge::Indirect(vec![]));
+                        // TODO: the edge indices are not correct
+                        self.graph.update_edge(u, v, VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default()));
                     }
                 }
             }
@@ -245,7 +226,8 @@ impl VisibleInstGraph {
             let target = toposorted_dag[indirect_edge.target() as usize];
             // we only want indirect edges
             if !self.graph.contains_edge(source, target) {
-                self.graph.add_edge(source, target, VisibleEdge::Indirect(vec![]));
+                // TODO: the edge indices are not correct
+                self.graph.add_edge(source, target, VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default()));
             }
         }
     }
@@ -362,7 +344,7 @@ pub struct VisibleNode {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum VisibleEdge {
     Direct(RawEdgeIndex),
-    Indirect(Vec<RawEdgeIndex>),
+    Indirect(RawEdgeIndex, RawEdgeIndex),
 }
 
 impl std::fmt::Debug for VisibleEdge {
@@ -375,62 +357,66 @@ impl std::fmt::Debug for VisibleEdge {
 }
 
 impl VisibleEdge {
-    fn indirect_nodes<'a>(&'a self, graph: &'a InstGraph) -> impl Iterator<Item = RawNodeIndex> + 'a {
-        let iter = match self {
-            VisibleEdge::Direct(_) => None,
-            VisibleEdge::Indirect(path) =>
-                Some(path.iter().skip(1).map(|e| graph.raw.graph.edge_endpoints(e.0).unwrap().0)),
-        };
-        iter.into_iter().flatten().map(RawNodeIndex)
+    fn indirect_nodes<'a>(&'a self, graph: &'a InstGraph) -> FxHashSet<RawNodeIndex> {
+        match self {
+            VisibleEdge::Direct(_) => FxHashSet::default(),
+            VisibleEdge::Indirect(from, to) =>
+                // graph.raw.graph.edge_endpoints(from.0).unwrap().1 --> graph.raw.graph.edge_endpoints(to.0).unwrap().0
+                graph.non_visible_paths_between(
+                    RawNodeIndex(graph.raw.graph.edge_endpoints(from.0).unwrap().1),
+                    RawNodeIndex(graph.raw.graph.edge_endpoints(to.0).unwrap().0),
+                ).unwrap().0
+        }
     }
     pub fn is_indirect(&self, graph: &InstGraph) -> bool {
-        self.indirect_nodes(graph).any(|n| graph.raw.graph[n.0].hidden())
+        self.indirect_nodes(graph).iter().any(|n| graph.raw.graph[n.0].hidden())
     }
     pub fn kind(&self, graph: &InstGraph) -> VisibleEdgeKind {
         match self {
             VisibleEdge::Direct(e) => VisibleEdgeKind::Direct(*e, graph.raw.graph[e.0]),
-            VisibleEdge::Indirect(path) => {
-                let get_node = |n| if n == path.len() {
-                    let node: RawEdgeIndex = path[n - 1];
-                    graph.raw.graph.edge_endpoints(node.0).unwrap().1
-                } else {
-                    let node: RawEdgeIndex = path[n];
-                    graph.raw.graph.edge_endpoints(node.0).unwrap().0
+            VisibleEdge::Indirect(from, to) => {
+                // TODO: clean this up
+                let (all_between, non_visible_between) = graph.non_visible_paths_between(
+                    RawNodeIndex(graph.raw.graph.edge_endpoints(from.0).unwrap().1),
+                    RawNodeIndex(graph.raw.graph.edge_endpoints(to.0).unwrap().0),
+                ).unwrap();
+                if !non_visible_between.as_ref().is_some_and(|non_visible_between| all_between.len() == non_visible_between.len()) {
+                    return VisibleEdgeKind::Unknown(*from, *to);
                 };
-                let get_kind = |n| graph.raw.graph[get_node(n)].kind();
-                let edges = path.iter().map(|e| graph.raw.graph[e.0]).collect::<Vec<_>>();
-                match edges[..] {
+                let non_visible_between = non_visible_between.unwrap();
+
+                let get_kind = |n| Some(graph.raw[*non_visible_between.get(n)?].kind());
+
+                match (graph.raw.graph[from.0], graph.raw.graph[to.0]) {
                     // Starting at Instantiation
-                    [EdgeKind::Yield, EdgeKind::Blame { trigger_term }] =>
-                        VisibleEdgeKind::YieldBlame { enode: get_kind(1).enode().unwrap(), trigger_term },
-                    [EdgeKind::Yield, EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }] =>
-                        VisibleEdgeKind::YieldEq(get_kind(2).eq_given().unwrap()),
-                    [EdgeKind::Yield, EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }, EdgeKind::BlameEq { trigger_term, eq_order }] => {
-                        let trans = graph.raw.graph.edges_directed(get_node(3), Direction::Incoming).count();
-                        let given_eq = get_kind(2).eq_given().unwrap();
+                    (EdgeKind::Yield, EdgeKind::Blame { trigger_term }) if non_visible_between.len() == 1 =>
+                        VisibleEdgeKind::YieldBlame { enode: get_kind(0).unwrap().enode().unwrap(), trigger_term },
+                    (EdgeKind::Yield, EdgeKind::TEqualitySimple { .. }) if non_visible_between.len() == 2 =>
+                        VisibleEdgeKind::YieldEq(get_kind(1).unwrap().eq_given().unwrap()),
+                    (EdgeKind::Yield, EdgeKind::BlameEq { trigger_term, eq_order }) if non_visible_between.len() == 3 => {
+                        let trans = graph.raw.graph.edges_directed(non_visible_between[2].0, Direction::Incoming).count();
+                        let given_eq = get_kind(1).unwrap().eq_given().unwrap();
                         if trans == 1 {
                             VisibleEdgeKind::YieldBlameEq { given_eq, trigger_term, eq_order }
                         } else {
-                            VisibleEdgeKind::YieldEqOther(given_eq, edges)
+                            VisibleEdgeKind::YieldEqOther(given_eq)
                         }
                     }
-                    [EdgeKind::Yield, EdgeKind::EqualityFact, ..] =>
-                        VisibleEdgeKind::YieldEqOther(get_kind(2).eq_given().unwrap(), edges),
+
                     // Starting at ENode
-                    [EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }] =>
-                        VisibleEdgeKind::ENodeEq(get_kind(1).eq_given().unwrap()),
-                    [EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }, EdgeKind::BlameEq { trigger_term, eq_order }] => {
-                        let trans = graph.raw.graph.edges_directed(get_node(2), Direction::Incoming).count();
-                        let given_eq = get_kind(1).eq_given().unwrap();
+                    (EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }) if non_visible_between.len() == 1 =>
+                        VisibleEdgeKind::ENodeEq(get_kind(0).unwrap().eq_given().unwrap()),
+                    (EdgeKind::EqualityFact, EdgeKind::BlameEq { trigger_term, eq_order }) if non_visible_between.len() == 2 => {
+                        let trans = graph.raw.graph.edges_directed(non_visible_between[1].0, Direction::Incoming).count();
+                        let given_eq = get_kind(0).unwrap().eq_given().unwrap();
                         if trans == 1 {
                             VisibleEdgeKind::ENodeBlameEq { given_eq, trigger_term, eq_order }
                         } else {
-                            VisibleEdgeKind::ENodeEqOther(given_eq, edges)
+                            VisibleEdgeKind::ENodeEqOther(given_eq)
                         }
                     }
-                    [EdgeKind::EqualityFact, ..] =>
-                        VisibleEdgeKind::ENodeEqOther(get_kind(1).eq_given().unwrap(), edges),
-                    _ => VisibleEdgeKind::Unknown(*path.first().unwrap(), edges, *path.last().unwrap()),
+
+                    _ => VisibleEdgeKind::Unknown(*from, *to),
                 }
             }
         }
@@ -448,16 +434,16 @@ pub enum VisibleEdgeKind {
     /// `TransEquality` (only 1 parent) -> `Instantiation`
     YieldBlameEq { given_eq: (EqGivenIdx, Option<NonMaxU32>), trigger_term: u16, eq_order: u16 },
     /// `Instantiation` -> `ENode` -> `GivenEquality` -> ...
-    YieldEqOther((EqGivenIdx, Option<NonMaxU32>), Vec<EdgeKind>),
+    YieldEqOther((EqGivenIdx, Option<NonMaxU32>)),
 
     /// `ENode` -> `GivenEquality` -> `TransEquality`
     ENodeEq((EqGivenIdx, Option<NonMaxU32>)),
     /// `ENode` -> `GivenEquality` -> `TransEquality` -> `Instantiation`
     ENodeBlameEq { given_eq: (EqGivenIdx, Option<NonMaxU32>), trigger_term: u16, eq_order: u16 },
     /// `ENode` -> `GivenEquality` -> ...
-    ENodeEqOther((EqGivenIdx, Option<NonMaxU32>), Vec<EdgeKind>),
+    ENodeEqOther((EqGivenIdx, Option<NonMaxU32>)),
 
-    Unknown(RawEdgeIndex, Vec<EdgeKind>, RawEdgeIndex),
+    Unknown(RawEdgeIndex, RawEdgeIndex),
 }
 
 impl VisibleEdgeKind {
@@ -470,10 +456,10 @@ impl VisibleEdgeKind {
 
             VisibleEdgeKind::YieldEq(given_eq) |
             VisibleEdgeKind::YieldBlameEq { given_eq, .. } |
-            VisibleEdgeKind::YieldEqOther(given_eq, _) |
+            VisibleEdgeKind::YieldEqOther(given_eq) |
             VisibleEdgeKind::ENodeEq(given_eq) |
             VisibleEdgeKind::ENodeBlameEq { given_eq, .. } |
-            VisibleEdgeKind::ENodeEqOther(given_eq, _) => GivenEquality(given_eq.0, given_eq.1),
+            VisibleEdgeKind::ENodeEqOther(given_eq) => GivenEquality(given_eq.0, given_eq.1),
 
             VisibleEdgeKind::YieldBlame { enode, .. } => ENode(*enode),
         }

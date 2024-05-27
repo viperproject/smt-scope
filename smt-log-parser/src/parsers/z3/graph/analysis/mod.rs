@@ -114,8 +114,8 @@ impl InstGraph {
             self.raw.graph[a.0].cost.total_cmp(&self.raw.graph[b.0].cost).reverse().then_with(|| a.cmp(&b))
         );
         self.analysis.children.sort_by(|&a, &b| {
-            let ac = self.raw.graph.neighbors_directed(a.0, Direction::Outgoing).count();
-            let bc = self.raw.graph.neighbors_directed(b.0, Direction::Outgoing).count();
+            let ac = self.raw.neighbors_directed(a, Direction::Outgoing).len();
+            let bc = self.raw.neighbors_directed(b, Direction::Outgoing).len();
             ac.cmp(&bc).reverse().then_with(|| a.cmp(&b))
         });
         self.analysis.fwd_depth_min.sort_by(|&a, &b|

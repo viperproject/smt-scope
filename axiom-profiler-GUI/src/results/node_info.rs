@@ -188,49 +188,53 @@ pub fn SelectedNodesInfo(
             let z3_gen = info.node.kind().inst().and_then(|i| (& *parser.borrow())[i].z3_generation).map(|g| format!(" (z3 gen {g})"));
 
             let quantifier_body = info.quantifier_body().map(|body| html! {
-                <><hr/>
-                <InfoLine header="Body" text={body} code=true /></>
+                <><InfoLine header="Body" text={body} code=true /><hr/></>
             });
             let blame: Option<Html> = info.blame().map(|blame| blame.into_iter().enumerate().map(|(idx, (trigger, enode, equalities))| {
                 let equalities: Html = equalities.into_iter().map(|equality| html! {
                     <InfoLine header="Equality" text={equality} code=true />
                 }).collect();
                 html! {
-                <><hr/>
+                <>
                     <InfoLine header={format!("Trigger #{idx}")} text={trigger} code=true />
                     <InfoLine header="Matched" text={enode} code=true />
                     {equalities}
-                </>
+                <hr/></>
                 }
             }).collect());
             let bound_terms = info.bound_terms().map(|terms| {
                 let bound: Html = terms.into_iter().map(|term| html! {
                     <InfoLine header="Bound" text={term} code=true />
                 }).collect();
-                html! { <><hr/>{bound}</> }
+                html! { <>{bound}<hr/></> }
             });
             let resulting_term = info.resulting_term().map(|term| html! {
-                <><hr/>
-                <InfoLine header="Resulting Term" text={term} code=true /></>
+                <><InfoLine header="Resulting Term" text={term} code=true /><hr/></>
             });
             let yield_terms = info.yield_terms().map(|terms| {
                 let yields: Html = terms.into_iter().map(|term| html! {
                     <InfoLine header="Yield" text={term} code=true />
                 }).collect();
-                html! { <><hr/>{yields}</> }
+                html! { <>{yields}<hr/></> }
             });
             html! {
                 <details {open}>
                 <summary {onclick}>{summary}{description}</summary>
                 <ul>
-                    <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
-                    <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
-                    <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
                     {quantifier_body}
                     {blame}
                     {bound_terms}
                     {resulting_term}
                     {yield_terms}
+                    <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
+                    <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
+                    <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
+                    <InfoLine header="Degree" text={
+                        format!("parents {}, children {}",
+                            graph.raw.neighbors_directed(node, petgraph::Direction::Incoming).len(),
+                            graph.raw.neighbors_directed(node, petgraph::Direction::Outgoing).len()
+                        )
+                    } code=false />
                 </ul>
                 </details>
             }
@@ -287,15 +291,15 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
                 "Yield Equality".to_string(),
             VisibleEdgeKind::YieldBlameEq { .. } =>
                 "Yield/Blame Equality".to_string(),
-            VisibleEdgeKind::YieldEqOther(_, _) =>
+            VisibleEdgeKind::YieldEqOther(_) =>
                 "Yield Equality Other".to_string(),
             VisibleEdgeKind::ENodeEq(_) =>
                 "ENode Equality".to_string(),
             VisibleEdgeKind::ENodeBlameEq { .. } =>
                 "ENode/Blame Equality".to_string(),
-            VisibleEdgeKind::ENodeEqOther(_, _) =>
+            VisibleEdgeKind::ENodeEqOther(_) =>
                 "ENode Equality Other".to_string(),
-            VisibleEdgeKind::Unknown(start, _, end) => {
+            VisibleEdgeKind::Unknown(start, end) => {
                 let ctxt = self.ctxt;
                 let hidden_from = self.graph.raw.graph.edge_endpoints(start.0).unwrap().1;
                 let hidden_to = self.graph.raw.graph.edge_endpoints(end.0).unwrap().0;

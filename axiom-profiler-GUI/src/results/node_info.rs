@@ -246,15 +246,25 @@ pub fn SelectedNodesInfo(
             let proof_step_name = info.proof_step_name().map(|ps_name| {
                     html!{<InfoLine header="Proof Step Name" text={ps_name} code=true />}
             });
+            let structure_stats = match info.node.kind() {
+                NodeKind::ProofStep(_) => None,
+                _ => {
+                    Some(html! {
+                        <>
+                        <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
+                        <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
+                        <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
+                        </>
+                    })
+                }
+            };
             html! {
                 <details {open}>
                 <summary {onclick}>{summary}{description}</summary>
                 <ul>
                     {proof_step_name}
                     {prerequisites}
-                    <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
-                    <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
-                    <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
+                    {structure_stats}
                     {quantifier_body}
                     {blame}
                     {bound_terms}

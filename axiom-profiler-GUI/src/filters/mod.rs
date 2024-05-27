@@ -233,7 +233,10 @@ impl Component for FiltersState {
         let will_delete = ctx.link().callback(Msg::WillDelete);
         // TODO: re-add finding matching loops
         let found_mls = ctx.props().file.parser.found_mls;
-        let toggle_ml_viewer_mode = ctx.link().callback(|_| Msg::ToggleMlViewerMode); 
+        let toggle_ml_viewer_mode = ctx.link().callback(|ev: MouseEvent| {
+            ev.prevent_default();
+            Msg::ToggleMlViewerMode
+        }); 
         let ml_viewer_mode = if ctx.link().get_configuration().unwrap().config.persistent.ml_viewer_mode {
             html! {
                 <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"close"}</MatIcon></div>{"Exit matching loop viewer"}</a></li>

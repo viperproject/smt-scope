@@ -37,6 +37,11 @@ impl Component for ConfigurationProvider {
 
     fn create(ctx: &Context<Self>) -> Self {
         let config = gloo::storage::LocalStorage::get::<Configuration>("config");
+        match &config {
+            Ok(_) | Err(gloo::storage::errors::StorageError::KeyNotFound(_)) => {}
+            Err(result) => log::error!("Configuration load error: {result:?}"),
+        }
+
         let config = config.unwrap_or_default();
         Self {
             config,
@@ -47,7 +52,10 @@ impl Component for ConfigurationProvider {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         let changed = msg.apply(&mut self.config);
         if changed {
-            gloo::storage::LocalStorage::set::<&Configuration>("config", &self.config).ok();
+            let result = gloo::storage::LocalStorage::set::<&Configuration>("config", &self.config);
+            if let Err(result) = result {
+                log::error!("Configuration save error: {result:?}");
+            }
         }
         changed
     }

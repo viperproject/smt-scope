@@ -4,7 +4,7 @@ use fxhash::FxHashMap;
 
 use crate::NonMaxU32;
 
-use super::ConversionError;
+use super::{ConversionError, DeParseTrait, FallbackParseError, TdcError};
 
 pub const CONTROL_CHARACTER: char = '$';
 pub const SEPARATOR_CHARACTER: char = '|';
@@ -15,10 +15,10 @@ pub struct TermDisplayContext {
     string_matchers: FxHashMap<(Cow<'static, str>, Option<NonMaxU32>), TermDisplay>,
     regex_matchers: Vec<TermDisplay>,
     regex_set: regex::RegexSet,
-    fallback: Formatter,
+    fallback: FallbackFormatter,
 }
 
-impl FromIterator<TermDisplay> for Result<TermDisplayContext, TermDisplay> {
+impl FromIterator<TermDisplay> for Result<TermDisplayContext, TdcError> {
     fn from_iter<T: IntoIterator<Item = TermDisplay>>(iter: T) -> Self {
         let mut this = TermDisplayContext::default();
         this.append(iter.into_iter())?;
@@ -33,24 +33,18 @@ impl TermDisplayContext {
     pub fn all(&self) -> impl Iterator<Item = &TermDisplay> {
         self.string_matchers.values().chain(&self.regex_matchers)
     }
-    pub fn fallback(&self) -> &Formatter {
+    pub fn fallback(&self) -> &FallbackFormatter {
         &self.fallback
     }
 
-    /// Updates the fallback formatter. Returns `true` if successful, `false`
-    /// if the fallback formatter has a non-zero `max_capture`.
-    pub fn set_fallback(&mut self, formatter: Formatter) -> bool {
-        let error = formatter.max_capture.is_some_and(|mc| mc.get() > 0);
-        if !error {
-            self.fallback = formatter;
-        }
-        !error
+    pub fn set_fallback(&mut self, formatter: FallbackFormatter) {
+        self.fallback = formatter
     }
 
     /// Appends multiple `TermDisplay` at once. This is more efficient than
     /// repeatedly calling `push` as matching set for all regexes is calculated
     /// only once.
-    pub fn append(&mut self, terms: impl Iterator<Item = TermDisplay>) -> Result<(), TermDisplay> {
+    pub fn append(&mut self, terms: impl Iterator<Item = TermDisplay>) -> Result<(), TdcError> {
         let mut added_regex_matcher = false;
         for term in terms {
             added_regex_matcher |= self.push_inner(term)?;
@@ -61,7 +55,7 @@ impl TermDisplayContext {
         Ok(())
     }
 
-    pub fn push(&mut self, term: TermDisplay) -> Result<(), TermDisplay> {
+    pub fn push(&mut self, term: TermDisplay) -> Result<(), TdcError> {
         if self.push_inner(term)? {
             self.calculate_regex_set();
         }
@@ -111,7 +105,7 @@ impl TermDisplayContext {
             MatchResult {
                 haystack,
                 captures: None,
-                formatter: self.fallback(),
+                formatter: self.fallback().formatter(),
             }
         })
     }
@@ -148,24 +142,26 @@ impl TermDisplayContext {
         }
     }
 
-    pub(super) fn to_parts(&self) -> (&FxHashMap<(Cow<'static, str>, Option<NonMaxU32>), TermDisplay>, &Vec<TermDisplay>) {
-        (&self.string_matchers, &self.regex_matchers)
+    pub(super) fn to_parts(&self) -> (&FxHashMap<(Cow<'static, str>, Option<NonMaxU32>), TermDisplay>, &Vec<TermDisplay>, &FallbackFormatter) {
+        (&self.string_matchers, &self.regex_matchers, &self.fallback)
     }
-    pub(super) fn from_parts(string_matchers: FxHashMap<(Cow<'static, str>, Option<NonMaxU32>), TermDisplay>, regex_matchers: Vec<TermDisplay>) -> Self {
+    pub(super) fn from_parts(string_matchers: FxHashMap<(Cow<'static, str>, Option<NonMaxU32>), TermDisplay>, regex_matchers: Vec<TermDisplay>, fallback: FallbackFormatter) -> Self {
         let mut this = TermDisplayContext::default();
         this.string_matchers = string_matchers;
         this.regex_matchers = regex_matchers;
         this.calculate_regex_set();
+        this.fallback = fallback;
         this
     }
 
-    fn push_inner(&mut self, term: TermDisplay) -> Result<bool, TermDisplay> {
+    fn push_inner(&mut self, term: TermDisplay) -> Result<bool, TdcError> {
         match &term.matcher.kind {
             MatcherKind::Exact(s) => {
                 let k = (Cow::Owned(s.to_string()), term.matcher.children);
                 let duplicate = self.string_matchers.insert(k, term);
                 if let Some(duplicate) = duplicate {
-                    Err(duplicate)
+                    let MatcherKind::Exact(s) = duplicate.matcher.kind else { unreachable!() };
+                    Err(TdcError::DuplicateExactMatcher(s, duplicate.matcher.children))
                 } else {
                     Ok(false)
                 }
@@ -188,6 +184,7 @@ impl PartialEq for TermDisplayContext {
     fn eq(&self, other: &Self) -> bool {
         self.string_matchers == other.string_matchers
             && self.regex_matchers == other.regex_matchers
+            && self.fallback == other.fallback
     }
 }
 impl Eq for TermDisplayContext {}
@@ -201,8 +198,8 @@ pub struct MatchResult<'a, 'b> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TermDisplay {
-    pub matcher: Matcher,
-    pub formatter: Formatter,
+    pub(crate) matcher: Matcher,
+    pub(crate) formatter: Formatter,
 }
 
 impl TermDisplay {
@@ -230,6 +227,9 @@ impl TermDisplay {
             }
         }
         Ok(Self { matcher, formatter })
+    }
+    pub fn deparse_string(&self) -> (String, String) {
+        (self.matcher.deparse_string(), self.formatter.deparse_string())
     }
 
     pub fn is_empty(&self) -> bool {
@@ -316,6 +316,25 @@ pub struct Formatter {
 
     /// The maximum value of any stored `SubFormatter::Capture`.
     pub max_capture: Option<NonMaxU32>,
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct FallbackFormatter(Formatter);
+
+impl FallbackFormatter {
+    /// Creates the fallback formatter. Returns `Ok` if successful, `Err`
+    /// if the fallback formatter has a non-zero `max_capture`.
+    pub fn new(formatter: Formatter) -> Result<Self, FallbackParseError> {
+        if let Some(mc) = formatter.max_capture.filter(|mc| mc.get() > 0) {
+            Err(FallbackParseError::MaxCaptureTooLarge(mc))
+        } else {
+            Ok(Self(formatter))
+        }
+    }
+    pub fn formatter(&self) -> &Formatter {
+        &self.0
+    }
 }
 
 pub type BindPower = u32;

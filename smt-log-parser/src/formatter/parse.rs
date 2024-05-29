@@ -295,7 +295,7 @@ impl<'a> MatcherConst<'a> {
         };
         let mut children = NonMaxU32::ZERO;
         while let Some(rest) = ConstOperations::strip_suffix(s, '_') {
-            let Some(rest) = ConstOperations::strip_prefix(rest, ' ') else { break };
+            let Some(rest) = ConstOperations::strip_suffix(rest, ' ') else { break };
             let new = NonMaxU32::new(children.get() + 1);
             children = map_opt!(new, Err(ParseErrorConst::invalid_children_spec(s)));
             s = rest;
@@ -350,6 +350,13 @@ impl FromStr for Formatter {
     type Err = FormatterParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(FormatterConst::parse(s)?.into())
+    }
+}
+
+impl FromStr for FallbackFormatter {
+    type Err = FallbackParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FallbackFormatter::new(s.parse().map_err(FallbackParseError::FormatterParseError)?)
     }
 }
 

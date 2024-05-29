@@ -249,17 +249,32 @@ li.td-row {
     display: flex;
     padding: 2px 0;
 }
-li.td-row.error input {
-    border-color: red;
-}
+
 li .td-matcher {
     flex: 1 2 auto;
     margin-right: 2px;
+}
+li.td-row.error .td-matcher, li .td-matcher.error {
+    border-color: red;
 }
 li .td-formatter {
     flex: 2 1 auto;
     margin-left: 2px;
 }
+li.td-row.error .td-formatter, li .td-formatter.error {
+    border-color: red;
+}
+li .td-error {
+    width: 1.8em;
+    margin-left: 4px;
+    display: flex;
+    justify-content: right;
+    align-items: center;
+}
+li .td-error.error {
+    cursor: help;
+}
+
 li .td-matcher, li .td-formatter {
     width: 100%;
     padding: 3px 2px;

@@ -1,4 +1,17 @@
+use crate::NonMaxU32;
+
 use super::{ConstSplit, Matcher, Formatter};
+
+#[derive(Debug, Clone)]
+pub enum TdcError {
+    DuplicateExactMatcher(String, Option<NonMaxU32>),
+}
+
+#[derive(Debug, Clone)]
+pub enum FallbackParseError {
+    MaxCaptureTooLarge(NonMaxU32),
+    FormatterParseError(FormatterParseError),
+}
 
 #[derive(Debug)]
 pub enum ConversionError {
@@ -23,7 +36,7 @@ impl From<MatcherParseError> for ConversionError {
 pub type FormatterParseError = ParseError<FormatterError>;
 pub type MatcherParseError = ParseError<MatcherError>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParseError<T> {
     pub s: String,
     pub kind: T,
@@ -45,7 +58,7 @@ pub struct ParseErrorConst<'a, T> {
     pub kind: T,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum FormatterError {
     MissingHash,
     MissingRange,
@@ -102,7 +115,7 @@ impl<'a> ParseErrorConst<'a, FormatterError> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MatcherError {
     InvalidChildrenSpec,
 }

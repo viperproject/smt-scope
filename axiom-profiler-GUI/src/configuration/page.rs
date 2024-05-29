@@ -1,6 +1,7 @@
+use core::fmt;
 use std::{borrow::Cow, rc::Rc};
 
-use smt_log_parser::{display_with::SymbolReplacement, formatter::{self, DeParseTrait, Formatter, Matcher, TermDisplay, TermDisplayContext}, NonMaxUsize};
+use smt_log_parser::{display_with::SymbolReplacement, formatter::{ConversionError, DeParseTrait, FallbackFormatter, FallbackParseError, Formatter, FormatterParseError, Matcher, TdcError, TermDisplay, TermDisplayContext}, NonMaxUsize};
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::{function_component, prelude::Context, use_context, use_effect_with_deps, Callback, Component, Event, Html, NodeRef, Properties};
@@ -167,16 +168,20 @@ fn term_display_file_to_html((td_ctx, apply, reset, file): (&TermDisplayContext,
 struct TermDisplayComponent {
     fallback: String,
     fallback_ref: NodeRef,
-    fallback_parsed: Option<Formatter>,
+    fallback_parsed: Result<FallbackFormatter, FallbackParseError>,
     tds: Vec<TermDisplayRow>,
+    parsed: Option<Result<TermDisplayContext, TdcError>>,
     modified: bool,
-    apply_valid: bool,
+    focused: Option<(NonMaxUsize, bool)>,
 }
 
 pub enum TdcMsg {
-    ChangedMatcher(NonMaxUsize, Event),
-    ChangedFormatter(Option<NonMaxUsize>, Event),
+    ChangedRow(NonMaxUsize, bool, Event),
+    ChangedFallback(Event),
     Revert,
+    Apply,
+    OnFocus(NonMaxUsize, bool),
+    OnBlur(NonMaxUsize, bool),
 }
 
 #[derive(Properties, PartialEq)]
@@ -186,13 +191,15 @@ struct TermDisplayComponentProps {
     pub reset: Callback<()>,
 }
 
+#[derive(Debug)]
 struct TermDisplayRow {
     matcher: String,
     matcher_ref: NodeRef,
-    matcher_err: Option<()>,
+    matcher_err: Option<ConversionError>,
     formatter: String,
     formatter_ref: NodeRef,
-    parsed: Option<TermDisplay>,
+    formatter_err: Option<FormatterParseError>,
+    parsed: Option<Result<TermDisplay, ConversionError>>,
 }
 
 impl TermDisplayRow {
@@ -212,35 +219,30 @@ impl Component for TermDisplayComponent {
 
     fn create(ctx: &Context<Self>) -> Self {
         let mut tds: Vec<_> = ctx.props().td_ctx.all().map(|td| {
-            let matcher = td.matcher.deparse_string();
-            let formatter = td.formatter.deparse_string();
+            let (matcher, formatter) = td.deparse_string();
             TermDisplayRow {
                 matcher,
                 matcher_ref: NodeRef::default(),
                 matcher_err: None,
                 formatter,
                 formatter_ref: NodeRef::default(),
-                parsed: Some(td.clone()),
+                formatter_err: None,
+                parsed: Some(Ok(td.clone())),
             }
         }).collect();
         tds.sort_by(|a, b| a.cmp_key().cmp(&b.cmp_key()));
-        tds.push(TermDisplayRow {
-            matcher: String::new(),
-            matcher_ref: NodeRef::default(),
-            matcher_err: None,
-            formatter: String::new(),
-            formatter_ref: NodeRef::default(),
-            parsed: None,
-        });
         let fallback = ctx.props().td_ctx.fallback();
-        Self {
-            fallback: fallback.deparse_string(),
+        let mut self_ = Self {
+            fallback: fallback.formatter().deparse_string(),
             fallback_ref: NodeRef::default(),
-            fallback_parsed: Some(fallback.clone()),
+            fallback_parsed: Ok(fallback.clone()),
             tds,
+            parsed: Some(Ok(ctx.props().td_ctx.clone())),
             modified: false,
-            apply_valid: true,
-        }
+            focused: None,
+        };
+        self_.check_last_td();
+        self_
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         debug_assert!(ctx.props() != old_props);
@@ -250,54 +252,118 @@ impl Component for TermDisplayComponent {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            TdcMsg::ChangedMatcher(_, _) => todo!(),
-            TdcMsg::ChangedFormatter(_, _) => todo!(),
+            TdcMsg::ChangedRow(idx, _matcher, _e) => {
+                let td = &mut self.tds[idx.get()];
+                td.try_parse();
+                self.try_parse();
+                self.modified = !self.parsed.as_ref().is_some_and(|p| p.as_ref().is_ok_and(|tdc| tdc == &ctx.props().td_ctx));
+
+                if idx.get() == self.tds.len() - 1 {
+                    self.check_last_td();
+                }
+                true
+            }
+            TdcMsg::ChangedFallback(_e) => {
+                let fallback = self.fallback_ref.cast::<HtmlInputElement>().unwrap();
+                self.fallback = fallback.value();
+                self.fallback_parsed = self.fallback.parse::<FallbackFormatter>();
+                self.try_parse();
+                self.modified = !self.parsed.as_ref().is_some_and(|p| p.as_ref().is_ok_and(|tdc| tdc == &ctx.props().td_ctx));
+                true
+            }
             TdcMsg::Revert => {
                 *self = Self::create(ctx);
                 true
+            }
+            TdcMsg::Apply => {
+                ctx.props().apply.emit(self.parsed.clone().unwrap().unwrap());
+                false
+            }
+            TdcMsg::OnFocus(idx, matcher) => {
+                log::info!("Focus In {:?} -> {:?}", self.focused, (idx, matcher));
+                self.focused = Some((idx, matcher));
+                false
+            }
+            TdcMsg::OnBlur(idx, matcher) => {
+                log::info!("Focus Out {:?} -> {:?}", self.focused, (idx, matcher));
+                if self.focused == Some((idx, matcher)) {
+                    self.focused = None;
+                }
+                false
             }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let tds = self.tds.iter().enumerate().map(|(i, td)| {
+            let mut errors = Vec::new();
             let idx = NonMaxUsize::new(i).unwrap();
             let link = ctx.link().clone();
             let matcher_change = Callback::from(move |e: Event| {
-                link.send_message(TdcMsg::ChangedMatcher(idx, e));
+                let link = link.clone();
+                gloo::timers::callback::Timeout::new(10, move || link.send_message(TdcMsg::ChangedRow(idx, true, e))).forget();
             });
             let link = ctx.link().clone();
-            let formatter_change = Callback::from(move |e: Event| {
-                link.send_message(TdcMsg::ChangedFormatter(Some(idx), e));
+            let matcher_focus = Callback::from(move |_| {
+                link.send_message(TdcMsg::OnFocus(idx, true));
             });
-            let error = td.parsed.is_none() && i != self.tds.len() - 1;
+            let link = ctx.link().clone();
+            let matcher_blur = Callback::from(move |_| {
+                link.send_message(TdcMsg::OnBlur(idx, true));
+            });
+            let matcher_class = if td.matcher_err.is_some() { "td-matcher error" } else { "td-matcher" };
+            td.matcher_err.as_ref().map(AnyError::Matcher).map(|e| errors.push(e));
+
+            let link = ctx.link().clone();
+            let formatter_change = Callback::from(move |e: Event| {
+                let link = link.clone();
+                gloo::timers::callback::Timeout::new(10, move || link.send_message(TdcMsg::ChangedRow(idx, false, e))).forget();
+            });
+            let link = ctx.link().clone();
+            let formatter_focus = Callback::from(move |_| {
+                link.send_message(TdcMsg::OnFocus(idx, false));
+            });
+            let link = ctx.link().clone();
+            let formatter_blur = Callback::from(move |_| {
+                link.send_message(TdcMsg::OnBlur(idx, false));
+            });
+            let formatter_class = if td.formatter_err.is_some() { "td-formatter error" } else { "td-formatter" };
+            td.formatter_err.as_ref().map(AnyError::Formatter).map(|e| errors.push(e));
+
+            let error = td.parsed.as_ref().is_some_and(|p| p.is_err());
             let class = if error { "td-row error" } else { "td-row" };
+            td.parsed.as_ref().map(|p| p.as_ref().map_err(AnyError::TermDisplay).map_err(|e| errors.push(e)));
             yew::html! {
                 <li {class}>
-                    <input ref={&td.matcher_ref} type="text" class="td-matcher" value={td.matcher.clone()} onchange={matcher_change} />
-                    <input ref={&td.formatter_ref} type="text" class="td-formatter" value={td.formatter.clone()} onchange={formatter_change} />
+                    <input ref={&td.matcher_ref} type="text" class={matcher_class} value={td.matcher.clone()} onchange={matcher_change} onfocus={matcher_focus} onblur={matcher_blur} />
+                    <input ref={&td.formatter_ref} type="text" class={formatter_class} value={td.formatter.clone()} onchange={formatter_change} onfocus={formatter_focus} onblur={formatter_blur} />
+                    {error_tooltip(errors)}
                 </li>
             }
         });
         let link = ctx.link().clone();
         let formatter_change = Callback::from(move |e: Event| {
-            link.send_message(TdcMsg::ChangedFormatter(None, e));
+            link.send_message(TdcMsg::ChangedFallback(e));
         });
+        let formatter_class = if self.fallback_parsed.is_err() { "td-formatter error" } else { "td-formatter" };
         let fallback = yew::html! {
             <li class="td-row">
                 <div class="td-matcher">{"Fallback:"}</div>
-                <input ref={&self.fallback_ref} type="text" class="td-formatter" value={self.fallback.clone()} onchange={formatter_change} />
+                <input ref={&self.fallback_ref} type="text" class={formatter_class} value={self.fallback.clone()} onchange={formatter_change} />
+                {error_tooltip(self.fallback_parsed.as_ref().err().into_iter().map(AnyError::Fallback).collect())}
             </li>
         };
         let tds = [fallback].into_iter().chain(tds);
-        let apply = ctx.props().apply.clone();
         let modified = self.modified;
-        let can_apply = modified && self.apply_valid;
+        let can_apply = modified && self.fallback_parsed.is_ok() && self.tds.iter().all(|td|
+            td.is_empty() || td.parsed.as_ref().is_some_and(|p| p.is_ok())
+        );
+        let link = ctx.link().clone();
         let apply = Callback::from(move |_| {
             if !can_apply {
                 return;
             }
-            log::info!("Applying term display");
+            link.send_message(TdcMsg::Apply);
         });
         let link = ctx.link().clone();
         let revert = Callback::from(move |_| {
@@ -320,16 +386,111 @@ impl Component for TermDisplayComponent {
             </>
         }
     }
+
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        if let Some((idx, matcher)) = self.focused {
+            let td = &self.tds[idx.get()];
+            let ref_ = if matcher { &td.matcher_ref } else { &td.formatter_ref };
+            if let Some(element) = ref_.cast::<HtmlInputElement>() {
+                element.focus().ok();
+                element.select();
+            }
+        }
+    }
+}
+
+impl TermDisplayComponent {
+    pub fn try_parse(&mut self) {
+        self.parsed = None;
+        let Ok(fallback) = &self.fallback_parsed else {
+            return;
+        };
+        let all_td_ok = self.tds.iter().all(|td| td.is_empty() || td.parsed.as_ref().is_some_and(|p| p.is_ok()));
+        if !all_td_ok {
+            return;
+        }
+
+        let tds = self.tds.iter().flat_map(|td| &td.parsed).map(|p| p.as_ref().unwrap().clone());
+        let mut tdc: Result<TermDisplayContext, _> = tds.collect();
+        if let Ok(tdc) = &mut tdc {
+            tdc.set_fallback(fallback.clone());
+        }
+        self.parsed = Some(tdc);
+    }
+
+    pub fn check_last_td(&mut self) {
+        if self.tds.last().is_some_and(|td| !td.is_empty()) {
+            self.tds.push(TermDisplayRow {
+                matcher: String::new(),
+                matcher_ref: NodeRef::default(),
+                matcher_err: None,
+                formatter: String::new(),
+                formatter_ref: NodeRef::default(),
+                formatter_err: None,
+                parsed: None,
+            });
+        }
+    }
 }
 
 impl TermDisplayRow {
-    pub fn try_parse(&self) -> Option<TermDisplay> {
+    pub fn try_parse(&mut self) -> Option<()> {
         let matcher = self.matcher_ref.cast::<HtmlInputElement>()?;
-        let matcher = matcher.value();
-        let matcher = self.matcher.parse::<Matcher>().ok()?;
+        self.matcher = matcher.value();
         let formatter = self.formatter_ref.cast::<HtmlInputElement>()?;
-        let formatter = formatter.value();
-        let formatter = formatter.parse::<Formatter>().ok()?;
-        Some(TermDisplay { matcher, formatter })
+        self.formatter = formatter.value();
+
+        let matcher = self.matcher.parse::<Matcher>();
+        let formatter = self.formatter.parse::<Formatter>();
+
+        self.matcher_err = None;
+        self.formatter_err = None;
+        self.parsed = None;
+
+        match (matcher, formatter) {
+            (Ok(matcher), Ok(formatter)) => {
+                if !self.is_empty() {
+                    self.parsed = Some(TermDisplay::new(matcher, formatter));
+                }
+            }
+            (Err(matcher), Err(formatter)) => {
+                self.matcher_err = Some(matcher);
+                self.formatter_err = Some(formatter);
+            }
+            (Err(matcher), Ok(_)) => {
+                self.matcher_err = Some(matcher);
+            }
+            (Ok(_), Err(formatter)) => {
+                self.formatter_err = Some(formatter);
+            }
+        }
+        Some(())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.matcher.is_empty() && self.formatter.is_empty()
+    }
+}
+
+#[derive(Debug)]
+pub enum AnyError<'a> {
+    Matcher(&'a ConversionError),
+    Formatter(&'a FormatterParseError),
+    TermDisplay(&'a ConversionError),
+    Fallback(&'a FallbackParseError),
+}
+
+impl fmt::Display for AnyError<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // TODO: add a proper display here
+        write!(f, "{self:?}")
+    }
+}
+
+pub fn error_tooltip(errors: Vec<AnyError<'_>>) -> Html {
+    let title = errors.iter().map(AnyError::to_string).collect::<Vec<_>>().join("\n");
+    let class = if errors.is_empty() { "td-error" } else { "td-error error" };
+    yew::html! {
+        <div {title} {class}>{if errors.is_empty() { "" } else { "❌" }}</div>
     }
 }

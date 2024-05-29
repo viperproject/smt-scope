@@ -25,6 +25,9 @@ struct Args {
     pretty_print: bool
 }
 
+/// Given an iterator over nodes in the instantiation graph, filters
+/// this iterator by those nodes that correspond to quantifiers with
+/// user names
 fn named_nodes<'a, I>(inst_graph: &'a RawInstGraph, parser: &'a Z3Parser, nodes : I)
                       -> impl Iterator<Item=(RawNodeIndex, &'a str)>  + 'a
   where I : Iterator<Item=RawNodeIndex> + 'a {
@@ -40,6 +43,9 @@ fn named_nodes<'a, I>(inst_graph: &'a RawInstGraph, parser: &'a Z3Parser, nodes 
         .map(|(node_id, user_name)| (node_id, &parser[user_name]))
 }
 
+/// Given a node in the instantiation graph, attempts to retrieve the
+/// user name associated with it, assuming that it is a
+/// quantifier. (Returns None otherwise).
 fn get_node_name<'a>(inst_graph: &'a RawInstGraph, parser: &'a Z3Parser, node_id : RawNodeIndex) -> Option<&'a str> {
     let inst =
         if let graph::raw::NodeKind::Instantiation(inst) = inst_graph[node_id].kind() {

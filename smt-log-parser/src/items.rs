@@ -113,6 +113,12 @@ impl TermKind {
             _ => None,
         }
     }
+    pub fn ps_result(&self) -> Option<TermIdx> {
+        match self {
+            Self::Proof(Proof { result, ..}) => Some(*result),
+            _ => None,
+        }
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]

@@ -39,6 +39,9 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
             vec![Filter::MaxDepth(6)],
             vec![Filter::ShowNamedQuantifier("name".to_string())],
             vec![Filter::IgnoreAllButProofSteps],
+            vec![Filter::IgnoreTrivialProofSteps],
+            vec![Filter::ShowOnlyFalseProofSteps],
+            vec![Filter::ShowNamedProofStep("name".to_string())],
             mls,
             mls_all,
         ]

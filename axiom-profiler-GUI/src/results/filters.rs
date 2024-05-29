@@ -33,6 +33,9 @@ pub enum Filter {
     SelectNthMatchingLoop(usize),
     ShowMatchingLoopSubgraph,
     IgnoreAllButProofSteps,
+    IgnoreTrivialProofSteps,
+    ShowOnlyFalseProofSteps,
+    ShowNamedProofStep(String),
 }
 
 impl Filter {
@@ -101,6 +104,56 @@ impl Filter {
             },
             Filter::IgnoreAllButProofSteps => {
                 graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().proof_step().is_none());
+            }
+            Filter::IgnoreTrivialProofSteps => {
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| if let Some(ps) = node.kind().proof_step() {
+                    let ps_term = parser.term_of_proof_step(ps).unwrap();
+                    let ps_name_istring = parser[*ps_term].kind.ps_name().unwrap();
+                    let ps_name = &parser.strings[*ps_name_istring];
+                    match ps_name {
+                        "mp" => true,
+                        "rewrite" => true,
+                        "monotonicity" => true,
+                        "trans" => true,
+                        "refl" => true,
+                        "commutativity" => true,
+                        "iff-true" => true,
+                        "iff-false" => true,
+                        "symm" => true,
+                        _ => false,
+                    }
+                } else {
+                   true 
+                })
+            }
+            Filter::ShowOnlyFalseProofSteps => {
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| if let Some(ps) = node.kind().proof_step() {
+                    let ps_term = parser.term_of_proof_step(ps).unwrap();
+                    let ps_result_term = parser[*ps_term].kind.ps_result().unwrap();
+                    let ctxt = DisplayCtxt {
+                        parser: &parser,
+                        config: DisplayConfiguration {
+                            display_term_ids: false,
+                            display_quantifier_name: false,
+                            use_mathematical_symbols: true,
+                            html: true,
+                            enode_char_limit: None,
+                            ast_depth_limit: None,
+                        },
+                    };
+                    let ps_result = ps_result_term.with(&ctxt).to_string();
+                    ps_result != "false"
+                } else {
+                   true 
+                })
+            }
+            Filter::ShowNamedProofStep(name) => {
+                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().proof_step().is_some_and(|ps|
+                    parser[*parser.term_of_proof_step(ps).unwrap()]
+                    .kind
+                    .ps_name()
+                    .map(|name| parser.strings[*name].to_string()).is_some_and(|s| s == name)
+                ))
             }
         }
         FilterOutput::None

@@ -368,6 +368,9 @@ impl Filter {
             Filter::SelectNthMatchingLoop(_) => "repeat_one",
             Filter::ShowMatchingLoopSubgraph => "repeat",
             Filter::IgnoreAllButProofSteps => "account_tree",
+            Filter::IgnoreTrivialProofSteps => "filter_alt",
+            Filter::ShowOnlyFalseProofSteps => "bolt",
+            Filter::ShowNamedProofStep(_) => "fingerprint",
         }
     }
     pub fn short_text(&self, d: impl Fn(RawNodeIndex) -> NodeKind) -> String {
@@ -425,6 +428,15 @@ impl Filter {
             }
             Self::IgnoreAllButProofSteps => {
                 format!("S only proof steps")
+            }
+            Self::IgnoreTrivialProofSteps => {
+                format!("H trivial proof steps")
+            }
+            Self::ShowOnlyFalseProofSteps => {
+                format!("S only false proof steps")
+            }
+            Self::ShowNamedProofStep(name) => {
+                format!("Show proof step \"{name}\"")
             }
         }
     }
@@ -485,6 +497,15 @@ impl Filter {
             }
             Self::IgnoreAllButProofSteps => {
                 format!("{show} only proof steps")
+            }
+            Self::IgnoreTrivialProofSteps => {
+                format!("{hide} trivial proof steps")
+            }
+            Self::ShowOnlyFalseProofSteps => {
+                format!("{show} only proof steps proving false")
+            }
+            Self::ShowNamedProofStep(name) => {
+                format!("{show} proof steps with name \"{}\"", display(name, applied))
             }
         }
     }

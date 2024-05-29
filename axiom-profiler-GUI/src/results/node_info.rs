@@ -42,7 +42,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             NodeKind::ENode(_) => "ENode",
             NodeKind::GivenEquality(..) => "Equality",
             NodeKind::TransEquality(_) => "Equality",
-            NodeKind::ProofStep(_) => "Proof Step",
+            NodeKind::ProofStep(_) => "Proof Step Result",
             NodeKind::Instantiation(inst) => match &self.ctxt.parser[self.ctxt.parser[inst].match_].kind {
                 MatchKind::MBQI { .. } => "MBQI",
                 MatchKind::TheorySolving { .. } => "Theory Solving",

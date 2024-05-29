@@ -16,9 +16,6 @@ struct Args {
     /// The path to the smt log
     filename: std::path::PathBuf,
 
-    /// The axiom ids of the axioms to retrieve dependencies for
-    ids: Vec<String>,
-
     /// Depth of dependencies to lookup
     #[arg(short, long, default_value_t = 1)]
     depth: u32,

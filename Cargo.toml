@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "smt-log-parser",
+    "smt-dependencies",
     "axiom-profiler-GUI",
 ]
 resolver = "2"

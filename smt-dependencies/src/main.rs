@@ -138,7 +138,7 @@ fn main() -> Result<(), String> {
             }
         } else {
             let deps : Vec<String> = deps.into_iter().collect();
-            println!("{}: {}", axiom,  deps.join(", "));
+            println!("{} = {}", axiom,  deps.join(", "));
         }
     }
 

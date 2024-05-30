@@ -9,6 +9,7 @@ pub struct Cli {
 
 #[derive(clap::Subcommand)]
 pub enum Commands {
+    #[cfg(feature = "analysis")]
     /// Prints out the nth dependencies of a list of instantiations
     Dependencies {
         /// The path to the smt log file

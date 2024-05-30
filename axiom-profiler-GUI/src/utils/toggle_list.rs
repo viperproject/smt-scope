@@ -1,6 +1,5 @@
 use yew::{html, Callback, Children, Component, Context, Html, Properties};
 
-
 pub enum Msg {
     Click(usize),
     MouseMove(usize),
@@ -57,23 +56,28 @@ impl Component for ToggleList {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        ctx.props().children.iter().enumerate().map(|(curr_idx, display)| {
-            let is_selected = self.selected[curr_idx];
-            let is_hover = self.hover.is_some_and(|hover| hover == curr_idx);
-            let onclick = ctx.link().callback(move |_| Msg::Click(curr_idx));
-            let onmousemove = ctx.link().callback(move |_| Msg::MouseMove(curr_idx));
-            let onmouseleave = ctx.link().callback(move |_| Msg::MouseLeave(curr_idx));
-            let class = match (is_selected, is_hover) {
-                (true, true) => "toggle-list selected hover",
-                (true, false) => "toggle-list selected",
-                (false, true) => "toggle-list hover",
-                (false, false) => "toggle-list",
-            };
-            html!{
-                <li class={class} {onclick} {onmousemove} {onmouseleave}>
-                    {display}
-                </li>
-            }
-        }).collect()
+        ctx.props()
+            .children
+            .iter()
+            .enumerate()
+            .map(|(curr_idx, display)| {
+                let is_selected = self.selected[curr_idx];
+                let is_hover = self.hover.is_some_and(|hover| hover == curr_idx);
+                let onclick = ctx.link().callback(move |_| Msg::Click(curr_idx));
+                let onmousemove = ctx.link().callback(move |_| Msg::MouseMove(curr_idx));
+                let onmouseleave = ctx.link().callback(move |_| Msg::MouseLeave(curr_idx));
+                let class = match (is_selected, is_hover) {
+                    (true, true) => "toggle-list selected hover",
+                    (true, false) => "toggle-list selected",
+                    (false, true) => "toggle-list hover",
+                    (false, false) => "toggle-list",
+                };
+                html! {
+                    <li class={class} {onclick} {onmousemove} {onmouseleave}>
+                        {display}
+                    </li>
+                }
+            })
+            .collect()
     }
 }

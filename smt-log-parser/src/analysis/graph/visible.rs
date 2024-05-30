@@ -1,11 +1,23 @@
 use std::ops::{Index, IndexMut};
 
 use fxhash::{FxHashMap, FxHashSet};
-use petgraph::{graph::{DiGraph, EdgeIndex, NodeIndex}, visit::{EdgeRef, IntoEdgeReferences, Topo}, Direction::{self, Incoming, Outgoing}};
+use petgraph::{
+    graph::{DiGraph, EdgeIndex, NodeIndex},
+    visit::{EdgeRef, IntoEdgeReferences, Topo},
+    Direction::{self, Incoming, Outgoing},
+};
 
-use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx}, NonMaxU32};
+use crate::{
+    graph_idx,
+    items::{ENodeIdx, EqGivenIdx},
+    NonMaxU32,
+};
 
-use super::{analysis::matching_loop::MIN_MATCHING_LOOP_LENGTH, raw::{EdgeKind, Node, NodeKind}, InstGraph, RawEdgeIndex, RawNodeIndex};
+use super::{
+    analysis::matching_loop::MIN_MATCHING_LOOP_LENGTH,
+    raw::{EdgeKind, Node, NodeKind},
+    InstGraph, RawEdgeIndex, RawNodeIndex,
+};
 
 graph_idx!(visible_idx, VisibleNodeIndex, VisibleEdgeIndex, VisibleIx);
 
@@ -19,19 +31,32 @@ pub struct VisibleInstGraph {
 impl InstGraph {
     pub fn to_visible(&self) -> VisibleInstGraph {
         // debug_assert_eq!(self.hidden as usize, self.graph.node_weights().filter(|n| n.hidden).count());
-        
+
         // Code copied from `DiGraph::filter_map`, but that function does not
         // allow for changing the node index type.
-        let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> = DiGraph::with_capacity(self.raw.visible_nodes(), 0);
+        let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> =
+            DiGraph::with_capacity(self.raw.visible_nodes(), 0);
         // mapping from old node index to new node index, end represents removed.
         let mut node_index_map = vec![NodeIndex::end(); self.raw.graph.node_count()];
-        let node_map = |idx, node: &Node| node.visible().then(|| VisibleNode {
-            idx,
-            hidden_parents: self.raw.neighbors_directed(idx, Direction::Incoming).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
-            hidden_children: self.raw.neighbors_directed(idx, Direction::Outgoing).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
-            max_depth: 0 
-        });
-        for (i, node) in self.raw.graph.node_weights().into_iter().enumerate() {
+        let node_map = |idx, node: &Node| {
+            node.visible().then(|| VisibleNode {
+                idx,
+                hidden_parents: self
+                    .raw
+                    .neighbors_directed(idx, Direction::Incoming)
+                    .into_iter()
+                    .filter(|n| self.raw.graph[n.0].hidden())
+                    .count() as u32,
+                hidden_children: self
+                    .raw
+                    .neighbors_directed(idx, Direction::Outgoing)
+                    .into_iter()
+                    .filter(|n| self.raw.graph[n.0].hidden())
+                    .count() as u32,
+                max_depth: 0,
+            })
+        };
+        for (i, node) in self.raw.graph.node_weights().enumerate() {
             if let Some(nw) = node_map(RawNodeIndex(NodeIndex::new(i)), node) {
                 node_index_map[i] = graph.add_node(nw);
             }
@@ -48,49 +73,82 @@ impl InstGraph {
             }
         }
 
-        let reverse: FxHashMap<_, _> = graph.node_indices().map(VisibleNodeIndex).map(|idx| (graph[idx.0].idx, idx)).collect();
-        let mut self_ = VisibleInstGraph { graph, reverse, generation: self.raw.stats.generation };
+        let reverse: FxHashMap<_, _> = graph
+            .node_indices()
+            .map(VisibleNodeIndex)
+            .map(|idx| (graph[idx.0].idx, idx))
+            .collect();
+        let mut self_ = VisibleInstGraph {
+            graph,
+            reverse,
+            generation: self.raw.stats.generation,
+        };
         self_.reconnect(self);
         self_
     }
 
     pub fn to_visible_simplified(&self) -> VisibleInstGraph {
         // debug_assert_eq!(self.hidden as usize, self.graph.node_weights().filter(|n| n.hidden).count());
-        
+
         // Code copied from `DiGraph::filter_map`, but that function does not
         // allow for changing the node index type.
-        let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> = DiGraph::with_capacity(self.raw.visible_nodes(), 0);
+        let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> =
+            DiGraph::with_capacity(self.raw.visible_nodes(), 0);
         // mapping from old node index to new node index, end represents removed.
         let mut node_index_map = vec![NodeIndex::end(); self.raw.graph.node_count()];
-        let node_map = |idx, node: &Node| node.visible().then(|| VisibleNode {
-            idx,
-            // hidden_parents: self.raw.neighbors_directed(idx, Direction::Incoming).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
-            hidden_parents: self.raw.graph[idx.0].inst_parents.nodes.iter().filter(|&n| self.raw[*n].hidden()).count() as u32,
-            // hidden_children: self.raw.neighbors_directed(idx, Direction::Outgoing).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
-            hidden_children: self.raw.graph[idx.0].inst_children.nodes.iter().filter(|&n| self.raw[*n].hidden()).count() as u32,
-            max_depth: 0 
-        });
-        for (i, node) in self.raw.graph.node_weights().into_iter().enumerate() {
+        let node_map = |idx, node: &Node| {
+            node.visible().then(|| VisibleNode {
+                idx,
+                // hidden_parents: self.raw.neighbors_directed(idx, Direction::Incoming).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
+                hidden_parents: self.raw.graph[idx.0]
+                    .inst_parents
+                    .nodes
+                    .iter()
+                    .filter(|&n| self.raw[*n].hidden())
+                    .count() as u32,
+                // hidden_children: self.raw.neighbors_directed(idx, Direction::Outgoing).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
+                hidden_children: self.raw.graph[idx.0]
+                    .inst_children
+                    .nodes
+                    .iter()
+                    .filter(|&n| self.raw[*n].hidden())
+                    .count() as u32,
+                max_depth: 0,
+            })
+        };
+        for (i, node) in self.raw.graph.node_weights().enumerate() {
             if let Some(nw) = node_map(RawNodeIndex(NodeIndex::new(i)), node) {
                 node_index_map[i] = graph.add_node(nw);
             }
         }
         // assumes that inst-nodes in self.raw.graph are ordered in topological order
         let mut edge_idx = 0;
-        for (i, node) in self.raw.graph.node_weights().into_iter().enumerate() {
+        for (i, node) in self.raw.graph.node_weights().enumerate() {
             let from = node_index_map[i];
             if from != NodeIndex::end() {
                 for next_inst in node.inst_children.nodes.clone() {
-                    let to = node_index_map[next_inst.0.index()]; 
+                    let to = node_index_map[next_inst.0.index()];
                     if to != NodeIndex::end() {
-                        graph.add_edge(from, to, VisibleEdge::Direct(RawEdgeIndex(EdgeIndex::new(edge_idx))));
+                        graph.add_edge(
+                            from,
+                            to,
+                            VisibleEdge::Direct(RawEdgeIndex(EdgeIndex::new(edge_idx))),
+                        );
                         edge_idx += 1;
                     }
                 }
             }
         }
-        let reverse: FxHashMap<_, _> = graph.node_indices().map(VisibleNodeIndex).map(|idx| (graph[idx.0].idx, idx)).collect();
-        let mut self_ = VisibleInstGraph { graph, reverse, generation: self.raw.stats.generation };
+        let reverse: FxHashMap<_, _> = graph
+            .node_indices()
+            .map(VisibleNodeIndex)
+            .map(|idx| (graph[idx.0].idx, idx))
+            .collect();
+        let mut self_ = VisibleInstGraph {
+            graph,
+            reverse,
+            generation: self.raw.stats.generation,
+        };
         self_.reconnect_simplified(self);
         self_
     }
@@ -130,9 +188,11 @@ impl VisibleInstGraph {
                 }
                 let s_from_child = igraph.raw.graph[i_from_child].subgraph.unwrap().1;
 
-                let visible_reachable = || sg.reach_fwd.reachable_from(s_from_child).filter(|&s|
-                    igraph.raw.graph[sg.nodes[s as usize].0].visible()
-                );
+                let visible_reachable = || {
+                    sg.reach_fwd
+                        .reachable_from(s_from_child)
+                        .filter(|&s| igraph.raw.graph[sg.nodes[s as usize].0].visible())
+                };
                 // All nodes reachable from "any visible node reachable from `s_from_child`".
                 let fwd_reachable = sg.reach_fwd.reachable_from_many(visible_reachable());
                 if fwd_reachable.is_empty() {
@@ -140,8 +200,10 @@ impl VisibleInstGraph {
                     continue;
                 }
 
-                let non_visible_reachable = sg.reach_fwd.reachable_from_many([s_from_child].into_iter()) - fwd_reachable;
-                let non_visible_reachable = non_visible_reachable.iter().map(|s| sg.nodes[s as usize].0);
+                let non_visible_reachable =
+                    sg.reach_fwd.reachable_from_many([s_from_child].into_iter()) - fwd_reachable;
+                let non_visible_reachable =
+                    non_visible_reachable.iter().map(|s| sg.nodes[s as usize].0);
 
                 for i_to_parent in non_visible_reachable {
                     // Found a potential `to_parent` node, look for `to` nodes.
@@ -151,7 +213,14 @@ impl VisibleInstGraph {
                             continue;
                         }
                         let v_to = self.reverse[&i_to];
-                        self.graph.add_edge(v_from, v_to.0, VisibleEdge::Indirect(RawEdgeIndex(i_from_edge.id()), RawEdgeIndex(i_to_edge.id())));
+                        self.graph.add_edge(
+                            v_from,
+                            v_to.0,
+                            VisibleEdge::Indirect(
+                                RawEdgeIndex(i_from_edge.id()),
+                                RawEdgeIndex(i_to_edge.id()),
+                            ),
+                        );
                     }
                 }
             }
@@ -160,11 +229,10 @@ impl VisibleInstGraph {
 
     fn reconnect_simplified(&mut self, igraph: &InstGraph) {
         // remember all direct edges (will be added to the graph in the end)
-        let direct_edges = self.graph
-            .raw_edges()
-            .to_vec();
+        let direct_edges = self.graph.raw_edges().to_vec();
         // nodes with missing children
-        let out_set: Vec<NodeIndex<VisibleIx>> = self.graph 
+        let out_set: Vec<NodeIndex<VisibleIx>> = self
+            .graph
             .node_indices()
             .filter(|node| {
                 // let new_child_count = self.graph.neighbors_directed(*node, Outgoing).count();
@@ -174,11 +242,10 @@ impl VisibleInstGraph {
             })
             .collect();
         // nodes with missing parents
-        let in_set: Vec<NodeIndex<VisibleIx>> = self.graph
+        let in_set: Vec<NodeIndex<VisibleIx>> = self
+            .graph
             .node_indices()
-            .filter(|node| {
-                self.graph.node_weight(*node).unwrap().hidden_parents > 0
-            })
+            .filter(|node| self.graph.node_weight(*node).unwrap().hidden_parents > 0)
             .collect();
         // add all edges (u,v) in out_set x in_set to the self.graph where v is reachable from u in the original graph
         // and (u,v) is not an edge in the original graph, i.e., all indirect edges
@@ -192,11 +259,21 @@ impl VisibleInstGraph {
                 let Some((subgraph_v, s_v)) = igraph.raw[old_v].subgraph else {
                     continue;
                 };
-                if subgraph_u != subgraph_v { continue; }
+                if subgraph_u != subgraph_v {
+                    continue;
+                }
                 {
-                    if s_u != s_v && igraph.subgraphs[subgraph_u].reach_fwd.in_transitive_closure(s_u, s_v) {
+                    if s_u != s_v
+                        && igraph.subgraphs[subgraph_u]
+                            .reach_fwd
+                            .in_transitive_closure(s_u, s_v)
+                    {
                         // TODO: the edge indices are not correct
-                        self.graph.update_edge(u, v, VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default()));
+                        self.graph.update_edge(
+                            u,
+                            v,
+                            VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default()),
+                        );
                     }
                 }
             }
@@ -227,7 +304,11 @@ impl VisibleInstGraph {
             // we only want indirect edges
             if !self.graph.contains_edge(source, target) {
                 // TODO: the edge indices are not correct
-                self.graph.add_edge(source, target, VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default()));
+                self.graph.add_edge(
+                    source,
+                    target,
+                    VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default()),
+                );
             }
         }
     }
@@ -235,12 +316,15 @@ impl VisibleInstGraph {
     pub fn find_longest_paths(&mut self) -> FxHashSet<RawNodeIndex> {
         // traverse this subtree in topological order to compute longest distances from root nodes
         Self::compute_longest_distances_from_roots(self);
-        let furthest_away_end_nodes = self.graph
+        let furthest_away_end_nodes = self
+            .graph
             .node_indices()
-            // only want to keep end nodes of longest paths, i.e., nodes without any children 
+            // only want to keep end nodes of longest paths, i.e., nodes without any children
             .filter(|nx| self.graph.neighbors_directed(*nx, Outgoing).count() == 0)
             // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
-            .filter(|nx| self.graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1) 
+            .filter(|nx| {
+                self.graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1
+            })
             .collect();
         // backtrack longest paths from furthest away nodes in subgraph until we reach a root
         let mut matching_loop_nodes: FxHashSet<RawNodeIndex> = FxHashSet::default();
@@ -250,10 +334,13 @@ impl VisibleInstGraph {
             // matching_loop_nodes.insert(self.graph.node_weight(curr).unwrap().orig_graph_idx());
             matching_loop_nodes.insert(self.graph[curr].idx);
             let curr_distance = self.graph.node_weight(curr).unwrap().max_depth;
-            let preds = self.graph.neighbors_directed(curr, Incoming).filter(|pred| {
-                let pred_distance = self.graph.node_weight(*pred).unwrap().max_depth;
-                pred_distance == curr_distance - 1
-            });
+            let preds = self
+                .graph
+                .neighbors_directed(curr, Incoming)
+                .filter(|pred| {
+                    let pred_distance = self.graph.node_weight(*pred).unwrap().max_depth;
+                    pred_distance == curr_distance - 1
+                });
             for pred in preds {
                 if visited.insert(pred) {
                     visitor.push(pred);
@@ -261,17 +348,20 @@ impl VisibleInstGraph {
             }
         }
         matching_loop_nodes
-    } 
+    }
 
     pub fn find_end_nodes_of_longest_paths(&mut self) -> FxHashSet<RawNodeIndex> {
         // traverse this subtree in topological order to compute longest distances from root nodes
         Self::compute_longest_distances_from_roots(self);
-        let furthest_away_end_nodes = self.graph
+        let furthest_away_end_nodes = self
+            .graph
             .node_indices()
-            // only want to keep end nodes of longest paths, i.e., nodes without any children 
+            // only want to keep end nodes of longest paths, i.e., nodes without any children
             .filter(|nx| self.graph.neighbors_directed(*nx, Outgoing).count() == 0)
             // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
-            .filter(|nx| self.graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1) 
+            .filter(|nx| {
+                self.graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1
+            })
             .collect();
         // backtrack longest paths from furthest away nodes in subgraph until we reach a root
         let mut matching_loop_nodes: FxHashSet<RawNodeIndex> = FxHashSet::default();
@@ -281,10 +371,13 @@ impl VisibleInstGraph {
             // matching_loop_nodes.insert(self.graph.node_weight(curr).unwrap().orig_graph_idx());
             matching_loop_nodes.insert(self.graph[curr].idx);
             let curr_distance = self.graph.node_weight(curr).unwrap().max_depth;
-            let preds = self.graph.neighbors_directed(curr, Incoming).filter(|pred| {
-                let pred_distance = self.graph.node_weight(*pred).unwrap().max_depth;
-                pred_distance == curr_distance - 1
-            });
+            let preds = self
+                .graph
+                .neighbors_directed(curr, Incoming)
+                .filter(|pred| {
+                    let pred_distance = self.graph.node_weight(*pred).unwrap().max_depth;
+                    pred_distance == curr_distance - 1
+                });
             for pred in preds {
                 if visited.insert(pred) {
                     visitor.push(pred);
@@ -351,7 +444,7 @@ impl std::fmt::Debug for VisibleEdge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             VisibleEdge::Direct(_) => write!(f, "direct edge"),
-            VisibleEdge::Indirect{ .. } => write!(f, "indirect edge"),
+            VisibleEdge::Indirect { .. } => write!(f, "indirect edge"),
         }
     }
 }
@@ -361,26 +454,40 @@ impl VisibleEdge {
         match self {
             VisibleEdge::Direct(_) => FxHashSet::default(),
             VisibleEdge::Indirect(from, to) =>
-                // graph.raw.graph.edge_endpoints(from.0).unwrap().1 --> graph.raw.graph.edge_endpoints(to.0).unwrap().0
-                graph.non_visible_paths_between(
-                    RawNodeIndex(graph.raw.graph.edge_endpoints(from.0).unwrap().1),
-                    RawNodeIndex(graph.raw.graph.edge_endpoints(to.0).unwrap().0),
-                ).unwrap().0
+            // graph.raw.graph.edge_endpoints(from.0).unwrap().1 --> graph.raw.graph.edge_endpoints(to.0).unwrap().0
+            {
+                graph
+                    .non_visible_paths_between(
+                        RawNodeIndex(graph.raw.graph.edge_endpoints(from.0).unwrap().1),
+                        RawNodeIndex(graph.raw.graph.edge_endpoints(to.0).unwrap().0),
+                    )
+                    .unwrap()
+                    .0
+            }
         }
     }
     pub fn is_indirect(&self, graph: &InstGraph) -> bool {
-        self.indirect_nodes(graph).iter().any(|n| graph.raw.graph[n.0].hidden())
+        self.indirect_nodes(graph)
+            .iter()
+            .any(|n| graph.raw.graph[n.0].hidden())
     }
     pub fn kind(&self, graph: &InstGraph) -> VisibleEdgeKind {
         match self {
             VisibleEdge::Direct(e) => VisibleEdgeKind::Direct(*e, graph.raw.graph[e.0]),
             VisibleEdge::Indirect(from, to) => {
                 // TODO: clean this up
-                let (all_between, non_visible_between) = graph.non_visible_paths_between(
-                    RawNodeIndex(graph.raw.graph.edge_endpoints(from.0).unwrap().1),
-                    RawNodeIndex(graph.raw.graph.edge_endpoints(to.0).unwrap().0),
-                ).unwrap();
-                if !non_visible_between.as_ref().is_some_and(|non_visible_between| all_between.len() == non_visible_between.len()) {
+                let (all_between, non_visible_between) = graph
+                    .non_visible_paths_between(
+                        RawNodeIndex(graph.raw.graph.edge_endpoints(from.0).unwrap().1),
+                        RawNodeIndex(graph.raw.graph.edge_endpoints(to.0).unwrap().0),
+                    )
+                    .unwrap();
+                if !non_visible_between
+                    .as_ref()
+                    .is_some_and(|non_visible_between| {
+                        all_between.len() == non_visible_between.len()
+                    })
+                {
                     return VisibleEdgeKind::Unknown(*from, *to);
                 };
                 let non_visible_between = non_visible_between.unwrap();
@@ -389,28 +496,68 @@ impl VisibleEdge {
 
                 match (graph.raw.graph[from.0], graph.raw.graph[to.0]) {
                     // Starting at Instantiation
-                    (EdgeKind::Yield, EdgeKind::Blame { trigger_term }) if non_visible_between.len() == 1 =>
-                        VisibleEdgeKind::YieldBlame { enode: get_kind(0).unwrap().enode().unwrap(), trigger_term },
-                    (EdgeKind::Yield, EdgeKind::TEqualitySimple { .. }) if non_visible_between.len() == 2 =>
-                        VisibleEdgeKind::YieldEq(get_kind(1).unwrap().eq_given().unwrap()),
-                    (EdgeKind::Yield, EdgeKind::BlameEq { trigger_term, eq_order }) if non_visible_between.len() == 3 => {
-                        let trans = graph.raw.graph.edges_directed(non_visible_between[2].0, Direction::Incoming).count();
+                    (EdgeKind::Yield, EdgeKind::Blame { trigger_term })
+                        if non_visible_between.len() == 1 =>
+                    {
+                        VisibleEdgeKind::YieldBlame {
+                            enode: get_kind(0).unwrap().enode().unwrap(),
+                            trigger_term,
+                        }
+                    }
+                    (EdgeKind::Yield, EdgeKind::TEqualitySimple { .. })
+                        if non_visible_between.len() == 2 =>
+                    {
+                        VisibleEdgeKind::YieldEq(get_kind(1).unwrap().eq_given().unwrap())
+                    }
+                    (
+                        EdgeKind::Yield,
+                        EdgeKind::BlameEq {
+                            trigger_term,
+                            eq_order,
+                        },
+                    ) if non_visible_between.len() == 3 => {
+                        let trans = graph
+                            .raw
+                            .graph
+                            .edges_directed(non_visible_between[2].0, Direction::Incoming)
+                            .count();
                         let given_eq = get_kind(1).unwrap().eq_given().unwrap();
                         if trans == 1 {
-                            VisibleEdgeKind::YieldBlameEq { given_eq, trigger_term, eq_order }
+                            VisibleEdgeKind::YieldBlameEq {
+                                given_eq,
+                                trigger_term,
+                                eq_order,
+                            }
                         } else {
                             VisibleEdgeKind::YieldEqOther(given_eq)
                         }
                     }
 
                     // Starting at ENode
-                    (EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. }) if non_visible_between.len() == 1 =>
-                        VisibleEdgeKind::ENodeEq(get_kind(0).unwrap().eq_given().unwrap()),
-                    (EdgeKind::EqualityFact, EdgeKind::BlameEq { trigger_term, eq_order }) if non_visible_between.len() == 2 => {
-                        let trans = graph.raw.graph.edges_directed(non_visible_between[1].0, Direction::Incoming).count();
+                    (EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. })
+                        if non_visible_between.len() == 1 =>
+                    {
+                        VisibleEdgeKind::ENodeEq(get_kind(0).unwrap().eq_given().unwrap())
+                    }
+                    (
+                        EdgeKind::EqualityFact,
+                        EdgeKind::BlameEq {
+                            trigger_term,
+                            eq_order,
+                        },
+                    ) if non_visible_between.len() == 2 => {
+                        let trans = graph
+                            .raw
+                            .graph
+                            .edges_directed(non_visible_between[1].0, Direction::Incoming)
+                            .count();
                         let given_eq = get_kind(0).unwrap().eq_given().unwrap();
                         if trans == 1 {
-                            VisibleEdgeKind::ENodeBlameEq { given_eq, trigger_term, eq_order }
+                            VisibleEdgeKind::ENodeBlameEq {
+                                given_eq,
+                                trigger_term,
+                                eq_order,
+                            }
                         } else {
                             VisibleEdgeKind::ENodeEqOther(given_eq)
                         }
@@ -427,19 +574,30 @@ impl VisibleEdge {
 pub enum VisibleEdgeKind {
     Direct(RawEdgeIndex, EdgeKind),
     /// `Instantiation` -> `ENode` -> `Instantiation`
-    YieldBlame { enode: ENodeIdx, trigger_term: u16 },
+    YieldBlame {
+        enode: ENodeIdx,
+        trigger_term: u16,
+    },
     /// `Instantiation` -> `ENode` -> `GivenEquality` -> `TransEquality`
     YieldEq((EqGivenIdx, Option<NonMaxU32>)),
     /// `Instantiation` -> `ENode` -> `GivenEquality` ->
     /// `TransEquality` (only 1 parent) -> `Instantiation`
-    YieldBlameEq { given_eq: (EqGivenIdx, Option<NonMaxU32>), trigger_term: u16, eq_order: u16 },
+    YieldBlameEq {
+        given_eq: (EqGivenIdx, Option<NonMaxU32>),
+        trigger_term: u16,
+        eq_order: u16,
+    },
     /// `Instantiation` -> `ENode` -> `GivenEquality` -> ...
     YieldEqOther((EqGivenIdx, Option<NonMaxU32>)),
 
     /// `ENode` -> `GivenEquality` -> `TransEquality`
     ENodeEq((EqGivenIdx, Option<NonMaxU32>)),
     /// `ENode` -> `GivenEquality` -> `TransEquality` -> `Instantiation`
-    ENodeBlameEq { given_eq: (EqGivenIdx, Option<NonMaxU32>), trigger_term: u16, eq_order: u16 },
+    ENodeBlameEq {
+        given_eq: (EqGivenIdx, Option<NonMaxU32>),
+        trigger_term: u16,
+        eq_order: u16,
+    },
     /// `ENode` -> `GivenEquality` -> ...
     ENodeEqOther((EqGivenIdx, Option<NonMaxU32>)),
 
@@ -450,16 +608,16 @@ impl VisibleEdgeKind {
     pub fn blame(&self, graph: &InstGraph) -> NodeKind {
         use NodeKind::*;
         match self {
-            VisibleEdgeKind::Direct(edge, _) |
-            VisibleEdgeKind::Unknown(edge, ..) =>
-                *graph.raw.graph[graph.raw.graph.edge_endpoints(edge.0).unwrap().0].kind(),
+            VisibleEdgeKind::Direct(edge, _) | VisibleEdgeKind::Unknown(edge, ..) => {
+                *graph.raw.graph[graph.raw.graph.edge_endpoints(edge.0).unwrap().0].kind()
+            }
 
-            VisibleEdgeKind::YieldEq(given_eq) |
-            VisibleEdgeKind::YieldBlameEq { given_eq, .. } |
-            VisibleEdgeKind::YieldEqOther(given_eq) |
-            VisibleEdgeKind::ENodeEq(given_eq) |
-            VisibleEdgeKind::ENodeBlameEq { given_eq, .. } |
-            VisibleEdgeKind::ENodeEqOther(given_eq) => GivenEquality(given_eq.0, given_eq.1),
+            VisibleEdgeKind::YieldEq(given_eq)
+            | VisibleEdgeKind::YieldBlameEq { given_eq, .. }
+            | VisibleEdgeKind::YieldEqOther(given_eq)
+            | VisibleEdgeKind::ENodeEq(given_eq)
+            | VisibleEdgeKind::ENodeBlameEq { given_eq, .. }
+            | VisibleEdgeKind::ENodeEqOther(given_eq) => GivenEquality(given_eq.0, given_eq.1),
 
             VisibleEdgeKind::YieldBlame { enode, .. } => ENode(*enode),
         }

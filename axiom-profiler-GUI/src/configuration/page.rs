@@ -1,15 +1,16 @@
 use std::rc::Rc;
 
+use smt_log_parser::display_with::SymbolReplacement;
 use wasm_bindgen::JsCast;
-use yew::{function_component, use_context, Callback, Html, Event, use_effect_with_deps};
+use yew::{function_component, use_context, use_effect_with_deps, Callback, Event, Html};
 
-use crate::configuration::{ConfigurationProvider, PersistentConfiguration};
+use crate::configuration::{Configuration, ConfigurationProvider, TermDisplayFlag};
 
 macro_rules! flag_widget {
-    ($cfg:ident, $($access:ident).+, $($from:literal => $to:literal),+; $title:expr, $description:expr) => {
+    ($cfg:ident, $default:ident, $($access:ident).+, $title:expr, $description:expr, $($from:ident => $to:literal),+$(,)?) => {
         {
             let id = stringify!(cfg.$($access).+);
-            let curr = &(($cfg).config.persistent.$($access).+);
+            let curr = &(($cfg).config.$($access).+);
             let curr_to = match curr {
                 $($from => $to,)+
             };
@@ -22,7 +23,7 @@ macro_rules! flag_widget {
                 || {}
             };
             let deps = curr_to;
-            let default = PersistentConfiguration::default_const().$($access).+;
+            let default = $default.$($access).+;
             let default_to = match &default {
                 $($from => $to,)+
             };
@@ -37,7 +38,7 @@ macro_rules! flag_widget {
                         $($to => $from,)+
                         _ => unreachable!(),
                     };
-                    let old_value = &mut cfg.persistent.$($access).*;
+                    let old_value = &mut cfg.$($access).*;
                     if old_value != &new_value {
                         *old_value = new_value;
                         true
@@ -63,22 +64,28 @@ macro_rules! flag_widget {
 pub fn Flags(_props: &()) -> Html {
     let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
     let cfg_update = cfg.update.clone();
-    let reset = Callback::from(move |_| cfg_update.update(|cfg| {
-        let new = PersistentConfiguration::default();
-        if cfg.persistent != new {
-            cfg.persistent = new;
-            true
-        } else {
-            false
-        }
-    }));
+    let reset = Callback::from(move |_| cfg_update.reset());
+    let default = Configuration::default();
     let (display_term_ids, effect, deps) = flag_widget!(
         cfg,
+        default,
         display.display_term_ids,
-        true => "Enabled",
-        false => "Disabled";
         "Display term IDs",
-        "Display the IDs (e.g. `#123`) of the terms as they appear in the log file in the UI."
+        "Display the IDs (e.g. `#123`) of the terms as they appear in the log file in the UI.",
+        true => "Enabled",
+        false => "Disabled"
+    );
+    use_effect_with_deps(move |deps| effect(deps), deps);
+    use SymbolReplacement::*;
+    let (replace_symbols, effect, deps) = flag_widget!(
+        cfg,
+        default,
+        display.replace_symbols,
+        "Symbol replacement",
+        "Replace some symbols (e.g. \"not\", \"and\", \"<=\") in the UI with their corresponding mathematical or code representation.",
+        Math => "Mathematical",
+        Code => "Code",
+        None => "Disabled",
     );
     use_effect_with_deps(move |deps| effect(deps), deps);
 
@@ -87,6 +94,8 @@ pub fn Flags(_props: &()) -> Html {
             <h1>{"Configuration flags"}</h1>
             <button onclick={reset}>{"Reset configuration"}</button>
             {display_term_ids}
+            {replace_symbols}
+            <TermDisplayFlag cfg={cfg.clone()} />
         </div></div>
     }
 }

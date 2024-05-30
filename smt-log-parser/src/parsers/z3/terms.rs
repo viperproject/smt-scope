@@ -2,7 +2,9 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    error::Either, items::{Meaning, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap, TermIdx, TermKind}, Error, FxHashMap, Result, StringTable, TiVec
+    error::Either,
+    items::{Meaning, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap, TermIdx, TermKind},
+    Error, FxHashMap, Result, StringTable, TiVec,
 };
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -44,17 +46,26 @@ impl Terms {
         id: &str,
     ) -> Result<Either<TermIdx, TermId>> {
         let term_id = TermId::parse(strings, id)?;
-        Ok(self.term_id_map.get_term(&term_id).map(Either::Left).unwrap_or(Either::Right(term_id)))
+        Ok(self
+            .term_id_map
+            .get_term(&term_id)
+            .map(Either::Left)
+            .unwrap_or(Either::Right(term_id)))
     }
     pub(super) fn parse_existing_id(&self, strings: &mut StringTable, id: &str) -> Result<TermIdx> {
-        self.parse_id(strings, id)?.as_result().map_err(Error::UnknownId)
+        self.parse_id(strings, id)?
+            .into_result()
+            .map_err(Error::UnknownId)
     }
 
     pub fn meaning(&self, tidx: TermIdx) -> Option<&Meaning> {
         self.meanings.get(&tidx)
     }
     pub(super) fn quant(&self, quant: TermIdx) -> Result<QuantIdx> {
-        self[quant].kind.quant_idx().ok_or_else(|| Error::UnknownQuantifierIdx(quant))
+        self[quant]
+            .kind
+            .quant_idx()
+            .ok_or_else(|| Error::UnknownQuantifierIdx(quant))
     }
 
     pub(super) fn new_meaning(&mut self, term: TermIdx, meaning: Meaning) -> Result<()> {
@@ -64,7 +75,7 @@ impl Terms {
             Entry::Occupied(old) => assert_eq!(old.get(), &meaning),
             Entry::Vacant(empty) => {
                 empty.insert(meaning);
-            },
+            }
         };
         Ok(())
     }
@@ -80,9 +91,21 @@ impl Terms {
         self.parsed_terms = Some(self.terms.next_key());
     }
 
-    pub(super) fn new_synthetic_term(&mut self, kind: TermKind, child_ids: Box<[TermIdx]>, meaning: Option<Meaning>) -> TermIdx {
-        let term = Term { id: None, kind, child_ids };
-        let term_and_meaning = TermAndMeaning { term: &term, meaning: meaning.as_ref() };
+    pub(crate) fn new_synthetic_term(
+        &mut self,
+        kind: TermKind,
+        child_ids: Box<[TermIdx]>,
+        meaning: Option<Meaning>,
+    ) -> TermIdx {
+        let term = Term {
+            id: None,
+            kind,
+            child_ids,
+        };
+        let term_and_meaning = TermAndMeaning {
+            term: &term,
+            meaning: meaning.as_ref(),
+        };
         if let Some(&tidx) = self.synthetic_terms.get(&term_and_meaning) {
             tidx
         } else {
@@ -96,9 +119,8 @@ impl Terms {
             // leak out. The keys of the map are dropped at the same time that
             // the lifetime expires. The existing `Term` and `Meaning` values
             // are never mutated.
-            let term = unsafe {
-                std::mem::transmute::<TermAndMeaning, TermAndMeaning<'static>>(term)
-            };
+            let term =
+                unsafe { std::mem::transmute::<TermAndMeaning, TermAndMeaning<'static>>(term) };
             self.synthetic_terms.insert(term, tidx);
             tidx
         }

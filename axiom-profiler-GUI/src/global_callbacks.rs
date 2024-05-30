@@ -1,6 +1,11 @@
 use std::{ops::Deref, rc::Rc, sync::Mutex};
 use wasm_bindgen::{closure::Closure, JsCast};
-use yew::{html::Scope, prelude::{Context, Html}, Callback, Children, Component, ContextProvider, DragEvent, Event, KeyboardEvent, MouseEvent, Properties};
+use yew::{
+    html::Scope,
+    prelude::{Context, Html},
+    Callback, Children, Component, ContextProvider, DragEvent, Event, KeyboardEvent, MouseEvent,
+    Properties,
+};
 
 // Public interface
 
@@ -43,7 +48,6 @@ impl Drop for CallbackRef {
     fn drop(&mut self) {
         self.0();
     }
-
 }
 pub struct CallbackRef(Box<dyn Fn()>);
 
@@ -82,7 +86,9 @@ impl CallbackRegisterer<Event> {
             drop(id);
             link.send_message(Msg::Register(kind, id_v, callback));
             let link = link.clone();
-            CallbackRef(Box::new(move || link.send_message(Msg::DeRegister(kind, id_v))))
+            CallbackRef(Box::new(move || {
+                link.send_message(Msg::DeRegister(kind, id_v))
+            }))
         }))
     }
 }
@@ -96,7 +102,9 @@ impl CallbackRegisterer<MouseEvent> {
             drop(id);
             link.send_message(Msg::RegisterMouse(kind, id_v, callback));
             let link = link.clone();
-            CallbackRef(Box::new(move || link.send_message(Msg::DeRegisterMouse(kind, id_v))))
+            CallbackRef(Box::new(move || {
+                link.send_message(Msg::DeRegisterMouse(kind, id_v))
+            }))
         }))
     }
 }
@@ -110,7 +118,9 @@ impl CallbackRegisterer<KeyboardEvent> {
             drop(id);
             link.send_message(Msg::RegisterKeyboard(kind, id_v, callback));
             let link = link.clone();
-            CallbackRef(Box::new(move || link.send_message(Msg::DeRegisterKeyboard(kind, id_v))))
+            CallbackRef(Box::new(move || {
+                link.send_message(Msg::DeRegisterKeyboard(kind, id_v))
+            }))
         }))
     }
 }
@@ -124,7 +134,9 @@ impl CallbackRegisterer<DragEvent> {
             drop(id);
             link.send_message(Msg::RegisterDrag(kind, id_v, callback));
             let link = link.clone();
-            CallbackRef(Box::new(move || link.send_message(Msg::DeRegisterDrag(kind, id_v))))
+            CallbackRef(Box::new(move || {
+                link.send_message(Msg::DeRegisterDrag(kind, id_v))
+            }))
         }))
     }
 }
@@ -132,15 +144,15 @@ impl CallbackRegisterer<DragEvent> {
 impl GlobalCallbacksProvider {
     fn get_mouse_mut(&mut self, kind: MouseEventKind) -> &mut CallbackHolder<MouseEvent> {
         match kind {
-            MouseEventKind::MouseMove => &mut self.mouse_move,
-            MouseEventKind::MouseUp => &mut self.mouse_up,
-            MouseEventKind::MouseOut => &mut self.mouse_out,
+            MouseEventKind::Move => &mut self.mouse_move,
+            MouseEventKind::Up => &mut self.mouse_up,
+            MouseEventKind::Out => &mut self.mouse_out,
         }
     }
     fn get_keyboard_mut(&mut self, kind: KeyboardEventKind) -> &mut CallbackHolder<KeyboardEvent> {
         match kind {
-            KeyboardEventKind::KeyDown => &mut self.keyboard_down,
-            KeyboardEventKind::KeyUp => &mut self.keyboard_up,
+            KeyboardEventKind::Down => &mut self.keyboard_down,
+            KeyboardEventKind::Up => &mut self.keyboard_up,
         }
     }
     fn get_drag_mut(&mut self, kind: DragEventKind) -> &mut CallbackHolder<DragEvent> {
@@ -160,15 +172,15 @@ impl GlobalCallbacksProvider {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MouseEventKind {
-    MouseMove,
-    MouseUp,
-    MouseOut,
+    Move,
+    Up,
+    Out,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum KeyboardEventKind {
-    KeyDown,
-    KeyUp,
+    Down,
+    Up,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -215,14 +227,38 @@ impl Component for GlobalCallbacksProvider {
 
     fn create(ctx: &Context<Self>) -> Self {
         let registerer = GlobalCallbacks {
-            register_mouse_move: CallbackRegisterer::new_mouse(ctx.link().clone(), MouseEventKind::MouseMove),
-            register_mouse_up: CallbackRegisterer::new_mouse(ctx.link().clone(), MouseEventKind::MouseUp),
-            register_mouse_out: CallbackRegisterer::new_mouse(ctx.link().clone(), MouseEventKind::MouseOut),
-            register_keyboard_down: CallbackRegisterer::new_keyboard(ctx.link().clone(), KeyboardEventKind::KeyDown),
-            register_keyboard_up: CallbackRegisterer::new_keyboard(ctx.link().clone(), KeyboardEventKind::KeyUp),
-            register_drag_over: CallbackRegisterer::new_drag(ctx.link().clone(), DragEventKind::DragOver),
-            register_drag_enter: CallbackRegisterer::new_drag(ctx.link().clone(), DragEventKind::DragEnter),
-            register_drag_leave: CallbackRegisterer::new_drag(ctx.link().clone(), DragEventKind::DragLeave),
+            register_mouse_move: CallbackRegisterer::new_mouse(
+                ctx.link().clone(),
+                MouseEventKind::Move,
+            ),
+            register_mouse_up: CallbackRegisterer::new_mouse(
+                ctx.link().clone(),
+                MouseEventKind::Up,
+            ),
+            register_mouse_out: CallbackRegisterer::new_mouse(
+                ctx.link().clone(),
+                MouseEventKind::Out,
+            ),
+            register_keyboard_down: CallbackRegisterer::new_keyboard(
+                ctx.link().clone(),
+                KeyboardEventKind::Down,
+            ),
+            register_keyboard_up: CallbackRegisterer::new_keyboard(
+                ctx.link().clone(),
+                KeyboardEventKind::Up,
+            ),
+            register_drag_over: CallbackRegisterer::new_drag(
+                ctx.link().clone(),
+                DragEventKind::DragOver,
+            ),
+            register_drag_enter: CallbackRegisterer::new_drag(
+                ctx.link().clone(),
+                DragEventKind::DragEnter,
+            ),
+            register_drag_leave: CallbackRegisterer::new_drag(
+                ctx.link().clone(),
+                DragEventKind::DragLeave,
+            ),
             register_drop: CallbackRegisterer::new_drag(ctx.link().clone(), DragEventKind::Drop),
             register_resize: CallbackRegisterer::new(ctx.link().clone(), EventKind::Resize),
         };
@@ -247,58 +283,76 @@ impl Component for GlobalCallbacksProvider {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::RegisterMouse(kind, id, cb) =>
-                self.get_mouse_mut(kind).0.push((id, cb)),
+            Msg::RegisterMouse(kind, id, cb) => self.get_mouse_mut(kind).0.push((id, cb)),
             Msg::DeRegisterMouse(kind, id) => {
                 let cbh = self.get_mouse_mut(kind);
                 let idx = cbh.0.iter().position(|(i, _)| *i == id).unwrap();
                 cbh.0.swap_remove(idx);
             }
-            Msg::OnMouse(kind, ev) => for (_, cb) in &self.get_mouse_mut(kind).0 {
-                cb.emit(ev.clone());
-            },
-            Msg::RegisterKeyboard(kind, id, cb) =>
-                self.get_keyboard_mut(kind).0.push((id, cb)),
+            Msg::OnMouse(kind, ev) => {
+                for (_, cb) in &self.get_mouse_mut(kind).0 {
+                    cb.emit(ev.clone());
+                }
+            }
+            Msg::RegisterKeyboard(kind, id, cb) => self.get_keyboard_mut(kind).0.push((id, cb)),
             Msg::DeRegisterKeyboard(kind, id) => {
                 let cbh = self.get_keyboard_mut(kind);
                 let idx = cbh.0.iter().position(|(i, _)| *i == id).unwrap();
                 cbh.0.swap_remove(idx);
             }
-            Msg::OnKeyboard(kind, ev) => for (_, cb) in &self.get_keyboard_mut(kind).0 {
-                cb.emit(ev.clone());
-            },
-            Msg::RegisterDrag(kind, id, cb) =>
-                self.get_drag_mut(kind).0.push((id, cb)),
+            Msg::OnKeyboard(kind, ev) => {
+                for (_, cb) in &self.get_keyboard_mut(kind).0 {
+                    cb.emit(ev.clone());
+                }
+            }
+            Msg::RegisterDrag(kind, id, cb) => self.get_drag_mut(kind).0.push((id, cb)),
             Msg::DeRegisterDrag(kind, id) => {
                 let cbh = self.get_drag_mut(kind);
                 let idx = cbh.0.iter().position(|(i, _)| *i == id).unwrap();
                 cbh.0.swap_remove(idx);
             }
-            Msg::OnDrag(kind, ev) => for (_, cb) in &self.get_drag_mut(kind).0 {
-                cb.emit(ev.clone());
-            },
-            Msg::Register(kind, id, cb) =>
-                self.get_mut(kind).0.push((id, cb)),
+            Msg::OnDrag(kind, ev) => {
+                for (_, cb) in &self.get_drag_mut(kind).0 {
+                    cb.emit(ev.clone());
+                }
+            }
+            Msg::Register(kind, id, cb) => self.get_mut(kind).0.push((id, cb)),
             Msg::DeRegister(kind, id) => {
                 let cbh = self.get_mut(kind);
                 let idx = cbh.0.iter().position(|(i, _)| *i == id).unwrap();
                 cbh.0.swap_remove(idx);
             }
-            Msg::On(kind, ev) => for (_, cb) in &self.get_mut(kind).0 {
-                cb.emit(ev.clone());
-            },
+            Msg::On(kind, ev) => {
+                for (_, cb) in &self.get_mut(kind).0 {
+                    cb.emit(ev.clone());
+                }
+            }
         }
         false
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let onmousemove = ctx.link().callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::MouseMove, ev));
-        let onmouseup = ctx.link().callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::MouseUp, ev));
-        let onmouseout = ctx.link().callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::MouseOut, ev));
-        let ondragover = ctx.link().callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::DragOver, ev));
-        let ondragenter = ctx.link().callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::DragEnter, ev));
-        let ondragleave = ctx.link().callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::DragLeave, ev));
-        let ondrop = ctx.link().callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::Drop, ev));
+        let onmousemove = ctx
+            .link()
+            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::Move, ev));
+        let onmouseup = ctx
+            .link()
+            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::Up, ev));
+        let onmouseout = ctx
+            .link()
+            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::Out, ev));
+        let ondragover = ctx
+            .link()
+            .callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::DragOver, ev));
+        let ondragenter = ctx
+            .link()
+            .callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::DragEnter, ev));
+        let ondragleave = ctx
+            .link()
+            .callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::DragLeave, ev));
+        let ondrop = ctx
+            .link()
+            .callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::Drop, ev));
         yew::html! {
             <div id="body" style="position=absolute; top: 0; left: 0; width: 100%; height: 100%" {onmousemove} {onmouseup} {onmouseout} {ondragover} {ondragenter} {ondragleave} {ondrop}>
                 <ContextProvider<Rc<GlobalCallbacks>> context={self.registerer.clone()}>
@@ -313,51 +367,51 @@ impl Component for GlobalCallbacksProvider {
             let window = web_sys::window().unwrap();
 
             let link = ctx.link().clone();
-            let onresize: Closure<dyn Fn(Event)> = Closure::new(move |ev: Event| link.send_message(Msg::On(EventKind::Resize, ev)));
-            window.add_event_listener_with_callback(
-                "resize",
-                onresize.as_ref().unchecked_ref(),
-            ).unwrap();
+            let onresize: Closure<dyn Fn(Event)> =
+                Closure::new(move |ev: Event| link.send_message(Msg::On(EventKind::Resize, ev)));
+            window
+                .add_event_listener_with_callback("resize", onresize.as_ref().unchecked_ref())
+                .unwrap();
             self.onresize = Some(onresize);
 
             let link = ctx.link().clone();
-            let onkeydown: Closure<dyn Fn(KeyboardEvent)> = Closure::new(move |ev: KeyboardEvent| link.send_message(Msg::OnKeyboard(KeyboardEventKind::KeyDown, ev)));
-            window.add_event_listener_with_callback(
-                "keydown",
-                onkeydown.as_ref().unchecked_ref(),
-            ).unwrap();
+            let onkeydown: Closure<dyn Fn(KeyboardEvent)> =
+                Closure::new(move |ev: KeyboardEvent| {
+                    link.send_message(Msg::OnKeyboard(KeyboardEventKind::Down, ev))
+                });
+            window
+                .add_event_listener_with_callback("keydown", onkeydown.as_ref().unchecked_ref())
+                .unwrap();
             self.onkeydown = Some(onkeydown);
 
             let link = ctx.link().clone();
-            let onkeyup: Closure<dyn Fn(KeyboardEvent)> = Closure::new(move |ev: KeyboardEvent| link.send_message(Msg::OnKeyboard(KeyboardEventKind::KeyUp, ev)));
-            window.add_event_listener_with_callback(
-                "keyup",
-                onkeyup.as_ref().unchecked_ref(),
-            ).unwrap();
+            let onkeyup: Closure<dyn Fn(KeyboardEvent)> = Closure::new(move |ev: KeyboardEvent| {
+                link.send_message(Msg::OnKeyboard(KeyboardEventKind::Up, ev))
+            });
+            window
+                .add_event_listener_with_callback("keyup", onkeyup.as_ref().unchecked_ref())
+                .unwrap();
             self.onkeyup = Some(onkeyup);
         }
     }
     fn destroy(&mut self, _ctx: &Context<Self>) {
         if let Some(onresize) = self.onresize.take() {
             let window = web_sys::window().unwrap();
-            window.remove_event_listener_with_callback(
-                "resize",
-                onresize.as_ref().unchecked_ref(),
-            ).unwrap();
+            window
+                .remove_event_listener_with_callback("resize", onresize.as_ref().unchecked_ref())
+                .unwrap();
         }
         if let Some(onkeydown) = self.onkeydown.take() {
             let window = web_sys::window().unwrap();
-            window.remove_event_listener_with_callback(
-                "keydown",
-                onkeydown.as_ref().unchecked_ref(),
-            ).unwrap();
+            window
+                .remove_event_listener_with_callback("keydown", onkeydown.as_ref().unchecked_ref())
+                .unwrap();
         }
         if let Some(onkeyup) = self.onkeyup.take() {
             let window = web_sys::window().unwrap();
-            window.remove_event_listener_with_callback(
-                "keyup",
-                onkeyup.as_ref().unchecked_ref(),
-            ).unwrap();
+            window
+                .remove_event_listener_with_callback("keyup", onkeyup.as_ref().unchecked_ref())
+                .unwrap();
         }
     }
 }

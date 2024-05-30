@@ -1,17 +1,22 @@
 use std::{cmp::Ordering, rc::Rc};
 
-use fxhash::FxHashMap;
-use gloo::console::log;
-use smt_log_parser::parsers::z3::graph::{visible::VisibleInstGraph, RawNodeIndex};
-use web_sys::{HtmlElement, HtmlInputElement};
-use yew::{html, prelude::Context, AttrValue, Callback, Component, ContextHandle, Html, InputEvent, KeyboardEvent, MouseEvent, NodeRef, Properties};
+use web_sys::HtmlElement;
+use yew::{
+    html, prelude::Context, AttrValue, Callback, Component, ContextHandle, Html, KeyboardEvent,
+    MouseEvent, NodeRef, Properties,
+};
 
-use crate::{commands::{Command, CommandId, CommandRef, Commands, CommandsContext}, configuration::ConfigurationProvider, infobars::topbar::OmnibarMessage, results::svg_result::RenderingState, utils::lookup::{CommandsWithName, Entry, Kind, Matches, StringLookupCommands}, CallbackRef, GlobalCallbacksContext, LoadingState, RcParser, SIZE_NAMES};
+use crate::{
+    commands::{Command, CommandId, CommandRef, Commands, CommandsContext},
+    infobars::topbar::OmnibarMessage,
+    results::svg_result::RenderingState,
+    utils::lookup::StringLookupCommands,
+    CallbackRef, GlobalCallbacksContext, LoadingState, SIZE_NAMES,
+};
 
-use self::input::{MlOmniboxInput, PickedSuggestion, SuggestionResult, HighlightedString};
+use self::input::{MlOmniboxInput, PickedSuggestion};
 
 pub mod input;
-
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct MlOmniboxProps {
@@ -41,20 +46,6 @@ pub struct MlOmnibox {
     _commands_search: [CommandRef; 2],
 }
 
-impl MlOmnibox {
-    pub fn set_picked(&mut self, picked: Option<PickedSuggestion>) {
-        if self.picked.is_none() && picked.is_none() {
-            return;
-        }
-        if self.picked.is_none() != picked.is_none() {
-            for cmd in &self._commands_search {
-                cmd.set_disabled(picked.is_none());
-            }
-        }
-        self.picked = picked;
-    }
-}
-
 impl Component for MlOmnibox {
     type Message = Msg;
     type Properties = MlOmniboxProps;
@@ -66,20 +57,23 @@ impl Component for MlOmnibox {
         let _callback_refs = [keydown];
 
         // Commands
-        let (commands, _handle) = ctx.link().get_commands(ctx.link().callback(Msg::CommandsUpdated)).unwrap();
+        let (commands, _handle) = ctx
+            .link()
+            .get_commands(ctx.link().callback(Msg::CommandsUpdated))
+            .unwrap();
         let all_commands = StringLookupCommands::with_commands(commands.commands.iter().cloned());
         let next_search = Command {
             name: "Go to next search result".to_string(),
             execute: ctx.link().callback(|_| Msg::Select { left: false }),
             keyboard_shortcut: vec!["Enter"],
-            disabled: true
+            disabled: true,
         };
         let next_search = (commands.register)(next_search);
         let prev_search = Command {
             name: "Go to previous search result".to_string(),
             execute: ctx.link().callback(|_| Msg::Select { left: true }),
             keyboard_shortcut: vec!["Shift", "Enter"],
-            disabled: true
+            disabled: true,
         };
         let prev_search = (commands.register)(prev_search);
         let _commands_search = [next_search, prev_search];
@@ -101,7 +95,9 @@ impl Component for MlOmnibox {
         match msg {
             Msg::KeyDownGlobal(ev) => match ev.key().as_str() {
                 "Enter" => {
-                    ctx.link().send_message(Msg::Select { left: ev.shift_key() });
+                    ctx.link().send_message(Msg::Select {
+                        left: ev.shift_key(),
+                    });
                     false
                 }
                 _ => false,
@@ -110,27 +106,46 @@ impl Component for MlOmnibox {
                 let Some(picked) = &mut self.picked else {
                     return false;
                 };
-                let number = picked.ml_idx.map(|i|
-                    if left {
-                        if i == 0 { ctx.props().found_mls - 1 } else { i - 1 } 
-                    } else {
-                        if i + 1 == ctx.props().found_mls { 0 } else { i + 1 }
-                    }
-                ).unwrap_or_default();
+                let number = picked
+                    .ml_idx
+                    .map(|i| {
+                        if left {
+                            if i == 0 {
+                                ctx.props().found_mls - 1
+                            } else {
+                                i - 1
+                            }
+                        } else if i + 1 == ctx.props().found_mls {
+                            0
+                        } else {
+                            i + 1
+                        }
+                    })
+                    .unwrap_or_default();
                 picked.ml_idx = Some(number);
                 ctx.props().pick_nth_ml.emit(picked.ml_idx.unwrap());
                 true
             }
             Msg::CommandsUpdated(commands) => {
-                self.all_commands = StringLookupCommands::with_commands(commands.commands.iter().cloned());
+                self.all_commands =
+                    StringLookupCommands::with_commands(commands.commands.iter().cloned());
                 self.command_mode
             }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let mut omnibox_info = ctx.props().message.as_ref().map(|m| AttrValue::from(m.message.clone()));
-        let mut icon = ctx.props().message.as_ref().is_some_and(|m| m.is_error).then(|| "error");
+        let mut omnibox_info = ctx
+            .props()
+            .message
+            .as_ref()
+            .map(|m| AttrValue::from(m.message.clone()));
+        let mut icon = ctx
+            .props()
+            .message
+            .as_ref()
+            .is_some_and(|m| m.is_error)
+            .then_some("error");
         let mut callback = None;
 
         match &ctx.props().progress {
@@ -151,31 +166,44 @@ impl Component for MlOmnibox {
                         speed /= 1024.0;
                         idx += 1;
                     }
-                    format!("Parsing trace {:.0}% - {:.0} {}/s", progress * 100.0, speed, SIZE_NAMES[idx])
+                    format!(
+                        "Parsing trace {:.0}% - {:.0} {}/s",
+                        progress * 100.0,
+                        speed,
+                        SIZE_NAMES[idx]
+                    )
                 } else {
                     format!("Parsing trace {:.0}%", progress * 100.0)
                 };
                 omnibox_info = Some(AttrValue::from(info));
             }
             LoadingState::DoneParsing(..) => (),
-            LoadingState::Rendering(RenderingState::ConstructingGraph, timeout, _) |
-            LoadingState::Rendering(RenderingState::ConstructedGraph, timeout, _) => {
+            LoadingState::Rendering(RenderingState::ConstructingGraph, timeout, _)
+            | LoadingState::Rendering(RenderingState::ConstructedGraph, timeout, _) => {
                 if *timeout {
                     omnibox_info = Some(AttrValue::from("Analysing partial trace"));
                 } else {
                     omnibox_info = Some(AttrValue::from("Analysing trace"));
                 }
             }
-            LoadingState::Rendering(RenderingState::GraphToDot | RenderingState::RenderingGraph, _, _) => {
+            LoadingState::Rendering(
+                RenderingState::GraphToDot | RenderingState::RenderingGraph,
+                _,
+                _,
+            ) => {
                 omnibox_info = Some(AttrValue::from("Rendering trace"));
             }
             LoadingState::FileDisplayed => (),
         };
         let omnibox_disabled = omnibox_info.is_some();
-        let icon = icon.unwrap_or_else(|| {
-            if omnibox_disabled { "info" }
-            else if self.command_mode { "chevron_right" }
-            else { "search" }
+        let icon = icon.unwrap_or({
+            if omnibox_disabled {
+                "info"
+            } else if self.command_mode {
+                "chevron_right"
+            } else {
+                "search"
+            }
         });
         let icon = if let Some(callback) = callback {
             let callback = callback.clone();
@@ -187,20 +215,23 @@ impl Component for MlOmnibox {
         } else {
             html! { {icon} }
         };
-        let placeholder = 
-            omnibox_info.unwrap_or_else(|| if self.command_mode {
+        let placeholder = omnibox_info.unwrap_or_else(|| {
+            if self.command_mode {
                 AttrValue::from("Filter commands...")
             } else {
                 match ctx.props().found_mls {
-                    0 => AttrValue::from(format!("No matching loops found")),
-                    1 => AttrValue::from(format!("Found 1 potential matching loop")),
+                    0 => AttrValue::from("No matching loops found".to_string()),
+                    1 => AttrValue::from("Found 1 potential matching loop".to_string()),
                     n => AttrValue::from(format!("Found {} potential matching loops", n)),
                 }
-            });
-        let onkeyup = Callback::from(|ev: KeyboardEvent| {
-            ev.stop_propagation(); ev.cancel_bubble();
+            }
         });
-        let test = if ctx.props().found_mls > 0 { self.picked.as_ref().map(|picked| {
+        let onkeyup = Callback::from(|ev: KeyboardEvent| {
+            ev.stop_propagation();
+            ev.cancel_bubble();
+        });
+        let test = if ctx.props().found_mls > 0 {
+            self.picked.as_ref().map(|picked| {
             let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
             let left = ctx.link().callback(|_| Msg::Select { left: true });
             let right = ctx.link().callback(|_| Msg::Select { left: false });
@@ -216,7 +247,9 @@ impl Component for MlOmnibox {
             None
         };
         let omnibox = ctx.props().omnibox.clone();
-        let input = (!omnibox_disabled).then(|| self.input.clone()).unwrap_or_default();
+        let input = (!omnibox_disabled)
+            .then(|| self.input.clone())
+            .unwrap_or_default();
         html! {
             <div class="omnibox" {onkeyup}>
                 <div class="icon">{icon}</div>
@@ -270,7 +303,6 @@ pub struct SearchAction {
     pub arguments: Option<usize>,
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommandSearchResult {
     pub query: String,
@@ -296,9 +328,21 @@ impl PartialOrd for CommandAction {
 }
 impl Ord for CommandAction {
     fn cmp(&self, other: &Self) -> Ordering {
-        let last_used_order = |lu: Option<usize>| usize::MAX - lu.map(|lu| usize::MAX - lu).unwrap_or_default();
-        (self.command.disabled, last_used_order(self.last_used), u16::MAX - self.score, self.command.name.as_str(), self.id)
-            .cmp(&(other.command.disabled, last_used_order(other.last_used), u16::MAX - other.score, other.command.name.as_str(), other.id))
+        let last_used_order =
+            |lu: Option<usize>| usize::MAX - lu.map(|lu| usize::MAX - lu).unwrap_or_default();
+        (
+            self.command.disabled,
+            last_used_order(self.last_used),
+            u16::MAX - self.score,
+            self.command.name.as_str(),
+            self.id,
+        )
+            .cmp(&(
+                other.command.disabled,
+                last_used_order(other.last_used),
+                u16::MAX - other.score,
+                other.command.name.as_str(),
+                other.id,
+            ))
     }
 }
-

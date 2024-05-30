@@ -2,7 +2,11 @@ use std::sync::Mutex;
 
 use fxhash::FxHashMap;
 use nucleo_matcher::{Config, Matcher, Utf32String};
-use smt_log_parser::{items::{ENodeIdx, InstIdx, QuantIdx, QuantKind, TermIdx, TermKind}, parsers::z3::graph::{raw::IndexesInstGraph, visible::VisibleInstGraph, InstGraph, RawNodeIndex}, Z3Parser};
+use smt_log_parser::{
+    analysis::{raw::IndexesInstGraph, visible::VisibleInstGraph, InstGraph, RawNodeIndex},
+    items::{ENodeIdx, InstIdx, QuantIdx, QuantKind, TermIdx, TermKind},
+    Z3Parser,
+};
 
 use crate::commands::{Command, CommandId};
 
@@ -20,11 +24,16 @@ impl<T> StringLookup<T> {
             values: Default::default(),
         }
     }
-    pub fn get_or_insert_default(&mut self, key: &str) -> &mut T where T: Default {
+    pub fn get_or_insert_default(&mut self, key: &str) -> &mut T
+    where
+        T: Default,
+    {
         self.get_or_insert(key, Default::default)
     }
     pub fn get_or_insert(&mut self, key: &str, default: impl FnOnce() -> T) -> &mut T {
-        self.values.entry(Utf32String::from(key)).or_insert_with(default)
+        self.values
+            .entry(Utf32String::from(key))
+            .or_insert_with(default)
     }
 
     pub fn get_exact(&self, key: &str) -> Option<&T> {
@@ -36,28 +45,29 @@ impl<T> StringLookup<T> {
         let needle = needle.slice(..);
         let mut indices = Vec::new();
         let mut matcher = self.matcher.lock().unwrap();
-        let matches = self.values.iter()
+        let matches = self
+            .values
+            .iter()
             .flat_map(|(k, v)| {
                 let k_slice = k.slice(..);
-                matcher.fuzzy_indices(k_slice, needle, &mut indices).map(|mut score| {
-                    // Penalise the score where the characters don't exactly
-                    // match (e.g. due to ascii normalisation or lowercasing).
-                    // This is not ideal since we might not get the highest
-                    // scoring match.
-                    for (idx, char) in original_needle.char_indices() {
-                        let idx = indices[indices.len() - needle.len() + idx];
-                        if k_slice.get(idx) != char {
-                            score = score.saturating_sub(1);
+                matcher
+                    .fuzzy_indices(k_slice, needle, &mut indices)
+                    .map(|mut score| {
+                        // Penalise the score where the characters don't exactly
+                        // match (e.g. due to ascii normalisation or lowercasing).
+                        // This is not ideal since we might not get the highest
+                        // scoring match.
+                        for (idx, char) in original_needle.char_indices() {
+                            let idx = indices[indices.len() - needle.len() + idx];
+                            if k_slice.get(idx) != char {
+                                score = score.saturating_sub(1);
+                            }
                         }
-                    }
-                    (score, k, v)
-                })
+                        (score, k, v)
+                    })
             })
             .collect();
-        Matches {
-            indices,
-            matches,
-        }
+        Matches { indices, matches }
     }
 }
 
@@ -115,9 +125,13 @@ impl StringLookupCommands {
     pub fn with_commands(commands: impl Iterator<Item = (CommandId, Command)>) -> Self {
         let mut lookup = Self::new();
         for command in commands {
-            match lookup.values.entry(Utf32String::from(command.1.name.as_str())) {
+            match lookup
+                .values
+                .entry(Utf32String::from(command.1.name.as_str()))
+            {
                 std::collections::hash_map::Entry::Occupied(mut o) => {
-                    let old = std::mem::replace(o.get_mut(), CommandsWithName::Multiple(Vec::new()));
+                    let old =
+                        std::mem::replace(o.get_mut(), CommandsWithName::Multiple(Vec::new()));
                     let CommandsWithName::Multiple(vec) = o.get_mut() else {
                         unreachable!();
                     };
@@ -164,8 +178,15 @@ impl Entry {
     pub fn count(&self) -> usize {
         self.references.len()
     }
-    fn visible<'a>(&'a self, graph: &'a InstGraph, visible: &'a VisibleInstGraph) -> impl Iterator<Item = RawNodeIndex> + 'a {
-        self.references.iter().map(move |&idx| idx.index(&graph.raw)).filter(move |&idx| visible.contains(idx))
+    fn visible<'a>(
+        &'a self,
+        graph: &'a InstGraph,
+        visible: &'a VisibleInstGraph,
+    ) -> impl Iterator<Item = RawNodeIndex> + 'a {
+        self.references
+            .iter()
+            .map(move |&idx| idx.index(&graph.raw))
+            .filter(move |&idx| visible.contains(idx))
     }
     pub fn get_visible(&self, graph: &InstGraph, visible: &VisibleInstGraph) -> Vec<RawNodeIndex> {
         self.visible(graph, visible).collect()

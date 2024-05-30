@@ -1,4 +1,7 @@
-use material_yew::{dialog::{ActionType, MatDialog, MatDialogAction}, MatButton, WeakComponentLink};
+use material_yew::{
+    dialog::{ActionType, MatDialog, MatDialogAction},
+    MatButton, WeakComponentLink,
+};
 use yew::{function_component, html, Callback, Html, Properties};
 
 #[derive(Properties, Clone, PartialEq)]

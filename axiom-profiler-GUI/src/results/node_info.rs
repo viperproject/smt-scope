@@ -1,9 +1,20 @@
 use std::rc::Rc;
 
-use smt_log_parser::{display_with::{DisplayCtxt, DisplayWithCtxt}, items::{MatchKind, VarNames}, parsers::z3::graph::{raw::{EdgeKind, Node, NodeKind}, visible::{VisibleEdge, VisibleEdgeKind}, InstGraph, RawNodeIndex, VisibleEdgeIndex}, NonMaxU32};
-use yew::{function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties};
+use smt_log_parser::{
+    analysis::{
+        raw::{EdgeKind, Node, NodeKind},
+        visible::{VisibleEdge, VisibleEdgeKind},
+        InstGraph, RawNodeIndex, VisibleEdgeIndex,
+    },
+    display_with::{DisplayCtxt, DisplayWithCtxt},
+    items::{MatchKind, VarNames},
+    NonMaxU32,
+};
+use yew::{
+    function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties,
+};
 
-use crate::configuration::ConfigurationProvider;
+use crate::{configuration::ConfigurationProvider, state::StateProvider};
 
 use super::svg_result::RenderedGraph;
 
@@ -42,11 +53,13 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             NodeKind::ENode(_) => "ENode",
             NodeKind::GivenEquality(..) => "Equality",
             NodeKind::TransEquality(_) => "Equality",
-            NodeKind::Instantiation(inst) => match &self.ctxt.parser[self.ctxt.parser[inst].match_].kind {
-                MatchKind::MBQI { .. } => "MBQI",
-                MatchKind::TheorySolving { .. } => "Theory Solving",
-                MatchKind::Axiom { .. } => "Axiom",
-                MatchKind::Quantifier { .. } => "Quantifier",
+            NodeKind::Instantiation(inst) => {
+                match &self.ctxt.parser[self.ctxt.parser[inst].match_].kind {
+                    MatchKind::MBQI { .. } => "MBQI",
+                    MatchKind::TheorySolving { .. } => "Theory Solving",
+                    MatchKind::Axiom { .. } => "Axiom",
+                    MatchKind::Quantifier { .. } => "Quantifier",
+                }
             }
         }
     }
@@ -59,87 +72,116 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
     pub fn tooltip(&self, html: bool, char_limit: Option<NonMaxU32>) -> String {
         let mut ctxt = DisplayCtxt {
             parser: self.ctxt.parser,
+            term_display: self.ctxt.term_display,
             config: self.ctxt.config.clone(),
         };
         ctxt.config.html = html;
         ctxt.config.enode_char_limit = char_limit;
         match *self.node.kind() {
             NodeKind::ENode(enode) => {
-                ctxt.config.enode_char_limit = ctxt.config.enode_char_limit.and_then(|limit| NonMaxU32::new(limit.get() * 2));
+                ctxt.config.enode_char_limit = ctxt
+                    .config
+                    .enode_char_limit
+                    .and_then(|limit| NonMaxU32::new(limit.get() * 2));
                 enode.with(&ctxt).to_string()
             }
             NodeKind::GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
             NodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
             NodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
-                MatchKind::MBQI { quant, .. } =>
-                    ctxt.parser[*quant].kind.with(&ctxt).to_string(),
+                MatchKind::MBQI { quant, .. } => ctxt.parser[*quant].kind.with(&ctxt).to_string(),
                 MatchKind::TheorySolving { axiom_id, .. } => {
                     let namespace = &ctxt.parser[axiom_id.namespace];
                     let id = axiom_id.id.map(|id| id.to_string()).unwrap_or_default();
                     format!("{namespace}[{id}]")
                 }
-                MatchKind::Axiom { axiom, .. } =>
-                    ctxt.parser[*axiom].kind.with(&ctxt).to_string(),
-                MatchKind::Quantifier { quant, .. } =>
-                    ctxt.parser[*quant].kind.with(&ctxt).to_string(),
+                MatchKind::Axiom { axiom, .. } => ctxt.parser[*axiom].kind.with(&ctxt).to_string(),
+                MatchKind::Quantifier { quant, .. } => {
+                    ctxt.parser[*quant].kind.with(&ctxt).to_string()
+                }
             },
         }
     }
 
     pub fn quantifier_body(&self) -> Option<String> {
         let NodeKind::Instantiation(inst) = *self.node.kind() else {
-            return None
+            return None;
         };
-        let quant_idx = self.ctxt.parser[self.ctxt.parser[inst].match_].kind.quant_idx()?;
+        let quant_idx = self.ctxt.parser[self.ctxt.parser[inst].match_]
+            .kind
+            .quant_idx()?;
         Some(quant_idx.with(self.ctxt).to_string())
     }
     pub fn blame(&self) -> Option<Vec<(String, String, Vec<String>)>> {
         let NodeKind::Instantiation(inst) = *self.node.kind() else {
-            return None
+            return None;
         };
         let match_ = &self.ctxt.parser[self.ctxt.parser[inst].match_];
+        let mut qidx = match_.kind.quant_idx();
         let pattern = match_.kind.pattern()?;
-        let trigger_matches = self.ctxt.parser[pattern].child_ids.iter().rev().zip(match_.trigger_matches());
-        let mut blame: Vec<_> = trigger_matches.map(|(trigger, matched)| {
-            let trigger = trigger.with(self.ctxt).to_string();
-            let enode = matched.enode().with(self.ctxt).to_string();
-            let equalities = matched.equalities().map(|eq| eq.with(self.ctxt).to_string()).collect();
-            (trigger, enode, equalities)
-        }).collect();
+        let trigger_matches = self.ctxt.parser[pattern]
+            .child_ids
+            .iter()
+            .rev()
+            .zip(match_.trigger_matches());
+        let mut blame: Vec<_> = trigger_matches
+            .map(|(trigger, matched)| {
+                let trigger = trigger.with_data(self.ctxt, &mut qidx).to_string();
+                let enode = matched.enode().with(self.ctxt).to_string();
+                let equalities = matched
+                    .equalities()
+                    .map(|eq| eq.with(self.ctxt).to_string())
+                    .collect();
+                (trigger, enode, equalities)
+            })
+            .collect();
         blame.reverse();
         Some(blame)
     }
     pub fn bound_terms(&self) -> Option<Vec<String>> {
         let NodeKind::Instantiation(inst) = *self.node.kind() else {
-            return None
+            return None;
         };
         let match_ = &self.ctxt.parser[self.ctxt.parser[inst].match_];
         let bound_terms = match_.kind.bound_terms(
             |enode| enode.with(self.ctxt).to_string(),
-            |term| term.with(self.ctxt).to_string()
+            |term| term.with(self.ctxt).to_string(),
         );
-        let vars = match_.kind.quant_idx().and_then(|quant| self.ctxt.parser[quant].vars.as_ref());
-        Some(bound_terms.into_iter().enumerate().map(|(idx, bound)| {
-            let name = VarNames::get_name(&self.ctxt.parser.strings, vars, idx, &self.ctxt.config);
-            format!("{name} ↦ {bound}")
-        }).collect())
+        let vars = match_
+            .kind
+            .quant_idx()
+            .and_then(|quant| self.ctxt.parser[quant].vars.as_ref());
+        Some(
+            bound_terms
+                .into_iter()
+                .enumerate()
+                .map(|(idx, bound)| {
+                    let name =
+                        VarNames::get_name(&self.ctxt.parser.strings, vars, idx, &self.ctxt.config);
+                    format!("{name} ↦ {bound}")
+                })
+                .collect(),
+        )
     }
     pub fn resulting_term(&self) -> Option<String> {
         let NodeKind::Instantiation(inst) = *self.node.kind() else {
-            return None
+            return None;
         };
         let resulting_term = self.ctxt.parser[inst].get_resulting_term()?;
         // The resulting term is of the form `quant-inst(¬(quant) ∨ (inst))`.
-        let resulting_term_or = *self.ctxt.parser[resulting_term].child_ids.get(0)?;
+        let resulting_term_or = *self.ctxt.parser[resulting_term].child_ids.first()?;
         let resulting_term = *self.ctxt.parser[resulting_term_or].child_ids.get(1)?;
         Some(resulting_term.with(self.ctxt).to_string())
     }
     pub fn yield_terms(&self) -> Option<Vec<String>> {
         let NodeKind::Instantiation(inst) = *self.node.kind() else {
-            return None
+            return None;
         };
         let yields_terms = self.ctxt.parser[inst].yields_terms.iter();
-        Some(yields_terms.map(|term| term.with(self.ctxt).to_string()).collect())
+        Some(
+            yields_terms
+                .map(|term| term.with(self.ctxt).to_string())
+                .collect(),
+        )
     }
 }
 
@@ -156,18 +198,20 @@ pub fn SelectedNodesInfo(
         on_click,
     }: &SelectedNodesInfoProps,
 ) -> Html {
-    if selected_nodes.is_empty() {
-        return html! {}
-    }
-
     let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let parser = cfg.config.parser.as_ref().unwrap();
+    let data = use_context::<Rc<StateProvider>>().unwrap();
+
+    if selected_nodes.is_empty() {
+        return html! {};
+    }
+    let parser = data.state.parser.as_ref().unwrap();
     let graph = parser.graph.as_ref().unwrap();
     let parser = &*parser.parser;
     let graph = graph.borrow();
     let ctxt = &DisplayCtxt {
         parser: &parser.borrow(),
-        config: cfg.config.persistent.display.clone(),
+        term_display: &data.state.term_display,
+        config: cfg.config.display.clone(),
     };
 
     let infos = selected_nodes
@@ -265,46 +309,56 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
             true => "↝",
             false => "→",
         };
-        let from = NodeInfo { node: &self.graph.raw[self.from], ctxt: self.ctxt };
-        let to = NodeInfo { node: &self.graph.raw[self.to], ctxt: self.ctxt };
+        let from = NodeInfo {
+            node: &self.graph.raw[self.from],
+            ctxt: self.ctxt,
+        };
+        let to = NodeInfo {
+            node: &self.graph.raw[self.to],
+            ctxt: self.ctxt,
+        };
         format!("{} {arrow} {}", from.index(), to.index())
     }
     pub fn kind(&self) -> String {
         match self.kind {
-            VisibleEdgeKind::Direct(_, EdgeKind::Yield) =>
-                "Yield".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::Blame { trigger_term }) =>
-                format!("Blame trigger #{trigger_term}"),
-            VisibleEdgeKind::Direct(_, EdgeKind::BlameEq { .. }) =>
-                "Blame Equality".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::EqualityFact) =>
-                "Equality Fact".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::EqualityCongruence) =>
-                "Equality Congruence".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::TEqualitySimple { forward }) =>
-                format!("Simple {}Equality", (!forward).then(|| "Reverse ").unwrap_or_default()),
-            VisibleEdgeKind::Direct(_, EdgeKind::TEqualityTransitive { forward }) =>
-                format!("Transitive {}Equality", (!forward).then(|| "Reverse ").unwrap_or_default()),
-            VisibleEdgeKind::YieldBlame { trigger_term, .. } =>
-                format!("Yield/Blame trigger #{trigger_term}"),
-            VisibleEdgeKind::YieldEq(_) =>
-                "Yield Equality".to_string(),
-            VisibleEdgeKind::YieldBlameEq { .. } =>
-                "Yield/Blame Equality".to_string(),
-            VisibleEdgeKind::YieldEqOther(_) =>
-                "Yield Equality Other".to_string(),
-            VisibleEdgeKind::ENodeEq(_) =>
-                "ENode Equality".to_string(),
-            VisibleEdgeKind::ENodeBlameEq { .. } =>
-                "ENode/Blame Equality".to_string(),
-            VisibleEdgeKind::ENodeEqOther(_) =>
-                "ENode Equality Other".to_string(),
+            VisibleEdgeKind::Direct(_, EdgeKind::Yield) => "Yield".to_string(),
+            VisibleEdgeKind::Direct(_, EdgeKind::Blame { trigger_term }) => {
+                format!("Blame trigger #{trigger_term}")
+            }
+            VisibleEdgeKind::Direct(_, EdgeKind::BlameEq { .. }) => "Blame Equality".to_string(),
+            VisibleEdgeKind::Direct(_, EdgeKind::EqualityFact) => "Equality Fact".to_string(),
+            VisibleEdgeKind::Direct(_, EdgeKind::EqualityCongruence) => {
+                "Equality Congruence".to_string()
+            }
+            VisibleEdgeKind::Direct(_, EdgeKind::TEqualitySimple { forward }) => format!(
+                "Simple {}Equality",
+                (!forward).then_some("Reverse ").unwrap_or_default()
+            ),
+            VisibleEdgeKind::Direct(_, EdgeKind::TEqualityTransitive { forward }) => format!(
+                "Transitive {}Equality",
+                (!forward).then_some("Reverse ").unwrap_or_default()
+            ),
+            VisibleEdgeKind::YieldBlame { trigger_term, .. } => {
+                format!("Yield/Blame trigger #{trigger_term}")
+            }
+            VisibleEdgeKind::YieldEq(_) => "Yield Equality".to_string(),
+            VisibleEdgeKind::YieldBlameEq { .. } => "Yield/Blame Equality".to_string(),
+            VisibleEdgeKind::YieldEqOther(_) => "Yield Equality Other".to_string(),
+            VisibleEdgeKind::ENodeEq(_) => "ENode Equality".to_string(),
+            VisibleEdgeKind::ENodeBlameEq { .. } => "ENode/Blame Equality".to_string(),
+            VisibleEdgeKind::ENodeEqOther(_) => "ENode Equality Other".to_string(),
             VisibleEdgeKind::Unknown(start, end) => {
                 let ctxt = self.ctxt;
                 let hidden_from = self.graph.raw.graph.edge_endpoints(start.0).unwrap().1;
                 let hidden_to = self.graph.raw.graph.edge_endpoints(end.0).unwrap().0;
-                let hidden_from = NodeInfo { node: &self.graph.raw.graph[hidden_from], ctxt };
-                let hidden_to = NodeInfo { node: &self.graph.raw.graph[hidden_to], ctxt };
+                let hidden_from = NodeInfo {
+                    node: &self.graph.raw.graph[hidden_from],
+                    ctxt,
+                };
+                let hidden_to = NodeInfo {
+                    node: &self.graph.raw.graph[hidden_to],
+                    ctxt,
+                };
                 format!("Compound {} to {}", hidden_from.kind(), hidden_to.kind())
             }
         }
@@ -329,50 +383,60 @@ pub fn SelectedEdgesInfo(
         on_click,
     }: &SelectedEdgesInfoProps,
 ) -> Html {
+    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
+    let data = use_context::<Rc<StateProvider>>().unwrap();
+
     if selected_edges.is_empty() {
-        return html! {}
+        return html! {};
     }
     let Some(rendered) = rendered else {
-        return html! {}
+        return html! {};
     };
-
-    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let parser = cfg.config.parser.as_ref().unwrap();
+    let parser = data.state.parser.as_ref().unwrap();
     let graph = parser.graph.as_ref().unwrap();
     let parser = &*parser.parser;
     let graph = graph.borrow();
     let ctxt = &DisplayCtxt {
         parser: &parser.borrow(),
-        config: cfg.config.persistent.display.clone(),
+        term_display: &data.state.term_display,
+        config: cfg.config.display.clone(),
     };
 
-    let infos = selected_edges
-        .iter()
-        .map(|&(edge, open)| {
-            let onclick = {
-                let on_click = on_click.clone();
-                Callback::from(move |_| on_click.emit(edge))
-            };
-            let (from, to) = rendered.graph.graph.edge_endpoints(edge.0).unwrap();
-            let (from, to) = (rendered.graph.graph[from].idx, rendered.graph.graph[to].idx);
-            let edge = &rendered.graph[edge];
-            let kind = &edge.kind(&graph);
-            let info = EdgeInfo { edge, kind, from, to, graph: &*graph, ctxt };
+    let infos = selected_edges.iter().map(|&(edge, open)| {
+        let onclick = {
+            let on_click = on_click.clone();
+            Callback::from(move |_| on_click.emit(edge))
+        };
+        let (from, to) = rendered.graph.graph.edge_endpoints(edge.0).unwrap();
+        let (from, to) = (rendered.graph.graph[from].idx, rendered.graph.graph[to].idx);
+        let edge = &rendered.graph[edge];
+        let kind = &edge.kind(&graph);
+        let info = EdgeInfo {
+            edge,
+            kind,
+            from,
+            to,
+            graph: &graph,
+            ctxt,
+        };
 
-            let summary = format!("[{}] {}", info.index(), info.kind());
-            // Get info about blamed node
-            let blame = graph.raw.index(info.kind.blame(&graph));
-            let blame = NodeInfo { node: &graph.raw[blame], ctxt };
-            let blame = blame.tooltip(true, None);
-            html! {
-                <details {open} {onclick}>
-                    <summary>{summary}</summary>
-                    <ul>
-                        <InfoLine header="Blamed" text={blame} code=true />
-                    </ul>
-                </details>
-            }
-        });
+        let summary = format!("[{}] {}", info.index(), info.kind());
+        // Get info about blamed node
+        let blame = graph.raw.index(info.kind.blame(&graph));
+        let blame = NodeInfo {
+            node: &graph.raw[blame],
+            ctxt,
+        };
+        let blame = blame.tooltip(true, None);
+        html! {
+            <details {open} {onclick}>
+                <summary>{summary}</summary>
+                <ul>
+                    <InfoLine header="Blamed" text={blame} code=true />
+                </ul>
+            </details>
+        }
+    });
     html! {
     <>
         <h2>{"Selected Dependencies"}</h2>

@@ -20,6 +20,7 @@ lasso = "0.7"
 nonmax = "0.5"
 serde = { version = "1.0.183", features = ["derive"], optional = true }
 mem_dbg = { version = "0.1.8", features = ["std", "derive"], default-features = false, optional = true }
+regex = { version = "1.10", optional = true }
 
 [dev-dependencies]
 memory-stats = "1.1.0"
@@ -27,8 +28,9 @@ cap = "0.1.2"
 smt-log-parser = { path = ".", features = ["mem_dbg"] }
 
 [features]
-default = ["display"]
-display = []
+default = ["display", "analysis"]
+display = ["dep:regex"]
+analysis = []
 # Tries to catch memory allocation errors, in some cases spends some extra time with test allocations
 # when a crate doesn't support `try_reserve`. Currently some panics may still happen.
 never_panic = []

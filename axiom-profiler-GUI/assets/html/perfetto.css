@@ -265,7 +265,9 @@ table {
 }
 
 .flags-page {
+	height: 100%;
 	overflow-y: scroll;
+	z-index: 1;
 }
 .flags-content {
 	max-width: 100ch;
@@ -282,7 +284,7 @@ table {
 	background: none;
 	border: 1px solid rgb(218, 220, 224);
 	border-radius: 2px;
-	color: rgb(25, 103, 210);
+	color: var(--flags-accent-color);
 	font-size: 0.8125rem;
 	padding: 8px 12px;
 	cursor: pointer;
@@ -305,8 +307,8 @@ table {
 .flag-widget select {
 	grid-area: control;
 	background: white;
-	border: 1px solid rgb(25, 103, 210);
-	color: rgb(25, 103, 210);
+	border: 1px solid var(--flags-accent-color);
+	color: var(--flags-accent-color);
 	font-size: 0.8125rem;
 	height: 1.625rem;
 	letter-spacing: 0.01em;
@@ -473,6 +475,7 @@ table {
 	--section-background: hsl(213, 26%, 87%);
 	--hover-background: hsl(216, 15%, 75%);
 	--topbar-background: hsl(215, 1%, 95%);
+	--flags-accent-color: rgb(10, 75, 165);
 }
 
 * {

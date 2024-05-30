@@ -4,9 +4,14 @@ use gloo::timers::callback::Timeout;
 use material_yew::icon::MatIcon;
 use smt_log_parser::items::QuantIdx;
 use web_sys::{Element, HtmlElement, HtmlInputElement};
-use yew::{function_component, html, use_context, Callback, Children, Component, Context, Html, NodeRef, Properties};
+use yew::{
+    function_component, html, use_context, Callback, Children, Component, Context, Html, NodeRef,
+    Properties,
+};
 
-use crate::{configuration::ConfigurationProvider, mouse_position, results::filters::Filter, PREVENT_DEFAULT_DRAG_OVER};
+use crate::{
+    mouse_position, results::filters::Filter, state::StateProvider, PREVENT_DEFAULT_DRAG_OVER,
+};
 
 pub enum Msg {
     OnDragStart(usize, usize),
@@ -56,9 +61,10 @@ impl DraggableList {
             return false;
         };
         let rect = node.get_bounding_client_rect();
-        rect.left() <= pos.x as f64 && pos.x as f64 <= rect.right()
-        && rect.top() <= pos.y as f64 && pos.y as f64 <= rect.bottom()
-
+        rect.left() <= pos.x as f64
+            && pos.x as f64 <= rect.right()
+            && rect.top() <= pos.y as f64
+            && pos.y as f64 <= rect.bottom()
     }
     pub fn try_incr(&mut self, mouse_y: f64) -> bool {
         let Some(mut drag) = self.drag else {
@@ -121,7 +127,9 @@ pub struct DraggableListProps {
 
 impl PartialEq for DraggableListProps {
     fn eq(&self, other: &Self) -> bool {
-        self.hashes == other.hashes && self.selected == other.selected && self.editing == other.editing
+        self.hashes == other.hashes
+            && self.selected == other.selected
+            && self.editing == other.editing
     }
 }
 
@@ -133,9 +141,17 @@ impl Component for DraggableList {
         Self {
             drag: None,
             hover: None,
-            display: ctx.props().children.iter().enumerate().map(|(idx, element)|
-                DisplayElement { idx, node: element.clone(), node_ref: NodeRef::default() }
-            ).collect(),
+            display: ctx
+                .props()
+                .children
+                .iter()
+                .enumerate()
+                .map(|(idx, element)| DisplayElement {
+                    idx,
+                    node: element.clone(),
+                    node_ref: NodeRef::default(),
+                })
+                .collect(),
             hashes: ctx.props().hashes.clone(),
             selected: ctx.props().selected,
         }
@@ -144,9 +160,17 @@ impl Component for DraggableList {
     fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
         self.hashes.clone_from(&ctx.props().hashes);
         self.selected = ctx.props().selected;
-        self.display = ctx.props().children.iter().enumerate().map(|(idx, element)|
-            DisplayElement { idx, node: element.clone(), node_ref: NodeRef::default() }
-        ).collect();
+        self.display = ctx
+            .props()
+            .children
+            .iter()
+            .enumerate()
+            .map(|(idx, element)| DisplayElement {
+                idx,
+                node: element.clone(),
+                node_ref: NodeRef::default(),
+            })
+            .collect();
         self.drag = None;
         true
     }
@@ -154,7 +178,12 @@ impl Component for DraggableList {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::OnDragStart(orig_idx, idx) => {
-                self.drag = Some(DragState { orig_idx, start_idx: idx, idx, delete: false });
+                self.drag = Some(DragState {
+                    orig_idx,
+                    start_idx: idx,
+                    idx,
+                    delete: false,
+                });
                 if let Some(mut pd) = PREVENT_DEFAULT_DRAG_OVER.get().and_then(|p| p.lock().ok()) {
                     *pd = false;
                 }
@@ -174,8 +203,10 @@ impl Component for DraggableList {
                     let header = ctx.props().delete_node.cast::<Element>();
                     if let Some(header_ref) = header {
                         let rect = header_ref.get_bounding_client_rect();
-                        new_delete = rect.left() <= pos.x as f64 && pos.x as f64 <= rect.right()
-                            && rect.top() <= pos.y as f64 && pos.y as f64 <= rect.bottom();
+                        new_delete = rect.left() <= pos.x as f64
+                            && pos.x as f64 <= rect.right()
+                            && rect.top() <= pos.y as f64
+                            && pos.y as f64 <= rect.bottom();
                     }
                 }
                 if drag.delete != new_delete {
@@ -185,12 +216,12 @@ impl Component for DraggableList {
                 drag.delete = new_delete;
 
                 // Fly-back animation enable or disable
-                if let Some(mut pd) = PREVENT_DEFAULT_DRAG_OVER.get().filter(|_| changed).and_then(|p| p.lock().ok()) {
-                    if drag.start_idx == drag.idx && !drag.delete {
-                        *pd = false;
-                    } else {
-                        *pd = true;
-                    }
+                if let Some(mut pd) = PREVENT_DEFAULT_DRAG_OVER
+                    .get()
+                    .filter(|_| changed)
+                    .and_then(|p| p.lock().ok())
+                {
+                    *pd = drag.start_idx != drag.idx || drag.delete;
                 }
                 changed
             }
@@ -248,13 +279,13 @@ impl Component for DraggableList {
                     e.prevent_default();
                     return;
                 }
-                e.data_transfer().map(|dt| {
+                if let Some(dt) = e.data_transfer() {
                     let pos = *mouse_position().read().unwrap();
                     let node = node_ref.cast::<web_sys::Element>().unwrap();
                     let rect = node.get_bounding_client_rect();
                     let (x, y) = (pos.x as f64 - rect.left(), pos.y as f64 - rect.top());
                     dt.set_drag_image(&placeholder_ref.cast::<web_sys::Element>().unwrap(), x as i32, y as i32);
-                });
+                }
                 link.send_message(Msg::OnDragStart(orig_idx, curr_idx))
             });
             let ondrag = ctx.link().callback(|_| Msg::OnDrag);
@@ -273,7 +304,7 @@ impl Component for DraggableList {
                 </li>}
         });
         html! {
-            {for display}        
+            {for display}
         }
     }
 }
@@ -291,18 +322,18 @@ pub struct ExistingFilterProps {
 
 #[function_component]
 pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
-    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let graph = cfg.config.parser.as_ref().and_then(|p| p.graph.as_ref());
-    let fc = |i| graph.as_ref().map(|g| {
-        *g.borrow().raw[i].kind()
-    }).unwrap();
+    let data = use_context::<Rc<StateProvider>>().unwrap();
+    let graph = data.state.parser.as_ref().and_then(|p| p.graph.as_ref());
+    let fc = |i| graph.as_ref().map(|g| *g.borrow().raw[i].kind()).unwrap();
     let icon = props.filter.icon();
     let hover = props.filter.long_text(fc, true);
     let filter_text = props.filter.short_text(fc);
     let onclick = Some(props.onclick.clone()).filter(|_| !props.editing);
     let onclick = Callback::from(move |e: web_sys::MouseEvent| {
         e.prevent_default();
-        onclick.as_ref().map(|oc| oc.emit(()));
+        if let Some(oc) = onclick.as_ref() {
+            oc.emit(())
+        }
     });
     let overlay = props.selected.then(|| {
         let edit = props.filter.is_editable().then(|| {
@@ -343,28 +374,42 @@ pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
 
 impl Filter {
     pub fn is_editable(&self) -> bool {
-        match self {
-            Filter::IgnoreTheorySolving | Filter::ShowMatchingLoopSubgraph | Filter::IgnoreQuantifier(None) | Filter::IgnoreAllButQuantifier(None) |
-            Filter::ShowNeighbours(..) | Filter::VisitSourceTree(..) | Filter::VisitSubTreeWithRoot(..) | Filter::ShowLongestPath(..) => false,
-            _ => true,
-        }
+        !matches!(
+            self,
+            Filter::IgnoreTheorySolving
+                | Filter::ShowMatchingLoopSubgraph
+                | Filter::IgnoreQuantifier(None)
+                | Filter::IgnoreAllButQuantifier(None)
+                | Filter::ShowNeighbours(..)
+                | Filter::VisitSourceTree(..)
+                | Filter::VisitSubTreeWithRoot(..)
+                | Filter::ShowLongestPath(..)
+        )
     }
     pub fn update(&self, new_data: Vec<usize>, new_strings: Vec<String>) -> Filter {
         match self {
             Filter::MaxNodeIdx(_) => Filter::MaxNodeIdx(new_data[0]),
             Filter::MinNodeIdx(_) => Filter::MinNodeIdx(new_data[0]),
             Filter::IgnoreTheorySolving => Filter::IgnoreTheorySolving,
-            Filter::IgnoreQuantifier(_) => Filter::IgnoreQuantifier(Some(QuantIdx::from(new_data[0]))),
-            Filter::IgnoreAllButQuantifier(_) => Filter::IgnoreAllButQuantifier(Some(QuantIdx::from(new_data[0]))),
+            Filter::IgnoreQuantifier(_) => {
+                Filter::IgnoreQuantifier(Some(QuantIdx::from(new_data[0])))
+            }
+            Filter::IgnoreAllButQuantifier(_) => {
+                Filter::IgnoreAllButQuantifier(Some(QuantIdx::from(new_data[0])))
+            }
             Filter::MaxInsts(_) => Filter::MaxInsts(new_data[0]),
             Filter::MaxBranching(_) => Filter::MaxBranching(new_data[0]),
             Filter::ShowNeighbours(old, dir) => Filter::ShowNeighbours(*old, *dir),
             Filter::VisitSourceTree(old, retain) => Filter::VisitSourceTree(*old, *retain),
-            Filter::VisitSubTreeWithRoot(old, retain) => Filter::VisitSubTreeWithRoot(*old, *retain),
+            Filter::VisitSubTreeWithRoot(old, retain) => {
+                Filter::VisitSubTreeWithRoot(*old, *retain)
+            }
             Filter::MaxDepth(_) => Filter::MaxDepth(new_data[0]),
             Filter::ShowLongestPath(old) => Filter::ShowLongestPath(*old),
             Filter::ShowNamedQuantifier(_) => Filter::ShowNamedQuantifier(new_strings[0].clone()),
-            Filter::SelectNthMatchingLoop(_) => Filter::SelectNthMatchingLoop(new_data[0].max(1) - 1),
+            Filter::SelectNthMatchingLoop(_) => {
+                Filter::SelectNthMatchingLoop(new_data[0].max(1) - 1)
+            }
             Filter::ShowMatchingLoopSubgraph => Filter::ShowMatchingLoopSubgraph,
         }
     }
@@ -394,13 +439,20 @@ impl Component for ExistingFilterText {
     type Properties = ExistingFilterTextProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let inputs = ctx.props().filter.chars()
+        let inputs = ctx
+            .props()
+            .filter
+            .chars()
             .filter(|&c| c == '|' || c == '"' || c == '$')
             .enumerate()
             .filter(|(idx, _)| idx % 2 == 0)
             .map(|(_, c)| (c, NodeRef::default()))
             .collect();
-        Self { inputs, focus: None, was_editing: false }
+        Self {
+            inputs,
+            focus: None,
+            was_editing: false,
+        }
     }
 
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
@@ -424,23 +476,36 @@ impl Component for ExistingFilterText {
                     let link = ctx.link().clone();
                     Timeout::new(100, move || {
                         link.send_message(FilterTextMsg::UpdateCheck);
-                    }).forget();
+                    })
+                    .forget();
                 }
                 false
             }
             FilterTextMsg::UpdateCheck => {
                 if self.focus.is_none() {
                     let (s, v): (Vec<_>, Vec<_>) = self.inputs.iter().partition(|(c, _)| *c == '"');
-                    let v = v.into_iter().map(|(_, input)| {
-                        // FIXME: this unwrap can sometimes panic, why?
-                        let input = input.cast::<HtmlInputElement>().unwrap();
-                        input.value().chars().filter(|c| c.is_digit(10)).collect::<String>().parse::<usize>().ok()
-                    }).collect::<Option<_>>();
-                    if let Some(v) = v {
-                        let s = s.into_iter().map(|(_, input)| {
+                    let v = v
+                        .into_iter()
+                        .map(|(_, input)| {
+                            // FIXME: this unwrap can sometimes panic, why?
                             let input = input.cast::<HtmlInputElement>().unwrap();
-                            input.value()
-                        }).collect();
+                            input
+                                .value()
+                                .chars()
+                                .filter(|c| c.is_ascii_digit())
+                                .collect::<String>()
+                                .parse::<usize>()
+                                .ok()
+                        })
+                        .collect::<Option<_>>();
+                    if let Some(v) = v {
+                        let s = s
+                            .into_iter()
+                            .map(|(_, input)| {
+                                let input = input.cast::<HtmlInputElement>().unwrap();
+                                input.value()
+                            })
+                            .collect();
                         ctx.props().update.emit((v, s));
                     }
                 }
@@ -454,7 +519,11 @@ impl Component for ExistingFilterText {
             ctx.link().send_message(FilterTextMsg::UpdateCheck);
         }
 
-        let text = ctx.props().filter.split(['|', '"', '$']).map(|s| s.replace("Hide ", "H ").replace("Show ", "S "));
+        let text = ctx
+            .props()
+            .filter
+            .split(['|', '"', '$'])
+            .map(|s| s.replace("Hide ", "H ").replace("Show ", "S "));
         if !ctx.props().editing {
             html! { {for text} }
         } else {
@@ -473,7 +542,7 @@ impl Component for ExistingFilterText {
                             let value = input.value();
                             input.set_size(value.len().max(1) as u32);
                         } else {
-                            let value = prefix.into_iter().chain(input.value().chars().filter(|c| c.is_digit(10))).collect::<String>();
+                            let value = prefix.into_iter().chain(input.value().chars().filter(|c| c.is_ascii_digit())).collect::<String>();
                             input.set_value(&value);
                             input.set_size((value.len().max(1 + INPUT_SHRINK) - INPUT_SHRINK) as u32);
                         };
@@ -495,7 +564,7 @@ impl Component for ExistingFilterText {
                         value = text;
                         size = Some(value.len().max(1).to_string());
                     } else {
-                        value = prefix.into_iter().chain(text.chars().filter(|c| c.is_digit(10))).collect::<String>();
+                        value = prefix.into_iter().chain(text.chars().filter(|c| c.is_ascii_digit())).collect::<String>();
                         size = Some((value.len().max(1 + INPUT_SHRINK) - INPUT_SHRINK).to_string());
                     };
                     html! {

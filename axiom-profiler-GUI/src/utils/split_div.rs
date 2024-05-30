@@ -1,6 +1,13 @@
-use yew::{html, prelude::{Context, Html}, Children, Component, KeyboardEvent, MouseEvent, NodeRef, Properties};
+use yew::{
+    html,
+    prelude::{Context, Html},
+    Children, Component, KeyboardEvent, MouseEvent, NodeRef, Properties,
+};
 
-use crate::{commands::{Command, CommandRef, CommandsContext}, CallbackRef, GlobalCallbacksContext, PagePosition};
+use crate::{
+    commands::{Command, CommandRef, CommandsContext},
+    CallbackRef, GlobalCallbacksContext, PagePosition,
+};
 
 #[derive(Properties, Debug, PartialEq)]
 pub struct SplitDivProps {
@@ -77,10 +84,8 @@ impl Component for SplitDiv {
         }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
+        debug_assert!(ctx.props() != old_props);
         let new_pros = ctx.props();
-        if new_pros == old_props {
-            return false;
-        }
         let new_disabled = ctx.props().left_bound == ctx.props().right_bound;
         let old_disabled = old_props.left_bound == old_props.right_bound;
         if new_disabled != old_disabled {
@@ -143,13 +148,23 @@ impl Component for SplitDiv {
         let onmousedown = ctx.link().callback(Msg::MouseDown);
 
         let position = &ctx.props().snap(self.position);
-        let position = position.min(ctx.props().right_bound).max(ctx.props().left_bound);
-        let style_left = format!("width:calc({}% - {}px); height:100%;", position * 100.0, middle_width * position);
+        let position = position
+            .min(ctx.props().right_bound)
+            .max(ctx.props().left_bound);
+        let style_left = format!(
+            "width:calc({}% - {}px); height:100%;",
+            position * 100.0,
+            middle_width * position
+        );
 
         let style_middle = format!("width:{}px; height:100%; cursor:ew-resize; background-color:rgb(229, 231, 235); background-repeat:no-repeat; background-position:50% center; background-image:url(\"/html/vertical.png\");", middle_width);
 
         let inverse = 1.0 - position;
-        let style_right = format!("width:calc({}% - {}px); height:100%;", inverse * 100.0, middle_width * position);
+        let style_right = format!(
+            "width:calc({}% - {}px); height:100%;",
+            inverse * 100.0,
+            middle_width * position
+        );
         let mut children = ctx.props().children.iter();
         html! {
             <div ref={&self.container} style="display:flex; flex-direction:row; width:100%; height:100%">

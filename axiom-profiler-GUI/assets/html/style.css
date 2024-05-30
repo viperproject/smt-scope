@@ -232,3 +232,61 @@ mwc-dialog {
     vertical-align: baseline;
     padding: 2px 3px;
 }
+
+.flags-content button:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+.flag-widget.term-display {
+	display: block;
+}
+
+ul.td {
+    padding: 0;
+    margin-bottom: 6px;
+}
+li.td-row {
+    display: flex;
+    padding: 2px 0;
+}
+
+li .td-matcher {
+    flex: 1 2 auto;
+    margin-right: 2px;
+}
+li.td-row.error .td-matcher, li .td-matcher.error {
+    border-color: red;
+}
+li .td-formatter {
+    flex: 2 1 auto;
+    margin-left: 2px;
+}
+li.td-row.error .td-formatter, li .td-formatter.error {
+    border-color: red;
+}
+li .td-error {
+    width: 1.8em;
+    margin-left: 4px;
+    display: flex;
+    justify-content: right;
+    align-items: center;
+}
+li .td-error.error {
+    cursor: help;
+}
+
+li .td-matcher, li .td-formatter {
+    width: 100%;
+    padding: 3px 2px;
+}
+li input.td-matcher, li input.td-formatter {
+    background: white;
+    border: 1px solid var(--flags-accent-color);
+    color: var(--flags-accent-color);
+    font-size: 0.8125rem;
+    height: 1.625rem;
+    letter-spacing: 0.01em;
+}
+.td-buttons {
+    float: right;
+}

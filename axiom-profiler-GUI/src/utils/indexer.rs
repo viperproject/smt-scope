@@ -9,7 +9,7 @@ pub struct IndexerProps {
     pub max: usize,
 }
 
-pub struct Indexer { 
+pub struct Indexer {
     index: usize,
 }
 
@@ -30,7 +30,7 @@ impl Component for Indexer {
     fn create(_ctx: &Context<Self>) -> Self {
         if _ctx.props().min > 0 {
             _ctx.props().index_consumer.emit(_ctx.props().min - 1);
-        } 
+        }
         Self {
             index: _ctx.props().min,
         }
@@ -90,6 +90,6 @@ impl Component for Indexer {
                     <button onclick={ctx.link().callback(|_| Msg::SetToMax)}><MatIcon>{"last_page"}</MatIcon></button>
                 </div>
             </div>
-        } 
+        }
     }
 }

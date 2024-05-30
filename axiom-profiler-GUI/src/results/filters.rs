@@ -1,5 +1,17 @@
-use petgraph::{visit::{Dfs, Walker}, Direction, Graph};
-use smt_log_parser::{display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt}, items::QuantIdx, parsers::z3::graph::{analysis::matching_loop::MLGraphNode, raw::{Node, NodeKind, RawInstGraph}, InstGraph, RawNodeIndex}, Z3Parser};
+use petgraph::{
+    visit::{Dfs, Walker},
+    Direction, Graph,
+};
+use smt_log_parser::{
+    analysis::{
+        analysis::matching_loop::MLGraphNode,
+        raw::{Node, NodeKind, RawInstGraph},
+        InstGraph, RawNodeIndex,
+    },
+    display_with::{DisplayCtxt, DisplayWithCtxt},
+    items::QuantIdx,
+    Z3Parser,
+};
 
 use super::svg_result::DEFAULT_NODE_COUNT;
 
@@ -34,16 +46,46 @@ pub enum Filter {
 }
 
 impl Filter {
-    pub fn apply(self, graph: &mut InstGraph, parser: &Z3Parser, config: &DisplayConfiguration) -> FilterOutput {
+    pub fn apply<'a>(
+        self,
+        graph: &mut InstGraph,
+        parser: &'a Z3Parser,
+        config: impl FnOnce(&'a Z3Parser) -> DisplayCtxt<'a>,
+    ) -> FilterOutput {
         match self {
-            Filter::MaxNodeIdx(max) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() >= max),
-            Filter::MinNodeIdx(min) => graph.raw.set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() < min),
-            Filter::IgnoreTheorySolving =>
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.is_discovered())),
-            Filter::IgnoreQuantifier(qidx) =>
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.quant_idx() == qidx)),
-            Filter::IgnoreAllButQuantifier(qidx) =>
-            graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i| parser[parser[i].match_].kind.quant_idx() != qidx)),
+            Filter::MaxNodeIdx(max) => graph
+                .raw
+                .set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() >= max),
+            Filter::MinNodeIdx(min) => graph
+                .raw
+                .set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() < min),
+            Filter::IgnoreTheorySolving => {
+                graph
+                    .raw
+                    .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
+                        node.kind()
+                            .inst()
+                            .is_some_and(|i| parser[parser[i].match_].kind.is_discovered())
+                    })
+            }
+            Filter::IgnoreQuantifier(qidx) => {
+                graph
+                    .raw
+                    .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
+                        node.kind()
+                            .inst()
+                            .is_some_and(|i| parser[parser[i].match_].kind.quant_idx() == qidx)
+                    })
+            }
+            Filter::IgnoreAllButQuantifier(qidx) => {
+                graph
+                    .raw
+                    .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
+                        node.kind()
+                            .inst()
+                            .is_some_and(|i| parser[parser[i].match_].kind.quant_idx() != qidx)
+                    })
+            }
             Filter::MaxInsts(n) => graph.keep_first_n_cost(n),
             Filter::MaxBranching(n) => graph.keep_first_n_children(n),
             Filter::ShowNeighbours(nidx, direction) => {
@@ -51,44 +93,103 @@ impl Filter {
                 graph.raw.set_visibility_many(false, nodes.into_iter())
             }
             Filter::VisitSubTreeWithRoot(nidx, retain) => {
-                let nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nidx.0).iter(&*graph.raw.graph).map(RawNodeIndex).collect();
+                let nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nidx.0)
+                    .iter(&*graph.raw.graph)
+                    .map(RawNodeIndex)
+                    .collect();
                 graph.raw.set_visibility_many(!retain, nodes.into_iter())
             }
             Filter::VisitSourceTree(nidx, retain) => {
-                let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
+                let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0)
+                    .iter(graph.raw.rev())
+                    .map(RawNodeIndex)
+                    .collect();
                 graph.raw.set_visibility_many(!retain, nodes.into_iter())
             }
-            Filter::MaxDepth(depth) =>
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.fwd_depth.min as usize > depth),
-            Filter::ShowLongestPath(nidx) =>
-                return FilterOutput::LongestPath(graph.raw.show_longest_path_through(nidx)),
+            Filter::MaxDepth(depth) => graph
+                .raw
+                .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
+                    node.fwd_depth.min as usize > depth
+                }),
+            Filter::ShowLongestPath(nidx) => {
+                return FilterOutput::LongestPath(graph.raw.show_longest_path_through(nidx))
+            }
             Filter::ShowNamedQuantifier(name) => {
-                let ctxt = DisplayCtxt { parser, config: config.clone() };
-                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some_and(|i|
-                    parser[parser[i].match_].kind.quant_idx().map(|q| parser[q].kind.with(&ctxt).to_string()).is_some_and(|s| s == name)
-                ))
+                let ctxt = config(parser);
+                graph
+                    .raw
+                    .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
+                        node.kind().inst().is_some_and(|i| {
+                            parser[parser[i].match_]
+                                .kind
+                                .quant_idx()
+                                .map(|q| parser[q].kind.with(&ctxt).to_string())
+                                .is_some_and(|s| s == name)
+                        })
+                    })
             }
             // TODO: implement
             Filter::SelectNthMatchingLoop(n) => {
                 graph.raw.reset_visibility_to(true);
-                let nth_ml_endnode = graph.analysis.matching_loop_end_nodes.as_ref().unwrap().get(n).unwrap();
-                let nodes_of_nth_matching_loop = graph.raw.node_indices().filter(|nx| graph.raw[*nx].part_of_ml.contains(&n)).collect::<fxhash::FxHashSet<_>>();
+                let nth_ml_endnode = graph
+                    .analysis
+                    .matching_loop_end_nodes
+                    .as_ref()
+                    .unwrap()
+                    .get(n)
+                    .unwrap();
+                let nodes_of_nth_matching_loop = graph
+                    .raw
+                    .node_indices()
+                    .filter(|nx| graph.raw[*nx].part_of_ml.contains(&n))
+                    .collect::<fxhash::FxHashSet<_>>();
                 let relevant_non_qi_nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nth_ml_endnode.0)
                     .iter(graph.raw.rev())
                     .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
-                    .filter(|nx| graph.raw.graph[*nx].inst_children.nodes.intersection(&nodes_of_nth_matching_loop).count() > 0 && graph.raw.graph[*nx].inst_parents.nodes.intersection(&nodes_of_nth_matching_loop).count() > 0)
+                    .filter(|nx| {
+                        graph.raw.graph[*nx]
+                            .inst_children
+                            .nodes
+                            .intersection(&nodes_of_nth_matching_loop)
+                            .count()
+                            > 0
+                            && graph.raw.graph[*nx]
+                                .inst_parents
+                                .nodes
+                                .intersection(&nodes_of_nth_matching_loop)
+                                .count()
+                                > 0
+                    })
                     .map(RawNodeIndex)
                     .collect();
-                graph.raw.set_visibility_many(false, relevant_non_qi_nodes.into_iter());
-                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ml.contains(&n));
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && !node.part_of_ml.contains(&n));
+                graph
+                    .raw
+                    .set_visibility_many(false, relevant_non_qi_nodes.into_iter());
+                graph
+                    .raw
+                    .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
+                        node.kind().inst().is_some() && node.part_of_ml.contains(&n)
+                    });
+                graph
+                    .raw
+                    .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
+                        node.kind().inst().is_some() && !node.part_of_ml.contains(&n)
+                    });
                 let dot_graph = graph.nth_matching_loop_graph(n);
                 return FilterOutput::MatchingLoopGraph(dot_graph);
-            },
+            }
             Filter::ShowMatchingLoopSubgraph => {
                 // graph.raw.reset_visibility_to(true);
-                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ml.len() > 0);
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().inst().is_some() && node.part_of_ml.len() <= 0)
+                graph
+                    .raw
+                    .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
+                        node.kind().inst().is_some() && !node.part_of_ml.is_empty()
+                    });
+                graph
+                    .raw
+                    .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
+                        node.kind().inst().is_some() && node.part_of_ml.is_empty()
+                    })
                 // if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
                 //     graph.raw.reset_visibility_to(true);
                 //     for nidx in nodes {
@@ -96,7 +197,7 @@ impl Filter {
                 //         graph.raw.set_visibility_many(false, nodes.into_iter())
                 //     }
                 // }
-            },
+            }
         }
         FilterOutput::None
     }
@@ -113,7 +214,7 @@ pub enum FilterOutput {
     LongestPath(Vec<RawNodeIndex>),
     MatchingLoopGeneralizedTerms(Vec<String>),
     MatchingLoopGraph(Graph<(String, MLGraphNode), ()>),
-    None
+    None,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -130,32 +231,57 @@ impl Disabler {
         match self {
             Disabler::ENodes => node.kind().enode().is_some(),
             Disabler::GivenEqualities => node.kind().eq_given().is_some(),
-            Disabler::AllEqualities =>
-                node.kind().eq_given().is_some() || node.kind().eq_trans().is_some(),
+            Disabler::AllEqualities => {
+                node.kind().eq_given().is_some() || node.kind().eq_trans().is_some()
+            }
             Disabler::Smart => match node.kind() {
                 NodeKind::ENode(_) => {
                     // Should only be 0 or 1
-                    let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
-                    let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
+                    let parents = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Incoming)
+                        .count();
+                    let children = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Outgoing)
+                        .count();
                     children == 0 || (parents == 1 && children == 1)
-                },
+                }
                 NodeKind::GivenEquality(..) => {
-                    let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
-                    let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
+                    let parents = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Incoming)
+                        .count();
+                    let children = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Outgoing)
+                        .count();
                     children == 0 || (parents == 1 && children == 1)
-                },
+                }
                 NodeKind::TransEquality(_) => {
-                    let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
+                    let parents = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Incoming)
+                        .count();
                     // Should be >= 1
-                    let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
+                    let children = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Outgoing)
+                        .count();
                     parents == 0 || (parents == 1 && children == 1)
                 }
                 NodeKind::Instantiation(_) => false,
             },
         }
     }
-    pub fn apply(many: impl Iterator<Item = Disabler> + Clone, graph: &mut InstGraph, parser: &Z3Parser) {
-        graph.reset_disabled_to(parser, |node, graph| many.clone().any(|d| d.disable(node, graph, parser)));
+    pub fn apply(
+        many: impl Iterator<Item = Disabler> + Clone,
+        graph: &mut InstGraph,
+        parser: &Z3Parser,
+    ) {
+        graph.reset_disabled_to(parser, |node, graph| {
+            many.clone().any(|d| d.disable(node, graph, parser))
+        });
     }
 
     pub fn description(&self) -> &'static str {

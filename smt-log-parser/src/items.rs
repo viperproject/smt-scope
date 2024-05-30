@@ -1,24 +1,22 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
+use crate::error::Either;
+use crate::{BoxSlice, FxHashMap, IString, NonMaxU32, StringTable, Z3Parser};
+use crate::{Error, Result};
 use std::fmt;
 use std::ops::Index;
-use crate::error::Either;
-use crate::{BoxSlice, FxHashMap, IString, StringTable, Z3Parser, NonMaxU32};
-use crate::{Result, Error};
 
 #[macro_export]
 macro_rules! idx {
     ($struct:ident, $prefix:tt) => {
         #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-        #[derive(
-            Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash,
-        )]
-        pub struct $struct(crate::NonMaxUsize);
+        #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
+        pub struct $struct($crate::NonMaxUsize);
         impl From<usize> for $struct {
             fn from(value: usize) -> Self {
-                Self(crate::NonMaxUsize::new(value).unwrap())
+                Self($crate::NonMaxUsize::new(value).unwrap())
             }
         }
         impl From<$struct> for usize {
@@ -79,7 +77,10 @@ pub struct ProofOrApp {
 
 impl TermKind {
     pub(crate) fn parse_var(value: &str) -> Result<TermKind> {
-        value.parse::<usize>().map(TermKind::Var).map_err(Error::InvalidVar)
+        value
+            .parse::<usize>()
+            .map(TermKind::Var)
+            .map_err(Error::InvalidVar)
     }
     pub(crate) fn parse_proof_app(is_proof: bool, name: IString) -> Self {
         Self::ProofOrApp(ProofOrApp { is_proof, name })
@@ -92,7 +93,10 @@ impl TermKind {
     }
     pub fn app_name(&self) -> Option<IString> {
         match self {
-            Self::ProofOrApp(ProofOrApp { is_proof: false, name }) => Some(*name),
+            Self::ProofOrApp(ProofOrApp {
+                is_proof: false,
+                name,
+            }) => Some(*name),
             _ => None,
         }
     }
@@ -191,6 +195,10 @@ impl VarNames {
             })
             .unwrap_or_default()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     pub fn len(&self) -> usize {
         match self {
             Self::TypeOnly(names) => names.len(),
@@ -213,7 +221,7 @@ pub struct Instantiation {
 
 impl Instantiation {
     pub fn get_resulting_term(&self) -> Option<TermIdx> {
-        self.proof_id.as_ref()?.as_result_ref().ok().copied()
+        self.proof_id.as_ref()?.as_result().ok().copied()
     }
 }
 
@@ -233,9 +241,12 @@ impl Match {
     /// corresponding term in the trigger was matched.
     pub fn trigger_matches(&self) -> impl Iterator<Item = Blame> {
         let mut last = 0;
-        let terms = self.blamed.iter().enumerate().flat_map(|(idx, blame)| 
-            matches!(blame, BlameKind::Term { .. }).then(|| idx)
-        ).chain([self.blamed.len()]);
+        let terms = self
+            .blamed
+            .iter()
+            .enumerate()
+            .flat_map(|(idx, blame)| matches!(blame, BlameKind::Term { .. }).then(|| idx))
+            .chain([self.blamed.len()]);
         terms.skip(1).map(move |idx| {
             let slice = &self.blamed[last..idx];
             last = idx;
@@ -348,13 +359,13 @@ impl<'a> Blame<'a> {
     pub fn enode(self) -> ENodeIdx {
         *self.slice[0].unwrap_enode()
     }
-    pub fn len(self) -> usize {
+
+    pub fn equalities_len(self) -> usize {
         self.slice.len() - 1
     }
     pub fn equalities(self) -> impl Iterator<Item = EqTransIdx> + 'a {
         self.slice.iter().skip(1).map(|x| *x.unwrap_eq())
     }
-
 }
 impl Index<usize> for Blame<'_> {
     type Output = EqTransIdx;
@@ -438,7 +449,7 @@ impl TermIdToIdxMap {
             namespace_map: FxHashMap::default(),
         }
     }
-    fn get_vec_mut(&mut self, namespace: IString) -> Result<&mut Vec<Option<TermIdx>>>{
+    fn get_vec_mut(&mut self, namespace: IString) -> Result<&mut Vec<Option<TermIdx>>> {
         if self.empty_string == namespace {
             // Special handling of common case for empty namespace
             Ok(&mut self.empty_namespace)
@@ -540,7 +551,11 @@ impl EqualityExpl {
     }
     pub fn walk_any(&self, from: ENodeIdx) -> ENodeIdx {
         let Some(to) = self.walk(from, true).or_else(|| self.walk(from, false)) else {
-            panic!("walking from {from:?} with {:?} <--> {:?}", self.from(), self.to());
+            panic!(
+                "walking from {from:?} with {:?} <--> {:?}",
+                self.from(),
+                self.to()
+            );
         };
         to
     }
@@ -573,12 +588,17 @@ pub struct TransitiveExpl {
     pub given_len: usize,
     pub to: ENodeIdx,
 }
+type BackwardIter<'a> = std::iter::Map<
+    std::iter::Rev<std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>>,
+    fn(TransitiveExplSegment) -> TransitiveExplSegment,
+>;
 pub enum TransitiveExplIter<'a> {
     Forward(std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>),
-    Backward(std::iter::Map<std::iter::Rev<std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>>, fn(TransitiveExplSegment) -> TransitiveExplSegment>),
+    Backward(BackwardIter<'a>),
 }
-impl<'a> TransitiveExplIter<'a> {
-    pub fn next(&mut self) -> Option<TransitiveExplSegment> {
+impl Iterator for TransitiveExplIter<'_> {
+    type Item = TransitiveExplSegment;
+    fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Forward(iter) => iter.next(),
             Self::Backward(iter) => iter.next(),
@@ -587,14 +607,26 @@ impl<'a> TransitiveExplIter<'a> {
 }
 
 impl TransitiveExpl {
-    pub fn new(i: impl Iterator<Item = TransitiveExplSegment> + ExactSizeIterator, given_len: usize, to: ENodeIdx) -> Result<Self> {
+    pub fn new(
+        i: impl Iterator<Item = TransitiveExplSegment> + ExactSizeIterator,
+        given_len: usize,
+        to: ENodeIdx,
+    ) -> Result<Self> {
         let mut path = Vec::new();
         path.try_reserve_exact(i.len())?;
         path.extend(i);
-        Ok(Self { path: path.into_boxed_slice(), given_len, to })
+        Ok(Self {
+            path: path.into_boxed_slice(),
+            given_len,
+            to,
+        })
     }
     pub fn empty(to: ENodeIdx) -> Self {
-        Self { path: Box::new([]), given_len: 0, to }
+        Self {
+            path: Box::new([]),
+            given_len: 0,
+            to,
+        }
     }
     pub fn all(&self, fwd: bool) -> TransitiveExplIter {
         let iter = self.path.iter().copied();
@@ -605,16 +637,19 @@ impl TransitiveExpl {
         }
     }
     pub fn get_creator_insts(&self, parser: &Z3Parser) -> Vec<Option<InstIdx>> {
-        self.path.iter().flat_map(|expl_seg| match expl_seg.kind {
-            TransitiveExplSegmentKind::Given(eq_idx, _) => match parser[eq_idx] {
-                EqualityExpl::Literal { eq, ..} => vec![parser[eq].created_by],
-                _ => vec![None]
-            },
-            TransitiveExplSegmentKind::Transitive(eq_idx) => {
-                let trans_expl = &parser[eq_idx];
-                trans_expl.get_creator_insts(parser)
-            },
-        }).collect()
+        self.path
+            .iter()
+            .flat_map(|expl_seg| match expl_seg.kind {
+                TransitiveExplSegmentKind::Given(eq_idx, _) => match parser[eq_idx] {
+                    EqualityExpl::Literal { eq, .. } => vec![parser[eq].created_by],
+                    _ => vec![None],
+                },
+                TransitiveExplSegmentKind::Transitive(eq_idx) => {
+                    let trans_expl = &parser[eq_idx];
+                    trans_expl.get_creator_insts(parser)
+                }
+            })
+            .collect()
     }
 }
 
@@ -626,7 +661,9 @@ pub struct TransitiveExplSegment {
     pub kind: TransitiveExplSegmentKind,
 }
 impl TransitiveExplSegment {
-    pub fn rev<I: Iterator<Item = TransitiveExplSegment> + std::iter::DoubleEndedIterator>(iter: I) -> std::iter::Map<std::iter::Rev<I>, fn(TransitiveExplSegment) -> TransitiveExplSegment> {
+    pub fn rev<I: Iterator<Item = TransitiveExplSegment> + std::iter::DoubleEndedIterator>(
+        iter: I,
+    ) -> std::iter::Map<std::iter::Rev<I>, fn(TransitiveExplSegment) -> TransitiveExplSegment> {
         // Negate the forward direction since we're walking
         // backwards (`.rev()` above).
         iter.rev().map(TransitiveExplSegment::rev_single)

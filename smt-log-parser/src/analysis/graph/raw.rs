@@ -1,11 +1,25 @@
-use std::{fmt, ops::{Index, IndexMut}};
+use std::{
+    fmt,
+    ops::{Index, IndexMut},
+};
 
+use fxhash::FxHashSet;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
-use fxhash::FxHashSet;
-use petgraph::{graph::NodeIndex, visit::{Reversed, Visitable}, Direction::{self, Incoming, Outgoing}};
+use petgraph::{
+    graph::NodeIndex,
+    visit::{Reversed, Visitable},
+    Direction::{self, Incoming, Outgoing},
+};
 
-use crate::{graph_idx, items::{ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, TransitiveExplSegmentKind}, DiGraph, FxHashMap, NonMaxU32, Result, TiVec, Z3Parser};
+use crate::{
+    graph_idx,
+    items::{
+        ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx,
+        TransitiveExplSegmentKind,
+    },
+    DiGraph, FxHashMap, NonMaxU32, Result, TiVec, Z3Parser,
+};
 
 use super::subgraph::{Subgraph, VisitBox};
 
@@ -20,7 +34,7 @@ pub struct RawInstGraph {
     inst_idx: RawNodeIndex,
     eq_given_idx: FxHashMap<(EqGivenIdx, Option<NonMaxU32>), RawNodeIndex>,
 
-    pub(super) stats: GraphStats,
+    pub(crate) stats: GraphStats,
 }
 
 impl RawInstGraph {
@@ -29,8 +43,8 @@ impl RawInstGraph {
             + parser.egraph.enodes.len()
             + parser.egraph.equalities.given.len()
             + parser.egraph.equalities.transitive.len();
-        let edges_lower_bound = parser.insts.insts.len()
-            + parser.egraph.equalities.transitive.len();
+        let edges_lower_bound =
+            parser.insts.insts.len() + parser.egraph.equalities.transitive.len();
         let mut graph = DiGraph::with_capacity(total_nodes, edges_lower_bound);
         let enode_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
         for enode in parser.egraph.enodes.keys() {
@@ -51,7 +65,8 @@ impl RawInstGraph {
                 EqualityExpl::Congruence { uses, .. } => {
                     for i in 0..uses.len() {
                         let use_ = Some(NonMaxU32::new(i as u32).unwrap());
-                        let node = graph.add_node(Node::new(NodeKind::GivenEquality(eq_given, use_)));
+                        let node =
+                            graph.add_node(Node::new(NodeKind::GivenEquality(eq_given, use_)));
                         eq_given_idx.insert((eq_given, use_), RawNodeIndex(node));
                     }
                 }
@@ -61,19 +76,40 @@ impl RawInstGraph {
                 }
             }
         }
-        let stats = GraphStats { hidden: graph.node_count() as u32, disabled: 0, generation: 0 };
-        let mut self_ = RawInstGraph { graph, enode_idx, eq_given_idx, eq_trans_idx, inst_idx, stats };
+        let stats = GraphStats {
+            hidden: graph.node_count() as u32,
+            disabled: 0,
+            generation: 0,
+        };
+        let mut self_ = RawInstGraph {
+            graph,
+            enode_idx,
+            eq_given_idx,
+            eq_trans_idx,
+            inst_idx,
+            stats,
+        };
 
         // Add instantiation blamed and yield edges
         for (idx, inst) in parser.insts.insts.iter_enumerated() {
             for yields in inst.yields_terms.iter() {
                 self_.add_edge(idx, *yields, EdgeKind::Yield);
             }
-            for (i, blame) in parser.insts.matches[inst.match_].trigger_matches().enumerate() {
+            for (i, blame) in parser.insts.matches[inst.match_]
+                .trigger_matches()
+                .enumerate()
+            {
                 let trigger_term = i as u16;
                 self_.add_edge(blame.enode(), idx, EdgeKind::Blame { trigger_term });
                 for (i, eq) in blame.equalities().enumerate() {
-                    self_.add_edge(eq, idx, EdgeKind::BlameEq { trigger_term, eq_order: i as u16 });
+                    self_.add_edge(
+                        eq,
+                        idx,
+                        EdgeKind::BlameEq {
+                            trigger_term,
+                            eq_order: i as u16,
+                        },
+                    );
                 }
             }
         }
@@ -82,14 +118,17 @@ impl RawInstGraph {
         for (idx, eq) in parser.egraph.equalities.given.iter_enumerated() {
             match eq {
                 EqualityExpl::Root { .. } => (),
-                EqualityExpl::Literal { eq, .. } =>
-                    self_.add_edge(*eq, (idx, None), EdgeKind::EqualityFact),
-                EqualityExpl::Congruence { uses, .. } => for (use_, arg_eqs) in uses.iter().enumerate() {
-                    let use_ = Some(NonMaxU32::new(use_ as u32).unwrap());
-                    for arg_eq in arg_eqs.iter() {
-                        self_.add_edge(*arg_eq, (idx, use_), EdgeKind::EqualityCongruence);
+                EqualityExpl::Literal { eq, .. } => {
+                    self_.add_edge(*eq, (idx, None), EdgeKind::EqualityFact)
+                }
+                EqualityExpl::Congruence { uses, .. } => {
+                    for (use_, arg_eqs) in uses.iter().enumerate() {
+                        let use_ = Some(NonMaxU32::new(use_ as u32).unwrap());
+                        for arg_eq in arg_eqs.iter() {
+                            self_.add_edge(*arg_eq, (idx, use_), EdgeKind::EqualityCongruence);
+                        }
                     }
-                },
+                }
                 EqualityExpl::Theory { .. } => (),
                 EqualityExpl::Axiom { .. } => (),
                 EqualityExpl::Unknown { .. } => (),
@@ -98,20 +137,35 @@ impl RawInstGraph {
 
         // Add transitive equality created edges
         for (idx, eq) in parser.egraph.equalities.transitive.iter_enumerated() {
-            let mut all = eq.all(true);
-            while let Some(parent) = all.next() {
+            let all = eq.all(true);
+            for parent in all {
                 match parent.kind {
-                    TransitiveExplSegmentKind::Given(eq, use_) =>
-                        self_.add_edge((eq, use_), idx, EdgeKind::TEqualitySimple { forward: parent.forward }),
-                    TransitiveExplSegmentKind::Transitive(eq) =>
-                        self_.add_edge(eq, idx, EdgeKind::TEqualityTransitive { forward: parent.forward }),
+                    TransitiveExplSegmentKind::Given(eq, use_) => self_.add_edge(
+                        (eq, use_),
+                        idx,
+                        EdgeKind::TEqualitySimple {
+                            forward: parent.forward,
+                        },
+                    ),
+                    TransitiveExplSegmentKind::Transitive(eq) => self_.add_edge(
+                        eq,
+                        idx,
+                        EdgeKind::TEqualityTransitive {
+                            forward: parent.forward,
+                        },
+                    ),
                 }
             }
         }
 
         Ok(self_)
     }
-    fn add_edge(&mut self, source: impl IndexesInstGraph, target: impl IndexesInstGraph, kind: EdgeKind) {
+    fn add_edge(
+        &mut self,
+        source: impl IndexesInstGraph,
+        target: impl IndexesInstGraph,
+        kind: EdgeKind,
+    ) {
         let a = source.index(self).0;
         let b = target.index(self).0;
         self.graph.add_edge(a, b, kind);
@@ -119,13 +173,23 @@ impl RawInstGraph {
 
     pub fn partition(&mut self) -> Result<TiVec<GraphIdx, Subgraph>> {
         let mut subgraphs = TiVec::default();
-        let mut discovered = VisitBox { dfs: self.graph.visit_map() };
+        let mut discovered = VisitBox {
+            dfs: self.graph.visit_map(),
+        };
         for node in self.graph.node_indices().map(RawNodeIndex) {
-            let has_parents = self.graph.neighbors_directed(node.0, Incoming).next().is_some();
+            let has_parents = self
+                .graph
+                .neighbors_directed(node.0, Incoming)
+                .next()
+                .is_some();
             if has_parents {
                 continue;
             }
-            let has_children = self.graph.neighbors_directed(node.0, Outgoing).next().is_some();
+            let has_children = self
+                .graph
+                .neighbors_directed(node.0, Outgoing)
+                .next()
+                .is_some();
             if !has_children {
                 continue;
             }
@@ -162,7 +226,8 @@ impl RawInstGraph {
         Reversed(&*self.graph)
     }
     pub fn neighbors_directed(&self, node: RawNodeIndex, dir: Direction) -> Vec<RawNodeIndex> {
-        let (mut disabled, mut enabled): (Vec<_>, Vec<_>) = self.graph
+        let (mut disabled, mut enabled): (Vec<_>, Vec<_>) = self
+            .graph
             .neighbors_directed(node.0, dir)
             .map(RawNodeIndex)
             .partition(|n| self.graph[n.0].disabled());
@@ -247,13 +312,27 @@ pub struct Depth {
 
 #[derive(Debug, Clone, Default)]
 pub struct NextInsts {
-    /// What are the immediate next instantiation nodes 
+    /// What are the immediate next instantiation nodes
     pub nodes: FxHashSet<RawNodeIndex>,
 }
 
 impl Node {
     fn new(kind: NodeKind) -> Self {
-        Self { state: NodeState::Hidden, cost: 0.0, fwd_depth: Depth::default(), bwd_depth: Depth::default(), subgraph: None, kind, inst_parents: NextInsts { nodes: FxHashSet::default() }, inst_children: NextInsts { nodes: FxHashSet::default() }, part_of_ml: FxHashSet::default() }
+        Self {
+            state: NodeState::Hidden,
+            cost: 0.0,
+            fwd_depth: Depth::default(),
+            bwd_depth: Depth::default(),
+            subgraph: None,
+            kind,
+            inst_parents: NextInsts {
+                nodes: FxHashSet::default(),
+            },
+            inst_children: NextInsts {
+                nodes: FxHashSet::default(),
+            },
+            part_of_ml: FxHashSet::default(),
+        }
     }
     pub fn kind(&self) -> &NodeKind {
         &self.kind
@@ -269,27 +348,30 @@ impl Node {
         matches!(self.state, NodeState::Visible)
     }
     pub fn hidden_inst(&self) -> bool {
-        matches!((self.state, self.kind), (NodeState::Hidden, NodeKind::Instantiation(_)))
+        matches!(
+            (self.state, self.kind),
+            (NodeState::Hidden, NodeKind::Instantiation(_))
+        )
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum NodeKind {
     /// Corresponds to `ENodeIdx`.
-    /// 
+    ///
     /// **Parents:** will always have 0 or 1 parents, if 1 then this will be an `Instantiation`.\
     /// **Children:** arbitrary count, will always be either `Instantiation` or
     /// `GivenEquality` of type `EqualityExpl::Literal`.
     ENode(ENodeIdx),
     /// Corresponds to `EqGivenIdx`.
-    /// 
+    ///
     /// **Parents:** will always have 0 or 1 parents, if 1 then this will be an
     /// `ENode` or a `TransEquality` depending on if it's a `Literal` or
     /// `Congruence` resp.\
     /// **Children:** arbitrary count, will always be `TransEquality` of type.
     GivenEquality(EqGivenIdx, Option<NonMaxU32>),
     /// Corresponds to `EqTransIdx`.
-    /// 
+    ///
     /// **Parents:** arbitrary count, will always be `GivenEquality` or
     /// `TransEquality`. The number of immediately reachable `GivenEquality` con
     /// be found in `TransitiveExpl::given_len`.\
@@ -297,7 +379,7 @@ pub enum NodeKind {
     /// or `Instantiation`.
     TransEquality(EqTransIdx),
     /// Corresponds to `InstIdx`.
-    /// 
+    ///
     /// **Parents:** arbitrary count, will always be `ENode` or `TransEquality`.\
     /// **Children:** arbitrary count, will always be `ENode`.
     Instantiation(InstIdx),
@@ -307,8 +389,13 @@ impl fmt::Display for NodeKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             NodeKind::ENode(enode) => write!(f, "{enode:?}"),
-            NodeKind::GivenEquality(eq, use_) =>
-                write!(f, "{eq:?}{}", use_.filter(|u| *u != NonMaxU32::ZERO).map(|u| format!("[{u}]")).unwrap_or_default()),
+            NodeKind::GivenEquality(eq, use_) => write!(
+                f,
+                "{eq:?}{}",
+                use_.filter(|u| *u != NonMaxU32::ZERO)
+                    .map(|u| format!("[{u}]"))
+                    .unwrap_or_default()
+            ),
             NodeKind::TransEquality(eq) => write!(f, "{eq:?}"),
             NodeKind::Instantiation(inst) => write!(f, "{inst:?}"),
         }
@@ -365,17 +452,23 @@ pub trait IndexesInstGraph {
 }
 impl IndexesInstGraph for ENodeIdx {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
-        RawNodeIndex(NodeIndex::new(graph.enode_idx.0.index() + usize::from(*self)))
+        RawNodeIndex(NodeIndex::new(
+            graph.enode_idx.0.index() + usize::from(*self),
+        ))
     }
 }
 impl IndexesInstGraph for EqTransIdx {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
-        RawNodeIndex(NodeIndex::new(graph.eq_trans_idx.0.index() + usize::from(*self)))
+        RawNodeIndex(NodeIndex::new(
+            graph.eq_trans_idx.0.index() + usize::from(*self),
+        ))
     }
 }
 impl IndexesInstGraph for InstIdx {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
-        RawNodeIndex(NodeIndex::new(graph.inst_idx.0.index() + usize::from(*self)))
+        RawNodeIndex(NodeIndex::new(
+            graph.inst_idx.0.index() + usize::from(*self),
+        ))
     }
 }
 impl IndexesInstGraph for (EqGivenIdx, Option<NonMaxU32>) {

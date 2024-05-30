@@ -1,15 +1,16 @@
 use fxhash::FxHashMap;
 use gloo::timers::callback::{Interval, Timeout};
-use smt_log_parser::parsers::z3::graph::{RawNodeIndex, VisibleEdgeIndex};
+use material_yew::WeakComponentLink;
+use smt_log_parser::analysis::{RawNodeIndex, VisibleEdgeIndex};
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_timer::Instant;
 use web_sys::{Element, HtmlInputElement, ResizeObserver, ResizeObserverEntry};
 use yew::prelude::*;
-use material_yew::WeakComponentLink;
 
 use crate::commands::{Command, CommandRef, CommandsContext};
 use crate::results::svg_result::RenderedGraph;
+use crate::state::StateContext;
 use crate::{CallbackRef, GlobalCallbacksContext, PagePosition, PrecisePosition};
 
 use super::svg_graph::{Graph, Svg};
@@ -36,7 +37,7 @@ pub struct GraphContainer {
     window: GraphWindow,
 
     mouse_closures: Option<Closure<dyn Fn(MouseEvent)>>,
-    resize_observer: Option<(ResizeObserver, Closure<dyn Fn(Vec<ResizeObserverEntry>)>)>,
+    resize_observer: Option<ResizeObserverPair>,
     drag_start: Option<(PagePosition, PagePosition, bool)>,
     zoom_factor: f64,
     zoom_factor_delta: f64,
@@ -47,6 +48,8 @@ pub struct GraphContainer {
     _command_refs: [CommandRef; 1],
     _command_selection: [CommandRef; 2],
 }
+
+pub type ResizeObserverPair = (ResizeObserver, Closure<dyn Fn(Vec<ResizeObserverEntry>)>);
 
 impl GraphContainer {
     pub fn set_zoom(&mut self, zoom_factor: f64, with_mouse: bool) {
@@ -85,13 +88,18 @@ impl GraphWindow {
             self.scroll_loss *= save_loss;
         }
         let zero = PrecisePosition::default();
-        let bounded = (pos + self.scroll_loss).min(self.graph_dims - self.window_dims).max(zero);
+        let bounded = (pos + self.scroll_loss)
+            .min(self.graph_dims - self.window_dims)
+            .max(zero);
         if save_loss.is_some() {
             self.scroll_loss += pos - bounded;
             self.ignore_scroll = true;
         }
         self.update_scroll_position(bounded);
-        self.scroll_window.cast::<Element>().unwrap_throw().scroll_to_with_x_and_y(bounded.x, bounded.y);
+        self.scroll_window
+            .cast::<Element>()
+            .unwrap_throw()
+            .scroll_to_with_x_and_y(bounded.x, bounded.y);
     }
 
     fn update_scroll_position(&mut self, graph_position: PrecisePosition) {
@@ -114,9 +122,15 @@ impl GraphWindow {
     fn read_window_dimensions(&mut self) {
         let scroll_window = self.scroll_window.cast::<Element>().unwrap_throw();
         let rect = scroll_window.get_bounding_client_rect();
-        let new_position = PrecisePosition { x: rect.x(), y: rect.y() };
+        let new_position = PrecisePosition {
+            x: rect.x(),
+            y: rect.y(),
+        };
         self.window_position = new_position;
-        let new_dims = PrecisePosition { x: rect.width(), y: rect.height() };
+        let new_dims = PrecisePosition {
+            x: rect.width(),
+            y: rect.height(),
+        };
         self.window_dims = new_dims;
     }
 }
@@ -143,7 +157,12 @@ impl Component for GraphContainer {
             .borrow_mut()
             .replace(ctx.link().clone());
 
-        let graph = ctx.props().rendered.as_ref().map(|r| (Html::from_html_unchecked(r.svg_text.clone()), r.graph.generation));
+        let graph = ctx.props().rendered.as_ref().map(|r| {
+            (
+                Html::from_html_unchecked(r.svg_text.clone()),
+                r.graph.generation,
+            )
+        });
 
         // Global callbacks
         let registerer = ctx.link().get_callbacks_registerer().unwrap();
@@ -180,18 +199,39 @@ impl Component for GraphContainer {
         let _command_selection = [deselect_all, focus_selection];
 
         let held_keys = FxHashMap::default();
-        Self { graph, mouse_closures: None, resize_observer: None, drag_start: None, window: GraphWindow::default(), zoom_factor: 1.0, zoom_factor_delta: 1.0, zoom_with_mouse: false, held_keys, timeout: None, _callback_refs, _command_selection, _command_refs }
+        Self {
+            graph,
+            mouse_closures: None,
+            resize_observer: None,
+            drag_start: None,
+            window: GraphWindow::default(),
+            zoom_factor: 1.0,
+            zoom_factor_delta: 1.0,
+            zoom_with_mouse: false,
+            held_keys,
+            timeout: None,
+            _callback_refs,
+            _command_selection,
+            _command_refs,
+        }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        if ctx.props() == old_props {
-            return false;
-        }
+        debug_assert!(ctx.props() != old_props);
         self.zoom_factor_delta = 1.0;
-        if self.graph.as_ref().map(|g| g.1) != ctx.props().rendered.as_ref().map(|r| r.graph.generation) {
-            self.graph = ctx.props().rendered.as_ref().map(|r| (Html::from_html_unchecked(r.svg_text.clone()), r.graph.generation));
+        if self.graph.as_ref().map(|g| g.1)
+            != ctx.props().rendered.as_ref().map(|r| r.graph.generation)
+        {
+            self.graph = ctx.props().rendered.as_ref().map(|r| {
+                (
+                    Html::from_html_unchecked(r.svg_text.clone()),
+                    r.graph.generation,
+                )
+            });
         }
-        let old_no_selection = old_props.selected_nodes.is_empty() && old_props.selected_edges.is_empty();
-        let new_no_selection = ctx.props().selected_nodes.is_empty() && ctx.props().selected_edges.is_empty();
+        let old_no_selection =
+            old_props.selected_nodes.is_empty() && old_props.selected_edges.is_empty();
+        let new_no_selection =
+            ctx.props().selected_nodes.is_empty() && ctx.props().selected_edges.is_empty();
         if old_no_selection != new_no_selection {
             for c in &self._command_selection {
                 c.set_disabled(new_no_selection);
@@ -231,7 +271,10 @@ impl Component for GraphContainer {
                     true
                 } else {
                     ev.prevent_default();
-                    let delta = PrecisePosition { x: ev.delta_x(), y: ev.delta_y() };
+                    let delta = PrecisePosition {
+                        x: ev.delta_x(),
+                        y: ev.delta_y(),
+                    };
                     self.window.scroll_by(delta, None);
                     false
                 }
@@ -248,17 +291,18 @@ impl Component for GraphContainer {
             Msg::MouseMove(ev) => {
                 if ev.buttons() != 1 {
                     self.drag_start = None;
-                } else {
-                    if let Some((start, last, drag)) = &mut self.drag_start {
-                        let pos = PagePosition::from(&ev);
-                        if (start.x - pos.x).abs() > 5 || (start.y - pos.y).abs() > 5 {
-                            *drag = true;
-                            let last_last = *last;
-                            *last = pos;
-                            if !ev.shift_key() {
-                                let delta = PrecisePosition { x: (last_last.x - last.x) as f64, y: (last_last.y - last.y) as f64 };
-                                self.window.scroll_by(delta, None);
-                            }
+                } else if let Some((start, last, drag)) = &mut self.drag_start {
+                    let pos = PagePosition::from(&ev);
+                    if (start.x - pos.x).abs() > 5 || (start.y - pos.y).abs() > 5 {
+                        *drag = true;
+                        let last_last = *last;
+                        *last = pos;
+                        if !ev.shift_key() {
+                            let delta = PrecisePosition {
+                                x: (last_last.x - last.x) as f64,
+                                y: (last_last.y - last.y) as f64,
+                            };
+                            self.window.scroll_by(delta, None);
                         }
                     }
                 }
@@ -280,13 +324,17 @@ impl Component for GraphContainer {
                 false
             }
             Msg::KeyDown(ev) => {
+                if ctx.link().get_state().unwrap().state.overlay_visible {
+                    return false;
+                }
+
                 let key = ev.key();
                 let plain = !ev.meta_key() && !ev.ctrl_key() && !ev.shift_key() && !ev.alt_key();
                 match key.as_str() {
                     "a" if ev.meta_key() => {
                         ev.prevent_default();
                         ctx.props().select_all.emit(());
-                        return false;
+                        false
                     }
                     "f" if plain => {
                         ctx.link().send_message(Msg::FocusSelection);
@@ -297,11 +345,13 @@ impl Component for GraphContainer {
                         false
                     }
                     "w" | "a" | "s" | "d" | "q" | "e" if plain => {
-                        let (held, _, released) = self.held_keys.entry(key).or_insert_with(||
-                            (Instant::now(), 0.0, None)
-                        );
+                        let (held, _, released) = self
+                            .held_keys
+                            .entry(key)
+                            .or_insert_with(|| (Instant::now(), 0.0, None));
                         if let Some(released) = released.take() {
-                            *held = *held + released.elapsed();
+                            let new_help = *held + released.elapsed();
+                            *held = new_help;
                         }
                         self.timeout.get_or_insert_with(|| {
                             let hold = ctx.link().callback(Msg::KeyHold);
@@ -315,17 +365,28 @@ impl Component for GraphContainer {
             Msg::KeyUp(ev) => {
                 let key = ev.key();
                 if let Some((_, _, released)) = self.held_keys.get_mut(&key) {
-                    released.get_or_insert_with(|| Instant::now());
+                    released.get_or_insert_with(Instant::now);
                 }
                 false
             }
             Msg::KeyHold(()) => {
+                if ctx.link().get_state().unwrap().state.overlay_visible {
+                    return false;
+                }
+
                 let mut delta = PrecisePosition::default();
                 let mut dz = 0.0;
                 self.held_keys.retain(|key, (time, moved, released)| {
-                    let held_for = released.map(|released| released - *time).unwrap_or_else(|| time.elapsed());
+                    let held_for = released
+                        .map(|released| released - *time)
+                        .unwrap_or_else(|| time.elapsed());
                     let held_for = held_for.as_secs_f64();
-                    let move_by = 2000.0 * (if held_for <= 1.0 { held_for } else { held_for.powf(2.0) });
+                    let move_by = 2000.0
+                        * (if held_for <= 1.0 {
+                            held_for
+                        } else {
+                            held_for.powf(2.0)
+                        });
                     debug_assert!(move_by >= *moved);
                     let move_delta = move_by - *moved;
                     *moved = move_by;
@@ -348,7 +409,10 @@ impl Component for GraphContainer {
                 dz != 0.0
             }
             Msg::FocusSelection => {
-                let msg = Msg::ScrollZoomSelection(ctx.props().selected_nodes.clone(), ctx.props().selected_edges.clone());
+                let msg = Msg::ScrollZoomSelection(
+                    ctx.props().selected_nodes.clone(),
+                    ctx.props().selected_edges.clone(),
+                );
                 ctx.link().send_message(msg);
                 false
             }
@@ -363,7 +427,10 @@ impl Component for GraphContainer {
                 self.set_zoom(zoom_factor.min(1.0), false);
                 // Call `Msg::ScrollSelection` in 10ms
                 let link = ctx.link().clone();
-                Timeout::new(10, move || link.send_message(Msg::ScrollSelection(selected_nodes, selected_edges))).forget();
+                Timeout::new(10, move || {
+                    link.send_message(Msg::ScrollSelection(selected_nodes, selected_edges))
+                })
+                .forget();
                 true
             }
             Msg::ScrollSelection(selected_nodes, selected_edges) => {
@@ -390,9 +457,7 @@ impl Component for GraphContainer {
                     .dyn_into()
                     .unwrap_throw();
                 match target.value().to_string().parse::<f64>() {
-                    Ok(value) => {
-                        Msg::SetValueTo(value)
-                    }
+                    Ok(value) => Msg::SetValueTo(value),
                     Err(_) => Msg::SetValueTo(1.0),
                 }
             }
@@ -416,7 +481,11 @@ impl Component for GraphContainer {
         let onwheel = ctx.link().callback(Msg::Wheel);
         let onscroll = ctx.link().callback(Msg::Scroll);
         let zoom_factor = format!("{:.3}", self.zoom_factor);
-        let idx = zoom_factor.chars().rev().position(|c| c != '0' && c != '.').unwrap_or(zoom_factor.len() - 1);
+        let idx = zoom_factor
+            .chars()
+            .rev()
+            .position(|c| c != '0' && c != '.')
+            .unwrap_or(zoom_factor.len() - 1);
         let zoom_factor = zoom_factor[0..zoom_factor.len() - idx].to_string();
         let set_scroll = ctx.link().callback(Msg::SetScrollTo);
         html! {
@@ -434,7 +503,7 @@ impl Component for GraphContainer {
                 zoom_with_mouse={self.zoom_with_mouse}
                 selected_nodes={ctx.props().selected_nodes.clone()}
                 selected_edges={ctx.props().selected_edges.clone()}
-                scroll_position={self.window.graph_position.clone()}
+                scroll_position={self.window.graph_position}
                 set_scroll={set_scroll}
                 scroll_window={self.window.scroll_window.clone()}
             ><Svg svg={self.graph.clone()}/></Graph>
@@ -445,22 +514,21 @@ impl Component for GraphContainer {
     fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
         if first_render {
             let mouse_down = ctx.link().callback(Msg::MouseDown);
-            let mouse_down: Closure<dyn Fn(MouseEvent)> = Closure::new(move |ev| mouse_down.emit(ev));
+            let mouse_down: Closure<dyn Fn(MouseEvent)> =
+                Closure::new(move |ev| mouse_down.emit(ev));
             // attach event listener to node
             let div = self.window.scroll_window.cast::<Element>().unwrap_throw();
-            div.add_event_listener_with_callback(
-                "mousedown",
-                mouse_down.as_ref().unchecked_ref(),
-            ).unwrap_throw();
+            div.add_event_listener_with_callback("mousedown", mouse_down.as_ref().unchecked_ref())
+                .unwrap_throw();
             self.mouse_closures = Some(mouse_down);
 
             // Resize observer
             let resize_closure = ctx.link().callback(Msg::Resize);
             resize_closure.emit(Vec::new());
-            let resize_closure = Closure::new(move |entries: Vec<ResizeObserverEntry>| {
-                resize_closure.emit(entries)
-            });
-            let observer = ResizeObserver::new(resize_closure.as_ref().unchecked_ref()).unwrap_throw();
+            let resize_closure =
+                Closure::new(move |entries: Vec<ResizeObserverEntry>| resize_closure.emit(entries));
+            let observer =
+                ResizeObserver::new(resize_closure.as_ref().unchecked_ref()).unwrap_throw();
             observer.observe(&div);
             self.resize_observer = Some((observer, resize_closure));
         }
@@ -472,7 +540,8 @@ impl Component for GraphContainer {
             div.remove_event_listener_with_callback(
                 "mousedown",
                 mouse_down.as_ref().unchecked_ref(),
-            ).unwrap();
+            )
+            .unwrap();
         }
         if let Some((observer, _closure)) = self.resize_observer.take() {
             observer.disconnect();
@@ -480,7 +549,10 @@ impl Component for GraphContainer {
     }
 }
 
-fn get_bounding_rect(nodes: &Vec<RawNodeIndex>, edges: &Vec<VisibleEdgeIndex>) -> Option<(PrecisePosition, PrecisePosition)> {
+fn get_bounding_rect(
+    nodes: &[RawNodeIndex],
+    edges: &[VisibleEdgeIndex],
+) -> Option<(PrecisePosition, PrecisePosition)> {
     let document = gloo::utils::document();
     let nodes = nodes
         .iter()
@@ -494,11 +566,27 @@ fn get_bounding_rect(nodes: &Vec<RawNodeIndex>, edges: &Vec<VisibleEdgeIndex>) -
     if all_selected.is_empty() {
         return None;
     }
-    let min_x = all_selected.iter().map(|r| r.left()).min_by(f64::total_cmp).unwrap();
-    let min_y = all_selected.iter().map(|r| r.top()).min_by(f64::total_cmp).unwrap();
+    let min_x = all_selected
+        .iter()
+        .map(|r| r.left())
+        .min_by(f64::total_cmp)
+        .unwrap();
+    let min_y = all_selected
+        .iter()
+        .map(|r| r.top())
+        .min_by(f64::total_cmp)
+        .unwrap();
     let min = PrecisePosition { x: min_x, y: min_y };
-    let max_x = all_selected.iter().map(|r| r.right()).max_by(f64::total_cmp).unwrap();
-    let max_y = all_selected.iter().map(|r| r.bottom()).max_by(f64::total_cmp).unwrap();
+    let max_x = all_selected
+        .iter()
+        .map(|r| r.right())
+        .max_by(f64::total_cmp)
+        .unwrap();
+    let max_y = all_selected
+        .iter()
+        .map(|r| r.bottom())
+        .max_by(f64::total_cmp)
+        .unwrap();
     let max = PrecisePosition { x: max_x, y: max_y };
     Some((min, max))
 }

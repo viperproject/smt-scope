@@ -68,6 +68,12 @@ pub struct StackFrame {
     pub active: bool,
 }
 
+impl Default for StackFrame {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StackFrame {
     pub fn new() -> Self {
         Self { active: true }

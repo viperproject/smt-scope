@@ -73,4 +73,3 @@ pub fn integer_input(props: &UsizeInputProps) -> Html {
         </>
     }
 }
-

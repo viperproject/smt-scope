@@ -1,9 +1,14 @@
 use petgraph::Direction;
 
-use crate::{parsers::z3::graph::{raw::{Node, NodeKind}, RawNodeIndex}, Z3Parser};
+use crate::{
+    analysis::{
+        raw::{Node, NodeKind},
+        RawNodeIndex,
+    },
+    Z3Parser,
+};
 
 use super::{Initialiser, TransferInitialiser};
-
 
 pub trait CostInitialiser {
     /// The starting value for a node.
@@ -12,11 +17,19 @@ pub trait CostInitialiser {
     fn reset(&mut self) {}
     type Observed;
     fn observe(&mut self, node: &Node, parser: &Z3Parser) -> Self::Observed;
-    fn transfer(&mut self, from: &Node, from_idx: RawNodeIndex, to_idx: usize, to_all: &[Self::Observed]) -> f64;
+    fn transfer(
+        &mut self,
+        from: &Node,
+        from_idx: RawNodeIndex,
+        to_idx: usize,
+        to_all: &[Self::Observed],
+    ) -> f64;
 }
 impl<C: CostInitialiser> Initialiser<false, 0> for C {
     type Value = f64;
-    fn direction() -> Direction { Direction::Incoming }
+    fn direction() -> Direction {
+        Direction::Incoming
+    }
     fn base(&mut self, node: &Node, parser: &Z3Parser) -> Self::Value {
         CostInitialiser::base(self, node, parser)
     }
@@ -32,7 +45,13 @@ impl<C: CostInitialiser> TransferInitialiser<false, 0> for C {
     fn observe(&mut self, node: &Node, parser: &Z3Parser) -> Self::Observed {
         CostInitialiser::observe(self, node, parser)
     }
-    fn transfer(&mut self, from: &Node, from_idx: RawNodeIndex, to_idx: usize, to_all: &[Self::Observed]) -> Self::Value {
+    fn transfer(
+        &mut self,
+        from: &Node,
+        from_idx: RawNodeIndex,
+        to_idx: usize,
+        to_all: &[Self::Observed],
+    ) -> Self::Value {
         CostInitialiser::transfer(self, from, from_idx, to_idx, to_all)
     }
     fn add(&mut self, node: &mut Node, value: Self::Value) {
@@ -57,7 +76,13 @@ impl CostInitialiser for DefaultCost {
             NodeKind::Instantiation(_) => 1,
         }
     }
-    fn transfer(&mut self, node: &Node, _from_idx: RawNodeIndex, idx: usize, incoming: &[Self::Observed]) -> f64 {
+    fn transfer(
+        &mut self,
+        node: &Node,
+        _from_idx: RawNodeIndex,
+        idx: usize,
+        incoming: &[Self::Observed],
+    ) -> f64 {
         let total = incoming.iter().sum::<usize>() as f64;
         node.cost * incoming[idx] as f64 / total
     }

@@ -4,8 +4,7 @@ use std::{collections::TryReserveError, num::ParseIntError};
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-
-use crate::items::{TermId, TermIdx, StackIdx, ENodeIdx, BlameKind, Fingerprint};
+use crate::items::{BlameKind, ENodeIdx, Fingerprint, StackIdx, TermId, TermIdx};
 
 pub type Result<T> = std::result::Result<T, Error>;
 pub type FResult<T> = std::result::Result<T, FatalError>;
@@ -18,13 +17,13 @@ pub enum Either<T, U> {
     Right(U),
 }
 impl<T, U> Either<T, U> {
-    pub fn as_result(self) -> std::result::Result<T, U> {
+    pub fn into_result(self) -> std::result::Result<T, U> {
         match self {
             Self::Left(t) => Ok(t),
             Self::Right(u) => Err(u),
         }
     }
-    pub fn as_result_ref(&self) -> std::result::Result<&T, &U> {
+    pub fn as_result(&self) -> std::result::Result<&T, &U> {
         match self {
             Self::Left(t) => Ok(t),
             Self::Right(u) => Err(u),

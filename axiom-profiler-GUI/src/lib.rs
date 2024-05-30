@@ -7,10 +7,13 @@ use fxhash::{FxHashMap, FxHashSet};
 use gloo::timers::callback::Timeout;
 use gloo_file::File;
 use gloo_file::{callbacks::FileReader, FileList};
+use material_yew::{MatDialog, MatIcon, MatIconButton, WeakComponentLink};
 use petgraph::visit::EdgeRef;
 use results::graph_info;
-use results::svg_result::{Msg as SVGMsg, QuantIdxToColourMap, RenderedGraph, RenderingState, SVGResult};
-use smt_log_parser::parsers::z3::graph::{InstGraph, VisibleEdgeIndex, RawNodeIndex};
+use results::svg_result::{
+    Msg as SVGMsg, QuantIdxToColourMap, RenderedGraph, RenderingState, SVGResult,
+};
+use smt_log_parser::analysis::{InstGraph, RawNodeIndex, VisibleEdgeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{ParseState, ReaderState};
 use wasm_bindgen::closure::Closure;
@@ -19,49 +22,55 @@ use wasm_timer::Instant;
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::html::Scope;
 use yew::prelude::*;
-use material_yew::{MatIcon, MatIconButton, MatDialog, WeakComponentLink};
 
 use crate::commands::CommandsProvider;
-use crate::configuration::{ConfigurationContext, ConfigurationProvider, Flags};
+use crate::configuration::{ConfigurationProvider, Flags};
 use crate::filters::FiltersState;
+
 use crate::infobars::{OmnibarMessage, SearchActionResult, SidebarSectionHeader, Topbar};
 use crate::results::filters::Filter;
-use crate::filters::Msg::AddFilter;
 use crate::results::svg_result::GraphState;
-use crate::utils::{lookup::StringLookupZ3, overlay_page::{Overlay, SetVisibleCallback}};
+use crate::state::{StateContext, StateProviderContext};
+use crate::utils::{
+    lookup::StringLookupZ3,
+    overlay_page::{Overlay, SetVisibleCallback},
+};
 
-pub use global_callbacks::{GlobalCallbacksProvider, CallbackRef, GlobalCallbacksContext};
+pub use global_callbacks::{CallbackRef, GlobalCallbacksContext, GlobalCallbacksProvider};
 pub use utils::position::*;
 
-pub mod results;
-mod utils;
-mod infobars;
+pub mod commands;
+pub mod configuration;
+pub mod file;
 mod filters;
 mod global_callbacks;
-pub mod configuration;
 pub mod homepage;
+mod infobars;
+pub mod results;
 pub mod shortcuts;
-pub mod commands;
-pub mod file;
+pub mod state;
+mod utils;
 
 pub const GIT_DESCRIBE: &str = env!("VERGEN_GIT_DESCRIBE");
 pub fn version() -> Option<semver::Version> {
-    let version = GIT_DESCRIBE.strip_prefix("v")?;
-    semver::Version::parse(version).ok().filter(|v| v.pre.is_empty())
+    let version = GIT_DESCRIBE.strip_prefix('v')?;
+    semver::Version::parse(version)
+        .ok()
+        .filter(|v| v.pre.is_empty())
 }
 
-const SIZE_NAMES: [&'static str; 5] = ["B", "KB", "MB", "GB", "TB"];
+const SIZE_NAMES: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
 const ALLOW_HIDE_SIDEBAR_NO_FILE: bool = true;
 
 pub static MOUSE_POSITION: OnceLock<RwLock<PagePosition>> = OnceLock::new();
 pub fn mouse_position() -> &'static RwLock<PagePosition> {
-    MOUSE_POSITION.get_or_init(|| RwLock::default())
+    MOUSE_POSITION.get_or_init(RwLock::default)
 }
 pub static PREVENT_DEFAULT_DRAG_OVER: OnceLock<Mutex<bool>> = OnceLock::new();
 
 pub enum Msg {
     File(Option<File>),
-    LoadedFile(String, u64, Z3Parser, ParseState<bool>, bool),
+    LoadedFile(Box<Z3Parser>, ParseState<bool>, bool),
     LoadingState(LoadingState),
     RenderedGraph(RenderedGraph),
     FailedOpening(String),
@@ -120,14 +129,16 @@ impl ParseProgress {
         let time_delta = self.time - old.time;
         self.time_delta = Some(time_delta);
         let speed = bytes_delta as f64 / time_delta.as_secs_f64();
-        self.speed = Some(old.speed.map(|old| (speed + SPEED_SMOOTHING * old) / (SPEED_SMOOTHING + 1.0)).unwrap_or(speed));
+        self.speed = Some(
+            old.speed
+                .map(|old| (speed + SPEED_SMOOTHING * old) / (SPEED_SMOOTHING + 1.0))
+                .unwrap_or(speed),
+        );
     }
 }
 
 #[derive(Clone)]
 pub struct OpenedFileInfo {
-    file_name: String,
-    file_size: u64,
     parser_state: ParseState<bool>,
     parser_cancelled: bool,
     update: Rc<RefCell<Result<Callback<SVGMsg>, Vec<SVGMsg>>>>,
@@ -135,17 +146,15 @@ pub struct OpenedFileInfo {
     selected_nodes: Vec<RawNodeIndex>,
     selected_edges: Vec<VisibleEdgeIndex>,
     rendered: Option<RenderedGraph>,
-    parser: RcParser,
 }
 
 impl PartialEq for OpenedFileInfo {
     fn eq(&self, other: &Self) -> bool {
-        self.file_name == other.file_name
-            && self.file_size == other.file_size
-            && std::mem::discriminant(&self.parser_state) == std::mem::discriminant(&other.parser_state)
+        std::mem::discriminant(&self.parser_state) == std::mem::discriminant(&other.parser_state)
             && self.selected_nodes == other.selected_nodes
             && self.selected_edges == other.selected_edges
-            && self.rendered.as_ref().map(|r| r.graph.generation) == other.rendered.as_ref().map(|r| r.graph.generation)
+            && self.rendered.as_ref().map(|r| r.graph.generation)
+                == other.rendered.as_ref().map(|r| r.graph.generation)
     }
 }
 
@@ -158,9 +167,11 @@ impl OpenedFileInfo {
     }
     pub fn send_updates(&self, msgs: impl Iterator<Item = SVGMsg>) {
         match &mut *self.update.borrow_mut() {
-            Ok(cb) => for msg in msgs {
-                cb.emit(msg);
-            },
+            Ok(cb) => {
+                for msg in msgs {
+                    cb.emit(msg);
+                }
+            }
             Err(e) => e.extend(msgs),
         }
     }
@@ -220,10 +231,11 @@ impl Component for FileDataComponent {
 
         // Global Callbacks
         let registerer = ctx.link().get_callbacks_registerer().unwrap();
-        let mouse_move_ref = (registerer.register_mouse_move)(Callback::from(|event: MouseEvent| {
-            *mouse_position().write().unwrap() = PagePosition::from(&event);
-        }));
-        let pd = PREVENT_DEFAULT_DRAG_OVER.get_or_init(|| Mutex::default());
+        let mouse_move_ref =
+            (registerer.register_mouse_move)(Callback::from(|event: MouseEvent| {
+                *mouse_position().write().unwrap() = PagePosition::from(&event);
+            }));
+        let pd = PREVENT_DEFAULT_DRAG_OVER.get_or_init(Mutex::default);
         let drag_over_ref = (registerer.register_drag_over)(Callback::from(|event: DragEvent| {
             *mouse_position().write().unwrap() = PagePosition::from(&event);
             let pd = *pd.lock().unwrap();
@@ -233,7 +245,14 @@ impl Component for FileDataComponent {
         }));
         let [drag_enter_ref, drag_leave_ref, drop_ref] = Self::file_drag(&registerer, ctx.link());
         let keydown = (registerer.register_keyboard_down)(ctx.link().callback(Msg::KeyDown));
-        let _callback_refs = [mouse_move_ref, drag_over_ref, drag_enter_ref, drag_leave_ref, drop_ref, keydown];
+        let _callback_refs = [
+            mouse_move_ref,
+            drag_over_ref,
+            drag_enter_ref,
+            drag_leave_ref,
+            drop_ref,
+            keydown,
+        ];
 
         // Commands
         let commands = ctx.link().get_commands_registerer().unwrap();
@@ -242,7 +261,12 @@ impl Component for FileDataComponent {
             name: "Search".to_string(),
             execute: Callback::from(move |_| {
                 let omnibox_ref = omnibox_ref.clone();
-                Timeout::new(10, move || { omnibox_ref.cast::<HtmlElement>().map(|omnibox| omnibox.focus().ok()); }).forget();
+                Timeout::new(10, move || {
+                    omnibox_ref
+                        .cast::<HtmlElement>()
+                        .map(|omnibox| omnibox.focus().ok());
+                })
+                .forget();
             }),
             keyboard_shortcut: vec!["Cmd", "s"],
             disabled: false,
@@ -260,7 +284,9 @@ impl Component for FileDataComponent {
         let hide_sidebar_cmd = Command {
             name: "Toggle left sidebar".to_string(),
             execute: Callback::from(move |_| {
-                sidebar_button_ref.cast::<HtmlElement>().map(|b| b.click());
+                if let Some(b) = sidebar_button_ref.cast::<HtmlElement>() {
+                    b.click()
+                }
             }),
             keyboard_shortcut: vec!["Cmd", "b"],
             disabled: false,
@@ -304,10 +330,10 @@ impl Component for FileDataComponent {
                 let Some(file) = file else {
                     return false;
                 };
-                // remove any old parser in the configuration
-                let cfg = ctx.link().get_configuration().unwrap();
-                cfg.update_parser(|p| p.take().is_some());
-                cfg.reset_ml_viewer_mode();
+                // remove any old parser in the state
+                let state = ctx.link().get_state().unwrap();
+                state.update_parser(|p| p.take().is_some());
+                state.set_ml_viewer_mode(false);
                 // hide the flags page if shown
                 self.flags_visible.borrow().emit(Some(false));
 
@@ -315,7 +341,9 @@ impl Component for FileDataComponent {
             }
             Msg::LoadingState(mut state) => {
                 log::info!("New state \"{state:?}\"");
-                if let (LoadingState::Parsing(parsing, _), LoadingState::Parsing(old, _)) = (&mut state, &self.progress) {
+                if let (LoadingState::Parsing(parsing, _), LoadingState::Parsing(old, _)) =
+                    (&mut state, &self.progress)
+                {
                     parsing.delta(old);
                 }
                 self.progress = state;
@@ -323,21 +351,31 @@ impl Component for FileDataComponent {
                 true
             }
             Msg::RenderedGraph(rendered) => {
-                ctx.link().send_message(Msg::LoadingState(LoadingState::FileDisplayed));
+                ctx.link()
+                    .send_message(Msg::LoadingState(LoadingState::FileDisplayed));
                 if let Some(file) = &mut self.file {
                     let old_len = file.selected_nodes.len();
                     file.selected_nodes.retain(|n| rendered.graph.contains(*n));
                     if file.selected_nodes.len() != old_len {
-                        ctx.link().send_message(Msg::SelectedNodes(file.selected_nodes.clone()));
+                        ctx.link()
+                            .send_message(Msg::SelectedNodes(file.selected_nodes.clone()));
                     }
                     if let Some(old) = &file.rendered {
                         let old_len = file.selected_edges.len();
                         // Update selected edges
-                        let mut to_update: FxHashMap<_, _> = file.selected_edges.iter_mut().flat_map(|e| {
-                            let old_edge = &old.graph[*e];
-                            let different = !rendered.graph.graph.edge_weight(e.0).is_some_and(|edge| edge == old_edge);
-                            different.then(|| (old_edge, e))
-                        }).collect();
+                        let mut to_update: FxHashMap<_, _> = file
+                            .selected_edges
+                            .iter_mut()
+                            .flat_map(|e| {
+                                let old_edge = &old.graph[*e];
+                                let different = !rendered
+                                    .graph
+                                    .graph
+                                    .edge_weight(e.0)
+                                    .is_some_and(|edge| edge == old_edge);
+                                different.then_some((old_edge, e))
+                            })
+                            .collect();
                         if !to_update.is_empty() {
                             for new_edge in rendered.graph.graph.edge_references() {
                                 if let Some(e) = to_update.remove(new_edge.weight()) {
@@ -348,12 +386,14 @@ impl Component for FileDataComponent {
                                 }
                             }
                             if !to_update.is_empty() {
-                                let to_remove: FxHashSet<_> = to_update.into_iter().map(|(_, v)| *v).collect();
+                                let to_remove: FxHashSet<_> =
+                                    to_update.into_values().map(|v| *v).collect();
                                 file.selected_edges.retain(|e| !to_remove.contains(e));
                             }
                         }
                         if file.selected_edges.len() != old_len {
-                            ctx.link().send_message(Msg::SelectedEdges(file.selected_edges.clone()));
+                            ctx.link()
+                                .send_message(Msg::SelectedEdges(file.selected_edges.clone()));
                         }
                     }
                     file.rendered = Some(rendered);
@@ -361,16 +401,21 @@ impl Component for FileDataComponent {
                 true
             }
             Msg::FailedOpening(error) => {
-                let message = OmnibarMessage { message: error, is_error: true };
+                let message = OmnibarMessage {
+                    message: error,
+                    is_error: true,
+                };
                 self.set_message(ctx.link(), message, 10000);
 
                 self.progress = LoadingState::NoFileSelected;
                 let file = self.file.take();
                 drop(file);
-                let cfg = ctx.link().get_configuration().unwrap();
-                cfg.update_parser(|p| p.take().is_some());
+                let state = ctx.link().get_state().unwrap();
+                state.update_file_info(|fi| fi.take().is_some());
+                state.update_parser(|p| p.take().is_some());
 
-                if let Some(navigation_section) = self.navigation_section.cast::<web_sys::Element>() {
+                if let Some(navigation_section) = self.navigation_section.cast::<web_sys::Element>()
+                {
                     let _ = navigation_section.class_list().add_1("expanded");
                 }
                 true
@@ -383,19 +428,15 @@ impl Component for FileDataComponent {
                 self.message.take();
                 true
             }
-            Msg::LoadedFile(file_name, file_size, parser, parser_state, parser_cancelled) => {
-                log::info!("Processing \"{file_name}\"");
+            Msg::LoadedFile(parser, parser_state, parser_cancelled) => {
                 drop(self.reader.take());
-                let parser = RcParser::new(parser);
-                let rc_parser = parser.clone();
-                let cfg = ctx.link().get_configuration().unwrap();
-                cfg.update_parser(move |p| {
-                    *p = Some(rc_parser);
+                let parser = RcParser::new(*parser);
+                let state = ctx.link().get_state().unwrap();
+                state.update_parser(move |p| {
+                    *p = Some(parser);
                     true
                 });
                 let file = OpenedFileInfo {
-                    file_name,
-                    file_size,
                     parser_state,
                     parser_cancelled,
                     filter: WeakComponentLink::default(),
@@ -403,24 +444,24 @@ impl Component for FileDataComponent {
                     selected_nodes: Vec::new(),
                     selected_edges: Vec::new(),
                     rendered: None,
-                    parser,
                 };
                 self.file = Some(file);
-                if let Some(navigation_section) = self.navigation_section.cast::<web_sys::Element>() {
+                if let Some(navigation_section) = self.navigation_section.cast::<web_sys::Element>()
+                {
                     let _ = navigation_section.class_list().remove_1("expanded");
                 }
                 true
             }
             Msg::SelectedNodes(nodes) => {
                 let Some(file) = &mut self.file else {
-                    return false
+                    return false;
                 };
                 file.selected_nodes = nodes;
                 true
             }
             Msg::SelectedEdges(edges) => {
                 let Some(file) = &mut self.file else {
-                    return false
+                    return false;
                 };
                 file.selected_edges = edges;
                 true
@@ -441,7 +482,9 @@ impl Component for FileDataComponent {
                 "s" => {
                     if event.meta_key() {
                         event.prevent_default();
-                        self.omnibox.cast::<HtmlElement>().and_then(|omnibox| omnibox.focus().ok());
+                        self.omnibox
+                            .cast::<HtmlElement>()
+                            .and_then(|omnibox| omnibox.focus().ok());
                     }
                     false
                 }
@@ -462,48 +505,23 @@ impl Component for FileDataComponent {
                     false
                 }
                 _ => false,
-            }
+            },
             Msg::SearchMatchingLoops => {
                 log::info!("Searching matching loops");
-                if let Some(file) = &mut self.file {
-                    // TODO: re-add finding matching loops
-                    // assert!(file.parser.graph.is_some());
-                    // let parser = ctx.link().get_configuration().unwrap().config.parser.unwrap();
-                    // let tmp = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone();
-                    // let mut parser = tmp.parser.borrow_mut();
-                    // file.parser = ctx.link().get_configuration().unwrap().config.parser.unwrap().clone(); 
-                    let cfg = ctx.link().get_configuration().unwrap();
-                    let parser = cfg.config.parser.as_ref().unwrap();
-                    file.parser = parser.clone();
-                    if let Some(g) = &file.parser.graph {
-                        file.parser.found_mls = Some((&mut *g.borrow_mut())
-                        // .search_matching_loops(&mut *parser))
-                        .search_matching_loops(&mut *file.parser.parser.borrow_mut()))
+                if let Some(_file) = &mut self.file {
+                    let state = ctx.link().get_state().unwrap();
+                    let parser = state.state.parser.as_ref().unwrap();
+                    if let Some(g) = &parser.graph {
+                        let found_mls = Some(
+                            g.borrow_mut()
+                                .search_matching_loops(&mut parser.parser.borrow_mut()),
+                        );
+                        state.update_parser(move |p| {
+                            p.as_mut().unwrap().found_mls = found_mls;
+                            true
+                        });
+                        return true;
                     }
-                    return true;
-                    // file.parser.found_mls = Some(
-                    //     &file
-                    //     .parser
-                    //     .graph
-                    //     .unwrap()
-                    //     .borrow_mut()
-                    //     .deref_mut()
-                    //     .search_matching_loops()
-                    // );
-                    // assert!(parser.graph.is_some());
-                    // if let Some(g) = &file
-                    //     .parser
-                    //     .graph
-                    //     // .borrow_mut() 
-                    //     // .as_mut()
-                    //     {
-                    //     file.parser.found_mls = Some(g
-                    //         .borrow_mut()
-                    //         .deref_mut()
-                    //         .search_matching_loops());
-                    //     log::info!("Returning true");
-                    //     return true;
-                    // }
                 }
                 log::info!("Returning false");
                 false
@@ -532,29 +550,41 @@ impl Component for FileDataComponent {
         let current_trace = match &self.file {
             Some(file) => {
                 let search_matching_loops = ctx.link().callback(|_| Msg::SearchMatchingLoops);
-                html!{
+                html! {
                     <FiltersState file={file.clone()} search_matching_loops={search_matching_loops} weak_link={self.filters_state_link.clone()} />
                 }
             }
-            None => html!{},
+            None => html! {},
         };
 
-        let cfg = ctx.link().get_configuration().unwrap();
-        let parser = cfg.config.parser.clone();
+        let link = ctx.link().clone();
+        let flags_visible_changed = Callback::from(move |visible| {
+            let data = link.get_state().unwrap();
+            data.set_overlay_visible(visible);
+        });
+
+        let data = ctx.link().get_state().unwrap();
+        let parser = data.state.parser.clone();
         let parser_ref = parser.clone();
-        let visible = self.file.as_ref().and_then(|f| f.rendered.as_ref().map(|r| r.graph.clone()));
+        let visible = self
+            .file
+            .as_ref()
+            .and_then(|f| f.rendered.as_ref().map(|r| r.graph.clone()));
         let visible_ref = visible.clone();
         let search = Callback::from(move |query: String| {
-            let Some(parser) = parser_ref.as_ref() else {
-                return None
-            };
+            let parser = parser_ref.as_ref()?;
             let matches = parser.lookup.get_fuzzy(&query);
-            Some(SearchActionResult::new(query, matches, parser, visible_ref.as_deref()))
+            Some(SearchActionResult::new(
+                query,
+                matches,
+                parser,
+                visible_ref.as_deref(),
+            ))
         });
         let pick = Callback::from(move |(name, kind): (String, _)| {
             let parser = parser.as_ref()?;
             let entry = parser.lookup.get_exact(&name)?.get(&kind)?;
-            Some(entry.get_visible(&*parser.graph.as_ref()?.borrow(), visible.as_deref()?))
+            Some(entry.get_visible(&parser.graph.as_ref()?.borrow(), visible.as_deref()?))
         });
         let insts_info_link = self.insts_info_link.clone();
         let select = Callback::from(move |idx: RawNodeIndex| {
@@ -567,29 +597,36 @@ impl Component for FileDataComponent {
         });
         let filters_state_link = self.filters_state_link.clone();
         let pick_nth_ml = Callback::from({
-            let file = self.file.clone();
+            let _file = self.file.clone();
             move |n: usize| {
-            if let Some(found_mls) = file.as_ref().and_then(|file| file.parser.found_mls) {
                 let Some(filters_state_link) = &*filters_state_link.borrow() else {
                     return;
                 };
-                filters_state_link.send_message(crate::filters::Msg::AddFilter(false, Filter::SelectNthMatchingLoop(n)));
+                filters_state_link.send_message(crate::filters::Msg::AddFilter(
+                    false,
+                    Filter::SelectNthMatchingLoop(n),
+                ));
             }
-        }});
+        });
 
         // Callbacks
         let file_select_ref = self.file_select.clone();
         let on_change = ctx.link().callback(move |_| {
             let files = file_select_ref.cast::<HtmlInputElement>().unwrap().files();
-            Msg::File(files.map(FileList::from).and_then(|files|
-                (files.len() == 1).then(|| files[0].clone())
-            ))
+            Msg::File(
+                files
+                    .map(FileList::from)
+                    .and_then(|files| (files.len() == 1).then(|| files[0].clone())),
+            )
         });
         let sidebar_ref = sidebar.clone();
         let open_files = self.file.is_some();
         let hide_sidebar = Callback::from(move |_| {
             if let Some(sidebar) = sidebar_ref.cast::<HtmlElement>() {
-                if ALLOW_HIDE_SIDEBAR_NO_FILE || sidebar.class_list().contains("hide-sidebar") || open_files {
+                if ALLOW_HIDE_SIDEBAR_NO_FILE
+                    || sidebar.class_list().contains("hide-sidebar")
+                    || open_files
+                {
                     sidebar.class_list().toggle("hide-sidebar").ok();
                 }
             }
@@ -617,48 +654,52 @@ impl Component for FileDataComponent {
         });
         let message = self.message.as_ref().map(|(_, message)| message).cloned();
         let header_class = if is_canary { "canary" } else { "stable" };
-        let page_class = if at_homepage { "page home-page" } else { "page" };
+        let page_class = if at_homepage {
+            "page home-page"
+        } else {
+            "page"
+        };
         let flags_visible = self.flags_visible.clone();
         let toggle_settings = Callback::from(move |click: MouseEvent| {
             click.prevent_default();
             flags_visible.borrow().emit(None);
         });
         html! {
-<>
-    <nav class="sidebar" ref={sidebar}>
-        <header class={header_class}><img src="html/logo_side_small.png" class="brand"/><div ref={&self.sidebar_button} class="sidebar-button" onclick={hide_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
-        <input type="file" ref={&self.file_select} class="trace_file" accept=".log" onchange={on_change} multiple=false/>
-        <div class="sidebar-scroll"><div class="sidebar-scroll-container">
-            <SidebarSectionHeader header_text="Navigation" collapsed_text="Open a new trace" section={self.navigation_section.clone()}><ul>
-                <li><a href="#" draggable="false" id="open_trace_file"><div class="material-icons"><MatIcon>{"folder_open"}</MatIcon></div>{"Open trace file"}</a></li>
-            </ul></SidebarSectionHeader>
-            {current_trace}
-            <SidebarSectionHeader header_text="Support" collapsed_text="Documentation & Bugs"><ul>
-                <li><a href="#" draggable="false" onclick={show_shortcuts} id="keyboard_shortcuts"><div class="material-icons"><MatIcon>{"help"}</MatIcon></div>{"Keyboard shortcuts"}</a></li>
-                <li><a href="https://github.com/viperproject/axiom-profiler-2/blob/main/README.md" target="_blank" id="documentation"><div class="material-icons"><MatIcon>{"find_in_page"}</MatIcon></div>{"Documentation"}</a></li>
-                <li><a href="#" draggable="false" onclick={toggle_settings} id="flags"><div class="material-icons"><MatIcon>{"emoji_flags"}</MatIcon></div>{"Flags"}</a></li>
-                <li><a href="https://github.com/viperproject/axiom-profiler-2/issues/new" target="_blank" id="report_a_bug"><div class="material-icons"><MatIcon>{"bug_report"}</MatIcon></div>{"Report a bug"}</a></li>
-            </ul></SidebarSectionHeader>
-            <div class="sidebar-footer">
-                <div title="Number of pending operations" class="dbg-info-square"><div>{"OPS"}</div><div>{self.pending_ops}</div></div>
-                <div title="Service Worker: Serving from cache. Ready for offline use" class="dbg-info-square amber"><div>{"SW"}</div><div>{"NA"}</div></div>
-                <div class="version"><a href={version_link} title="Channel: stable" target="_blank">{version_info}</a></div>
+        <>
+            <nav class="sidebar" ref={sidebar}>
+                <header class={header_class}><img src="html/logo_side_small.png" class="brand"/><div ref={&self.sidebar_button} class="sidebar-button" onclick={hide_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
+                <input type="file" ref={&self.file_select} class="trace_file" accept=".log" onchange={on_change} multiple=false/>
+                <div class="sidebar-scroll"><div class="sidebar-scroll-container">
+                    <SidebarSectionHeader header_text="Navigation" collapsed_text="Open a new trace" section={self.navigation_section.clone()}><ul>
+                        <li><a href="#" draggable="false" id="open_trace_file"><div class="material-icons"><MatIcon>{"folder_open"}</MatIcon></div>{"Open trace file"}</a></li>
+                    </ul></SidebarSectionHeader>
+                    {current_trace}
+                    <SidebarSectionHeader header_text="Support" collapsed_text="Documentation & Bugs"><ul>
+                        <li><a href="#" draggable="false" onclick={show_shortcuts} id="keyboard_shortcuts"><div class="material-icons"><MatIcon>{"help"}</MatIcon></div>{"Keyboard shortcuts"}</a></li>
+                        <li><a href="https://github.com/viperproject/axiom-profiler-2/blob/main/README.md" target="_blank" id="documentation"><div class="material-icons"><MatIcon>{"find_in_page"}</MatIcon></div>{"Documentation"}</a></li>
+                        <li><a href="#" draggable="false" onclick={toggle_settings} id="flags"><div class="material-icons"><MatIcon>{"emoji_flags"}</MatIcon></div>{"Flags"}</a></li>
+                        <li><a href="https://github.com/viperproject/axiom-profiler-2/issues/new" target="_blank" id="report_a_bug"><div class="material-icons"><MatIcon>{"bug_report"}</MatIcon></div>{"Report a bug"}</a></li>
+                    </ul></SidebarSectionHeader>
+                    <div class="sidebar-footer">
+                        <div title="Number of pending operations" class="dbg-info-square"><div>{"OPS"}</div><div>{self.pending_ops}</div></div>
+                        <div title="Service Worker: Serving from cache not implemented yet." class="dbg-info-square amber"><div>{"SW"}</div><div>{"NA"}</div></div>
+                        <div class="version"><a href={version_link} title="Channel: stable" target="_blank">{version_info}</a></div>
+                    </div>
+                </div></div>
+            </nav>
+            <div class="topbar">
+                <Topbar progress={self.progress.clone()} {message} omnibox={self.omnibox.clone()} {search} {pick} {select} {pick_nth_ml} />
             </div>
-        </div></div>
-    </nav>
-    <div class="topbar">
-        <Topbar progress={self.progress.clone()} {message} omnibox={self.omnibox.clone()} {search} {pick} {select} found_mls={self.file.as_ref().and_then(|file| file.parser.found_mls)} {pick_nth_ml} />
-    </div>
-    <div class="alerts"></div>
-    <div class={page_class}>
-        {page}
-        <Overlay set_visible={self.flags_visible.clone()}><Flags /></Overlay>
-    </div>
+            <div class="alerts"></div>
+            <div class={page_class}>
+                {page}
+                <Overlay visible_changed={flags_visible_changed} set_visible={self.flags_visible.clone()}><Flags /></Overlay>
+            </div>
 
-    // Shortcuts dialog
-    <shortcuts::Shortcuts noderef={self.help_dialog.clone()} {onopened} {onclosed}/>
-</>
-        }
+            // Shortcuts dialog
+            <shortcuts::Shortcuts noderef={self.help_dialog.clone()} {onopened} {onclosed}/>
+        </>
+                }
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
@@ -668,13 +709,14 @@ impl Component for FileDataComponent {
             // https://github.com/leptos-rs/leptos/issues/2104 due to the `.click()`.
             let input = self.file_select.cast::<HtmlInputElement>().unwrap();
             let closure: Closure<dyn Fn(MouseEvent)> = Closure::new(move |e: MouseEvent| {
-                e.prevent_default(); input.click();
+                e.prevent_default();
+                input.click();
             });
-            let div = gloo::utils::document().get_element_by_id("open_trace_file").unwrap();
-            div.add_event_listener_with_callback(
-                "click",
-                closure.as_ref().unchecked_ref(),
-            ).unwrap();
+            let div = gloo::utils::document()
+                .get_element_by_id("open_trace_file")
+                .unwrap();
+            div.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())
+                .unwrap();
             closure.forget();
         }
     }
@@ -683,11 +725,9 @@ impl Component for FileDataComponent {
 #[function_component(App)]
 pub fn app() -> Html {
     html! {
-        <main><GlobalCallbacksProvider><CommandsProvider>
-            <ConfigurationProvider>
+        <main><GlobalCallbacksProvider><ConfigurationProvider><CommandsProvider><StateProviderContext>
             <FileDataComponent/>
-            </ConfigurationProvider>
-        </CommandsProvider></GlobalCallbacksProvider></main>
+        </StateProviderContext></CommandsProvider></ConfigurationProvider></GlobalCallbacksProvider></main>
     }
 }
 
@@ -714,8 +754,8 @@ impl Clone for RcParser {
 impl PartialEq for RcParser {
     fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(&*self.parser, &*other.parser)
-        && self.graph.is_some() == other.graph.is_some()
-        && self.found_mls == other.found_mls
+            && self.graph.is_some() == other.graph.is_some()
+            && self.found_mls == other.found_mls
     }
 }
 impl Eq for RcParser {}

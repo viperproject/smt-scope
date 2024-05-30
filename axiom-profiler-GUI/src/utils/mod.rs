@@ -1,8 +1,9 @@
-pub mod toggle_switch;
-pub mod usize_input;
 pub mod indexer;
+pub mod lookup;
+pub mod overlay_page;
+pub mod position;
 pub mod split_div;
 pub mod toggle_list;
-pub mod lookup;
-pub mod position;
-pub mod overlay_page;
+pub mod toggle_switch;
+pub mod updater;
+pub mod usize_input;

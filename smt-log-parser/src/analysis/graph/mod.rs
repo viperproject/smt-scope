@@ -7,16 +7,16 @@ use self::{analysis::Analysis, raw::RawInstGraph, subgraph::Subgraph, visible::V
 
 // TODO: once the ML algo is reimplemented, delete this
 // pub mod inst_graph;
+pub mod analysis;
+pub mod disable;
 pub mod generalise;
 pub mod hide;
-pub mod disable;
-pub mod visible;
 pub mod raw;
 pub mod subgraph;
-pub mod analysis;
+pub mod visible;
 
-pub use raw::{RawNodeIndex, RawEdgeIndex};
-pub use visible::{VisibleNodeIndex, VisibleEdgeIndex};
+pub use raw::{RawEdgeIndex, RawNodeIndex};
+pub use visible::{VisibleEdgeIndex, VisibleNodeIndex};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
@@ -31,7 +31,11 @@ impl InstGraph {
         let mut raw = RawInstGraph::new(parser)?;
         let subgraphs = raw.partition()?;
         let analysis = Analysis::new(raw.graph.node_indices().map(RawNodeIndex))?;
-        let mut self_ = InstGraph { raw, subgraphs, analysis };
+        let mut self_ = InstGraph {
+            raw,
+            subgraphs,
+            analysis,
+        };
         self_.initialise_default(parser);
         Ok(self_)
     }
@@ -45,11 +49,11 @@ impl InstGraph {
 macro_rules! graph_idx {
     ($mod_name:ident, $node:ident, $edge:ident, $inner:ident) => {
         mod $mod_name {
-            use crate::idx;
-            use petgraph::graph::IndexType;
-            use std::fmt;
             #[cfg(feature = "mem_dbg")]
             use mem_dbg::*;
+            use petgraph::graph::IndexType;
+            use std::fmt;
+            use $crate::idx;
 
             idx!($inner, "ix{}");
             impl Default for $inner {
@@ -72,11 +76,11 @@ macro_rules! graph_idx {
             pub struct $node(pub petgraph::graph::NodeIndex<$inner>);
             #[derive(Debug, Copy, Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
             pub struct $edge(pub petgraph::graph::EdgeIndex<$inner>);
-            
+
             #[cfg(feature = "mem_dbg")]
-            impl MemDbgImpl for $node where {}
+            impl MemDbgImpl for $node {}
             #[cfg(feature = "mem_dbg")]
-            impl MemSize for $node where {
+            impl MemSize for $node {
                 fn mem_size(&self, _flags: SizeFlags) -> usize {
                     std::mem::size_of::<Self>()
                 }
@@ -86,9 +90,9 @@ macro_rules! graph_idx {
                 type Copy = True;
             }
             #[cfg(feature = "mem_dbg")]
-            impl MemDbgImpl for $edge where {}
+            impl MemDbgImpl for $edge {}
             #[cfg(feature = "mem_dbg")]
-            impl MemSize for $edge where {
+            impl MemSize for $edge {
                 fn mem_size(&self, _flags: SizeFlags) -> usize {
                     std::mem::size_of::<Self>()
                 }
@@ -98,6 +102,6 @@ macro_rules! graph_idx {
                 type Copy = True;
             }
         }
-        pub use $mod_name::{$node, $edge, $inner};
+        pub use $mod_name::{$edge, $inner, $node};
     };
 }

@@ -1,11 +1,17 @@
 use std::rc::Rc;
 
 use material_yew::icon::MatIcon;
-use petgraph::{visit::{Dfs, Walker}, Direction};
-use smt_log_parser::parsers::z3::graph::{raw::NodeKind, RawNodeIndex};
+use petgraph::{
+    visit::{Dfs, Walker},
+    Direction,
+};
+use smt_log_parser::analysis::{raw::NodeKind, RawNodeIndex};
 use yew::{function_component, html, use_context, Callback, Html, MouseEvent, Properties};
 
-use crate::{configuration::ConfigurationProvider, results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT}};
+use crate::{
+    results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT},
+    state::StateProvider,
+};
 
 #[derive(PartialEq, Properties)]
 pub struct AddFilterSidebarProps {
@@ -17,9 +23,9 @@ pub struct AddFilterSidebarProps {
 
 #[function_component]
 pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
-    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let Some(parser) = &cfg.config.parser else {
-        return html!{}
+    let data = use_context::<Rc<StateProvider>>().unwrap();
+    let Some(parser) = &data.state.parser else {
+        return html! {};
     };
 
     let mut outer_graph = None;
@@ -43,62 +49,114 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
         ]
     } else {
         let Some(graph) = parser.graph.as_ref() else {
-            return html!{}
+            return html! {};
         };
         outer_graph = Some(graph.clone());
         let graph = graph.borrow();
         let nodes = props.nodes.iter().map(|n| {
             let i = match *graph.raw[*n].kind() {
                 NodeKind::Instantiation(i) => Some(i),
-                _ => None
+                _ => None,
             };
-            let q = i.and_then(|i| (& *parser.parser.borrow())[(& *parser.parser.borrow())[i].match_].kind.quant_idx());
+            let q = i.and_then(|i| {
+                (&*parser.parser.borrow())[(&*parser.parser.borrow())[i].match_]
+                    .kind
+                    .quant_idx()
+            });
             (*n, i, q)
         });
         vec![
-            nodes.clone()
-                .filter(|&(n, _, _)| graph.raw.neighbors_directed(n, Direction::Outgoing).into_iter().any(|n| graph.raw[n].hidden()))
-                .map(|(n, _, _)| Filter::ShowNeighbours(n, Direction::Outgoing)).collect(),
-            nodes.clone()
-                .filter(|&(n, _, _)| graph.raw.neighbors_directed(n, Direction::Incoming).into_iter().any(|n| graph.raw[n].hidden()))
-                .map(|(n, _, _)| Filter::ShowNeighbours(n, Direction::Incoming)).collect(),
-            nodes.clone()
-                .filter(|&(n, _, _)| Dfs::new(graph.raw.rev(), n.0).iter(graph.raw.rev()).any(|n| graph.raw.graph[n].hidden()))
-                .map(|(n, _, _)| Filter::VisitSourceTree(n, true)).collect(),
-            nodes.clone()
-                .filter(|&(n, _, _)| Dfs::new(graph.raw.rev(), n.0).iter(graph.raw.rev()).any(|n| graph.raw.graph[n].visible()))
-                .map(|(n, _, _)| Filter::VisitSourceTree(n, false)).collect(),
-            nodes.clone()
-            .filter(|&(n, _, _)| Dfs::new(&*graph.raw.graph, n.0).iter(&*graph.raw.graph).any(|n| graph.raw.graph[n].hidden()))
-                .map(|(n, _, _)| Filter::VisitSubTreeWithRoot(n, true)).collect(),
-            nodes.clone()
-            .filter(|&(n, _, _)| Dfs::new(&*graph.raw.graph, n.0).iter(&*graph.raw.graph).any(|n| graph.raw.graph[n].visible()))
-                .map(|(n, _, _)| Filter::VisitSubTreeWithRoot(n, false)).collect(),
-            nodes.clone()
+            nodes
+                .clone()
+                .filter(|&(n, _, _)| {
+                    graph
+                        .raw
+                        .neighbors_directed(n, Direction::Outgoing)
+                        .into_iter()
+                        .any(|n| graph.raw[n].hidden())
+                })
+                .map(|(n, _, _)| Filter::ShowNeighbours(n, Direction::Outgoing))
+                .collect(),
+            nodes
+                .clone()
+                .filter(|&(n, _, _)| {
+                    graph
+                        .raw
+                        .neighbors_directed(n, Direction::Incoming)
+                        .into_iter()
+                        .any(|n| graph.raw[n].hidden())
+                })
+                .map(|(n, _, _)| Filter::ShowNeighbours(n, Direction::Incoming))
+                .collect(),
+            nodes
+                .clone()
+                .filter(|&(n, _, _)| {
+                    Dfs::new(graph.raw.rev(), n.0)
+                        .iter(graph.raw.rev())
+                        .any(|n| graph.raw.graph[n].hidden())
+                })
+                .map(|(n, _, _)| Filter::VisitSourceTree(n, true))
+                .collect(),
+            nodes
+                .clone()
+                .filter(|&(n, _, _)| {
+                    Dfs::new(graph.raw.rev(), n.0)
+                        .iter(graph.raw.rev())
+                        .any(|n| graph.raw.graph[n].visible())
+                })
+                .map(|(n, _, _)| Filter::VisitSourceTree(n, false))
+                .collect(),
+            nodes
+                .clone()
+                .filter(|&(n, _, _)| {
+                    Dfs::new(&*graph.raw.graph, n.0)
+                        .iter(&*graph.raw.graph)
+                        .any(|n| graph.raw.graph[n].hidden())
+                })
+                .map(|(n, _, _)| Filter::VisitSubTreeWithRoot(n, true))
+                .collect(),
+            nodes
+                .clone()
+                .filter(|&(n, _, _)| {
+                    Dfs::new(&*graph.raw.graph, n.0)
+                        .iter(&*graph.raw.graph)
+                        .any(|n| graph.raw.graph[n].visible())
+                })
+                .map(|(n, _, _)| Filter::VisitSubTreeWithRoot(n, false))
+                .collect(),
+            nodes
+                .clone()
                 .filter(|(_, i, _)| i.is_some())
-                .map(|(_, _, q)| Filter::IgnoreQuantifier(q)).collect(),
-            nodes.clone()
+                .map(|(_, _, q)| Filter::IgnoreQuantifier(q))
+                .collect(),
+            nodes
+                .clone()
                 .filter(|(_, i, _)| i.is_some())
-                .map(|(_, _, q)| Filter::IgnoreAllButQuantifier(q)).collect(),
-            nodes.clone()
-                .map(|(n, _, _)| Filter::ShowLongestPath(n)).collect(),
+                .map(|(_, _, q)| Filter::IgnoreAllButQuantifier(q))
+                .collect(),
+            nodes
+                .clone()
+                .map(|(n, _, _)| Filter::ShowLongestPath(n))
+                .collect(),
         ]
     };
     let filters = filters.into_iter().map(|f| {
         if f.is_empty() {
-            return html!{}
+            return html! {};
         }
         let icon = f[0].icon();
-        let fc = |i| outer_graph.as_ref().map(|g| {
-            *g.borrow().raw[i].kind()
-        }).unwrap();
-        let short_text = f[0].short_text(fc).split(['|', '"', '$']).enumerate().map(|(i, c)| {
-            if i % 2 == 0 {
-                c
-            } else {
-                "_"
-            }
-        }).collect::<String>();
+        let fc = |i| {
+            outer_graph
+                .as_ref()
+                .map(|g| *g.borrow().raw[i].kind())
+                .unwrap()
+        };
+        let short_text = f[0]
+            .short_text(fc)
+            .split(['|', '"', '$'])
+            .enumerate()
+            .map(|(i, c)| if i % 2 == 0 { c } else { "_" })
+            .collect::<String>();
         let long_text = f[0].long_text(fc, false);
 
         let new_filter = props.new_filter.clone();

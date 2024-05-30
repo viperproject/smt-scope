@@ -1,17 +1,26 @@
 use std::{ops::Deref, rc::Rc, sync::Mutex};
 
-use yew::{html::Scope, Callback, Children, Component, Context, ContextHandle, ContextProvider, Html, Properties};
+use yew::{
+    html::Scope, Callback, Children, Component, Context, ContextHandle, ContextProvider, Html,
+    Properties,
+};
 
 // Public interface
 
 pub trait CommandsContext {
-    fn get_commands(&self, updated: Callback<Rc<Commands>>) -> Option<(Rc<Commands>, ContextHandle<Rc<Commands>>)>;
+    fn get_commands(
+        &self,
+        updated: Callback<Rc<Commands>>,
+    ) -> Option<(Rc<Commands>, ContextHandle<Rc<Commands>>)>;
     fn get_commands_registerer(&self) -> Option<CommandRegisterer> {
         self.get_commands(Callback::noop()).map(|c| c.0.register)
     }
 }
 impl<T: Component> CommandsContext for Scope<T> {
-    fn get_commands(&self, updated: Callback<Rc<Commands>>) -> Option<(Rc<Commands>, ContextHandle<Rc<Commands>>)> {
+    fn get_commands(
+        &self,
+        updated: Callback<Rc<Commands>>,
+    ) -> Option<(Rc<Commands>, ContextHandle<Rc<Commands>>)> {
         self.context(updated)
     }
 }
@@ -73,7 +82,8 @@ impl CommandRegisterer {
             let link_ref = link.clone();
             let deregister = Box::new(move || link_ref.send_message(Msg::DeRegister(id_v)));
             let link_ref = link.clone();
-            let set_disabled = Box::new(move |disabled| link_ref.send_message(Msg::SetDisabled(id_v, disabled)));
+            let set_disabled =
+                Box::new(move |disabled| link_ref.send_message(Msg::SetDisabled(id_v, disabled)));
             CommandRef(deregister, set_disabled)
         })))
     }

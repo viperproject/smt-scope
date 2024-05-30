@@ -1,64 +1,86 @@
 use std::{cell::RefCell, rc::Rc};
 
 use gloo::file::File;
-use smt_log_parser::{parsers::{AsyncBufferRead, ParseState}, LogParser, Z3Parser};
-use wasm_streams::ReadableStream;
+use smt_log_parser::{
+    parsers::{AsyncBufferRead, ParseState},
+    LogParser, Z3Parser,
+};
 use wasm_bindgen::JsCast;
+use wasm_streams::ReadableStream;
 use web_sys::DataTransfer;
 use yew::{html::Scope, Callback, DragEvent};
 
-use crate::{global_callbacks::GlobalCallbacks, infobars::OmnibarMessage, CallbackRef, FileDataComponent, LoadingState, Msg, ParseProgress, PREVENT_DEFAULT_DRAG_OVER};
+use crate::{
+    global_callbacks::GlobalCallbacks,
+    infobars::OmnibarMessage,
+    state::{FileInfo, StateContext},
+    CallbackRef, FileDataComponent, LoadingState, Msg, ParseProgress, PREVENT_DEFAULT_DRAG_OVER,
+};
 
 impl FileDataComponent {
-    pub fn file_drag(registerer: &GlobalCallbacks, link: &Scope<FileDataComponent>) -> [CallbackRef; 3] {
+    pub fn file_drag(
+        registerer: &GlobalCallbacks,
+        link: &Scope<FileDataComponent>,
+    ) -> [CallbackRef; 3] {
         /// Detects if a file is being dragged over the window
         fn file_drag(event: &DragEvent) -> bool {
-            event.data_transfer().as_ref().map(DataTransfer::types)
-                .is_some_and(|types|
-                    types.iter().flat_map(|ty| ty.as_string()).any(|ty| ty == "Files")
-                )
+            event
+                .data_transfer()
+                .as_ref()
+                .map(DataTransfer::types)
+                .is_some_and(|types| {
+                    types
+                        .iter()
+                        .flat_map(|ty| ty.as_string())
+                        .any(|ty| ty == "Files")
+                })
         }
         let last_drag_target = Rc::new(RefCell::new(None));
         let last_drag_target_ref = last_drag_target.clone();
-        let drag_enter_ref = (registerer.register_drag_enter)(Callback::from(move |event: DragEvent| {
-            *last_drag_target_ref.borrow_mut() = event.target();
-            if file_drag(&event) {
-                if let Some(mut pd) = PREVENT_DEFAULT_DRAG_OVER.get().and_then(|p| p.lock().ok()) {
-                    *pd = true;
+        let drag_enter_ref =
+            (registerer.register_drag_enter)(Callback::from(move |event: DragEvent| {
+                *last_drag_target_ref.borrow_mut() = event.target();
+                if file_drag(&event) {
+                    if let Some(mut pd) =
+                        PREVENT_DEFAULT_DRAG_OVER.get().and_then(|p| p.lock().ok())
+                    {
+                        *pd = true;
+                    }
+                    event.prevent_default();
+                    if let Some(body) = gloo::utils::document().get_element_by_id("body") {
+                        body.class_list().add_1("filedrag").ok();
+                    }
                 }
-                event.prevent_default();
-                if let Some(body) = gloo::utils::document().get_element_by_id("body") {
-                    body.class_list().add_1("filedrag").ok();
-                }
-            }
-        }));
+            }));
         fn drag_end() {
             if let Some(body) = gloo::utils::document().get_element_by_id("body") {
                 if body.class_list().contains("filedrag") {
-                    if let Some(mut pd) = PREVENT_DEFAULT_DRAG_OVER.get().and_then(|p| p.lock().ok()) {
+                    if let Some(mut pd) =
+                        PREVENT_DEFAULT_DRAG_OVER.get().and_then(|p| p.lock().ok())
+                    {
                         *pd = false;
                     }
                     body.class_list().remove_1("filedrag").ok();
                 }
             }
         }
-        let drag_leave_ref = (registerer.register_drag_leave)(Callback::from(move |event: DragEvent| {
-            if file_drag(&event) {
-                if *last_drag_target.borrow() == event.target() {
+        let drag_leave_ref =
+            (registerer.register_drag_leave)(Callback::from(move |event: DragEvent| {
+                if file_drag(&event) && *last_drag_target.borrow() == event.target() {
                     drag_end();
                 }
-            }
-        }));
+            }));
         let link = link.clone();
         let drop_ref = (registerer.register_drop)(Callback::from(move |event: DragEvent| {
             if file_drag(&event) {
                 event.prevent_default();
                 drag_end();
-                let file = event.data_transfer().as_ref()
+                let file = event
+                    .data_transfer()
+                    .as_ref()
                     .and_then(DataTransfer::files)
-                    .and_then(|files| {
-                        (files.length() == 1).then(|| files.get(0).unwrap())
-                    }).map(File::from);
+                    .and_then(|files| (files.length() == 1).then(|| files.get(0).unwrap()))
+                    .map(File::from);
                 link.send_message(Msg::File(file));
             }
         }));
@@ -72,6 +94,12 @@ impl FileDataComponent {
 
         let file_name = file.name();
         let file_size = file.size();
+        let (name, size) = (file_name.clone(), file_size);
+        link.get_state().unwrap().update_file_info(move |info| {
+            *info = Some(FileInfo { name, size });
+            true
+        });
+
         log::info!("Selected file \"{file_name}\"");
         *self.cancel.borrow_mut() = false;
         let cancel = self.cancel.clone();
@@ -91,16 +119,24 @@ impl FileDataComponent {
                     log::info!("Parsing \"{file_name}\"");
                     let finished = loop {
                         let mut lines_to_read = 100_000;
-                        let finished = parser.process_until(|_, state| {
-                            lines_to_read -= 1;
-                            let pause = lines_to_read == 0;
-                            (pause || *cancel.borrow() || state.bytes_read >= 1024 * 1024 * 1024).then(|| pause)
-                        }).await;
+                        let finished = parser
+                            .process_until(|_, state| {
+                                lines_to_read -= 1;
+                                let pause = lines_to_read == 0;
+                                (pause
+                                    || *cancel.borrow()
+                                    || state.bytes_read >= 1024 * 1024 * 1024)
+                                    .then_some(pause)
+                            })
+                            .await;
                         let ParseState::Paused(true, state) = finished else {
                             break finished;
                         };
                         let parsing = ParseProgress::new(state, file_size);
-                        link.send_message(Msg::LoadingState(LoadingState::Parsing(parsing, cancel_cb.clone())));
+                        link.send_message(Msg::LoadingState(LoadingState::Parsing(
+                            parsing,
+                            cancel_cb.clone(),
+                        )));
                         gloo::timers::future::TimeoutFuture::new(0).await;
                     };
                     let cancel = *cancel.borrow();
@@ -118,8 +154,15 @@ impl FileDataComponent {
                         }
                         _ => (),
                     }
-                    link.send_message(Msg::LoadingState(LoadingState::DoneParsing(finished.is_timeout(), cancel)));
-                    link.send_message(Msg::LoadedFile(file_name, file_size, parser.take_parser(), finished, cancel))
+                    link.send_message(Msg::LoadingState(LoadingState::DoneParsing(
+                        finished.is_timeout(),
+                        cancel,
+                    )));
+                    link.send_message(Msg::LoadedFile(
+                        Box::new(parser.take_parser()),
+                        finished,
+                        cancel,
+                    ))
                 });
             }
             Err((_err, _stream)) => {
@@ -127,8 +170,10 @@ impl FileDataComponent {
                 link.send_message(Msg::LoadingState(LoadingState::ReadingToString));
                 let reader = gloo::file::callbacks::read_as_bytes(&file, move |res| {
                     log::info!("Loading to string \"{file_name}\"");
-                    let res = res.and_then(|res| String::from_utf8(res)
-                        .map_err(|err| gloo::file::FileReadError::NotReadable(err.to_string())));
+                    let res = res.and_then(|res| {
+                        String::from_utf8(res)
+                            .map_err(|err| gloo::file::FileReadError::NotReadable(err.to_string()))
+                    });
                     let text_data = match res {
                         Ok(res) => res,
                         Err(err) => {
@@ -145,13 +190,17 @@ impl FileDataComponent {
                             let finished = parser.process_until(|_, state| {
                                 lines_to_read -= 1;
                                 let pause = lines_to_read == 0;
-                                (pause || *cancel.borrow() || state.bytes_read >= 512 * 1024 * 1024).then(|| pause)
+                                (pause || *cancel.borrow() || state.bytes_read >= 512 * 1024 * 1024)
+                                    .then_some(pause)
                             });
                             let ParseState::Paused(true, state) = finished else {
                                 break finished;
                             };
                             let parsing = ParseProgress::new(state, file_size);
-                            link.send_message(Msg::LoadingState(LoadingState::Parsing(parsing, cancel_cb.clone())));
+                            link.send_message(Msg::LoadingState(LoadingState::Parsing(
+                                parsing,
+                                cancel_cb.clone(),
+                            )));
                             gloo::timers::future::TimeoutFuture::new(0).await;
                         };
                         let cancel = *cancel.borrow();
@@ -169,8 +218,15 @@ impl FileDataComponent {
                             }
                             _ => (),
                         }
-                        link.send_message(Msg::LoadingState(LoadingState::DoneParsing(finished.is_timeout(), cancel)));
-                        link.send_message(Msg::LoadedFile(file_name, file_size, parser.take_parser(), finished, cancel))
+                        link.send_message(Msg::LoadingState(LoadingState::DoneParsing(
+                            finished.is_timeout(),
+                            cancel,
+                        )));
+                        link.send_message(Msg::LoadedFile(
+                            Box::new(parser.take_parser()),
+                            finished,
+                            cancel,
+                        ))
                     });
                 });
                 self.reader = Some(reader);

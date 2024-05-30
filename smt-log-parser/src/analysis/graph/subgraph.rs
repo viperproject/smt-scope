@@ -1,7 +1,12 @@
 use fxhash::FxHashSet;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
-use petgraph::{graph::{DiGraph, EdgeIndex, Neighbors, NodeIndex, IndexType}, Directed, Direction::{self, Incoming, Outgoing}, Undirected};
+use petgraph::{
+    graph::{DiGraph, EdgeIndex, IndexType, Neighbors, NodeIndex},
+    Directed,
+    Direction::{self, Incoming, Outgoing},
+    Undirected,
+};
 use roaring::RoaringBitmap;
 
 use super::{raw::RawIx, InstGraph, RawNodeIndex};
@@ -21,11 +26,19 @@ pub struct VisitBox<D: VisitMap<NodeIndex<RawIx>>> {
 }
 
 impl Subgraph {
-    pub fn new<N, E, D: VisitMap<NodeIndex<RawIx>>>(node: RawNodeIndex, graph: &mut DiGraph<N, E, RawIx>, mut visit: VisitBox<D>, mut f: impl FnMut(&mut N, u32), c: impl Fn(&N) -> u32) -> Result<(Self, VisitBox<D>)> {
+    pub fn new<N, E, D: VisitMap<NodeIndex<RawIx>>>(
+        node: RawNodeIndex,
+        graph: &mut DiGraph<N, E, RawIx>,
+        mut visit: VisitBox<D>,
+        mut f: impl FnMut(&mut N, u32),
+        c: impl Fn(&N) -> u32,
+    ) -> Result<(Self, VisitBox<D>)> {
         let mut start_nodes = Vec::new();
 
-        let mut un_graph = std::mem::replace(graph, DiGraph::<N, E, RawIx>::with_capacity(0, 0)).into_edge_type::<Undirected>();
-        let mut dfs: Dfs<NodeIndex<RawIx>, _> = petgraph::visit::Dfs::from_parts(Vec::new(), visit.dfs);
+        let mut un_graph = std::mem::replace(graph, DiGraph::<N, E, RawIx>::with_capacity(0, 0))
+            .into_edge_type::<Undirected>();
+        let mut dfs: Dfs<NodeIndex<RawIx>, _> =
+            petgraph::visit::Dfs::from_parts(Vec::new(), visit.dfs);
         dfs.move_to(node.0);
         while let Some(node) = dfs.next(&un_graph) {
             let di_graph = un_graph.into_edge_type::<Directed>();
@@ -40,11 +53,17 @@ impl Subgraph {
 
         // OPTIMISATION: use a `VisitMap` from `VisitBox` to avoid allocating a
         // `FxHashSet` here (as well as the need for `SubgraphStartNodes`).
-        let mut topo = petgraph::visit::Topo::new(&SubgraphStartNodes { start_nodes: &start_nodes, graph });
+        let mut topo = petgraph::visit::Topo::new(&SubgraphStartNodes {
+            start_nodes: &start_nodes,
+            graph,
+        });
         let mut nodes = Vec::new();
         let mut count = 0_u32;
-        while let Some(node) = topo.next(&SubgraphStartNodes { start_nodes: &start_nodes, graph }) {
-            f(&mut graph[node], count as u32);
+        while let Some(node) = topo.next(&SubgraphStartNodes {
+            start_nodes: &start_nodes,
+            graph,
+        }) {
+            f(&mut graph[node], count);
             count += 1;
             nodes.try_reserve(1)?;
             nodes.push(RawNodeIndex(node));
@@ -55,7 +74,9 @@ impl Subgraph {
         {
             let mut reach_fwd = &mut *reach_fwd.0;
             let mut reverse_topo = nodes.iter().enumerate().rev();
-            while let (Some((idx, node)), Some((curr, others))) = (reverse_topo.next(), reach_fwd.split_last_mut()) {
+            while let (Some((idx, node)), Some((curr, others))) =
+                (reverse_topo.next(), reach_fwd.split_last_mut())
+            {
                 reach_fwd = others;
                 curr.insert(idx as u32);
 
@@ -83,7 +104,9 @@ impl Subgraph {
         {
             let mut reach_bwd = &mut *reach_bwd.0;
             let mut topo = nodes.iter().enumerate();
-            while let (Some((idx, node)), Some((curr, others))) = (topo.next(), reach_bwd.split_first_mut()) {
+            while let (Some((idx, node)), Some((curr, others))) =
+                (topo.next(), reach_bwd.split_first_mut())
+            {
                 reach_bwd = others;
                 curr.insert(idx as u32);
 
@@ -107,9 +130,15 @@ impl Subgraph {
             // }
         }
 
-        Ok((Self { nodes, reach_fwd, reach_bwd }, visit))
+        Ok((
+            Self {
+                nodes,
+                reach_fwd,
+                reach_bwd,
+            },
+            visit,
+        ))
     }
-
 }
 
 #[derive(Debug)]
@@ -131,13 +160,18 @@ impl TransitiveClosure {
         reachable
     }
 
+    #[cfg(feature = "mem_dbg")]
     pub(crate) fn inner(&self) -> &Vec<RoaringBitmap> {
         &self.0
     }
 }
 
 impl InstGraph {
-    pub fn non_visible_paths_between(&self, from: RawNodeIndex, to: RawNodeIndex) -> Option<(FxHashSet<RawNodeIndex>, Option<Vec<RawNodeIndex>>)> {
+    pub fn non_visible_paths_between(
+        &self,
+        from: RawNodeIndex,
+        to: RawNodeIndex,
+    ) -> Option<(FxHashSet<RawNodeIndex>, Option<Vec<RawNodeIndex>>)> {
         if from == to {
             return Some(([to].into_iter().collect(), Some(vec![to])));
         }
@@ -152,16 +186,23 @@ impl InstGraph {
 
         let filtered = NodeFiltered::from_fn(&*self.raw.graph, |n| {
             let node = &self.raw.graph[n];
-            !node.visible() && node.subgraph.is_some_and(|(subgraph, idx)| {
-                subgraph == from_subgraph && self.subgraphs[subgraph].reach_fwd.in_transitive_closure(idx, to_idx)
-            })
+            !node.visible()
+                && node.subgraph.is_some_and(|(subgraph, idx)| {
+                    subgraph == from_subgraph
+                        && self.subgraphs[subgraph]
+                            .reach_fwd
+                            .in_transitive_closure(idx, to_idx)
+                })
         });
 
         let mut paths_between: FxHashSet<_> = [to].into_iter().collect();
         let mut simple_path = None;
 
         let mut path = vec![from];
-        let mut stack = vec![filtered.neighbors_directed(from.0, Outgoing).map(RawNodeIndex).collect::<Vec<_>>()];
+        let mut stack = vec![filtered
+            .neighbors_directed(from.0, Outgoing)
+            .map(RawNodeIndex)
+            .collect::<Vec<_>>()];
         while let Some(mut neighbours) = stack.pop() {
             if let Some(next) = neighbours.pop() {
                 stack.push(neighbours);
@@ -174,7 +215,12 @@ impl InstGraph {
                     path = Vec::new();
                 } else {
                     path.push(next);
-                    stack.push(filtered.neighbors_directed(next.0, Outgoing).map(RawNodeIndex).collect::<Vec<_>>());
+                    stack.push(
+                        filtered
+                            .neighbors_directed(next.0, Outgoing)
+                            .map(RawNodeIndex)
+                            .collect::<Vec<_>>(),
+                    );
                 }
             } else {
                 path.pop();
@@ -221,7 +267,7 @@ impl<'a, N, E, Ix: IndexType> Visitable for &'a SubgraphStartNodes<'_, N, E, Ix>
     fn visit_map(&self) -> Self::Map {
         FxHashSet::default()
     }
-    fn reset_map(self: &Self, map: &mut Self::Map) {
+    fn reset_map(&self, map: &mut Self::Map) {
         map.clear()
     }
 }

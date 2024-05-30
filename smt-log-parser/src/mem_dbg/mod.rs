@@ -34,6 +34,7 @@ macro_rules! derive_wrapper {
                 &mut self.0
             }
         }
+        #[allow(clippy::non_canonical_clone_impl)]
         impl$(<$($t),*>)? Clone for $struct$(<$($t),*>)?
         where $inner: Clone {
             fn clone(&self) -> Self {
@@ -71,7 +72,7 @@ macro_rules! derive_wrapper {
 
 macro_rules! derive_non_max {
     ($name:ident, $prim:ident) => {
-        derive_wrapper!(nonmax::$name: Copy + Eq + PartialEq + PartialOrd + Ord + Hash);
+        derive_wrapper!(nonmax::$name: Copy + Eq + PartialEq + PartialOrd + Ord + Hash + Default);
         impl $name {
             pub const ZERO: Self = Self(nonmax::$name::ZERO);
             pub const ONE: Self = Self(nonmax::$name::ONE);
@@ -82,6 +83,12 @@ macro_rules! derive_non_max {
                     None => None,
                 }
             }
+            /// Creates a new non-max without checking the value.
+            ///
+            /// # Safety
+            ///
+            /// The value must not equal the maximum representable value for the
+            /// primitive type.
             pub const unsafe fn new_unchecked(value: $prim) -> Self {
                 Self(nonmax::$name::new_unchecked(value))
             }
@@ -156,6 +163,8 @@ pub type DiGraph<N, E, Ix = petgraph::graph::DefaultIx> = Graph<N, E, petgraph::
 pub type UnGraph<N, E, Ix = petgraph::graph::DefaultIx> = Graph<N, E, petgraph::Undirected, Ix>;
 impl<N, E, Ty: petgraph::EdgeType, Ix: petgraph::graph::IndexType> Graph<N, E, Ty, Ix> {
     pub fn with_capacity(nodes: usize, edges: usize) -> Self {
-        Self(petgraph::graph::Graph::<N, E, Ty, Ix>::with_capacity(nodes, edges))
+        Self(petgraph::graph::Graph::<N, E, Ty, Ix>::with_capacity(
+            nodes, edges,
+        ))
     }
 }

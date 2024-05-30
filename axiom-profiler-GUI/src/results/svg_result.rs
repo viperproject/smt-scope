@@ -1,20 +1,34 @@
 use crate::{
-    configuration::ConfigurationContext, filters, results::{filters::FilterOutput, graph_info::{GraphInfo, Msg as GraphInfoMsg}, node_info::{EdgeInfo, NodeInfo}}, OpenedFileInfo
+    configuration::ConfigurationContext,
+    filters,
+    results::{
+        filters::FilterOutput,
+        graph_info::{GraphInfo, Msg as GraphInfoMsg},
+        node_info::{EdgeInfo, NodeInfo},
+    },
+    state::StateContext,
+    OpenedFileInfo,
 };
 
 use super::{
-    filters::{Disabler, Filter}, render_warning::{Warning, WarningChoice}, worker::Worker
+    filters::{Disabler, Filter},
+    render_warning::{Warning, WarningChoice},
+    worker::Worker,
 };
 use material_yew::{dialog::MatDialog, WeakComponentLink};
 use palette::{encoding::Srgb, white_point::D65, FromColor, Hsluv, Hsv, LuvHue};
-use petgraph::{dot::{Config, Dot}, visit::EdgeRef, Graph};
+use petgraph::{
+    dot::{Config, Dot},
+    visit::EdgeRef,
+    Graph,
+};
 use smt_log_parser::{
-    display_with::DisplayCtxt, items::QuantIdx, parsers::
-        z3::
-            // inst_graph::{EdgeInfo, EdgeType, InstGraph, InstInfo, Node, NodeInfo, VisibleGraphInfo},
-            graph::{analysis::matching_loop::MLGraphNode, raw::NodeKind, visible::VisibleInstGraph, InstGraph, RawNodeIndex, VisibleEdgeIndex}
-        
-    
+    analysis::{
+        analysis::matching_loop::MLGraphNode, raw::NodeKind, visible::VisibleInstGraph, InstGraph,
+        RawNodeIndex, VisibleEdgeIndex,
+    },
+    display_with::DisplayCtxt,
+    items::QuantIdx,
 };
 use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
 use viz_js::VizInstance;
@@ -117,12 +131,14 @@ impl Component for SVGResult {
                 ctx.link().send_message_batch(old);
             }
         }
-        ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructingGraph));
+        ctx.props()
+            .progress
+            .emit(GraphState::Rendering(RenderingState::ConstructingGraph));
         let link = ctx.link().clone();
         wasm_bindgen_futures::spawn_local(async move {
             gloo::timers::future::TimeoutFuture::new(10).await;
-            let cfg = link.get_configuration().unwrap();
-            let parser = cfg.config.parser.as_ref().unwrap();
+            let data = link.get_state().unwrap();
+            let parser = data.state.parser.as_ref().unwrap();
             let inst_graph = match InstGraph::new(&parser.parser.borrow()) {
                 Ok(inst_graph) => inst_graph,
                 Err(err) => {
@@ -139,10 +155,10 @@ impl Component for SVGResult {
             };
             let inst_graph = Rc::new(RefCell::new(inst_graph));
             let inst_graph_ref = inst_graph.clone();
-            cfg.update.update(|cfg| cfg.parser.as_mut().map(|p| {
+            data.update_graph(|p| {
                 p.graph = Some(inst_graph_ref);
                 true
-            }).unwrap_or_default());
+            });
             link.send_message(Msg::ConstructedGraph(inst_graph));
         });
         Self {
@@ -170,8 +186,10 @@ impl Component for SVGResult {
         match msg {
             Msg::ConstructedGraph(parser) => {
                 self.constructed_graph = Some(parser);
-                let queue = std::mem::replace(&mut self.queue, Vec::new());
-                ctx.props().progress.emit(GraphState::Rendering(RenderingState::ConstructedGraph));
+                let queue = std::mem::take(&mut self.queue);
+                ctx.props()
+                    .progress
+                    .emit(GraphState::Rendering(RenderingState::ConstructedGraph));
                 ctx.link().send_message_batch(queue);
                 return true;
             }
@@ -185,8 +203,8 @@ impl Component for SVGResult {
             self.queue.push(msg);
             return false;
         };
-        let cfg = ctx.link().get_configuration().unwrap();
-        let rc_parser = cfg.config.parser.as_ref().unwrap();
+        let data = ctx.link().get_state().unwrap();
+        let rc_parser = data.state.parser.as_ref().unwrap();
         let parser = &rc_parser.parser;
         let mut inst_graph = (**inst_graph).borrow_mut();
         let inst_graph = &mut *inst_graph;
@@ -196,7 +214,15 @@ impl Component for SVGResult {
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {:?}", filter);
-                match filter.apply(inst_graph, &parser.borrow(), &cfg.config.persistent.display) {
+                let config = |parser| {
+                    let cfg = ctx.link().get_configuration().unwrap();
+                    DisplayCtxt {
+                        parser,
+                        term_display: &data.state.term_display,
+                        config: cfg.config.display.clone(),
+                    }
+                };
+                match filter.apply(inst_graph, &parser.borrow(), config) {
                     FilterOutput::LongestPath(path) => {
                         ctx.props().selected_nodes.emit(path);
                         // self.insts_info_link
@@ -219,7 +245,7 @@ impl Component for SVGResult {
                         ctx.link().send_message(Msg::RenderMLGraph(graph));
                         false
                     }
-                    FilterOutput::None => false
+                    FilterOutput::None => false,
                 }
             }
             // Msg::SearchMatchingLoops => {
@@ -256,25 +282,43 @@ impl Component for SVGResult {
                 false
             }
             Msg::RenderGraph => {
-                if self.rendered.as_ref().is_some_and(|r| inst_graph.visible_unchanged(&r.graph)) {
+                if self
+                    .rendered
+                    .as_ref()
+                    .is_some_and(|r| inst_graph.visible_unchanged(&r.graph))
+                {
                     return false;
                 }
-                let calculated = self.calculated.take().filter(|c| inst_graph.visible_unchanged(&c));
+                let calculated = self
+                    .calculated
+                    .take()
+                    .filter(|c| inst_graph.visible_unchanged(c));
                 let calculated = calculated.unwrap_or_else(|| inst_graph.to_visible());
-                let (node_count, edge_count) = (calculated.graph.node_count(), calculated.graph.edge_count());
+                let (node_count, edge_count) =
+                    (calculated.graph.node_count(), calculated.graph.edge_count());
                 self.graph_dim.node_count = node_count;
                 self.graph_dim.edge_count = edge_count;
-                if edge_count <= self.permissions.edge_count && node_count <= self.permissions.node_count {
-                    log::debug!("Rendering graph with {} nodes and {} edges", node_count, edge_count);
+                if edge_count <= self.permissions.edge_count
+                    && node_count <= self.permissions.node_count
+                {
+                    log::debug!(
+                        "Rendering graph with {} nodes and {} edges",
+                        node_count,
+                        edge_count
+                    );
                     self.permissions.edge_count = edge_count.max(EDGE_LIMIT);
                     self.permissions.node_count = node_count.max(NODE_LIMIT);
 
                     self.async_graph_and_filter_chain = false;
-                    ctx.props().progress.emit(GraphState::Rendering(RenderingState::GraphToDot));
+                    ctx.props()
+                        .progress
+                        .emit(GraphState::Rendering(RenderingState::GraphToDot));
                     let filtered_graph = &calculated.graph;
+                    let cfg = ctx.link().get_configuration().unwrap();
                     let ctxt = &DisplayCtxt {
                         parser: &parser.borrow(),
-                        config: cfg.config.persistent.display.clone(),
+                        term_display: &data.state.term_display,
+                        config: cfg.config.display.clone(),
                     };
 
                     // Performance observations (default value is in [])
@@ -305,10 +349,18 @@ impl Component for SVGResult {
                                 Config::GraphContentOnly
                             ],
                             &|fg, edge_data| {
-                                let (from, to) = (fg[edge_data.source()].idx, fg[edge_data.target()].idx);
+                                let (from, to) =
+                                    (fg[edge_data.source()].idx, fg[edge_data.target()].idx);
                                 let edge = edge_data.weight();
                                 let kind = &edge.kind(inst_graph);
-                                let info = EdgeInfo { edge, kind, from, to, graph: &*inst_graph, ctxt };
+                                let info = EdgeInfo {
+                                    edge,
+                                    kind,
+                                    from,
+                                    to,
+                                    graph: &*inst_graph,
+                                    ctxt,
+                                };
                                 let tooltip = info.tooltip();
                                 let is_indirect = edge_data.weight().is_indirect(inst_graph);
                                 let style = match is_indirect {
@@ -320,7 +372,9 @@ impl Component for SVGResult {
                                     false => "direct",
                                 };
                                 let arrowhead = match kind.blame(inst_graph) {
-                                    NodeKind::GivenEquality(..) | NodeKind::TransEquality(_) => "empty",
+                                    NodeKind::GivenEquality(..) | NodeKind::TransEquality(_) => {
+                                        "empty"
+                                    }
                                     _ => "normal",
                                 };
                                 format!(
@@ -331,7 +385,10 @@ impl Component for SVGResult {
                             },
                             &|_, (_, data)| {
                                 let node_data = &inst_graph.raw[data.idx];
-                                let info = NodeInfo { node: node_data, ctxt };
+                                let info = NodeInfo {
+                                    node: node_data,
+                                    ctxt,
+                                };
                                 let tooltip = info.tooltip(false, None);
                                 let mut style = Some("filled");
                                 let mut shape = None;
@@ -339,8 +396,14 @@ impl Component for SVGResult {
                                 let label = node_data.kind().to_string();
                                 match node_data.kind() {
                                     NodeKind::Instantiation(inst) => {
-                                        let mkind = &(& *parser.borrow())[(& *parser.borrow())[*inst].match_].kind;
-                                        style = Some(if mkind.is_mbqi() { "filled,dashed" } else { "filled" });
+                                        let mkind = &(&*parser.borrow())
+                                            [(&*parser.borrow())[*inst].match_]
+                                            .kind;
+                                        style = Some(if mkind.is_mbqi() {
+                                            "filled,dashed"
+                                        } else {
+                                            "filled"
+                                        });
                                         let s = match (data.hidden_children, data.hidden_parents) {
                                             (0, 0) => "box",
                                             (0, _) => "house",
@@ -348,8 +411,12 @@ impl Component for SVGResult {
                                             (_, _) => "diamond",
                                         };
                                         shape = Some(s);
-                                        let hue = rc_parser.colour_map.get_rbg_hue(mkind.quant_idx()) / 360.0;
-                                        fillcolor = Some(format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}"));
+                                        let hue =
+                                            rc_parser.colour_map.get_rbg_hue(mkind.quant_idx())
+                                                / 360.0;
+                                        fillcolor = Some(format!(
+                                            "{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}"
+                                        ));
                                     }
                                     NodeKind::ENode(..) => {
                                         fillcolor = Some("lightgrey".to_string());
@@ -357,15 +424,21 @@ impl Component for SVGResult {
                                     _ => (),
                                 };
                                 let idx = data.idx.0.index();
-                                let style = style.map(|s| format!(" style=\"{s}\"")).unwrap_or_default();
-                                let shape = shape.map(|s| format!(" shape={s}")).unwrap_or_default();
-                                let fillcolor = fillcolor.map(|s| format!(" fillcolor=\"{s}\"")).unwrap_or_default();
+                                let style =
+                                    style.map(|s| format!(" style=\"{s}\"")).unwrap_or_default();
+                                let shape =
+                                    shape.map(|s| format!(" shape={s}")).unwrap_or_default();
+                                let fillcolor = fillcolor
+                                    .map(|s| format!(" fillcolor=\"{s}\""))
+                                    .unwrap_or_default();
                                 // For nodes the `id` is the `RawNodeIndex` from the original graph!
                                 format!("id=node_{idx} tooltip=\"{tooltip}\" label=\"{label}\"{style}{shape}{fillcolor}")
                             },
                         )
                     );
-                    ctx.props().progress.emit(GraphState::Rendering(RenderingState::RenderingGraph));
+                    ctx.props()
+                        .progress
+                        .emit(GraphState::Rendering(RenderingState::RenderingGraph));
                     let link = ctx.link().clone();
                     wasm_bindgen_futures::spawn_local(async move {
                         gloo_timers::future::TimeoutFuture::new(10).await;
@@ -373,14 +446,19 @@ impl Component for SVGResult {
                         let options = viz_js::Options::default();
                         // options.engine = "twopi".to_string();
                         let window = window().expect("should have a window in this context");
-                        let performance = window.performance().expect("should have a performance object");
+                        let performance = window
+                            .performance()
+                            .expect("should have a performance object");
                         let start_timestamp = performance.now();
                         let svg = graphviz
                             .render_svg_element(dot_output, options)
                             .expect("Could not render graphviz");
                         let end_timestamp = performance.now();
                         let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
-                        log::info!("Graph: Converting dot-String to SVG took {} seconds", elapsed_seconds);
+                        log::info!(
+                            "Graph: Converting dot-String to SVG took {} seconds",
+                            elapsed_seconds
+                        );
                         let svg_text = svg.outer_html();
                         link.send_message(Msg::UpdateSvgText(
                             AttrValue::from(svg_text),
@@ -397,7 +475,9 @@ impl Component for SVGResult {
             }
             Msg::UserPermission(choice) => match choice {
                 WarningChoice::Cancel => {
-                    ctx.props().file.filter
+                    ctx.props()
+                        .file
+                        .filter
                         .borrow()
                         .as_ref()
                         .unwrap()
@@ -413,7 +493,7 @@ impl Component for SVGResult {
                     ctx.link().send_message(Msg::RenderGraph);
                     false
                 }
-            }
+            },
             Msg::UpdateSvgText(svg_text, rendered) => {
                 let rendered = RenderedGraph {
                     graph: Rc::new(rendered),
@@ -424,74 +504,90 @@ impl Component for SVGResult {
                 true
             }
             Msg::RenderMLGraph(graph) => {
-                    let _filtered_graph = &graph;
-                    let _ctxt = &DisplayCtxt {
-                        parser: &parser.borrow(),
-                        config: cfg.config.persistent.display.clone(),
-                    };
+                let _filtered_graph = &graph;
+                let cfg = ctx.link().get_configuration().unwrap();
+                let _ctxt = &DisplayCtxt {
+                    parser: &parser.borrow(),
+                    term_display: &data.state.term_display,
+                    config: cfg.config.display.clone(),
+                };
 
-                    // Performance observations (default value is in [])
-                    //  - splines=false -> 38s | [splines=true] -> ??
-                    //  - nslimit=2 -> 7s | nslimit=4 -> 9s | nslimit=7 -> 11.5s | nslimit=10 -> 14s | [nslimit=INT_MAX] -> 38s
-                    //  - [mclimit=1] -> 7s | mclimit=0.5 -> 4s (with nslimit=2)
-                    // `ranksep` dictates the distance between ranks (rows) in the graph,
-                    // it should be set dynamically based on the average number of children
-                    // per node out of all nodes with at least one child.
-                    let settings = [
-                        "ranksep=1.0;",
-                        "splines=false;",
-                        "nslimit=6;",
-                        "mclimit=0.6;",
-                    ];
-                    let dot_output = format!(
-                        "digraph {{\n{}\n{:?}\n}}",
-                        settings.join("\n"),
-                        Dot::with_attr_getters(
-                            &graph,
-                            &[
-                                Config::EdgeNoLabel,
-                                Config::NodeNoLabel,
-                                Config::GraphContentOnly
-                            ],
-                            &|_, _| "".to_string(),
-                            &|_, (_, node_data)| {
-                                format!("label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
-                                        node_data.0,
-                                        "box",
-                                        match &node_data.1 {
-                                            MLGraphNode::QI(quant) => {
-                                                let hue = rc_parser.colour_map.get_graphviz_hue_for_quant_idx(&quant);
-                                                format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
-                                            },
-                                            MLGraphNode::ENode => format!("lightgrey"),
-                                            MLGraphNode::Equality => format!("white"),
-                                        }
-                                    )
-                            },
-                        )
+                // Performance observations (default value is in [])
+                //  - splines=false -> 38s | [splines=true] -> ??
+                //  - nslimit=2 -> 7s | nslimit=4 -> 9s | nslimit=7 -> 11.5s | nslimit=10 -> 14s | [nslimit=INT_MAX] -> 38s
+                //  - [mclimit=1] -> 7s | mclimit=0.5 -> 4s (with nslimit=2)
+                // `ranksep` dictates the distance between ranks (rows) in the graph,
+                // it should be set dynamically based on the average number of children
+                // per node out of all nodes with at least one child.
+                let settings = [
+                    "ranksep=1.0;",
+                    "splines=false;",
+                    "nslimit=6;",
+                    "mclimit=0.6;",
+                ];
+                let dot_output = format!(
+                    "digraph {{\n{}\n{:?}\n}}",
+                    settings.join("\n"),
+                    Dot::with_attr_getters(
+                        &graph,
+                        &[
+                            Config::EdgeNoLabel,
+                            Config::NodeNoLabel,
+                            Config::GraphContentOnly
+                        ],
+                        &|_, _| "".to_string(),
+                        &|_, (_, node_data)| {
+                            format!(
+                                "label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
+                                node_data.0,
+                                "box",
+                                match &node_data.1 {
+                                    MLGraphNode::QI(quant) => {
+                                        let hue = rc_parser
+                                            .colour_map
+                                            .get_graphviz_hue_for_quant_idx(quant);
+                                        format!(
+                                            "{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}"
+                                        )
+                                    }
+                                    MLGraphNode::ENode => "lightgrey".to_string(),
+                                    MLGraphNode::Equality => "white".to_string(),
+                                }
+                            )
+                        },
+                    )
+                );
+                ctx.props()
+                    .progress
+                    .emit(GraphState::Rendering(RenderingState::RenderingGraph));
+                let link = ctx.props().insts_info_link.borrow().clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    gloo_timers::future::TimeoutFuture::new(10).await;
+                    let graphviz = VizInstance::new().await;
+                    let options = viz_js::Options::default();
+                    // options.engine = "twopi".to_string();
+                    let window = window().expect("should have a window in this context");
+                    let performance = window
+                        .performance()
+                        .expect("should have a performance object");
+                    let start_timestamp = performance.now();
+                    let svg = graphviz
+                        .render_svg_element(dot_output, options)
+                        .expect("Could not render graphviz");
+                    let end_timestamp = performance.now();
+                    let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
+                    log::info!(
+                        "ML-graph: Converting dot-String to SVG took {} seconds",
+                        elapsed_seconds
                     );
-                    ctx.props().progress.emit(GraphState::Rendering(RenderingState::RenderingGraph));
-                    let link = ctx.props().insts_info_link.borrow().clone();
-                    wasm_bindgen_futures::spawn_local(async move {
-                        gloo_timers::future::TimeoutFuture::new(10).await;
-                        let graphviz = VizInstance::new().await;
-                        let options = viz_js::Options::default();
-                        // options.engine = "twopi".to_string();
-                        let window = window().expect("should have a window in this context");
-                        let performance = window.performance().expect("should have a performance object");
-                        let start_timestamp = performance.now();
-                        let svg = graphviz
-                            .render_svg_element(dot_output, options)
-                            .expect("Could not render graphviz");
-                        let end_timestamp = performance.now();
-                        let elapsed_seconds = (end_timestamp - start_timestamp) / 1000.0;
-                        log::info!("ML-graph: Converting dot-String to SVG took {} seconds", elapsed_seconds);
-                        let svg_text = svg.outer_html();
-                        link.unwrap()
-                            .send_message(GraphInfoMsg::ShowMatchingLoopGraph(AttrValue::from(svg_text)));
-                    });
-                    // only need to re-render once the new SVG has been set
-                   true 
+                    let svg_text = svg.outer_html();
+                    link.unwrap()
+                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(AttrValue::from(
+                            svg_text,
+                        )));
+                });
+                // only need to re-render once the new SVG has been set
+                true
             }
         }
     }
@@ -595,6 +691,7 @@ impl QuantIdxToColourMap {
         colour.hue.into_positive_degrees() / 360.0
     }
 
+    #[allow(clippy::out_of_bounds_indexing)]
     fn find_coprime(n: usize) -> NonZeroUsize {
         // Workaround since `unwrap` isn't allowed in const functions.
         const ONE: NonZeroUsize = match NonZeroUsize::new(1) {
@@ -611,15 +708,15 @@ impl QuantIdxToColourMap {
             .map(|aim| aim / 99 - 1)
             .and_then(|aim| usize::try_from(aim).ok());
         let Some(mut aim) = aim.and_then(NonZeroUsize::new) else {
-            return ONE
+            return ONE;
         };
         let Some(n) = NonZeroUsize::new(n) else {
-            return ONE
+            return ONE;
         };
         use gcd::Gcd;
         while n.gcd(aim) != ONE {
             let Some(new) = aim.checked_add(1) else {
-                return ONE
+                return ONE;
             };
             aim = new;
         }

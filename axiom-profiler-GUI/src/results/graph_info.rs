@@ -1,13 +1,17 @@
 use std::rc::Rc;
 
-use crate::{configuration::{ConfigurationContext, ConfigurationProvider}, utils::split_div::SplitDiv};
+use crate::{state::StateProvider, utils::split_div::SplitDiv};
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
-use smt_log_parser::parsers::z3::graph::{RawNodeIndex, VisibleEdgeIndex};
+use smt_log_parser::analysis::{RawNodeIndex, VisibleEdgeIndex};
 use yew::prelude::*;
 
-use super::{graph::graph_container, node_info::{SelectedEdgesInfo, SelectedNodesInfo}, svg_result::RenderedGraph};
+use super::{
+    graph::graph_container,
+    node_info::{SelectedEdgesInfo, SelectedNodesInfo},
+    svg_result::RenderedGraph,
+};
 
 pub struct GraphInfo {
     selected_nodes: IndexMap<RawNodeIndex, bool>,
@@ -16,10 +20,13 @@ pub struct GraphInfo {
     graph_container: WeakComponentLink<graph_container::GraphContainer>,
     displayed_matching_loop_graph: Option<AttrValue>,
     in_ml_viewer_mode: bool,
-    _context_listener: ContextHandle<Rc<ConfigurationProvider>>,
+    _context_listener: ContextHandle<Rc<StateProvider>>,
 }
 
-fn toggle_selected<T: Copy + Eq + std::hash::Hash>(map: &mut IndexMap<T, bool>, entry: T) -> Vec<T> {
+fn toggle_selected<T: Copy + Eq + std::hash::Hash>(
+    map: &mut IndexMap<T, bool>,
+    entry: T,
+) -> Vec<T> {
     let added = match map.entry(entry) {
         Entry::Occupied(o) => {
             o.swap_remove();
@@ -54,7 +61,7 @@ pub enum Msg {
     SelectAll,
     ShowGeneralizedTerms(Vec<String>),
     ShowMatchingLoopGraph(AttrValue),
-    ContextUpdated(Rc<ConfigurationProvider>),
+    ContextUpdated(Rc<StateProvider>),
 }
 
 #[derive(Properties, PartialEq)]
@@ -81,28 +88,48 @@ impl Component for GraphInfo {
             .weak_link
             .borrow_mut()
             .replace(ctx.link().clone());
-        let (msg, context_listener) = ctx
+        let (state, context_listener) = ctx
             .link()
             .context(ctx.link().callback(Msg::ContextUpdated))
             .expect("No message context provided");
         Self {
-            selected_nodes: ctx.props().selected_nodes.iter().copied().map(|n| (n, false)).collect(),
-            selected_edges: ctx.props().selected_edges.iter().copied().map(|e| (e, false)).collect(),
+            selected_nodes: ctx
+                .props()
+                .selected_nodes
+                .iter()
+                .copied()
+                .map(|n| (n, false))
+                .collect(),
+            selected_edges: ctx
+                .props()
+                .selected_edges
+                .iter()
+                .copied()
+                .map(|e| (e, false))
+                .collect(),
             generalized_terms: Vec::new(),
             graph_container: WeakComponentLink::default(),
             displayed_matching_loop_graph: None,
-            in_ml_viewer_mode: msg.config.persistent.ml_viewer_mode,
+            in_ml_viewer_mode: state.state.ml_viewer_mode,
             _context_listener: context_listener,
         }
     }
 
     fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
-        self.selected_nodes = ctx.props().selected_nodes.iter().copied().map(|n|
-            (n, self.selected_nodes.get(&n).copied().unwrap_or_default())
-        ).collect();
-        self.selected_edges = ctx.props().selected_edges.iter().copied().map(|e|
-            (e, self.selected_edges.get(&e).copied().unwrap_or_default())
-        ).collect();
+        self.selected_nodes = ctx
+            .props()
+            .selected_nodes
+            .iter()
+            .copied()
+            .map(|n| (n, self.selected_nodes.get(&n).copied().unwrap_or_default()))
+            .collect();
+        self.selected_edges = ctx
+            .props()
+            .selected_edges
+            .iter()
+            .copied()
+            .map(|e| (e, self.selected_edges.get(&e).copied().unwrap_or_default()))
+            .collect();
         true
     }
 
@@ -120,7 +147,12 @@ impl Component for GraphInfo {
             }
             Msg::ToggleOpenNode(node) => {
                 let open_value = self.selected_nodes.get_mut(&node).unwrap();
-                log::info!("Toggling node: {:?}, open: {} -> {}", node, *open_value, !*open_value);
+                log::info!(
+                    "Toggling node: {:?}, open: {} -> {}",
+                    node,
+                    *open_value,
+                    !*open_value
+                );
                 *open_value = !*open_value;
                 true
             }
@@ -139,10 +171,25 @@ impl Component for GraphInfo {
             }
             Msg::SelectAll => {
                 if let Some(rendered) = &ctx.props().rendered {
-                    self.selected_nodes = rendered.graph.graph.node_weights().map(|n| (n.idx, false)).collect();
-                    self.selected_edges = rendered.graph.graph.edge_indices().map(VisibleEdgeIndex).map(|e| (e, false)).collect();
-                    ctx.props().update_selected_nodes.emit(self.selected_nodes.keys().copied().collect());
-                    ctx.props().update_selected_edges.emit(self.selected_edges.keys().copied().collect());
+                    self.selected_nodes = rendered
+                        .graph
+                        .graph
+                        .node_weights()
+                        .map(|n| (n.idx, false))
+                        .collect();
+                    self.selected_edges = rendered
+                        .graph
+                        .graph
+                        .edge_indices()
+                        .map(VisibleEdgeIndex)
+                        .map(|e| (e, false))
+                        .collect();
+                    ctx.props()
+                        .update_selected_nodes
+                        .emit(self.selected_nodes.keys().copied().collect());
+                    ctx.props()
+                        .update_selected_edges
+                        .emit(self.selected_edges.keys().copied().collect());
                     true
                 } else {
                     false
@@ -162,22 +209,25 @@ impl Component for GraphInfo {
             Msg::ShowMatchingLoopGraph(graph) => {
                 self.displayed_matching_loop_graph = Some(graph);
                 true
-            } 
+            }
             Msg::ScrollZoomSelection => {
                 let Some(graph_container) = &*self.graph_container.borrow() else {
                     return false;
                 };
-                let msg = graph_container::Msg::ScrollZoomSelection(self.selected_nodes.keys().copied().collect(), self.selected_edges.keys().copied().collect());
+                let msg = graph_container::Msg::ScrollZoomSelection(
+                    self.selected_nodes.keys().copied().collect(),
+                    self.selected_edges.keys().copied().collect(),
+                );
                 graph_container.send_message(msg);
                 false
             }
             Msg::ContextUpdated(msg) => {
-                if self.in_ml_viewer_mode != msg.config.persistent.ml_viewer_mode {
-                    self.in_ml_viewer_mode = msg.config.persistent.ml_viewer_mode;
+                if self.in_ml_viewer_mode != msg.state.ml_viewer_mode {
+                    self.in_ml_viewer_mode = msg.state.ml_viewer_mode;
                     true
                 } else {
                     false
-                } 
+                }
             }
         }
     }
@@ -189,18 +239,26 @@ impl Component for GraphInfo {
         };
         let on_edge_click = {
             let link = ctx.link().clone();
-            Callback::from(move |edge: VisibleEdgeIndex| link.send_message(Msg::ToggleOpenEdge(edge)))
+            Callback::from(move |edge: VisibleEdgeIndex| {
+                link.send_message(Msg::ToggleOpenEdge(edge))
+            })
         };
-        let _ignore_term_ids = !ctx.link().get_configuration().unwrap().config.persistent.display.display_term_ids;
         let on_node_select = ctx.link().callback(Msg::UserSelectedNode);
         let on_edge_select = ctx.link().callback(Msg::UserSelectedEdge);
         let deselect_all = ctx.link().callback(|_| Msg::DeselectAll);
         let select_all = ctx.link().callback(|_| Msg::SelectAll);
-        let _generalized_terms = self.generalized_terms.iter().map(|term| html! {
-            <li>{term}</li>
+        let _generalized_terms = self.generalized_terms.iter().map(|term| {
+            html! {
+                <li>{term}</li>
+            }
         });
-        let outdated = ctx.props().outdated.then(|| html! {<div class="outdated"></div>});
-        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty() && !(self.in_ml_viewer_mode && self.displayed_matching_loop_graph.is_some());
+        let outdated = ctx
+            .props()
+            .outdated
+            .then(|| html! {<div class="outdated"></div>});
+        let hide_right_bar = self.selected_nodes.is_empty()
+            && self.selected_edges.is_empty()
+            && !(self.in_ml_viewer_mode && self.displayed_matching_loop_graph.is_some());
         let left_bound = if hide_right_bar { 1.0 } else { 0.3 };
         html! {
             <>

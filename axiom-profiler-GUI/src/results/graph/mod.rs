@@ -1,2 +1,2 @@
-pub mod svg_graph;
 pub mod graph_container;
+pub mod svg_graph;

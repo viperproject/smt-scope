@@ -1,8 +1,9 @@
-use std::time::{Duration, Instant};
 use cap::Cap;
+use std::time::{Duration, Instant};
 
 use mem_dbg::*;
-use smt_log_parser::{parsers::z3::graph::InstGraph, LogParser, Z3Parser};
+use smt_log_parser::analysis::InstGraph;
+use smt_log_parser::{LogParser, Z3Parser};
 
 #[global_allocator]
 static ALLOCATOR: Cap<std::alloc::System> = Cap::new(std::alloc::System, usize::max_value());
@@ -11,7 +12,9 @@ static ALLOCATOR: Cap<std::alloc::System> = Cap::new(std::alloc::System, usize::
 fn parse_all_logs() {
     std::env::set_var("SLP_TEST_MODE", "true");
 
-    let mem = std::env::var("SLP_MEMORY_LIMIT_GB").ok().and_then(|mem| mem.parse().ok());
+    let mem = std::env::var("SLP_MEMORY_LIMIT_GB")
+        .ok()
+        .and_then(|mem| mem.parse().ok());
     // Default to limit of 32GiB.
     let mem = mem.unwrap_or(32) as u64 * 1024 * 1024 * 1024;
     // Parse files only up to 1/5 of the memory limit, since the parser
@@ -22,7 +25,10 @@ fn parse_all_logs() {
     let parse_limit = mem / (PARSER_OVERHEAD + ANALYSIS_OVERHEAD + 1);
     let (mut max_parse_ovhd, mut max_analysis_ovhd) = (0.0, 0.0);
 
-    let mut all_logs: Vec<_> = std::fs::read_dir("../logs").unwrap().map(|r| r.unwrap()).collect();
+    let mut all_logs: Vec<_> = std::fs::read_dir("../logs")
+        .unwrap()
+        .map(|r| r.unwrap())
+        .collect();
     all_logs.sort_by_key(|dir| dir.path());
     for log in all_logs {
         // Put things in a thread to isolate memory usage more than the default.
@@ -35,7 +41,9 @@ fn parse_all_logs() {
             let file_size = metadata.len();
             let parse_bytes = file_size.min(parse_limit);
             let mb = 1024_u64 * 1024_u64;
-            let file_info = (file_size != parse_bytes).then(|| format!(" / {} MB", file_size / mb)).unwrap_or_default();
+            let file_info = (file_size != parse_bytes)
+                .then(|| format!(" / {} MB", file_size / mb))
+                .unwrap_or_default();
 
             // Gives 100 millis per MB (or 100 secs per GB)
             let timeout = Duration::from_millis(parse_bytes / (10 * 1024) + 500);
@@ -57,10 +65,13 @@ fn parse_all_logs() {
 
             parser.process_check_every(Duration::from_millis(100), |_, s| {
                 assert!(now.elapsed() < timeout, "Parsing took longer than timeout");
-                (parse_limit <= s.bytes_read as u64).then(|| ())
+                (parse_limit <= s.bytes_read as u64).then_some(())
             });
             let elapsed = now.elapsed();
-            max_parse_ovhd = f64::max(max_parse_ovhd, (ALLOCATOR.allocated() as u64 - start_alloc) as f64 / parse_bytes as f64);
+            max_parse_ovhd = f64::max(
+                max_parse_ovhd,
+                (ALLOCATOR.allocated() as u64 - start_alloc) as f64 / parse_bytes as f64,
+            );
             let parse_bytes_kb = parse_bytes / 1024;
             println!(
                 "Finished parsing in {elapsed:?} ({} kB/ms). Memory use {} MB / {} MB:",
@@ -83,7 +94,10 @@ fn parse_all_logs() {
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
             let inst_graph = InstGraph::new(parser.parser()).unwrap();
             let elapsed = now.elapsed();
-            max_analysis_ovhd = f64::max(max_analysis_ovhd, (ALLOCATOR.allocated() as u64 - middle_alloc) as f64 / parse_bytes as f64);
+            max_analysis_ovhd = f64::max(
+                max_analysis_ovhd,
+                (ALLOCATOR.allocated() as u64 - middle_alloc) as f64 / parse_bytes as f64,
+            );
             println!(
                 "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes. Memory use {} MB / {} MB:",
                 parse_bytes_kb / elapsed.as_millis() as u64,
@@ -102,5 +116,7 @@ fn parse_all_logs() {
         max_parse_ovhd = p;
         max_analysis_ovhd = a;
     }
-    println!("Max parse overhead: {max_parse_ovhd:.2}x, max analysis overhead: {max_analysis_ovhd:.2}x");
+    println!(
+        "Max parse overhead: {max_parse_ovhd:.2}x, max analysis overhead: {max_analysis_ovhd:.2}x"
+    );
 }

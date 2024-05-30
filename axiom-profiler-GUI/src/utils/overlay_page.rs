@@ -1,17 +1,18 @@
 use std::{cell::RefCell, rc::Rc};
 
-use yew::prelude::*;
 use material_yew::MatIcon;
+use yew::prelude::*;
 
 pub type SetVisibleCallback = Rc<RefCell<Callback<Option<bool>>>>;
 
 #[derive(Properties, PartialEq)]
 pub struct OverlayProps {
     pub set_visible: SetVisibleCallback,
+    pub visible_changed: Callback<bool>,
     pub children: Children,
 }
 
-pub struct Overlay { 
+pub struct Overlay {
     visible: bool,
 }
 
@@ -25,36 +26,38 @@ impl Component for Overlay {
 
     fn create(ctx: &Context<Self>) -> Self {
         *ctx.props().set_visible.borrow_mut() = ctx.link().callback(Msg::SetVisible);
-        Self {
-            visible: false,
-        }
+        Self { visible: false }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        if ctx.props() == old_props {
-            return false
-        }
+        debug_assert!(ctx.props() != old_props);
         *ctx.props().set_visible.borrow_mut() = ctx.link().callback(Msg::SetVisible);
         true
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::SetVisible(visible) => {
                 let Some(visible) = visible else {
                     self.visible = !self.visible;
+                    ctx.props().visible_changed.emit(self.visible);
                     return true;
                 };
                 if self.visible == visible {
                     return false;
                 }
                 self.visible = visible;
+                ctx.props().visible_changed.emit(self.visible);
                 true
             }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let class = if self.visible { "overlay" } else { "overlay hidden" };
+        let class = if self.visible {
+            "overlay"
+        } else {
+            "overlay hidden"
+        };
         let onclick = ctx.link().callback(|_| Msg::SetVisible(Some(false)));
         html! {
             <div {class}>

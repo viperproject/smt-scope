@@ -3,13 +3,26 @@ mod manage_filter;
 
 use std::fmt::Display;
 
-use gloo::console::log;
 use material_yew::icon::MatIcon;
 use petgraph::Direction;
-use smt_log_parser::parsers::{z3::graph::{raw::NodeKind, RawNodeIndex}, ParseState};
+use smt_log_parser::analysis::{raw::NodeKind, RawNodeIndex};
+use smt_log_parser::parsers::ParseState;
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
-use crate::{configuration::ConfigurationContext, filters::{add_filter::AddFilterSidebar, manage_filter::{DraggableList, ExistingFilter}}, infobars::SidebarSectionHeader, results::{filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN}, svg_result::Msg as SVGMsg}, utils::{indexer::Indexer, toggle_list::ToggleList}, OpenedFileInfo, SIZE_NAMES};
+use crate::{
+    filters::{
+        add_filter::AddFilterSidebar,
+        manage_filter::{DraggableList, ExistingFilter},
+    },
+    infobars::SidebarSectionHeader,
+    results::{
+        filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN},
+        svg_result::Msg as SVGMsg,
+    },
+    state::StateContext,
+    utils::toggle_list::ToggleList,
+    OpenedFileInfo, SIZE_NAMES,
+};
 
 use self::manage_filter::DragState;
 use material_yew::WeakComponentLink;
@@ -50,7 +63,8 @@ pub struct FiltersState {
 
 impl FiltersState {
     fn rerender_msgs(&self) -> impl Iterator<Item = SVGMsg> + '_ {
-        [SVGMsg::ResetGraph].into_iter()
+        [SVGMsg::ResetGraph]
+            .into_iter()
             .chain(self.filter_chain.iter().cloned().map(SVGMsg::ApplyFilter))
             .chain([SVGMsg::RenderGraph])
     }
@@ -59,14 +73,21 @@ impl FiltersState {
             return false;
         }
         if history {
-            self.prev_filter_chain.clone_from(&self.applied_filter_chain);
+            self.prev_filter_chain
+                .clone_from(&self.applied_filter_chain);
         }
         self.applied_filter_chain.clone_from(&self.filter_chain);
         file.send_updates(self.rerender_msgs());
         true
     }
     pub fn reset_disabled(&mut self, file: &OpenedFileInfo) {
-        let msg = SVGMsg::SetDisabled(self.disabler_chain.iter().filter_map(|(d, b)| b.then(|| *d)).collect());
+        let msg = SVGMsg::SetDisabled(
+            self.disabler_chain
+                .iter()
+                .filter(|&(_d, b)| *b)
+                .map(|(d, _b)| *d)
+                .collect(),
+        );
         let msgs = self.rerender_msgs();
         file.send_updates(std::iter::once(msg).chain(msgs));
     }
@@ -96,7 +117,7 @@ impl Component for FiltersState {
             will_delete: false,
             selected_filter: None,
             edit_filter: None,
-            global_section: NodeRef::default()
+            global_section: NodeRef::default(),
         };
         self_.reset_disabled(&ctx.props().file);
         self_
@@ -160,9 +181,14 @@ impl Component for FiltersState {
                     modified = true;
                 }
                 if let Filter::SelectNthMatchingLoop(n) = &filter {
-                    // TODO: re-add finding matching loops
-                    let graph = &ctx.props().file.parser.graph;
-                    if !graph.as_ref().is_some_and(|g| (& *g.borrow()).found_matching_loops().is_some_and(|mls| mls > *n)) {
+                    let state = ctx.link().get_state().unwrap();
+                    let graph = &state.state.parser.as_ref().unwrap().graph;
+                    if !graph.as_ref().is_some_and(|g| {
+                        (**g)
+                            .borrow()
+                            .found_matching_loops()
+                            .is_some_and(|mls| mls > *n)
+                    }) {
                         return modified;
                     }
                 }
@@ -171,15 +197,20 @@ impl Component for FiltersState {
             }
             Msg::AddFilter(edit, filter) => {
                 if let Filter::SelectNthMatchingLoop(n) = &filter {
-                    // TODO: re-add finding matching loops
-                    let graph = &ctx.props().file.parser.graph;
+                    let state = ctx.link().get_state().unwrap();
+                    let graph = &state.state.parser.as_ref().unwrap().graph;
                     // This relies on the fact that the graph is updated before the `AddFilter` is
-                    if !graph.as_ref().is_some_and(|g| g.borrow().found_matching_loops().is_some_and(|mls| mls > *n)) {
+                    if !graph.as_ref().is_some_and(|g| {
+                        (**g)
+                            .borrow()
+                            .found_matching_loops()
+                            .is_some_and(|mls| mls > *n)
+                    }) {
                         return false;
                     }
                 }
                 self.prev_filter_chain.clone_from(&self.filter_chain);
-                self.edit_filter = edit.then(|| self.filter_chain.len());
+                self.edit_filter = edit.then_some(self.filter_chain.len());
                 self.filter_chain.push(filter);
                 if !edit {
                     self.send_updates(&ctx.props().file, true);
@@ -190,33 +221,33 @@ impl Component for FiltersState {
                 self.disabler_chain[idx].1 = !self.disabler_chain[idx].1;
                 self.reset_disabled(&ctx.props().file);
                 false
-            },
+            }
             Msg::ToggleMlViewerMode => {
                 let search_matching_loops = ctx.props().search_matching_loops.clone();
-                let found_mls = ctx.props().file.parser.found_mls;
-                if let None = found_mls {
+
+                let state = ctx.link().get_state().unwrap();
+                let found_mls = &state.state.parser.as_ref().unwrap().found_mls;
+                if found_mls.is_none() {
                     search_matching_loops.emit(());
                 }
-                let link = ctx.link().clone();
-                let cfg = link.get_configuration().unwrap();
-                cfg.update.update(|cfg| { cfg.persistent.ml_viewer_mode = !cfg.persistent.ml_viewer_mode; true });
+                state.set_ml_viewer_mode(!state.state.ml_viewer_mode);
                 true
             }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let data = ctx.link().get_state().unwrap();
+        let info = data.state.file_info.as_ref().unwrap();
         let file = &ctx.props().file;
-        let (size, unit) = file_size_display(file.file_size);
+        let (size, unit) = file_size_display(info.size);
         let details = match &file.parser_state {
             ParseState::Paused(_, state) => {
                 let (parse_size, parse_unit) = file_size_display(state.bytes_read as u64);
-                format!("{} ({parse_size} {parse_unit}/{size} {unit})", file.file_name)
+                format!("{} ({parse_size} {parse_unit}/{size} {unit})", info.name)
             }
-            ParseState::Completed { .. } =>
-                format!("{} ({size} {unit})", file.file_name),
-            ParseState::Error(err) =>
-                format!("{} (error {err:?})", file.file_name),
+            ParseState::Completed { .. } => format!("{} ({size} {unit})", info.name),
+            ParseState::Error(err) => format!("{} (error {err:?})", info.name),
         };
         // Existing ops
         let elem_hashes: Vec<_> = self.filter_chain.iter().map(Filter::get_hash).collect();
@@ -231,13 +262,14 @@ impl Component for FiltersState {
         }).collect();
         let drag = ctx.link().callback(Msg::Drag);
         let will_delete = ctx.link().callback(Msg::WillDelete);
-        // TODO: re-add finding matching loops
-        let found_mls = ctx.props().file.parser.found_mls;
+
+        let state = ctx.link().get_state().unwrap();
+        let found_mls = &state.state.parser.as_ref().unwrap().found_mls;
         let toggle_ml_viewer_mode = ctx.link().callback(|ev: MouseEvent| {
             ev.prevent_default();
             Msg::ToggleMlViewerMode
-        }); 
-        let ml_viewer_mode = if ctx.link().get_configuration().unwrap().config.persistent.ml_viewer_mode {
+        });
+        let ml_viewer_mode = if state.state.ml_viewer_mode {
             html! {
                 <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"close"}</MatIcon></div>{"Exit matching loop viewer"}</a></li>
             }
@@ -245,7 +277,7 @@ impl Component for FiltersState {
             html! {
                 <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"loop"}</MatIcon></div>{"View matching loops"}</a></li>
             }
-        }; 
+        };
         let reset = ctx.link().callback(|e: MouseEvent| {
             e.prevent_default();
             Msg::ResetOperations
@@ -269,8 +301,16 @@ impl Component for FiltersState {
         let selected_nodes = selected_nodes.then(|| {
             let new_filter = ctx.link().callback(|f| Msg::AddFilter(false, f));
             let nodes = ctx.props().file.selected_nodes.clone();
-            let header = format!("Selected {} Node{}", nodes.len(), if nodes.len() == 1 { "" } else { "s" });
-            let collapsed_text = format!("Actions on the {} selected node{}", nodes.len(), if nodes.len() == 1 { "" } else { "s" });
+            let header = format!(
+                "Selected {} Node{}",
+                nodes.len(),
+                if nodes.len() == 1 { "" } else { "s" }
+            );
+            let collapsed_text = format!(
+                "Actions on the {} selected node{}",
+                nodes.len(),
+                if nodes.len() == 1 { "" } else { "s" }
+            );
             html! {
                 <SidebarSectionHeader header_text={header} collapsed_text={collapsed_text}><ul>
                     <AddFilterSidebar {new_filter} {nodes} general_filters={false}/>
@@ -284,7 +324,7 @@ impl Component for FiltersState {
             (true, false) => "delete",
             _ => "delete hidden",
         };
-        let dragging = html!{
+        let dragging = html! {
             <li ref={&self.delete_node} class={class}><a draggable="false">
                 <div class="material-icons"><MatIcon>{"delete"}</MatIcon></div>
                 {"Delete"}
@@ -292,13 +332,12 @@ impl Component for FiltersState {
         };
         let graph_details = file.rendered.as_ref().map(|g| {
             let class = if self.dragging { "hidden" } else { "" };
-            // TODO: re-add finding matching loops
-            let mls = ctx.props().file.parser.found_mls.map(|mls| format!(", {mls} mtch loops")).unwrap_or_default();
+            let mls = found_mls.map(|mls| format!(", {mls} mtch loops")).unwrap_or_default();
             let details = format!("{} nodes, {} edges{mls}", g.graph.graph.node_count(), g.graph.graph.edge_count());
             html! { <li class={class}><a draggable="false" class="trace-file-name">{details}</a></li> }
         });
         // Disablers
-        let toggle = ctx.link().callback(|idx| Msg::ToggleDisabler(idx));
+        let toggle = ctx.link().callback(Msg::ToggleDisabler);
         let selected: Vec<_> = DEFAULT_DISABLER_CHAIN.iter().map(|(_, b)| *b).collect();
         let disablers = self.disabler_chain.iter().map(|(d, b)| {
             let onclick = Callback::from(move |e: MouseEvent| e.prevent_default());
@@ -376,16 +415,12 @@ impl Filter {
         match self {
             Self::MaxNodeIdx(node_idx) => format!("Hide all ≥ |{node_idx}|"),
             Self::MinNodeIdx(node_idx) => format!("Hide all < |{node_idx}|"),
-            Self::IgnoreTheorySolving => format!("Hide theory solving"),
-            Self::IgnoreQuantifier(None) => {
-                format!("Hide no quant")
-            }
+            Self::IgnoreTheorySolving => "Hide theory solving".to_string(),
+            Self::IgnoreQuantifier(None) => "Hide no quant".to_string(),
             Self::IgnoreQuantifier(Some(qidx)) => {
                 format!("Hide quant |{qidx}|")
             }
-            Self::IgnoreAllButQuantifier(None) => {
-                format!("Hide all quant")
-            }
+            Self::IgnoreAllButQuantifier(None) => "Hide all quant".to_string(),
             Self::IgnoreAllButQuantifier(Some(qidx)) => {
                 format!("Hide all but quant ${qidx:?}$")
             }
@@ -420,18 +455,24 @@ impl Filter {
                     n if n % 10 == 2 => "rd",
                     _ => "th",
                 };
-                format!("Show only |{}{ordinal}| matching loop", n+1)
+                format!("Show only |{}{ordinal}| matching loop", n + 1)
             }
-            Self::ShowMatchingLoopSubgraph => {
-                format!("S only likely matching loops")
-            }
+            Self::ShowMatchingLoopSubgraph => "S only likely matching loops".to_string(),
         }
     }
     pub fn long_text(&self, d: impl Fn(RawNodeIndex) -> NodeKind, applied: bool) -> String {
-        let (hide, show) = if applied { ("Hiding", "Showing") } else { ("Hide", "Show") };
+        let (hide, show) = if applied {
+            ("Hiding", "Showing")
+        } else {
+            ("Hide", "Show")
+        };
         match self {
-            Self::MaxNodeIdx(node_idx) => format!("{hide} all nodes {} and above", display(node_idx, applied)),
-            Self::MinNodeIdx(node_idx) => format!("{hide} all nodes below {}", display(node_idx, applied)),
+            Self::MaxNodeIdx(node_idx) => {
+                format!("{hide} all nodes {} and above", display(node_idx, applied))
+            }
+            Self::MinNodeIdx(node_idx) => {
+                format!("{hide} all nodes below {}", display(node_idx, applied))
+            }
             Self::IgnoreTheorySolving => format!("{hide} all nodes related to theory solving"),
             Self::IgnoreQuantifier(None) => {
                 format!("{hide} all nodes without an associated quantifier")
@@ -443,27 +484,57 @@ impl Filter {
                 format!("{hide} all nodes with an associated quantifier")
             }
             Self::IgnoreAllButQuantifier(Some(qidx)) => {
-                format!("{hide} all nodes not associated to quantifier {}", display(qidx, applied))
+                format!(
+                    "{hide} all nodes not associated to quantifier {}",
+                    display(qidx, applied)
+                )
             }
-            Self::MaxInsts(max) => format!("{hide} all but the {} most expensive nodes", display(max, applied)),
+            Self::MaxInsts(max) => format!(
+                "{hide} all but the {} most expensive nodes",
+                display(max, applied)
+            ),
             Self::MaxBranching(max) => {
-                format!("{hide} all but {} nodes with the most children", display(max, applied))
+                format!(
+                    "{hide} all but {} nodes with the most children",
+                    display(max, applied)
+                )
             }
             &Self::VisitSubTreeWithRoot(nidx, retain) => match retain {
-                true => format!("{show} node {} and its descendants", display(d(nidx), applied)),
-                false => format!("{hide} node {} and its descendants", display(d(nidx), applied)),
+                true => format!(
+                    "{show} node {} and its descendants",
+                    display(d(nidx), applied)
+                ),
+                false => format!(
+                    "{hide} node {} and its descendants",
+                    display(d(nidx), applied)
+                ),
             },
             &Self::VisitSourceTree(nidx, retain) => match retain {
-                true => format!("{show} node {} and its ancestors", display(d(nidx), applied)),
-                false => format!("{hide} node {} and its ancestors", display(d(nidx), applied)),
+                true => format!(
+                    "{show} node {} and its ancestors",
+                    display(d(nidx), applied)
+                ),
+                false => format!(
+                    "{hide} node {} and its ancestors",
+                    display(d(nidx), applied)
+                ),
             },
             &Self::ShowNeighbours(nidx, direction) => match direction {
-                Direction::Incoming => format!("{show} the parents of node {}", display(d(nidx), applied)),
-                Direction::Outgoing => format!("{show} the children of node {}", display(d(nidx), applied)),
+                Direction::Incoming => {
+                    format!("{show} the parents of node {}", display(d(nidx), applied))
+                }
+                Direction::Outgoing => {
+                    format!("{show} the children of node {}", display(d(nidx), applied))
+                }
             },
-            Self::MaxDepth(depth) => format!("{hide} all nodes above depth {}", display(depth, applied)),
+            Self::MaxDepth(depth) => {
+                format!("{hide} all nodes above depth {}", display(depth, applied))
+            }
             &Self::ShowLongestPath(node) => {
-                format!("{show} only nodes on the longest path through node {}", display(d(node), applied))
+                format!(
+                    "{show} only nodes on the longest path through node {}",
+                    display(d(node), applied)
+                )
             }
             Self::ShowNamedQuantifier(name) => {
                 format!("{show} nodes of quantifier \"{}\"", display(name, applied))
@@ -477,7 +548,10 @@ impl Filter {
                     n if n % 10 == 2 => "rd",
                     _ => "th",
                 };
-                format!("{show} only nodes in {}{ordinal} longest matching loop", display(n+1, applied))
+                format!(
+                    "{show} only nodes in {}{ordinal} longest matching loop",
+                    display(n + 1, applied)
+                )
             }
             Self::ShowMatchingLoopSubgraph => {
                 format!("{show} only nodes in any potential matching loop")

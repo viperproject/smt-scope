@@ -1,7 +1,10 @@
 use fxhash::FxHashMap;
-use smt_log_parser::parsers::z3::graph::RawNodeIndex;
+use smt_log_parser::analysis::RawNodeIndex;
 use web_sys::HtmlInputElement;
-use yew::{function_component, html, use_effect_with_deps, use_mut_ref, AttrValue, Callback, FocusEvent, Html, InputEvent, MouseEvent, NodeRef, Properties};
+use yew::{
+    function_component, html, use_effect_with_deps, use_mut_ref, AttrValue, Callback, FocusEvent,
+    Html, InputEvent, MouseEvent, NodeRef, Properties,
+};
 
 use crate::utils::lookup::Kind;
 
@@ -41,13 +44,13 @@ pub fn OmniboxInput(props: &OmniboxInputProps) -> Html {
         (props.omnibox.clone(), props.input.clone(), props.focused),
     );
     *focused.borrow_mut() = props.focused;
-    html!{ <input ref={props.omnibox.clone()} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} onfocusin={&props.onfocusin} onfocusout={&props.onfocusout} oninput={&props.oninput}/> }
+    html! { <input ref={props.omnibox.clone()} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} onfocusin={&props.onfocusin} onfocusout={&props.onfocusout} oninput={&props.oninput}/> }
 }
 
 #[derive(Debug)]
 pub struct HighlightedString<'a>(pub &'a str, pub &'a [u32]);
 impl HighlightedString<'_> {
-    pub fn to_html(self) -> Html {
+    pub fn into_html(self) -> Html {
         let mut result = Vec::new();
         let mut last_start = 0;
         let mut next = 0;
@@ -83,7 +86,11 @@ impl SuggestionResult {
         for group in search.groups {
             for action in group.actions {
                 let entry = groups_map.entry(action.kind).or_insert_with_key(|key| {
-                    groups.push(SuggestionGroup { kind: *key, start_idx: 0, suggestions: Vec::new() });
+                    groups.push(SuggestionGroup {
+                        kind: *key,
+                        start_idx: 0,
+                        suggestions: Vec::new(),
+                    });
                     let last = groups.last_mut().unwrap();
                     unsafe { &mut *(last as *mut _) }
                 });
@@ -96,9 +103,25 @@ impl SuggestionResult {
             }
         }
         for group in &mut groups {
-            group.suggestions.sort_by_key(|suggestion| (u16::MAX - suggestion.score, usize::MAX - suggestion.details.visible, usize::MAX - suggestion.details.count));
+            group.suggestions.sort_by_key(|suggestion| {
+                (
+                    u16::MAX - suggestion.score,
+                    usize::MAX - suggestion.details.visible,
+                    usize::MAX - suggestion.details.count,
+                )
+            });
         }
-        groups.sort_by_key(|group| (u16::MAX - group.suggestions.first().map(|suggestion| suggestion.score).unwrap_or_default(), group.kind));
+        groups.sort_by_key(|group| {
+            (
+                u16::MAX
+                    - group
+                        .suggestions
+                        .first()
+                        .map(|suggestion| suggestion.score)
+                        .unwrap_or_default(),
+                group.kind,
+            )
+        });
         let mut suggestions = 0;
         let mut exact_match = None;
         let mut double_match = false;
@@ -106,11 +129,18 @@ impl SuggestionResult {
             group.start_idx = suggestions;
             suggestions += group.suggestions.len();
             let mut max_score = 1;
-            let new_match = group.suggestions.iter().take_while(|suggestion| {
-                let higher = suggestion.score >= max_score;
-                max_score = suggestion.score;
-                higher
-            }).enumerate().find_map(|(i, suggestion)| (suggestion.name == search.query).then(|| group.start_idx + i));
+            let new_match = group
+                .suggestions
+                .iter()
+                .take_while(|suggestion| {
+                    let higher = suggestion.score >= max_score;
+                    max_score = suggestion.score;
+                    higher
+                })
+                .enumerate()
+                .find_map(|(i, suggestion)| {
+                    (suggestion.name == search.query).then(|| group.start_idx + i)
+                });
             double_match |= new_match.is_some() && exact_match.is_some();
             exact_match = exact_match.or(new_match);
         }
@@ -125,17 +155,31 @@ impl SuggestionResult {
         }
     }
     pub fn suggestion_count(&self) -> usize {
-        self.groups.last().map_or(0, |group| group.start_idx + group.suggestions.len())
+        self.groups
+            .last()
+            .map_or(0, |group| group.start_idx + group.suggestions.len())
     }
-    pub fn groups(&self) -> Option<impl Iterator<Item = (&SuggestionGroup, impl Iterator<Item = (&[u32], &Suggestion)>)> + '_> {
+    pub fn groups(
+        &self,
+    ) -> Option<
+        impl Iterator<
+                Item = (
+                    &SuggestionGroup,
+                    impl Iterator<Item = (&[u32], &Suggestion)>,
+                ),
+            > + '_,
+    > {
         let non_empty = !self.groups.is_empty();
         non_empty.then(|| {
             let query_len = self.query.len();
             self.groups.iter().map(move |group| {
-                (group, group.suggestions.iter().map(move |suggestion| {
-                    let start = suggestion.name_idx * query_len;
-                    (&self.indices[start..start + query_len], suggestion)
-                }))
+                (
+                    group,
+                    group.suggestions.iter().map(move |suggestion| {
+                        let start = suggestion.name_idx * query_len;
+                        (&self.indices[start..start + query_len], suggestion)
+                    }),
+                )
             })
         })
     }
@@ -150,7 +194,12 @@ impl SuggestionResult {
         None
     }
 
-    pub fn as_html<'a>(self_: Option<&'a Self>, highlighted: usize, scroll_into_view: &'a NodeRef, onclick: impl Fn(usize) -> Callback<MouseEvent> + 'a) -> Option<impl Iterator<Item = Html> + 'a> {
+    pub fn as_html<'a>(
+        self_: Option<&'a Self>,
+        highlighted: usize,
+        scroll_into_view: &'a NodeRef,
+        onclick: impl Fn(usize) -> Callback<MouseEvent> + 'a,
+    ) -> Option<impl Iterator<Item = Html> + 'a> {
         let groups = self_.and_then(SuggestionResult::groups);
         groups.map(move |groups| {
             groups.map(move |(group, suggestions)| {
@@ -160,7 +209,7 @@ impl SuggestionResult {
                     let class = if highlighted { "omnibox-highlighted" } else { "can-hover" };
                     let scroll_into_view = highlighted.then(|| scroll_into_view.clone()).unwrap_or_default();
                     let onmousedown = onclick(i);
-                    let highlighted_name = HighlightedString(&suggestion.name, indices).to_html();
+                    let highlighted_name = HighlightedString(&suggestion.name, indices).into_html();
                     let highlighted_name = if let Some(arguments) = suggestion.details.arguments {
                         html! {
                             <><span class="option-arguments">{"("}</span>{highlighted_name}<span class="option-arguments">{for (0..arguments).map(|_| " _")}{")"}</span></>
@@ -214,17 +263,28 @@ pub struct PickedSuggestion {
     pub node_idx: Option<usize>,
 }
 impl PickedSuggestion {
-    pub fn new(suggestion_idx: usize, sr: &SuggestionResult, pick: &Callback<(String, Kind), Option<Vec<RawNodeIndex>>>) -> Option<Self> {
+    pub fn new(
+        suggestion_idx: usize,
+        sr: &SuggestionResult,
+        pick: &Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
+    ) -> Option<Self> {
         sr.get_nth(suggestion_idx).and_then(|(group, suggestion)| {
-            pick.emit((suggestion.name.clone(), group.kind)).map(|nodes| Self {
-                name: suggestion.name.clone(),
-                suggestion_idx,
-                nodes,
-                node_idx: None,
-            })
+            pick.emit((suggestion.name.clone(), group.kind))
+                .map(|nodes| Self {
+                    name: suggestion.name.clone(),
+                    suggestion_idx,
+                    nodes,
+                    node_idx: None,
+                })
         })
     }
-    pub fn default(sr: Option<&SuggestionResult>, pick: &Callback<(String, Kind), Option<Vec<RawNodeIndex>>>) -> Option<Self> {
-        sr.and_then(|sr| sr.exact_match.and_then(|suggestion_idx| Self::new(suggestion_idx, sr, pick)))
+    pub fn default(
+        sr: Option<&SuggestionResult>,
+        pick: &Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
+    ) -> Option<Self> {
+        sr.and_then(|sr| {
+            sr.exact_match
+                .and_then(|suggestion_idx| Self::new(suggestion_idx, sr, pick))
+        })
     }
 }

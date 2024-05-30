@@ -21,8 +21,14 @@ pub fn SidebarSectionHeader(props: &SidebarSectionHeaderProps) -> Html {
         let section: HtmlElement = section_ref.cast::<HtmlElement>().unwrap();
         let _ = section.class_list().toggle("expanded");
     });
-    let icon = props.icon.as_ref().map(|icon| html!{<div class="material-icons"><MatIcon>{icon}</MatIcon></div>});
-    let class = format!("section-header {}", props.header_class.as_deref().unwrap_or_default());
+    let icon = props
+        .icon
+        .as_ref()
+        .map(|icon| html! {<div class="material-icons"><MatIcon>{icon}</MatIcon></div>});
+    let class = format!(
+        "section-header {}",
+        props.header_class.as_deref().unwrap_or_default()
+    );
     let header_ref = props.header_ref.clone().unwrap_or_default();
     html! {
         <section class="expanded" ref={section}>

@@ -1,11 +1,10 @@
 use fxhash::{FxHashMap, FxHashSet};
+use petgraph::visit::{Dfs, EdgeFiltered, EdgeRef, Reversed, Visitable, Walker};
 use std::path::PathBuf;
 
 use smt_log_parser::{
-    analysis::{
-        raw::{NodeKind, RawInstGraph},
-        RawNodeIndex,
-    },
+    analysis::{raw::IndexesInstGraph, InstGraph, RawNodeIndex},
+    items::InstIdx,
     LogParser, Z3Parser,
 };
 
@@ -22,7 +21,8 @@ pub fn run(logfile: PathBuf, depth: u32, pretty_print: bool) -> Result<(), Strin
 
     let (_metadata, parser) = Z3Parser::from_file(path).unwrap();
     let parser = parser.process_all().map_err(|e| e.to_string())?;
-    let mut axiom_deps = build_axiom_dependency_graph(&parser).map_err(|e| format!("{:?}", e))?;
+    let inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
+    let mut axiom_deps = build_axiom_dependency_graph(&parser, &inst_graph);
 
     for _ in 1..depth {
         extend_by_transitive_deps(&mut axiom_deps);
@@ -35,7 +35,7 @@ pub fn run(logfile: PathBuf, depth: u32, pretty_print: bool) -> Result<(), Strin
                 println!(" - {}", dep);
             }
         } else {
-            let deps: Vec<String> = deps.into_iter().collect();
+            let deps: Vec<&str> = deps.into_iter().collect();
             println!("{} = {}", axiom, deps.join(", "));
         }
     }
@@ -43,106 +43,59 @@ pub fn run(logfile: PathBuf, depth: u32, pretty_print: bool) -> Result<(), Strin
     Ok(())
 }
 
-/// Given an iterator over nodes in the instantiation graph, filters
-/// this iterator by those nodes that correspond to quantifiers with
-/// user names
-fn named_nodes<'a, I>(
-    inst_graph: &'a RawInstGraph,
-    parser: &'a Z3Parser,
-    nodes: I,
-) -> impl Iterator<Item = (RawNodeIndex, &'a str)> + 'a
-where
-    I: Iterator<Item = RawNodeIndex> + 'a,
-{
-    nodes
-        .filter_map(|node_id| {
-            if let NodeKind::Instantiation(inst) = inst_graph[node_id].kind() {
-                Some((node_id, inst))
-            } else {
-                None
-            }
-        })
-        .filter_map(|(node_id, inst)| {
-            parser[parser[*inst].match_]
-                .kind
-                .quant_idx()
-                .map(|v| (node_id, v))
-        })
-        .filter_map(|(node_id, quant_id)| parser[quant_id].kind.user_name().map(|v| (node_id, v)))
-        .map(|(node_id, user_name)| (node_id, &parser[user_name]))
-}
-
-/// Given a node in the instantiation graph, attempts to retrieve the
-/// user name associated with it, assuming that it is a
-/// quantifier. (Returns None otherwise).
-fn get_node_name<'a>(
-    inst_graph: &'a RawInstGraph,
-    parser: &'a Z3Parser,
-    node_id: RawNodeIndex,
-) -> Option<&'a str> {
-    let inst = if let NodeKind::Instantiation(inst) = inst_graph[node_id].kind() {
-        Some(inst)
-    } else {
-        None
-    }?;
-    let quant_id = parser[parser[*inst].match_].kind.quant_idx()?;
-    let user_name = parser[quant_id].kind.user_name()?;
-    Some(&parser[user_name])
+/// Returns an iterator over all instantiations of a quantifier that
+/// have a user name.
+fn named_instantiations(parser: &Z3Parser) -> impl Iterator<Item = (InstIdx, &'_ str)> + '_ {
+    parser
+        .instantiations()
+        .filter_map(|(idx, inst)| parser[inst.match_].kind.quant_idx().map(|v| (idx, v)))
+        .filter_map(|(idx, quant_id)| parser[quant_id].kind.user_name().map(|v| (idx, &parser[v])))
 }
 
 /// Constructs a mapping from axioms to the immediately preceding axiom that produced a term that triggered them.
-fn build_axiom_dependency_graph(
-    parser: &Z3Parser,
-) -> Result<FxHashMap<String, FxHashSet<String>>, smt_log_parser::Error> {
-    let inst_graph = RawInstGraph::new(parser)?;
-    let node_name_map: FxHashMap<RawNodeIndex, String> =
-        named_nodes(&inst_graph, parser, inst_graph.node_indices())
-            .map(|(n, v)| (n, v.into()))
+fn build_axiom_dependency_graph<'a>(
+    parser: &'a Z3Parser,
+    inst_graph: &InstGraph,
+) -> FxHashMap<&'a str, FxHashSet<&'a str>> {
+    let node_name_map: FxHashMap<InstIdx, &str> = named_instantiations(parser).collect();
+    let mut node_dep_map: FxHashMap<&str, FxHashSet<&str>> = FxHashMap::default();
+
+    for (idx, name) in &node_name_map {
+        let named_node = idx.index(&inst_graph.raw);
+        let parents = inst_graph
+            .raw
+            .graph
+            .neighbors_directed(named_node.0, petgraph::Direction::Incoming)
             .collect();
-    let mut node_dep_map: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
+        let dfs = Dfs::from_parts(parents, inst_graph.raw.graph.visit_map());
 
-    for named_node in node_name_map.keys() {
-        // perform a dfs and calculate all dependencies
-        let mut seen_nodes: FxHashSet<RawNodeIndex> = FxHashSet::default();
-        let mut stack = vec![*named_node];
-        let mut dependent_nodes: FxHashSet<RawNodeIndex> = FxHashSet::default();
+        let filtered = EdgeFiltered::from_fn(&*inst_graph.raw.graph, |edge| {
+            !inst_graph.raw[RawNodeIndex(edge.target())]
+                .kind()
+                .inst()
+                .is_some_and(|inst| node_name_map.contains_key(&inst))
+        });
+        let dependent_on = dfs
+            .iter(Reversed(&filtered))
+            .map(RawNodeIndex)
+            .filter_map(|node| inst_graph.raw[node].kind().inst())
+            .filter_map(|inst| node_name_map.get(&inst).copied());
 
-        while let Some(node) = stack.pop() {
-            if !seen_nodes.insert(node) {
-                continue;
-            }
-            for node in inst_graph.neighbors_directed(node, petgraph::Direction::Incoming) {
-                let is_named = get_node_name(&inst_graph, parser, node).is_some();
-                // if this is a quantified axiom with a name, add it to the list of dependencies
-                if is_named {
-                    dependent_nodes.insert(node);
-                }
-                // if we haven't seen it before, and it's not named
-                if !seen_nodes.contains(&node) && !is_named {
-                    stack.push(node);
-                }
-            }
-        }
-
-        let entry = node_dep_map.entry(node_name_map[named_node].clone());
-        let dependent_node_names: FxHashSet<String> = dependent_nodes
-            .into_iter()
-            .filter(|v| node_name_map[v] != "constructor_accessor_axiom")
-            .map(|v| node_name_map[&v].clone())
-            .collect();
-        entry.or_default().extend(dependent_node_names);
+        let entry = node_dep_map.entry(name);
+        entry.or_default().extend(dependent_on);
     }
 
-    Ok(node_dep_map)
+    node_dep_map
 }
 
 /// extends the dependency graph by 1 transitive step
-fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<String, FxHashSet<String>>) {
-    for (axiom, deps) in axiom_deps.clone().into_iter() {
+fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, FxHashSet<&str>>) {
+    let old_deps = axiom_deps.clone();
+    for (axiom, deps) in &old_deps {
         for dep in deps {
-            let extended_deps: FxHashSet<String> =
-                axiom_deps.get(&dep).cloned().unwrap_or_default();
-            axiom_deps.get_mut(&axiom).unwrap().extend(extended_deps);
+            if let Some(extended_deps) = old_deps.get(dep) {
+                axiom_deps.get_mut(axiom).unwrap().extend(extended_deps);
+            }
         }
     }
 }

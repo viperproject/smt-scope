@@ -22,7 +22,7 @@ pub enum Commands {
         #[arg(short, long, default_value_t = false)]
         pretty_print: bool,
     },
-    /// Tests the parser and analyses and prints out timing information
+    /// Tests the parser and analysis, printing out timing information
     Test {
         /// The paths to the smt log files
         logfiles: Vec<std::path::PathBuf>,

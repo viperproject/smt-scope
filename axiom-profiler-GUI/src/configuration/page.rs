@@ -391,7 +391,6 @@ impl Component for TermDisplayComponent {
             let ref_ = if matcher { &td.matcher_ref } else { &td.formatter_ref };
             if let Some(element) = ref_.cast::<HtmlInputElement>() {
                 element.focus().ok();
-                element.select();
             }
         }
     }

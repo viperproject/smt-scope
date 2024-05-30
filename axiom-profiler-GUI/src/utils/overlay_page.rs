@@ -8,10 +8,11 @@ pub type SetVisibleCallback = Rc<RefCell<Callback<Option<bool>>>>;
 #[derive(Properties, PartialEq)]
 pub struct OverlayProps {
     pub set_visible: SetVisibleCallback,
+    pub visible_changed: Callback<bool>,
     pub children: Children,
 }
 
-pub struct Overlay { 
+pub struct Overlay {
     visible: bool,
 }
 
@@ -35,17 +36,19 @@ impl Component for Overlay {
         true
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::SetVisible(visible) => {
                 let Some(visible) = visible else {
                     self.visible = !self.visible;
+                    ctx.props().visible_changed.emit(self.visible);
                     return true;
                 };
                 if self.visible == visible {
                     return false;
                 }
                 self.visible = visible;
+                ctx.props().visible_changed.emit(self.visible);
                 true
             }
         }

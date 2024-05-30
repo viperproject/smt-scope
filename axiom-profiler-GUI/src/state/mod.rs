@@ -14,6 +14,7 @@ pub struct State {
     pub term_display: TermDisplayContext,
     pub parser: Option<RcParser>,
     pub ml_viewer_mode: bool,
+    pub overlay_visible: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
@@ -43,7 +44,15 @@ impl StateProvider {
         self.update.update(move |state|
             (state.ml_viewer_mode != ml_viewer_mode).then(|| {
                 state.ml_viewer_mode = ml_viewer_mode;
-                StateUpdateKind::Parser
+                StateUpdateKind::Other
+            })
+        );
+    }
+    pub fn set_overlay_visible(&self, overlay_visible: bool) {
+        self.update.update(move |state|
+            (state.overlay_visible != overlay_visible).then(|| {
+                state.overlay_visible = overlay_visible;
+                StateUpdateKind::Other
             })
         );
     }
@@ -75,6 +84,7 @@ mod private {
     pub enum StateUpdateKind {
         FileInfo,
         Parser,
+        Other,
     }
 }
 use private::StateUpdateKind;

@@ -505,6 +505,12 @@ impl Component for FileDataComponent {
             None => html!{},
         };
 
+        let link = ctx.link().clone();
+        let flags_visible_changed = Callback::from(move |visible| {
+            let data = link.get_state().unwrap();
+            data.set_overlay_visible(visible);
+        });
+
         let data = ctx.link().get_state().unwrap();
         let parser = data.state.parser.clone();
         let parser_ref = parser.clone();
@@ -617,7 +623,7 @@ impl Component for FileDataComponent {
     <div class="alerts"></div>
     <div class={page_class}>
         {page}
-        <Overlay set_visible={self.flags_visible.clone()}><Flags /></Overlay>
+        <Overlay visible_changed={flags_visible_changed} set_visible={self.flags_visible.clone()}><Flags /></Overlay>
     </div>
 
     // Shortcuts dialog

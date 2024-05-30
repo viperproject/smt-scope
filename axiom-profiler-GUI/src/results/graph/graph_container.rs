@@ -10,6 +10,7 @@ use material_yew::WeakComponentLink;
 
 use crate::commands::{Command, CommandRef, CommandsContext};
 use crate::results::svg_result::RenderedGraph;
+use crate::state::StateContext;
 use crate::{CallbackRef, GlobalCallbacksContext, PagePosition, PrecisePosition};
 
 use super::svg_graph::{Graph, Svg};
@@ -278,6 +279,10 @@ impl Component for GraphContainer {
                 false
             }
             Msg::KeyDown(ev) => {
+                if ctx.link().get_state().unwrap().state.overlay_visible {
+                    return false;
+                }
+
                 let key = ev.key();
                 let plain = !ev.meta_key() && !ev.ctrl_key() && !ev.shift_key() && !ev.alt_key();
                 match key.as_str() {
@@ -318,6 +323,10 @@ impl Component for GraphContainer {
                 false
             }
             Msg::KeyHold(()) => {
+                if ctx.link().get_state().unwrap().state.overlay_visible {
+                    return false;
+                }
+
                 let mut delta = PrecisePosition::default();
                 let mut dz = 0.0;
                 self.held_keys.retain(|key, (time, moved, released)| {

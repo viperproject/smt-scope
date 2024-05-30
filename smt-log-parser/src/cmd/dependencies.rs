@@ -62,19 +62,26 @@ fn build_axiom_dependency_graph<'a>(
 
     for (idx, name) in &node_name_map {
         let named_node = idx.index(&inst_graph.raw);
+        // We will be removing these edges in the `filtered` graph so need to
+        // start the DFS from the parents.
         let parents = inst_graph
             .raw
             .graph
             .neighbors_directed(named_node.0, petgraph::Direction::Incoming)
             .collect();
+        // Start a DFS from all the parents of the named node.
         let dfs = Dfs::from_parts(parents, inst_graph.raw.graph.visit_map());
 
+        // A graph without the edges leading to named nodes. This will prevent
+        // the DFS from walking past such nodes.
         let filtered = EdgeFiltered::from_fn(&*inst_graph.raw.graph, |edge| {
             !inst_graph.raw[RawNodeIndex(edge.target())]
                 .kind()
                 .inst()
                 .is_some_and(|inst| node_name_map.contains_key(&inst))
         });
+        // Walk the graph in reverse (i.e. using Incoming edges) and filter only
+        // the leaf nodes.
         let dependent_on = dfs
             .iter(Reversed(&filtered))
             .map(RawNodeIndex)
@@ -88,7 +95,7 @@ fn build_axiom_dependency_graph<'a>(
     node_dep_map
 }
 
-/// extends the dependency graph by 1 transitive step
+/// Extends the dependency graph by 1 transitive step
 fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, FxHashSet<&str>>) {
     let old_deps = axiom_deps.clone();
     for (axiom, deps) in &old_deps {

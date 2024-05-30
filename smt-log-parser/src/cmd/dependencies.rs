@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use fxhash::{FxHashMap, FxHashSet};
+use std::path::PathBuf;
 
 use smt_log_parser::{
     analysis::{
@@ -94,9 +94,9 @@ fn get_node_name<'a>(
 fn build_axiom_dependency_graph(
     parser: &Z3Parser,
 ) -> Result<FxHashMap<String, FxHashSet<String>>, smt_log_parser::Error> {
-    let inst_graph = RawInstGraph::new(&parser)?;
+    let inst_graph = RawInstGraph::new(parser)?;
     let node_name_map: FxHashMap<RawNodeIndex, String> =
-        named_nodes(&inst_graph, &parser, inst_graph.node_indices())
+        named_nodes(&inst_graph, parser, inst_graph.node_indices())
             .map(|(n, v)| (n, v.into()))
             .collect();
     let mut node_dep_map: FxHashMap<String, FxHashSet<String>> = FxHashMap::default();
@@ -112,7 +112,7 @@ fn build_axiom_dependency_graph(
                 continue;
             }
             for node in inst_graph.neighbors_directed(node, petgraph::Direction::Incoming) {
-                let is_named = get_node_name(&inst_graph, &parser, node).is_some();
+                let is_named = get_node_name(&inst_graph, parser, node).is_some();
                 // if this is a quantified axiom with a name, add it to the list of dependencies
                 if is_named {
                     dependent_nodes.insert(node);
@@ -133,7 +133,7 @@ fn build_axiom_dependency_graph(
         entry.or_default().extend(dependent_node_names);
     }
 
-    return Ok(node_dep_map);
+    Ok(node_dep_map)
 }
 
 /// extends the dependency graph by 1 transitive step
@@ -141,7 +141,7 @@ fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<String, FxHashSet<String
     for (axiom, deps) in axiom_deps.clone().into_iter() {
         for dep in deps {
             let extended_deps: FxHashSet<String> =
-                axiom_deps.get(&dep).map(|v| v.clone()).unwrap_or_default();
+                axiom_deps.get(&dep).cloned().unwrap_or_default();
             axiom_deps.get_mut(&axiom).unwrap().extend(extended_deps);
         }
     }

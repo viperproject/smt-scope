@@ -26,5 +26,5 @@ pub enum Commands {
     Test {
         /// The paths to the smt log files
         logfiles: Vec<std::path::PathBuf>,
-    }
+    },
 }

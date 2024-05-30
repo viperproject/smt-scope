@@ -21,6 +21,8 @@ nonmax = "0.5"
 serde = { version = "1.0.183", features = ["derive"], optional = true }
 mem_dbg = { version = "0.1.8", features = ["std", "derive"], default-features = false, optional = true }
 regex = { version = "1.10", optional = true }
+# For the command line interface
+clap = { version = "4.5.4", features = ["derive"] }
 
 [dev-dependencies]
 memory-stats = "1.1.0"

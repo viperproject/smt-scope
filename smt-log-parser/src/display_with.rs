@@ -491,82 +491,85 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResu
                     (index < data.children().len()).then(|| index)
                 }
             }
-
-            for output in &self.formatter.outputs {
-                match output {
-                    SubFormatter::String(s) =>
-                        write!(f, "{s}")?,
-                    SubFormatter::Capture(idx) => {
-                        let Some(capture) = get_capture(*idx) else {
-                            continue;
-                        };
-                        if let Some(as_math) = ctxt.config.replace_symbols.as_math() {
-                            match capture {
-                                "and" if as_math => write!(f, "∧")?,
-                                "and" if !as_math => write!(f, "&&")?,
-                                "or" if as_math => write!(f, "∨")?,
-                                "or" if !as_math => write!(f, "||")?,
-                                "not" if as_math => write!(f, "¬")?,
-                                "not" if !as_math => write!(f, "!")?,
-                                "<=" if as_math => write!(f, "≤")?,
-                                ">=" if as_math => write!(f, "≥")?,
-                                _ => write!(f, "{capture}")?,
-                            }
-                        } else {
-                            write!(f, "{capture}")?
-                        }
-                    }
-                    SubFormatter::Single { index, bind_power } => {
-                        let Some(child) = get_child(*index, data) else {
-                            continue;
-                        };
-                        let child = data.children()[child];
-                        data.with_inner_bind_power(*bind_power, |data| {
-                            display_child(f, child, ctxt, data)
-                        })?;
-                    }
-                    SubFormatter::Repeat(r) => {
-                        let (Some(from), Some(to)) = (get_child(r.from, data), get_child(r.to, data)) else {
-                            continue;
-                        };
-                        if !r.from.0.is_negative() && r.to.0.is_negative() && from > to {
-                            continue;
-                        }
-                        if r.from.0.is_negative() && !r.to.0.is_negative() && from < to {
-                            continue;
-                        }
-                        let forwards = from <= to;
-                        // The range is inclusive on both ends
-                        let mut curr = if forwards { from.wrapping_sub(1) } else { from.wrapping_add(1) };
-                        let iter = std::iter::from_fn(move || {
-                            if curr == to {
-                                None
+            fn write_formatter<'b, 's>(formatter_outputs: &[SubFormatter], f: &mut fmt::Formatter<'_>, ctxt: &DisplayCtxt<'b>, data: &mut DisplayData<'b>, get_capture: &impl Fn(NonMaxU32) -> Option<&'s str>) -> fmt::Result {
+                for output in formatter_outputs {
+                    match output {
+                        SubFormatter::String(s) =>
+                            write!(f, "{s}")?,
+                        SubFormatter::Capture(idx) => {
+                            let Some(capture) = get_capture(*idx) else {
+                                continue;
+                            };
+                            if let Some(as_math) = ctxt.config.replace_symbols.as_math() {
+                                match capture {
+                                    "and" if as_math => write!(f, "∧")?,
+                                    "and" if !as_math => write!(f, "&&")?,
+                                    "or" if as_math => write!(f, "∨")?,
+                                    "or" if !as_math => write!(f, "||")?,
+                                    "not" if as_math => write!(f, "¬")?,
+                                    "not" if !as_math => write!(f, "!")?,
+                                    "<=" if as_math => write!(f, "≤")?,
+                                    ">=" if as_math => write!(f, "≥")?,
+                                    _ => write!(f, "{capture}")?,
+                                }
                             } else {
-                                curr = if forwards { curr.wrapping_add(1) } else { curr.wrapping_sub(1) };
-                                Some(curr)
+                                write!(f, "{capture}")?
                             }
-                        });
-                        write!(f, "{}", r.left_sep)?;
-                        let mut bind_power = BindPowerPair::asymmetric(r.left, r.middle.left);
-                        for child in iter {
-                            let is_final = child == to;
-                            if is_final {
-                                bind_power.right = r.right;
-                            }
+                        }
+                        SubFormatter::Single { index, bind_power } => {
+                            let Some(child) = get_child(*index, data) else {
+                                continue;
+                            };
                             let child = data.children()[child];
-                            data.with_inner_bind_power(bind_power, |data| {
+                            data.with_inner_bind_power(*bind_power, |data| {
                                 display_child(f, child, ctxt, data)
                             })?;
-                            if !is_final {
-                                write!(f, "{}", r.middle_sep)?;
-                                bind_power.left = r.middle.right;
-                            }
                         }
-                        write!(f, "{}", r.right_sep)?
+                        SubFormatter::Repeat(r) => {
+                            let (Some(from), Some(to)) = (get_child(r.from, data), get_child(r.to, data)) else {
+                                continue;
+                            };
+                            if !r.from.0.is_negative() && r.to.0.is_negative() && from > to {
+                                continue;
+                            }
+                            if r.from.0.is_negative() && !r.to.0.is_negative() && from < to {
+                                continue;
+                            }
+                            let forwards = from <= to;
+                            // The range is inclusive on both ends
+                            let mut curr = if forwards { from.wrapping_sub(1) } else { from.wrapping_add(1) };
+                            let iter = std::iter::from_fn(move || {
+                                if curr == to {
+                                    None
+                                } else {
+                                    curr = if forwards { curr.wrapping_add(1) } else { curr.wrapping_sub(1) };
+                                    Some(curr)
+                                }
+                            });
+                            write_formatter(&r.left_sep.outputs, f, ctxt, data, get_capture)?;
+                            let mut bind_power = BindPowerPair::asymmetric(r.left, r.middle.left);
+                            for child in iter {
+                                let is_final = child == to;
+                                if is_final {
+                                    bind_power.right = r.right;
+                                }
+                                let child = data.children()[child];
+                                data.with_inner_bind_power(bind_power, |data| {
+                                    display_child(f, child, ctxt, data)
+                                })?;
+                                if !is_final {
+                                    write_formatter(&r.middle_sep.outputs, f, ctxt, data, get_capture)?;
+                                    bind_power.left = r.middle.right;
+                                }
+                            }
+                            write_formatter(&r.right_sep.outputs, f, ctxt, data, get_capture)?;
+                        }
                     }
                 }
+                Ok(())
             }
-            Ok(())
+
+            write_formatter(&self.formatter.outputs, f, ctxt, data, &get_capture)
         })
     }
 }

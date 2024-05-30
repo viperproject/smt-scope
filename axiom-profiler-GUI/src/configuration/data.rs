@@ -16,11 +16,11 @@ impl ConfigurationProvider {
         self.update.update(move |cfg| {
             if let Some(file) = file {
                 if new.is_empty() {
-                    cfg.term_display.per_file.remove(&file).is_some()
+                    cfg.term_display.per_file.remove(&file.name).is_some()
                 } else {
-                    let is_same = cfg.term_display.per_file.get(&file).is_some_and(|old| old == &new);
+                    let is_same = cfg.term_display.per_file.get(&file.name).is_some_and(|old| old == &new);
                     if !is_same {
-                        cfg.term_display.per_file.insert(file, new);
+                        cfg.term_display.per_file.insert(file.name, new);
                     }
                     !is_same
                 }
@@ -67,7 +67,7 @@ impl Default for Configuration {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct TermDisplayContextFiles {
     pub general: TermDisplayContext,
-    pub per_file: FxHashMap<FileInfo, TermDisplayContext>,
+    pub per_file: FxHashMap<String, TermDisplayContext>,
 }
 
 impl Default for TermDisplayContextFiles {

@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use smt_log_parser::formatter::TermDisplayContext;
-use yew::{html, Callback, Children, Component, Context, Html, Properties, ContextProvider};
+use yew::{html, Callback, Children, Component, Context, ContextHandle, ContextProvider, Html, Properties};
 
-use crate::{configuration::{ConfigurationContext, TermDisplayContextFiles}, utils::updater::{Update, Updater}, RcParser};
+use crate::{configuration::{ConfigurationContext, ConfigurationProvider, TermDisplayContextFiles}, utils::updater::{Update, Updater}, RcParser};
 
 // Public
 
@@ -63,7 +63,7 @@ impl<T: Component> StateContext for html::Scope<T> {
 impl State {
     pub fn recalculate_term_display(&mut self, term_display: &TermDisplayContextFiles) {
         let mut general = term_display.general.clone();
-        let per_file = self.file_info.as_ref().and_then(|info| term_display.per_file.get(info));
+        let per_file = self.file_info.as_ref().and_then(|info| term_display.per_file.get(&info.name));
         if let Some(per_file) = per_file {
             general.extend(per_file);
         }
@@ -79,39 +79,60 @@ mod private {
 }
 use private::StateUpdateKind;
 
+pub struct StateProviderContext {
+    state: StateProvider,
+    _handle: ContextHandle<Rc<ConfigurationProvider>>,
+}
+
 #[derive(Properties, PartialEq)]
 pub struct StateProviderProps {
     pub children: Children,
 }
 
-impl Component for StateProvider {
-    type Message = Update<State, Option<StateUpdateKind>>;
+pub enum Msg {
+    Update(Update<State, Option<StateUpdateKind>>),
+    ConfigChanged(Rc<ConfigurationProvider>),
+}
+
+impl Component for StateProviderContext {
+    type Message = Msg;
     type Properties = StateProviderProps;
 
     fn create(ctx: &Context<Self>) -> Self {
         let mut state = State::default();
-        let cfg = ctx.link().get_configuration().unwrap();
+        let (cfg, _handle) = ctx.link().context(ctx.link().callback(Msg::ConfigChanged)).unwrap();
         state.recalculate_term_display(&cfg.config.term_display);
         Self {
-            state,
-            update: Updater::new_link(ctx.link().clone()),
+            state: StateProvider {
+                state,
+                update: Updater::new(ctx.link().callback(Msg::Update)),
+            },
+            _handle,
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        let update = msg.apply(&mut self.state);
-        if let Some(StateUpdateKind::FileInfo) = update {
-            let cfg = ctx.link().get_configuration().unwrap();
-            self.state.recalculate_term_display(&cfg.config.term_display);
+        match msg {
+            Msg::Update(update) => {
+                let update = update.apply(&mut self.state.state);
+                if let Some(StateUpdateKind::FileInfo) = update {
+                    let cfg = ctx.link().get_configuration().unwrap();
+                    self.state.state.recalculate_term_display(&cfg.config.term_display);
+                }
+                update.is_some()
+            }
+            Msg::ConfigChanged(cfg) => {
+                self.state.state.recalculate_term_display(&cfg.config.term_display);
+                true
+            }
         }
-        update.is_some()
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <ContextProvider<Rc<Self>> context={Rc::new(self.clone())}>
+            <ContextProvider<Rc<StateProvider>> context={Rc::new(self.state.clone())}>
                 {for ctx.props().children.iter()}
-            </ContextProvider<Rc<Self>>>
+            </ContextProvider<Rc<StateProvider>>>
         }
     }
 }

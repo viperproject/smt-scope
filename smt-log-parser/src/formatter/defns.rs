@@ -318,6 +318,26 @@ pub struct Formatter {
     pub max_capture: Option<NonMaxU32>,
 }
 
+impl Formatter {
+    pub fn calculate_max_capture(&mut self) {
+        self.max_capture = self.outputs.iter().flat_map(|o| match o {
+            SubFormatter::Capture(c) => Some(*c),
+            SubFormatter::Repeat(r) =>
+                (r.left_sep.max_capture.is_some() ||
+                 r.middle_sep.max_capture.is_some() ||
+                 r.right_sep.max_capture.is_some()
+                ).then(|| {
+                    r.left_sep.max_capture.unwrap_or_default().max(
+                        r.middle_sep.max_capture.unwrap_or_default().max(
+                            r.right_sep.max_capture.unwrap_or_default()
+                        )
+                    )
+                }),
+            _ => None,
+        }).max();
+    }
+}
+
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct FallbackFormatter(Formatter);
@@ -375,9 +395,9 @@ pub enum SubFormatter {
 pub struct SubFormatterRepeat {
     pub from: ChildIndex,
     pub to: ChildIndex,
-    pub left_sep: String,
-    pub middle_sep: String,
-    pub right_sep: String,
+    pub left_sep: Formatter,
+    pub middle_sep: Formatter,
+    pub right_sep: Formatter,
     pub left: BindPower,
     pub middle: BindPowerPair,
     pub right: BindPower,

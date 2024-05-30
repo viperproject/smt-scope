@@ -19,6 +19,7 @@ pub enum ConversionError {
     FormatterExpectsRegex(Matcher, Formatter),
     RegexNotEnoughCaptures(Matcher, Formatter),
     MatcherError(MatcherParseError),
+    FormatterParseError(FormatterParseError),
 }
 
 impl From<regex::Error> for ConversionError {
@@ -30,6 +31,12 @@ impl From<regex::Error> for ConversionError {
 impl From<MatcherParseError> for ConversionError {
     fn from(err: MatcherParseError) -> Self {
         Self::MatcherError(err)
+    }
+}
+
+impl From<FormatterParseError> for ConversionError {
+    fn from(err: FormatterParseError) -> Self {
+        Self::FormatterParseError(err)
     }
 }
 

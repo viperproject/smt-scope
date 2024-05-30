@@ -342,14 +342,14 @@ impl FromStr for SubFormatterRepeat {
     type Err = FormatterParseError;
     fn from_str<'a>(s: &'a str) -> Result<Self, Self::Err> {
         let self_ = SubFormatterRepeatConst::parse(s)?;
-        Ok(self_.into())
+        self_.try_into()
     }
 }
 
 impl FromStr for Formatter {
     type Err = FormatterParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(FormatterConst::parse(s)?.into())
+        FormatterConst::parse(s)?.try_into()
     }
 }
 

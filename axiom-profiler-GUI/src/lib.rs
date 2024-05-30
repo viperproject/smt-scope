@@ -22,7 +22,7 @@ use yew::prelude::*;
 use material_yew::{MatIcon, MatIconButton, MatDialog, WeakComponentLink};
 
 use crate::commands::CommandsProvider;
-use crate::state::{StateContext, StateProvider};
+use crate::state::{StateContext, StateProviderContext};
 use crate::configuration::{ConfigurationContext, ConfigurationProvider, Flags};
 use crate::filters::FiltersState;
 use crate::infobars::{OmnibarMessage, SearchActionResult, SidebarSectionHeader, Topbar};
@@ -648,9 +648,9 @@ impl Component for FileDataComponent {
 #[function_component(App)]
 pub fn app() -> Html {
     html! {
-        <main><GlobalCallbacksProvider><ConfigurationProvider><CommandsProvider><StateProvider>
+        <main><GlobalCallbacksProvider><ConfigurationProvider><CommandsProvider><StateProviderContext>
             <FileDataComponent/>
-        </StateProvider></CommandsProvider></ConfigurationProvider></GlobalCallbacksProvider></main>
+        </StateProviderContext></CommandsProvider></ConfigurationProvider></GlobalCallbacksProvider></main>
     }
 }
 

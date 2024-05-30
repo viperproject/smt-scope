@@ -28,11 +28,11 @@ pub const DEFAULT_FORMATTER: FormatterConst<'static> = unwrap!(FormatterConst::p
 
 pub const TRIGGER: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("pattern", "$-8${ $(#0:-1|4|8|4$, )$ }$-8$"));
 
-pub const UNARY_OP: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("/(?:not)/", "$-6$${0}$$[#0|-8,16]$$-16$"));
+pub const UNARY_OP: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("(/(?:not)/ _)", "$-6$${0}$$[#0|-8,16]$$-16$"));
 pub const NEG: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("(- _)", "$-6$-$[#0|-8,16]$$-16$"));
 /// I'm not sure all of these are necessary since z3 generally breaks up terms,
 /// e.g. `(>= _ _)` into `(and (= _ _) (< _ _))`, or `(=> _ _)` into `(or (not _) _)`.
-pub const BINARY_OP: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("/=|\\+|-|\\*|/|<|>|(?:and)|(?:or)|(?:<=)|(?:>=)|(?:=>)/", "$10$$[#0|9,-16]$ ${0}$ $[#1|-16,9]$$10$"));
+pub const BINARY_OP: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("/=|\\+|-|\\*|/|<|>|(?:and)|(?:or)|(?:<=)|(?:>=)|(?:=>)/", "$10$$(#0:-1|9|-16|9$| ${0}$ |)$$10$"));
 pub const IF: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("if", "$-8$$[#0|9,-16]$ ? $[#1|4,4]$ : $[#2|4,4]$$-8$"));
 
 // pub const SLOT_TEST: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("slot", "$-8$&$[#0|9,-16]$[$[#1|4,4]$]$-8$"));

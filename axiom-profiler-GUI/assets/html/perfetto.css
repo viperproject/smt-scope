@@ -265,6 +265,7 @@ table {
 }
 
 .flags-page {
+	height: 100%;
 	overflow-y: scroll;
 }
 .flags-content {

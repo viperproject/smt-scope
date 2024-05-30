@@ -127,12 +127,12 @@ pub fn TermDisplayFlag(props: &TermDisplayFlagProps) -> Html {
     let reset = Callback::from(move |_| cfg.update_term_display(None, default.general.clone()));
     let general = term_display_file_to_html((term_display_general, apply, reset, None));
 
-    let term_display_file = file.map(|f| term_display.per_file.get(f).map(Cow::Borrowed).unwrap_or_default());
+    let term_display_file = file.map(|f| term_display.per_file.get(&f.name).map(Cow::Borrowed).unwrap_or_default());
     let term_display_file = term_display_file.as_ref().map(|td| {
         let f = file.unwrap();
         let cfg = props.cfg.clone();
         let file = f.clone();
-        let default = default.per_file.remove(&file).unwrap_or_default();
+        let default = default.per_file.remove(&file.name).unwrap_or_default();
         let reset = Callback::from(move |_| cfg.update_term_display(Some(file.clone()), default.clone()));
         let cfg = props.cfg.clone();
         let file = f.clone();
@@ -280,12 +280,10 @@ impl Component for TermDisplayComponent {
                 false
             }
             TdcMsg::OnFocus(idx, matcher) => {
-                log::info!("Focus In {:?} -> {:?}", self.focused, (idx, matcher));
                 self.focused = Some((idx, matcher));
                 false
             }
             TdcMsg::OnBlur(idx, matcher) => {
-                log::info!("Focus Out {:?} -> {:?}", self.focused, (idx, matcher));
                 if self.focused == Some((idx, matcher)) {
                     self.focused = None;
                 }
@@ -419,7 +417,7 @@ impl TermDisplayComponent {
     }
 
     pub fn check_last_td(&mut self) {
-        if self.tds.last().is_some_and(|td| !td.is_empty()) {
+        if !self.tds.last().is_some_and(|td| td.is_empty()) {
             self.tds.push(TermDisplayRow {
                 matcher: String::new(),
                 matcher_ref: NodeRef::default(),

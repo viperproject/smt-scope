@@ -71,7 +71,7 @@ macro_rules! derive_wrapper {
 
 macro_rules! derive_non_max {
     ($name:ident, $prim:ident) => {
-        derive_wrapper!(nonmax::$name: Copy + Eq + PartialEq + PartialOrd + Ord + Hash);
+        derive_wrapper!(nonmax::$name: Copy + Eq + PartialEq + PartialOrd + Ord + Hash + Default);
         impl $name {
             pub const ZERO: Self = Self(nonmax::$name::ZERO);
             pub const ONE: Self = Self(nonmax::$name::ONE);

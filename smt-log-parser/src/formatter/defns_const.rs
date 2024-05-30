@@ -1,6 +1,6 @@
 use crate::NonMaxU32;
 
-use super::{defns::*, ConversionError};
+use super::{defns::*, ConversionError, FormatterParseError};
 
 #[derive(Debug)]
 pub struct TermDisplayConst<'a> {
@@ -12,7 +12,7 @@ impl TryFrom<TermDisplayConst<'_>> for TermDisplay {
     type Error = ConversionError;
     fn try_from(t: TermDisplayConst) -> Result<Self, Self::Error> {
         let matcher = Matcher::try_from(t.matcher)?;
-        let formatter = Formatter::from(t.formatter);
+        let formatter = Formatter::try_from(t.formatter)?;
         Self::new(matcher, formatter)
     }
 }
@@ -37,13 +37,7 @@ impl TryFrom<MatcherConst<'_>> for Matcher {
             MatcherKindConst::Exact =>
                 MatcherKind::Exact(m.data.to_string()),
             MatcherKindConst::Regex => {
-                let regex = match (m.data.chars().next(), m.data.chars().last()) {
-                    (Some('^'), Some('$')) => m.data.to_string(),
-                    (Some('^'), _) => format!("{}$", m.data),
-                    (_, Some('$')) => format!("^{}", m.data),
-                    _ => format!("^{}$", m.data),
-                };
-                MatcherKind::Regex(RegexMatcher::new(regex)?)
+                MatcherKind::Regex(RegexMatcher::new(format!("^(?:{})$", m.data))?)
             }
         };
         Ok(Matcher {
@@ -65,19 +59,22 @@ pub struct FormatterConst<'a> {
     pub outputs: [Option<SubFormatterConst<'a>>; 64],
 }
 
-impl From<FormatterConst<'_>> for Formatter {
-    fn from(f: FormatterConst<'_>) -> Self {
-        let max_capture = f.max_capture();
-        let outputs: Vec<_> = f.outputs.into_iter().map_while(|o| o).map(|o| o.into()).collect();
-        Self {
+impl TryFrom<FormatterConst<'_>> for Formatter {
+    type Error = FormatterParseError;
+    fn try_from(f: FormatterConst<'_>) -> Result<Self, Self::Error> {
+        let outputs: Vec<_> = f.outputs.into_iter().map_while(|o| o).map(|o| SubFormatter::try_from(o)).collect::<Result<_, _>>()?;
+        let mut self_ = Self {
             bind_power: f.bind_power,
             outputs,
-            max_capture,
-        }
+            max_capture: None,
+        };
+        self_.calculate_max_capture();
+        Ok(self_)
     }
 }
 
 impl<'a> FormatterConst<'a> {
+    /// Shallow max capture calculation.
     pub const fn max_capture(&self) -> Option<NonMaxU32> {
         let mut max_capture = None::<NonMaxU32>;
         let mut idx = 0;
@@ -107,9 +104,10 @@ pub enum SubFormatterConst<'a> {
     Capture(NonMaxU32),
 }
 
-impl From<SubFormatterConst<'_>> for SubFormatter {
-    fn from(sub: SubFormatterConst<'_>) -> Self {
-        match sub {
+impl TryFrom<SubFormatterConst<'_>> for SubFormatter {
+    type Error = FormatterParseError;
+    fn try_from(sub: SubFormatterConst<'_>) -> Result<Self, Self::Error> {
+        let sf = match sub {
             SubFormatterConst::String(s) => {
                 let c = s.control_deduplicate.then(|| CONTROL_CHARACTER);
                 let data = deduplicate_character(s.data, c);
@@ -119,9 +117,10 @@ impl From<SubFormatterConst<'_>> for SubFormatter {
                 index: s.index,
                 bind_power: s.bind_power,
             },
-            SubFormatterConst::Repeat(s) => SubFormatter::Repeat(s.into()),
+            SubFormatterConst::Repeat(s) => SubFormatter::Repeat(s.try_into()?),
             SubFormatterConst::Capture(idx) => SubFormatter::Capture(idx),
-        }
+        };
+        Ok(sf)
     }
 }
 
@@ -150,18 +149,25 @@ pub struct SubFormatterRepeatConst<'a> {
     pub right: BindPower,
 }
 
-impl From<SubFormatterRepeatConst<'_>> for SubFormatterRepeat {
-    fn from(sub: SubFormatterRepeatConst<'_>) -> Self {
-        Self {
+impl TryFrom<SubFormatterRepeatConst<'_>> for SubFormatterRepeat {
+    type Error = FormatterParseError;
+    fn try_from(sub: SubFormatterRepeatConst<'_>) -> Result<Self, Self::Error> {
+        let left_sep = String::from(sub.left_sep);
+        let left_sep = left_sep.parse::<Formatter>()?;
+        let middle_sep = String::from(sub.middle_sep);
+        let middle_sep = middle_sep.parse::<Formatter>()?;
+        let right_sep = String::from(sub.right_sep);
+        let right_sep = right_sep.parse::<Formatter>()?;
+        Ok(Self {
             from: sub.range.from,
             to: sub.range.to,
-            left_sep: sub.left_sep.into(),
-            middle_sep: sub.middle_sep.into(),
-            right_sep: sub.right_sep.into(),
+            left_sep,
+            middle_sep,
+            right_sep,
             left: sub.left,
             middle: sub.middle,
             right: sub.right,
-        }
+        })
     }
 }
 

@@ -41,8 +41,8 @@ impl DeParseTrait for &'_ MatcherKind {
             MatcherKind::Regex(r) => {
                 write!(f, "/")?;
                 let original = r.original();
-                let no_prefix = original.strip_prefix("^").unwrap_or(original);
-                let no_suffix = no_prefix.strip_suffix("$").unwrap_or(no_prefix);
+                let no_prefix = original.strip_prefix("^(?:").unwrap_or(original);
+                let no_suffix = no_prefix.strip_suffix(")$").unwrap_or(no_prefix);
                 write!(f, "{no_suffix}")?;
                 write!(f, "/")
             }
@@ -104,9 +104,15 @@ impl DeParseTrait for &'_ SubFormatterRepeat {
         let left = self.left as i32;
         let middle = DeParse(&self.middle);
         let right = self.right as i32;
-        let left_sep = &self.left_sep;
-        let middle_sep = &self.middle_sep;
-        let right_sep = &self.right_sep;
-        write!(f, "#{from}:{to}{SEPARATOR_CHARACTER}{left}{SEPARATOR_CHARACTER}{middle}{SEPARATOR_CHARACTER}{right}{CONTROL_CHARACTER}{left_sep}{SEPARATOR_CHARACTER}{middle_sep}{SEPARATOR_CHARACTER}{right_sep}")
+        write!(f, "#{from}:{to}{SEPARATOR_CHARACTER}{left}{SEPARATOR_CHARACTER}{middle}{SEPARATOR_CHARACTER}{right}{CONTROL_CHARACTER}")?;
+        let left_sep = duplicate_character(&DeParse(&self.left_sep).to_string(), SEPARATOR_CHARACTER);
+        write!(f, "{left_sep}")?;
+        write!(f, "{SEPARATOR_CHARACTER}")?;
+        let middle_sep = duplicate_character(&DeParse(&self.middle_sep).to_string(), SEPARATOR_CHARACTER);
+        write!(f, "{middle_sep}")?;
+        write!(f, "{SEPARATOR_CHARACTER}")?;
+        let right_sep = duplicate_character(&DeParse(&self.right_sep).to_string(), SEPARATOR_CHARACTER);
+        write!(f, "{right_sep}")?;
+        Ok(())
     }
 }

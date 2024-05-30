@@ -333,9 +333,8 @@ pub fn Graph(props: &GraphProps) -> Html {
                 };
                 move || {
                     if let Some((descendant_nodes, node_closures)) = nodes {
-                        for i in 0..node_closures.len() {
+                        for (i, (mousedown, mouseover)) in node_closures.iter().enumerate() {
                             if let Some(node) = descendant_nodes.item(i as u32) {
-                                let (mousedown, mouseover) = &node_closures[i];
                                 node.remove_event_listener_with_callback(
                                     "mousedown",
                                     mousedown.as_ref().unchecked_ref(),
@@ -350,9 +349,10 @@ pub fn Graph(props: &GraphProps) -> Html {
                         }
                     }
                     if let Some((direct_edges, edge_closures)) = edges {
-                        for i in 0..edge_closures.len() {
+                        for (i, (mousedown, mouseover, edge_hover_select)) in
+                            edge_closures.iter().enumerate()
+                        {
                             if let Some(edge) = direct_edges.item(i as u32) {
-                                let (mousedown, mouseover, edge_hover_select) = &edge_closures[i];
                                 edge.remove_event_listener_with_callback(
                                     "mousedown",
                                     mousedown.as_ref().unchecked_ref(),

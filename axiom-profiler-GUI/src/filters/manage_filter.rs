@@ -221,7 +221,7 @@ impl Component for DraggableList {
                     .filter(|_| changed)
                     .and_then(|p| p.lock().ok())
                 {
-                    *pd = !(drag.start_idx == drag.idx && !drag.delete);
+                    *pd = drag.start_idx != drag.idx || drag.delete;
                 }
                 changed
             }
@@ -279,13 +279,13 @@ impl Component for DraggableList {
                     e.prevent_default();
                     return;
                 }
-                e.data_transfer().map(|dt| {
+                if let Some(dt) = e.data_transfer() {
                     let pos = *mouse_position().read().unwrap();
                     let node = node_ref.cast::<web_sys::Element>().unwrap();
                     let rect = node.get_bounding_client_rect();
                     let (x, y) = (pos.x as f64 - rect.left(), pos.y as f64 - rect.top());
                     dt.set_drag_image(&placeholder_ref.cast::<web_sys::Element>().unwrap(), x as i32, y as i32);
-                });
+                }
                 link.send_message(Msg::OnDragStart(orig_idx, curr_idx))
             });
             let ondrag = ctx.link().callback(|_| Msg::OnDrag);
@@ -374,17 +374,17 @@ pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
 
 impl Filter {
     pub fn is_editable(&self) -> bool {
-        match self {
+        !matches!(
+            self,
             Filter::IgnoreTheorySolving
-            | Filter::ShowMatchingLoopSubgraph
-            | Filter::IgnoreQuantifier(None)
-            | Filter::IgnoreAllButQuantifier(None)
-            | Filter::ShowNeighbours(..)
-            | Filter::VisitSourceTree(..)
-            | Filter::VisitSubTreeWithRoot(..)
-            | Filter::ShowLongestPath(..) => false,
-            _ => true,
-        }
+                | Filter::ShowMatchingLoopSubgraph
+                | Filter::IgnoreQuantifier(None)
+                | Filter::IgnoreAllButQuantifier(None)
+                | Filter::ShowNeighbours(..)
+                | Filter::VisitSourceTree(..)
+                | Filter::VisitSubTreeWithRoot(..)
+                | Filter::ShowLongestPath(..)
+        )
     }
     pub fn update(&self, new_data: Vec<usize>, new_strings: Vec<String>) -> Filter {
         match self {

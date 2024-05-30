@@ -137,8 +137,8 @@ impl RawInstGraph {
 
         // Add transitive equality created edges
         for (idx, eq) in parser.egraph.equalities.transitive.iter_enumerated() {
-            let mut all = eq.all(true);
-            while let Some(parent) = all.next() {
+            let all = eq.all(true);
+            for parent in all {
                 match parent.kind {
                     TransitiveExplSegmentKind::Given(eq, use_) => self_.add_edge(
                         (eq, use_),

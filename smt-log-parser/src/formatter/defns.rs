@@ -18,6 +18,12 @@ pub struct TermDisplayContext {
     fallback: FallbackFormatter,
 }
 
+pub type TermDisplayContextParts<'a> = (
+    &'a FxHashMap<(Cow<'static, str>, Option<NonMaxU32>), TermDisplay>,
+    &'a Vec<TermDisplay>,
+    &'a FallbackFormatter,
+);
+
 impl FromIterator<TermDisplay> for Result<TermDisplayContext, TdcError> {
     fn from_iter<T: IntoIterator<Item = TermDisplay>>(iter: T) -> Self {
         let mut this = TermDisplayContext::default();
@@ -152,13 +158,7 @@ impl TermDisplayContext {
         }
     }
 
-    pub(super) fn to_parts(
-        &self,
-    ) -> (
-        &FxHashMap<(Cow<'static, str>, Option<NonMaxU32>), TermDisplay>,
-        &Vec<TermDisplay>,
-        &FallbackFormatter,
-    ) {
+    pub(super) fn to_parts(&self) -> TermDisplayContextParts {
         (&self.string_matchers, &self.regex_matchers, &self.fallback)
     }
     pub(super) fn from_parts(
@@ -166,9 +166,11 @@ impl TermDisplayContext {
         regex_matchers: Vec<TermDisplay>,
         fallback: FallbackFormatter,
     ) -> Self {
-        let mut this = TermDisplayContext::default();
-        this.string_matchers = string_matchers;
-        this.regex_matchers = regex_matchers;
+        let mut this = TermDisplayContext {
+            string_matchers,
+            regex_matchers,
+            ..Default::default()
+        };
         this.calculate_regex_set();
         this.fallback = fallback;
         this

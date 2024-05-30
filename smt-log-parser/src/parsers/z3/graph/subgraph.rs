@@ -160,6 +160,7 @@ impl TransitiveClosure {
         reachable
     }
 
+    #[cfg(feature = "mem_dbg")]
     pub(crate) fn inner(&self) -> &Vec<RoaringBitmap> {
         &self.0
     }

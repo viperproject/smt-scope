@@ -50,7 +50,7 @@ pub fn OmniboxInput(props: &OmniboxInputProps) -> Html {
 #[derive(Debug)]
 pub struct HighlightedString<'a>(pub &'a str, pub &'a [u32]);
 impl HighlightedString<'_> {
-    pub fn to_html(self) -> Html {
+    pub fn into_html(self) -> Html {
         let mut result = Vec::new();
         let mut last_start = 0;
         let mut next = 0;
@@ -209,7 +209,7 @@ impl SuggestionResult {
                     let class = if highlighted { "omnibox-highlighted" } else { "can-hover" };
                     let scroll_into_view = highlighted.then(|| scroll_into_view.clone()).unwrap_or_default();
                     let onmousedown = onclick(i);
-                    let highlighted_name = HighlightedString(&suggestion.name, indices).to_html();
+                    let highlighted_name = HighlightedString(&suggestion.name, indices).into_html();
                     let highlighted_name = if let Some(arguments) = suggestion.details.arguments {
                         html! {
                             <><span class="option-arguments">{"("}</span>{highlighted_name}<span class="option-arguments">{for (0..arguments).map(|_| " _")}{")"}</span></>

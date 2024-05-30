@@ -351,7 +351,7 @@ impl EGraph {
                 let EqualityExpl::Congruence { uses, .. } = &mut self.equalities.given[*cg] else {
                     unreachable!()
                 };
-                let real_idx = uses.iter().position(|u| &***u == use_).unwrap_or_else(|| {
+                let real_idx = uses.iter().position(|u| ***u == use_).unwrap_or_else(|| {
                     uses.push(BoxSlice(use_.into_boxed_slice()));
                     uses.len() - 1
                 });
@@ -447,8 +447,8 @@ impl Equalities {
         eq: EqTransIdx,
         f: &mut impl FnMut(EqGivenIdx, bool) -> std::result::Result<(), E>,
     ) -> std::result::Result<(), E> {
-        let mut all = self.transitive[eq].all(fwd);
-        while let Some(next) = all.next() {
+        let all = self.transitive[eq].all(fwd);
+        for next in all {
             match next {
                 TransitiveExplSegment {
                     forward,
@@ -466,7 +466,7 @@ impl Equalities {
         &self,
         eq: EqTransIdx,
         simple: &mut impl Iterator<Item = (EqGivenIdx, bool)>,
-    ) -> std::result::Result<bool, ()> {
+    ) -> Option<bool> {
         let res = self.walk_trans(true, eq, &mut |eq, eq_fwd| {
             // Return `Err(false)` if we're out of simple, this should never
             // happen.
@@ -475,7 +475,7 @@ impl Equalities {
             (simple == eq && fwd == eq_fwd).then_some(()).ok_or(true)
         });
         // Map `Ok` -> `Ok(true)`, `Err(true)` -> `Ok(false)`, `Err(false)` -> `Err`.
-        res.map_or_else(|e| e.then_some(false).ok_or(()), |_| Ok(true))
+        res.map_or_else(|e| e.then_some(false), |_| Some(true))
     }
     pub fn walk_to(&self, mut from: ENodeIdx, eq: EqTransIdx) -> ENodeIdx {
         #[derive(Debug)]
@@ -639,12 +639,12 @@ impl Graph {
             let mut prior_simple_edges = TransitiveExplSegment::rev(prior_simple_edges)
                 .map(|seg| (seg.kind.given().unwrap(), seg.forward));
             match equalities.is_equal(trans, &mut prior_simple_edges) {
-                Err(()) => {
+                None => {
                     debug_assert!(false);
                     None
                 }
-                Ok(false) => None,
-                Ok(true) => {
+                Some(false) => None,
+                Some(true) => {
                     let to = NodeIndex::new(idx - trans_node.given_len);
                     Some((to, false))
                 }
@@ -656,12 +656,12 @@ impl Graph {
             let mut post_simple_edges =
                 post_simple_edges.map(|seg| (seg.kind.given().unwrap(), seg.forward));
             match equalities.is_equal(trans, &mut post_simple_edges) {
-                Err(()) => {
+                None => {
                     debug_assert!(false);
                     None
                 }
-                Ok(false) => None,
-                Ok(true) => {
+                Some(false) => None,
+                Some(true) => {
                     let to = NodeIndex::new(idx + trans_node.given_len);
                     Some((to, true))
                 }

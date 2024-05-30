@@ -34,6 +34,7 @@ macro_rules! derive_wrapper {
                 &mut self.0
             }
         }
+        #[allow(clippy::non_canonical_clone_impl)]
         impl$(<$($t),*>)? Clone for $struct$(<$($t),*>)?
         where $inner: Clone {
             fn clone(&self) -> Self {
@@ -82,6 +83,12 @@ macro_rules! derive_non_max {
                     None => None,
                 }
             }
+            /// Creates a new non-max without checking the value.
+            ///
+            /// # Safety
+            ///
+            /// The value must not equal the maximum representable value for the
+            /// primitive type.
             pub const unsafe fn new_unchecked(value: $prim) -> Self {
                 Self(nonmax::$name::new_unchecked(value))
             }

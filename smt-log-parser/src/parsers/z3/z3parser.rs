@@ -124,7 +124,6 @@ impl Z3Parser {
     /// The resulting iterator will contain `None` for any tuples which it failed to parse.
     /// If `FORMS_EQUAL` is true, then it will return `None` for any tuples which have a different
     /// form to the first tuple.
-    #[must_use]
     fn gobble_tuples<'a, const FORMS_EQUAL: bool>(
         mut l: impl Iterator<Item = &'a str>,
     ) -> impl Iterator<Item = Result<(&'a str, &'a str)>> {
@@ -213,7 +212,6 @@ impl Z3Parser {
 
     /// Create a new iterator which will only consume elements from `l` until
     /// it finds `end`. The element `end` will also be consumed but no other elements after that will.
-    #[must_use]
     fn iter_until_eq<'a, 's>(
         l: &'a mut impl Iterator<Item = &'s str>,
         end: &'a str,

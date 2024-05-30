@@ -195,6 +195,10 @@ impl VarNames {
             })
             .unwrap_or_default()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     pub fn len(&self) -> usize {
         match self {
             Self::TypeOnly(names) => names.len(),
@@ -217,7 +221,7 @@ pub struct Instantiation {
 
 impl Instantiation {
     pub fn get_resulting_term(&self) -> Option<TermIdx> {
-        self.proof_id.as_ref()?.as_result_ref().ok().copied()
+        self.proof_id.as_ref()?.as_result().ok().copied()
     }
 }
 
@@ -355,7 +359,8 @@ impl<'a> Blame<'a> {
     pub fn enode(self) -> ENodeIdx {
         *self.slice[0].unwrap_enode()
     }
-    pub fn len(self) -> usize {
+
+    pub fn equalities_len(self) -> usize {
         self.slice.len() - 1
     }
     pub fn equalities(self) -> impl Iterator<Item = EqTransIdx> + 'a {
@@ -583,17 +588,17 @@ pub struct TransitiveExpl {
     pub given_len: usize,
     pub to: ENodeIdx,
 }
+type BackwardIter<'a> = std::iter::Map<
+    std::iter::Rev<std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>>,
+    fn(TransitiveExplSegment) -> TransitiveExplSegment,
+>;
 pub enum TransitiveExplIter<'a> {
     Forward(std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>),
-    Backward(
-        std::iter::Map<
-            std::iter::Rev<std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>>,
-            fn(TransitiveExplSegment) -> TransitiveExplSegment,
-        >,
-    ),
+    Backward(BackwardIter<'a>),
 }
-impl<'a> TransitiveExplIter<'a> {
-    pub fn next(&mut self) -> Option<TransitiveExplSegment> {
+impl Iterator for TransitiveExplIter<'_> {
+    type Item = TransitiveExplSegment;
+    fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Forward(iter) => iter.next(),
             Self::Backward(iter) => iter.next(),

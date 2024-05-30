@@ -454,7 +454,7 @@ impl Component for Omnibox {
 
                         let onmousedown = i.map(|i| ctx.link().callback(move |_| Msg::Picked(i)));
                         let start = command.idx * query_len;
-                        let name = HighlightedString(&command.command.name, &commands.indices[start..start + query_len]).to_html();
+                        let name = HighlightedString(&command.command.name, &commands.indices[start..start + query_len]).into_html();
                         let last_used = command.last_used.map(|_| html! { <span class="tag">{"recently used"}</span> });
                         let keyboard_shortcut = Some(&command.command.keyboard_shortcut).filter(|s| !s.is_empty()).map(|s| {
                             let s = s.iter().map(|s| html! {

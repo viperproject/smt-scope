@@ -188,7 +188,7 @@ impl Filter {
                 graph
                     .raw
                     .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
-                        node.kind().inst().is_some() && node.part_of_ml.len() <= 0
+                        node.kind().inst().is_some() && node.part_of_ml.is_empty()
                     })
                 // if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
                 //     graph.raw.reset_visibility_to(true);

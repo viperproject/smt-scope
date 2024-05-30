@@ -158,7 +158,11 @@ impl FileDataComponent {
                         finished.is_timeout(),
                         cancel,
                     )));
-                    link.send_message(Msg::LoadedFile(parser.take_parser(), finished, cancel))
+                    link.send_message(Msg::LoadedFile(
+                        Box::new(parser.take_parser()),
+                        finished,
+                        cancel,
+                    ))
                 });
             }
             Err((_err, _stream)) => {
@@ -218,7 +222,11 @@ impl FileDataComponent {
                             finished.is_timeout(),
                             cancel,
                         )));
-                        link.send_message(Msg::LoadedFile(parser.take_parser(), finished, cancel))
+                        link.send_message(Msg::LoadedFile(
+                            Box::new(parser.take_parser()),
+                            finished,
+                            cancel,
+                        ))
                     });
                 });
                 self.reader = Some(reader);

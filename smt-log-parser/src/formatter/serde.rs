@@ -6,13 +6,15 @@ use super::defns;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct TermDisplayContext<'a> {
-    string_matchers: Vec<(
-        Cow<'a, (Cow<'static, str>, Option<NonMaxU32>)>,
-        Cow<'a, defns::TermDisplay>,
-    )>,
+    string_matchers: StringMatchers<'a>,
     regex_matchers: Cow<'a, Vec<defns::TermDisplay>>,
     fallback: Cow<'a, defns::FallbackFormatter>,
 }
+
+pub type StringMatchers<'a> = Vec<(
+    Cow<'a, (Cow<'static, str>, Option<NonMaxU32>)>,
+    Cow<'a, defns::TermDisplay>,
+)>;
 
 impl serde::Serialize for defns::TermDisplayContext {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

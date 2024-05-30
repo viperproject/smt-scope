@@ -54,7 +54,7 @@ impl Terms {
     }
     pub(super) fn parse_existing_id(&self, strings: &mut StringTable, id: &str) -> Result<TermIdx> {
         self.parse_id(strings, id)?
-            .as_result()
+            .into_result()
             .map_err(Error::UnknownId)
     }
 

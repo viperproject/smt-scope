@@ -46,20 +46,6 @@ pub struct MlOmnibox {
     _commands_search: [CommandRef; 2],
 }
 
-impl MlOmnibox {
-    pub fn set_picked(&mut self, picked: Option<PickedSuggestion>) {
-        if self.picked.is_none() && picked.is_none() {
-            return;
-        }
-        if self.picked.is_none() != picked.is_none() {
-            for cmd in &self._commands_search {
-                cmd.set_disabled(picked.is_none());
-            }
-        }
-        self.picked = picked;
-    }
-}
-
 impl Component for MlOmnibox {
     type Message = Msg;
     type Properties = MlOmniboxProps;

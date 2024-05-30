@@ -177,7 +177,7 @@ mod private {
             }
             Ok(())
         }
-        pub(super) fn with_inner_bind_power<'f, 'b, T>(
+        pub(super) fn with_inner_bind_power<T>(
             &mut self,
             bind_power: BindPowerPair,
             f: impl FnOnce(&mut Self) -> T,
@@ -467,7 +467,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind 
     }
 }
 
-fn display_child<'b, 'd>(
+fn display_child<'b>(
     f: &mut fmt::Formatter<'_>,
     child: TermIdx,
     ctxt: &DisplayCtxt<'b>,

@@ -70,7 +70,7 @@ pub static PREVENT_DEFAULT_DRAG_OVER: OnceLock<Mutex<bool>> = OnceLock::new();
 
 pub enum Msg {
     File(Option<File>),
-    LoadedFile(Z3Parser, ParseState<bool>, bool),
+    LoadedFile(Box<Z3Parser>, ParseState<bool>, bool),
     LoadingState(LoadingState),
     RenderedGraph(RenderedGraph),
     FailedOpening(String),
@@ -430,7 +430,7 @@ impl Component for FileDataComponent {
             }
             Msg::LoadedFile(parser, parser_state, parser_cancelled) => {
                 drop(self.reader.take());
-                let parser = RcParser::new(parser);
+                let parser = RcParser::new(*parser);
                 let state = ctx.link().get_state().unwrap();
                 state.update_parser(move |p| {
                     *p = Some(parser);
@@ -572,9 +572,7 @@ impl Component for FileDataComponent {
             .and_then(|f| f.rendered.as_ref().map(|r| r.graph.clone()));
         let visible_ref = visible.clone();
         let search = Callback::from(move |query: String| {
-            let Some(parser) = parser_ref.as_ref() else {
-                return None;
-            };
+            let parser = parser_ref.as_ref()?;
             let matches = parser.lookup.get_fuzzy(&query);
             Some(SearchActionResult::new(
                 query,

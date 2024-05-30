@@ -81,6 +81,7 @@ pub enum FormatterError {
 }
 
 impl FormatterError {
+    #[allow(clippy::no_effect)]
     pub const fn const_error<T>(&self, error: bool) -> T {
         use FormatterError::*;
         match self {
@@ -93,8 +94,9 @@ impl FormatterError {
             InvalidNumber => [()][error as usize],
             CaptureOverflow => [()][error as usize],
         };
-        [()][!error as usize];
-        loop {}
+        loop {
+            [()][!error as usize];
+        }
     }
 }
 
@@ -155,13 +157,15 @@ pub enum MatcherError {
 }
 
 impl MatcherError {
+    #[allow(clippy::no_effect)]
     pub const fn const_error<T>(&self, error: bool) -> T {
         use MatcherError::*;
         match self {
             InvalidChildrenSpec => [()][error as usize],
         };
-        [()][!error as usize];
-        loop {}
+        loop {
+            [()][!error as usize];
+        }
     }
 }
 
@@ -181,6 +185,7 @@ pub enum EitherError {
 }
 
 impl EitherError {
+    #[allow(clippy::no_effect)]
     pub const fn const_error<T>(&self, error: bool) -> T {
         use EitherError::*;
         match self {
@@ -188,8 +193,9 @@ impl EitherError {
             Matcher(err) => err.const_error(error),
             InvalidCapture => [()][error as usize],
         };
-        [()][!error as usize];
-        loop {}
+        loop {
+            [()][!error as usize];
+        }
     }
 }
 

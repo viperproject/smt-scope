@@ -46,6 +46,15 @@ macro_rules! map_res {
     };
 }
 
+macro_rules! panic {
+    () => {
+        loop {
+            #[allow(unconditional_panic, clippy::out_of_bounds_indexing)]
+            [][0]
+        }
+    };
+}
+
 // Const parsing
 
 impl ChildIndex {
@@ -126,7 +135,7 @@ impl<'a> SubFormatterRepeatConst<'a> {
                 middle_sep.separator_deduplicate = separator_deduplicate;
                 middle_sep.separator = separator;
                 let (separator_deduplicate, separator, sep) = sep.next::<true>();
-                #[allow(unreachable_code)]
+                #[allow(unreachable_code, clippy::diverging_sub_expression)]
                 {
                     map_opt!(sep => return Err(ParseErrorConst::too_many_control(sep)));
                 }
@@ -161,7 +170,7 @@ impl<'a> SubFormatterRepeatConst<'a> {
             let split =
                 map_opt!(split => split, return Ok((DEFAULT_BIND_POWER, fst, DEFAULT_BIND_POWER)));
             let (_, second, split) = split.next::<false>();
-            #[allow(unreachable_code)]
+            #[allow(unreachable_code, clippy::diverging_sub_expression)]
             {
                 map_opt!(split => return Err(ParseErrorConst::too_many_control(split)));
             }
@@ -189,7 +198,7 @@ impl<'a> SubFormatterRepeatConst<'a> {
         }));
         // `n|n|n` or `n|n,n|n`
         let (_, third, split) = split.next::<false>();
-        #[allow(unreachable_code)]
+        #[allow(unreachable_code, clippy::diverging_sub_expression)]
         {
             map_opt!(split => return Err(ParseErrorConst::too_many_control(split)));
         }
@@ -228,14 +237,12 @@ impl<'a> SubFormatterConst<'a> {
             if capture >= i32::MIN as u32 {
                 return Err(ParseErrorConst::capture_overflow(inner));
             }
-            let capture = map_opt!(NonMaxU32::new(capture), s => s, loop {});
+            let capture = map_opt!(NonMaxU32::new(capture), s => s, panic!());
             return Ok((Self::Capture(capture), split.remainder()));
         }
         Err(ParseErrorConst::incorrect_control(s))
     }
-    pub const fn parse_one(
-        s: &'a str,
-    ) -> ResultFormatterConst<'a, (Option<SubFormatterString<'a>>, Option<(Self, &'a str)>)> {
+    pub const fn parse_one(s: &'a str) -> SubFormatterConstParseOneResult<'a> {
         let split = ConstOperations::split(s, CONTROL_CHARACTER);
         let (control_deduplicate, first, rest) = split.next::<true>();
         let first = if first.is_empty() {
@@ -250,6 +257,14 @@ impl<'a> SubFormatterConst<'a> {
         Ok((first, rest))
     }
 }
+
+pub type SubFormatterConstParseOneResult<'a> = ResultFormatterConst<
+    'a,
+    (
+        Option<SubFormatterString<'a>>,
+        Option<(SubFormatterConst<'a>, &'a str)>,
+    ),
+>;
 
 impl<'a> FormatterConst<'a> {
     const INIT: Option<SubFormatterConst<'a>> = None;
@@ -408,6 +423,7 @@ pub(super) struct ConstSplit<'a, const N: usize>(&'a str, [u8; N]);
 
 struct Check<const SKIP_DOUBLE: bool, const N: usize>;
 impl<const SKIP_DOUBLE: bool, const N: usize> Check<SKIP_DOUBLE, N> {
+    #[allow(clippy::no_effect)]
     const CHECK_N_SIZE: () = {
         ["N must be 1 or 2"][!(N == 1 || N == 2) as usize];
         ["N must be 1 when SKIP_DOUBLE"][!(N == 1 || !SKIP_DOUBLE) as usize];
@@ -415,6 +431,7 @@ impl<const SKIP_DOUBLE: bool, const N: usize> Check<SKIP_DOUBLE, N> {
 }
 
 impl<'a, const N: usize> ConstSplit<'a, N> {
+    #[allow(path_statements, clippy::no_effect)]
     const fn next<const SKIP_DOUBLE: bool>(self) -> (bool, &'a str, Option<Self>) {
         Check::<SKIP_DOUBLE, N>::CHECK_N_SIZE;
 
@@ -441,7 +458,7 @@ impl<'a, const N: usize> ConstSplit<'a, N> {
                 [b1, r @ ..] if N >= 2 => {
                     s = r;
                     if *b1 == self.1[0] {
-                        let [b2, r @ ..] = r else { loop {} };
+                        let [b2, r @ ..] = r else { panic!() };
                         if *b2 == self.1[1] {
                             s = r;
                             break Some(idx);
@@ -449,7 +466,7 @@ impl<'a, const N: usize> ConstSplit<'a, N> {
                     }
                     idx += 1;
                 }
-                _ => loop {},
+                _ => panic!(),
             }
         };
         match reached_sep {
@@ -462,6 +479,7 @@ impl<'a, const N: usize> ConstSplit<'a, N> {
             None => (skipped, self.0, None),
         }
     }
+    #[allow(path_statements, clippy::no_effect)]
     const fn prev<const SKIP_DOUBLE: bool>(self) -> (bool, &'a str, Option<Self>) {
         Check::<SKIP_DOUBLE, N>::CHECK_N_SIZE;
 
@@ -488,7 +506,7 @@ impl<'a, const N: usize> ConstSplit<'a, N> {
                 [r @ .., b2] if N >= 2 => {
                     s = r;
                     if *b2 == self.1[1] {
-                        let [r @ .., b1] = r else { loop {} };
+                        let [r @ .., b1] = r else { panic!() };
                         if *b1 == self.1[1] {
                             s = r;
                             break Some(idx);
@@ -496,7 +514,7 @@ impl<'a, const N: usize> ConstSplit<'a, N> {
                     }
                     idx -= 1;
                 }
-                _ => loop {},
+                _ => panic!(),
             }
         };
         match reached_sep {
@@ -521,6 +539,7 @@ impl ConstSplit<'_, 1> {
 
 struct ConstOperations;
 impl ConstOperations {
+    #[allow(clippy::unnecessary_operation)]
     const fn char_as_ascii(c: char) -> u8 {
         ["Character must be an ASCII byte"][!c.is_ascii() as usize];
         c as u8

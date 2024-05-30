@@ -691,6 +691,7 @@ impl QuantIdxToColourMap {
         colour.hue.into_positive_degrees() / 360.0
     }
 
+    #[allow(clippy::out_of_bounds_indexing)]
     fn find_coprime(n: usize) -> NonZeroUsize {
         // Workaround since `unwrap` isn't allowed in const functions.
         const ONE: NonZeroUsize = match NonZeroUsize::new(1) {

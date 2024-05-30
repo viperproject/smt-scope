@@ -49,9 +49,7 @@ impl Terms {
                 stack.push((deref, meaning, vec![]));
             } else {
                 // if meanings or kinds don't match up, need to generalize
-                let Some((_, _, children)) = stack.last_mut() else {
-                    return None;
-                };
+                let (_, _, children) = stack.last_mut()?;
                 let meaning = self.try_find_meaning(strings, &next);
                 let tidx = self.new_synthetic_term(
                     TermKind::Generalised,
@@ -76,7 +74,7 @@ impl Terms {
         }
     }
 
-    pub fn generalise_pattern(&mut self, strings: &mut StringTable, pattern: TermIdx) -> TermIdx {
+    pub fn generalise_pattern(&mut self, _strings: &mut StringTable, pattern: TermIdx) -> TermIdx {
         match self[pattern].kind {
             TermKind::Var(_) => {
                 self.new_synthetic_term(TermKind::Generalised, Default::default(), None)
@@ -85,7 +83,7 @@ impl Terms {
             _ => {
                 let children = Vec::from(self[pattern].child_ids.clone())
                     .into_iter()
-                    .map(|c| self.generalise_pattern(strings, c))
+                    .map(|c| self.generalise_pattern(_strings, c))
                     .collect();
                 self.new_synthetic_term(
                     self[pattern].kind,

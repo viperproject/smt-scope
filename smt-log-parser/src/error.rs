@@ -17,13 +17,13 @@ pub enum Either<T, U> {
     Right(U),
 }
 impl<T, U> Either<T, U> {
-    pub fn as_result(self) -> std::result::Result<T, U> {
+    pub fn into_result(self) -> std::result::Result<T, U> {
         match self {
             Self::Left(t) => Ok(t),
             Self::Right(u) => Err(u),
         }
     }
-    pub fn as_result_ref(&self) -> std::result::Result<&T, &U> {
+    pub fn as_result(&self) -> std::result::Result<&T, &U> {
         match self {
             Self::Left(t) => Ok(t),
             Self::Right(u) => Err(u),

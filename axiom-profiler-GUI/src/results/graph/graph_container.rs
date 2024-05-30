@@ -37,7 +37,7 @@ pub struct GraphContainer {
     window: GraphWindow,
 
     mouse_closures: Option<Closure<dyn Fn(MouseEvent)>>,
-    resize_observer: Option<(ResizeObserver, Closure<dyn Fn(Vec<ResizeObserverEntry>)>)>,
+    resize_observer: Option<ResizeObserverPair>,
     drag_start: Option<(PagePosition, PagePosition, bool)>,
     zoom_factor: f64,
     zoom_factor_delta: f64,
@@ -48,6 +48,8 @@ pub struct GraphContainer {
     _command_refs: [CommandRef; 1],
     _command_selection: [CommandRef; 2],
 }
+
+pub type ResizeObserverPair = (ResizeObserver, Closure<dyn Fn(Vec<ResizeObserverEntry>)>);
 
 impl GraphContainer {
     pub fn set_zoom(&mut self, zoom_factor: f64, with_mouse: bool) {
@@ -547,8 +549,8 @@ impl Component for GraphContainer {
 }
 
 fn get_bounding_rect(
-    nodes: &Vec<RawNodeIndex>,
-    edges: &Vec<VisibleEdgeIndex>,
+    nodes: &[RawNodeIndex],
+    edges: &[VisibleEdgeIndex],
 ) -> Option<(PrecisePosition, PrecisePosition)> {
     let document = gloo::utils::document();
     let nodes = nodes

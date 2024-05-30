@@ -1,7 +1,7 @@
 mod add_filter;
 mod manage_filter;
 
-use std::{borrow::Borrow, fmt::Display};
+use std::fmt::Display;
 
 use material_yew::icon::MatIcon;
 use petgraph::Direction;

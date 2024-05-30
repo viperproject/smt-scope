@@ -144,15 +144,15 @@ impl CallbackRegisterer<DragEvent> {
 impl GlobalCallbacksProvider {
     fn get_mouse_mut(&mut self, kind: MouseEventKind) -> &mut CallbackHolder<MouseEvent> {
         match kind {
-            MouseEventKind::MouseMove => &mut self.mouse_move,
-            MouseEventKind::MouseUp => &mut self.mouse_up,
-            MouseEventKind::MouseOut => &mut self.mouse_out,
+            MouseEventKind::Move => &mut self.mouse_move,
+            MouseEventKind::Up => &mut self.mouse_up,
+            MouseEventKind::Out => &mut self.mouse_out,
         }
     }
     fn get_keyboard_mut(&mut self, kind: KeyboardEventKind) -> &mut CallbackHolder<KeyboardEvent> {
         match kind {
-            KeyboardEventKind::KeyDown => &mut self.keyboard_down,
-            KeyboardEventKind::KeyUp => &mut self.keyboard_up,
+            KeyboardEventKind::Down => &mut self.keyboard_down,
+            KeyboardEventKind::Up => &mut self.keyboard_up,
         }
     }
     fn get_drag_mut(&mut self, kind: DragEventKind) -> &mut CallbackHolder<DragEvent> {
@@ -172,15 +172,15 @@ impl GlobalCallbacksProvider {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MouseEventKind {
-    MouseMove,
-    MouseUp,
-    MouseOut,
+    Move,
+    Up,
+    Out,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum KeyboardEventKind {
-    KeyDown,
-    KeyUp,
+    Down,
+    Up,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -229,23 +229,23 @@ impl Component for GlobalCallbacksProvider {
         let registerer = GlobalCallbacks {
             register_mouse_move: CallbackRegisterer::new_mouse(
                 ctx.link().clone(),
-                MouseEventKind::MouseMove,
+                MouseEventKind::Move,
             ),
             register_mouse_up: CallbackRegisterer::new_mouse(
                 ctx.link().clone(),
-                MouseEventKind::MouseUp,
+                MouseEventKind::Up,
             ),
             register_mouse_out: CallbackRegisterer::new_mouse(
                 ctx.link().clone(),
-                MouseEventKind::MouseOut,
+                MouseEventKind::Out,
             ),
             register_keyboard_down: CallbackRegisterer::new_keyboard(
                 ctx.link().clone(),
-                KeyboardEventKind::KeyDown,
+                KeyboardEventKind::Down,
             ),
             register_keyboard_up: CallbackRegisterer::new_keyboard(
                 ctx.link().clone(),
-                KeyboardEventKind::KeyUp,
+                KeyboardEventKind::Up,
             ),
             register_drag_over: CallbackRegisterer::new_drag(
                 ctx.link().clone(),
@@ -334,13 +334,13 @@ impl Component for GlobalCallbacksProvider {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let onmousemove = ctx
             .link()
-            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::MouseMove, ev));
+            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::Move, ev));
         let onmouseup = ctx
             .link()
-            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::MouseUp, ev));
+            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::Up, ev));
         let onmouseout = ctx
             .link()
-            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::MouseOut, ev));
+            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::Out, ev));
         let ondragover = ctx
             .link()
             .callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::DragOver, ev));
@@ -377,7 +377,7 @@ impl Component for GlobalCallbacksProvider {
             let link = ctx.link().clone();
             let onkeydown: Closure<dyn Fn(KeyboardEvent)> =
                 Closure::new(move |ev: KeyboardEvent| {
-                    link.send_message(Msg::OnKeyboard(KeyboardEventKind::KeyDown, ev))
+                    link.send_message(Msg::OnKeyboard(KeyboardEventKind::Down, ev))
                 });
             window
                 .add_event_listener_with_callback("keydown", onkeydown.as_ref().unchecked_ref())
@@ -386,7 +386,7 @@ impl Component for GlobalCallbacksProvider {
 
             let link = ctx.link().clone();
             let onkeyup: Closure<dyn Fn(KeyboardEvent)> = Closure::new(move |ev: KeyboardEvent| {
-                link.send_message(Msg::OnKeyboard(KeyboardEventKind::KeyUp, ev))
+                link.send_message(Msg::OnKeyboard(KeyboardEventKind::Up, ev))
             });
             window
                 .add_event_listener_with_callback("keyup", onkeyup.as_ref().unchecked_ref())

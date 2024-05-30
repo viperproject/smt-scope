@@ -22,7 +22,7 @@ use super::stack::Stack;
 #[derive(Debug, Default)]
 pub struct EGraph {
     term_to_enode: FxHashMap<TermIdx, ENodeIdx>,
-    pub(super) enodes: TiVec<ENodeIdx, ENode>,
+    pub(crate) enodes: TiVec<ENodeIdx, ENode>,
     pub equalities: Equalities,
 }
 
@@ -407,8 +407,8 @@ pub struct Equality {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
 pub struct Equalities {
-    pub(super) given: TiVec<EqGivenIdx, EqualityExpl>,
-    pub(super) transitive: TiVec<EqTransIdx, TransitiveExpl>,
+    pub(crate) given: TiVec<EqGivenIdx, EqualityExpl>,
+    pub(crate) transitive: TiVec<EqTransIdx, TransitiveExpl>,
 }
 
 impl Equalities {

@@ -1,7 +1,7 @@
 use fxhash::FxHashMap;
 use gloo::timers::callback::{Interval, Timeout};
 use material_yew::WeakComponentLink;
-use smt_log_parser::parsers::z3::graph::{RawNodeIndex, VisibleEdgeIndex};
+use smt_log_parser::analysis::{RawNodeIndex, VisibleEdgeIndex};
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_timer::Instant;
@@ -350,7 +350,7 @@ impl Component for GraphContainer {
                             .entry(key)
                             .or_insert_with(|| (Instant::now(), 0.0, None));
                         if let Some(released) = released.take() {
-                            *held += released.elapsed();
+                            *held = *held + released.elapsed();
                         }
                         self.timeout.get_or_insert_with(|| {
                             let hold = ctx.link().callback(Msg::KeyHold);

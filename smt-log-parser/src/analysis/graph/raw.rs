@@ -34,7 +34,7 @@ pub struct RawInstGraph {
     inst_idx: RawNodeIndex,
     eq_given_idx: FxHashMap<(EqGivenIdx, Option<NonMaxU32>), RawNodeIndex>,
 
-    pub(super) stats: GraphStats,
+    pub(crate) stats: GraphStats,
 }
 
 impl RawInstGraph {

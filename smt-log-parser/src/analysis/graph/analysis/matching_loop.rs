@@ -12,7 +12,7 @@ use crate::{
     display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
     items::{ENodeIdx, EqTransIdx, InstIdx, MatchKind, QuantIdx, TermIdx},
-    parsers::z3::graph::{
+    analysis::{
         raw::{Node, NodeKind, RawIx},
         visible::VisibleEdge,
         InstGraph,

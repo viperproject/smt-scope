@@ -10,6 +10,9 @@ pub mod display_with;
 #[cfg(feature = "display")]
 pub mod formatter;
 
+#[cfg(feature = "analysis")]
+pub mod analysis;
+
 mod error;
 mod mem_dbg;
 

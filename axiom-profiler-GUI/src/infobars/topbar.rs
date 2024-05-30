@@ -1,5 +1,5 @@
 use material_yew::linear_progress::MatLinearProgress;
-use smt_log_parser::parsers::z3::graph::RawNodeIndex;
+use smt_log_parser::analysis::RawNodeIndex;
 use yew::{function_component, html, use_context, Callback, Html, NodeRef, Properties};
 
 use crate::{

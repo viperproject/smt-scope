@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, rc::Rc};
 
 use fxhash::FxHashMap;
-use smt_log_parser::parsers::z3::graph::{visible::VisibleInstGraph, RawNodeIndex};
+use smt_log_parser::analysis::{visible::VisibleInstGraph, RawNodeIndex};
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::{
     html, prelude::Context, AttrValue, Callback, Component, ContextHandle, Html, InputEvent,

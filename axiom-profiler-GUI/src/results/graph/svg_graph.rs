@@ -1,6 +1,6 @@
 use fxhash::FxHashSet;
 use petgraph::graph::{EdgeIndex, NodeIndex};
-use smt_log_parser::parsers::z3::graph::{RawNodeIndex, VisibleEdgeIndex};
+use smt_log_parser::analysis::{RawNodeIndex, VisibleEdgeIndex};
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{Element, SvgsvgElement};

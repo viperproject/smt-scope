@@ -19,16 +19,16 @@ use super::{
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
 pub struct Z3Parser {
-    pub(super) version_info: VersionInfo,
-    pub(super) terms: Terms,
+    pub(crate) version_info: VersionInfo,
+    pub(crate) terms: Terms,
 
-    pub(super) quantifiers: TiVec<QuantIdx, Quantifier>,
+    pub(crate) quantifiers: TiVec<QuantIdx, Quantifier>,
 
-    pub(super) insts: Insts,
-    pub(super) inst_stack: Vec<(InstIdx, Vec<ENodeIdx>)>,
+    pub(crate) insts: Insts,
+    pub(crate) inst_stack: Vec<(InstIdx, Vec<ENodeIdx>)>,
 
     pub(crate) egraph: EGraph,
-    pub(super) stack: Stack,
+    pub(crate) stack: Stack,
 
     pub strings: StringTable,
 }

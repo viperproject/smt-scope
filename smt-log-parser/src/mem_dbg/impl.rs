@@ -4,7 +4,9 @@ use petgraph::{
     EdgeType,
 };
 
-use crate::parsers::z3::{graph::subgraph::TransitiveClosure, VersionInfo};
+#[cfg(feature = "analysis")]
+use crate::analysis::subgraph::TransitiveClosure;
+use crate::parsers::z3::VersionInfo;
 
 use super::{BoxSlice, FxHashMap, Graph, IString, NonMaxU32, NonMaxUsize, StringTable, TiVec};
 
@@ -143,7 +145,9 @@ impl<T> CopyType for BoxSlice<T> {
 
 // TransitiveClosure
 
+#[cfg(feature = "analysis")]
 impl MemDbgImpl for TransitiveClosure {}
+#[cfg(feature = "analysis")]
 impl MemSize for TransitiveClosure {
     fn mem_size(&self, _flags: mem_dbg::SizeFlags) -> usize {
         core::mem::size_of::<Self>()
@@ -154,6 +158,7 @@ impl MemSize for TransitiveClosure {
                 .sum::<usize>()
     }
 }
+#[cfg(feature = "analysis")]
 impl CopyType for TransitiveClosure {
     type Copy = False;
 }

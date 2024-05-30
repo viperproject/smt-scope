@@ -5,10 +5,8 @@ use std::fmt::Display;
 
 use material_yew::icon::MatIcon;
 use petgraph::Direction;
-use smt_log_parser::parsers::{
-    z3::graph::{raw::NodeKind, RawNodeIndex},
-    ParseState,
-};
+use smt_log_parser::analysis::{raw::NodeKind, RawNodeIndex};
+use smt_log_parser::parsers::ParseState;
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
 use crate::{

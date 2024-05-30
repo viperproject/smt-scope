@@ -11,8 +11,8 @@ use crate::{
 pub struct Insts {
     // `theory-solving` fingerprints are always 0, others rarely repeat.
     fingerprint_to_match: FxHashMap<Fingerprint, (MatchIdx, Option<InstIdx>)>,
-    pub(super) matches: TiVec<MatchIdx, Match>,
-    pub(super) insts: TiVec<InstIdx, Instantiation>,
+    pub(crate) matches: TiVec<MatchIdx, Match>,
+    pub(crate) insts: TiVec<InstIdx, Instantiation>,
 
     has_theory_solving_inst: bool,
 }

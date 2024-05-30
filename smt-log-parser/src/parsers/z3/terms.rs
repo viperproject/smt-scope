@@ -91,7 +91,7 @@ impl Terms {
         self.parsed_terms = Some(self.terms.next_key());
     }
 
-    pub(super) fn new_synthetic_term(
+    pub(crate) fn new_synthetic_term(
         &mut self,
         kind: TermKind,
         child_ids: Box<[TermIdx]>,

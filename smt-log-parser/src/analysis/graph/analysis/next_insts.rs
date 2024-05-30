@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use petgraph::Direction;
 
 use crate::{
-    parsers::z3::graph::{
+    analysis::{
         raw::{NextInsts, Node, NodeKind},
         RawNodeIndex,
     },

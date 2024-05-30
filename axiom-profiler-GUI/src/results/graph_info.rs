@@ -4,7 +4,7 @@ use crate::{state::StateProvider, utils::split_div::SplitDiv};
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
-use smt_log_parser::parsers::z3::graph::{RawNodeIndex, VisibleEdgeIndex};
+use smt_log_parser::analysis::{RawNodeIndex, VisibleEdgeIndex};
 use yew::prelude::*;
 
 use super::{

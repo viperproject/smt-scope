@@ -25,7 +25,7 @@ use petgraph::{
 use smt_log_parser::{
     display_with::DisplayCtxt,
     items::QuantIdx,
-    parsers::z3::graph::{
+    analysis::{
         analysis::matching_loop::MLGraphNode, raw::NodeKind, visible::VisibleInstGraph, InstGraph,
         RawNodeIndex, VisibleEdgeIndex,
     },

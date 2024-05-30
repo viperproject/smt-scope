@@ -5,7 +5,7 @@ use petgraph::{
     visit::{Dfs, Walker},
     Direction,
 };
-use smt_log_parser::parsers::z3::graph::{raw::NodeKind, RawNodeIndex};
+use smt_log_parser::analysis::{raw::NodeKind, RawNodeIndex};
 use yew::{function_component, html, use_context, Callback, Html, MouseEvent, Properties};
 
 use crate::{

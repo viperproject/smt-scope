@@ -4,7 +4,6 @@ use super::LogParser;
 use crate::{Error, FResult, Result};
 
 pub mod egraph;
-pub mod graph;
 pub mod inst;
 pub mod stack;
 pub mod terms;

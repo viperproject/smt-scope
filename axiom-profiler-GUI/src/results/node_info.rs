@@ -3,7 +3,7 @@ use std::rc::Rc;
 use smt_log_parser::{
     display_with::{DisplayCtxt, DisplayWithCtxt},
     items::{MatchKind, VarNames},
-    parsers::z3::graph::{
+    analysis::{
         raw::{EdgeKind, Node, NodeKind},
         visible::{VisibleEdge, VisibleEdgeKind},
         InstGraph, RawNodeIndex, VisibleEdgeIndex,

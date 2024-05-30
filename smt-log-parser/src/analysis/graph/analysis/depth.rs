@@ -1,7 +1,7 @@
 use petgraph::Direction;
 
 use crate::{
-    parsers::z3::graph::raw::{Depth, Node},
+    analysis::raw::{Depth, Node},
     Z3Parser,
 };
 

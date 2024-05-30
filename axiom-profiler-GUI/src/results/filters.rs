@@ -5,7 +5,7 @@ use petgraph::{
 use smt_log_parser::{
     display_with::{DisplayCtxt, DisplayWithCtxt},
     items::QuantIdx,
-    parsers::z3::graph::{
+    analysis::{
         analysis::matching_loop::MLGraphNode,
         raw::{Node, NodeKind, RawInstGraph},
         InstGraph, RawNodeIndex,

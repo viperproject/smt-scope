@@ -13,7 +13,7 @@ use results::graph_info;
 use results::svg_result::{
     Msg as SVGMsg, QuantIdxToColourMap, RenderedGraph, RenderingState, SVGResult,
 };
-use smt_log_parser::parsers::z3::graph::{InstGraph, RawNodeIndex, VisibleEdgeIndex};
+use smt_log_parser::analysis::{InstGraph, RawNodeIndex, VisibleEdgeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{ParseState, ReaderState};
 use wasm_bindgen::closure::Closure;

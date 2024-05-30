@@ -9,14 +9,14 @@ use petgraph::{graph::NodeIndex, visit::Dfs, Direction::Outgoing};
 
 use super::RawNodeIndex;
 use crate::{
-    display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt},
-    formatter::TermDisplayContext,
-    items::{ENodeIdx, EqTransIdx, InstIdx, MatchKind, QuantIdx, TermIdx},
     analysis::{
         raw::{Node, NodeKind, RawIx},
         visible::VisibleEdge,
         InstGraph,
     },
+    display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt},
+    formatter::TermDisplayContext,
+    items::{ENodeIdx, EqTransIdx, InstIdx, MatchKind, QuantIdx, TermIdx},
     Graph, NonMaxU32, Z3Parser,
 };
 // use matching_loop_graph::*;

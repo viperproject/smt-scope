@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
 use smt_log_parser::{
-    display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::{MatchKind, VarNames},
     analysis::{
         raw::{EdgeKind, Node, NodeKind},
         visible::{VisibleEdge, VisibleEdgeKind},
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
     },
+    display_with::{DisplayCtxt, DisplayWithCtxt},
+    items::{MatchKind, VarNames},
     NonMaxU32,
 };
 use yew::{

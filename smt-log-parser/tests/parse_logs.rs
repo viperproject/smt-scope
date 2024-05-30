@@ -2,8 +2,8 @@ use cap::Cap;
 use std::time::{Duration, Instant};
 
 use mem_dbg::*;
-use smt_log_parser::{LogParser, Z3Parser};
 use smt_log_parser::analysis::InstGraph;
+use smt_log_parser::{LogParser, Z3Parser};
 
 #[global_allocator]
 static ALLOCATOR: Cap<std::alloc::System> = Cap::new(std::alloc::System, usize::max_value());

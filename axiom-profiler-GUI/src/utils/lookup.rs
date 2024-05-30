@@ -3,10 +3,8 @@ use std::sync::Mutex;
 use fxhash::FxHashMap;
 use nucleo_matcher::{Config, Matcher, Utf32String};
 use smt_log_parser::{
+    analysis::{raw::IndexesInstGraph, visible::VisibleInstGraph, InstGraph, RawNodeIndex},
     items::{ENodeIdx, InstIdx, QuantIdx, QuantKind, TermIdx, TermKind},
-    analysis::{
-        raw::IndexesInstGraph, visible::VisibleInstGraph, InstGraph, RawNodeIndex,
-    },
     Z3Parser,
 };
 

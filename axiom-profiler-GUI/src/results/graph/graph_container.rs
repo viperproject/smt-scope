@@ -350,7 +350,8 @@ impl Component for GraphContainer {
                             .entry(key)
                             .or_insert_with(|| (Instant::now(), 0.0, None));
                         if let Some(released) = released.take() {
-                            *held = *held + released.elapsed();
+                            let new_help = *held + released.elapsed();
+                            *held = new_help;
                         }
                         self.timeout.get_or_insert_with(|| {
                             let hold = ctx.link().callback(Msg::KeyHold);

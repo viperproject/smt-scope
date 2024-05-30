@@ -23,12 +23,12 @@ use petgraph::{
     Graph,
 };
 use smt_log_parser::{
-    display_with::DisplayCtxt,
-    items::QuantIdx,
     analysis::{
         analysis::matching_loop::MLGraphNode, raw::NodeKind, visible::VisibleInstGraph, InstGraph,
         RawNodeIndex, VisibleEdgeIndex,
     },
+    display_with::DisplayCtxt,
+    items::QuantIdx,
 };
 use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
 use viz_js::VizInstance;

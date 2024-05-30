@@ -3,13 +3,13 @@ use petgraph::{
     Direction, Graph,
 };
 use smt_log_parser::{
-    display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::QuantIdx,
     analysis::{
         analysis::matching_loop::MLGraphNode,
         raw::{Node, NodeKind, RawInstGraph},
         InstGraph, RawNodeIndex,
     },
+    display_with::{DisplayCtxt, DisplayWithCtxt},
+    items::QuantIdx,
     Z3Parser,
 };
 

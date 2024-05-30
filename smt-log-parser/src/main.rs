@@ -1,6 +1,6 @@
-use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 #[cfg(feature = "analysis")]
 use smt_log_parser::analysis::InstGraph;
+use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::LogParser;
 use std::{env, time::Duration};
 use wasm_timer::Instant;

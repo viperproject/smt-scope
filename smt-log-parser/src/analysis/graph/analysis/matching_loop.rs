@@ -318,10 +318,7 @@ impl InstGraph {
             .map(|mlen| mlen.len())
     }
 
-    pub fn nth_matching_loop_graph(
-        &mut self,
-        n: usize,
-    ) -> petgraph::Graph<MLGraphNode, ()> {
+    pub fn nth_matching_loop_graph(&mut self, n: usize) -> petgraph::Graph<MLGraphNode, ()> {
         if let Some(ml_graph) = self.analysis.matching_loop_graphs.get(n) {
             ml_graph.deref().clone()
         } else {
@@ -461,7 +458,9 @@ impl InstGraph {
             let abstract_inst_nx = if let Some(nx) = nx_of_abstract_inst.get(&(*quant, *pattern)) {
                 *nx
             } else {
-                let generalised_pattern = parser.terms.generalise_pattern(&mut parser.strings, *pattern);
+                let generalised_pattern = parser
+                    .terms
+                    .generalise_pattern(&mut parser.strings, *pattern);
                 let nx = ml_graph.add_node(MLGraphNode::QI(*quant, generalised_pattern));
                 nx_of_abstract_inst.insert((*quant, *pattern), nx);
                 nx
@@ -482,19 +481,25 @@ impl InstGraph {
                     } else if let Some(creator_abstract_inst) =
                         abstract_insts.get(&matched_term.creator)
                     {
-                        let generalised_pattern = parser.terms.generalise_pattern(&mut parser.strings, creator_abstract_inst.id.1);
-                        let nx = ml_graph.add_node(
-                            MLGraphNode::QI(creator_abstract_inst.id.0, generalised_pattern),
-                        );
+                        let generalised_pattern = parser
+                            .terms
+                            .generalise_pattern(&mut parser.strings, creator_abstract_inst.id.1);
+                        let nx = ml_graph.add_node(MLGraphNode::QI(
+                            creator_abstract_inst.id.0,
+                            generalised_pattern,
+                        ));
                         nx_of_abstract_inst
                             .insert((creator_abstract_inst.id.0, creator_abstract_inst.id.1), nx);
                         nx
                     } else {
                         let creator_abstract_inst = AbstractInst::from(matched_term.creator);
-                        let generalised_pattern = parser.terms.generalise_pattern(&mut parser.strings, creator_abstract_inst.id.1);
-                        let nx = ml_graph.add_node(
-                            MLGraphNode::QI(creator_abstract_inst.id.0, generalised_pattern),
-                        );
+                        let generalised_pattern = parser
+                            .terms
+                            .generalise_pattern(&mut parser.strings, creator_abstract_inst.id.1);
+                        let nx = ml_graph.add_node(MLGraphNode::QI(
+                            creator_abstract_inst.id.0,
+                            generalised_pattern,
+                        ));
                         nx_of_abstract_inst
                             .insert((creator_abstract_inst.id.0, creator_abstract_inst.id.1), nx);
                         nx
@@ -516,10 +521,14 @@ impl InstGraph {
                         let eq_creator_nx = if let Some(nx) = nx_of_abstract_inst.get(eq_creator) {
                             *nx
                         } else if let Some(creator_abstract_inst) = abstract_insts.get(eq_creator) {
-                            let generalised_pattern = parser.terms.generalise_pattern(&mut parser.strings, creator_abstract_inst.id.1);
-                            let nx = ml_graph.add_node(
-                                MLGraphNode::QI(creator_abstract_inst.id.0, generalised_pattern),
+                            let generalised_pattern = parser.terms.generalise_pattern(
+                                &mut parser.strings,
+                                creator_abstract_inst.id.1,
                             );
+                            let nx = ml_graph.add_node(MLGraphNode::QI(
+                                creator_abstract_inst.id.0,
+                                generalised_pattern,
+                            ));
                             nx_of_abstract_inst.insert(
                                 (creator_abstract_inst.id.0, creator_abstract_inst.id.1),
                                 nx,
@@ -527,10 +536,14 @@ impl InstGraph {
                             nx
                         } else {
                             let creator_abstract_inst = AbstractInst::from(*eq_creator);
-                            let generalised_pattern = parser.terms.generalise_pattern(&mut parser.strings, creator_abstract_inst.id.1);
-                            let nx = ml_graph.add_node(
-                                MLGraphNode::QI(creator_abstract_inst.id.0, generalised_pattern),
+                            let generalised_pattern = parser.terms.generalise_pattern(
+                                &mut parser.strings,
+                                creator_abstract_inst.id.1,
                             );
+                            let nx = ml_graph.add_node(MLGraphNode::QI(
+                                creator_abstract_inst.id.0,
+                                generalised_pattern,
+                            ));
                             nx_of_abstract_inst.insert(
                                 (creator_abstract_inst.id.0, creator_abstract_inst.id.1),
                                 nx,

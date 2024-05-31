@@ -303,25 +303,26 @@ impl Component for FiltersState {
 
         // Selected nodes
         let selected_nodes = !ctx.props().file.selected_nodes.is_empty();
-        let selected_nodes = (selected_nodes && !ctx.link().get_state().unwrap().state.ml_viewer_mode).then(|| {
-            let new_filter = ctx.link().callback(|f| Msg::AddFilter(false, f));
-            let nodes = ctx.props().file.selected_nodes.clone();
-            let header = format!(
-                "Selected {} Node{}",
-                nodes.len(),
-                if nodes.len() == 1 { "" } else { "s" }
-            );
-            let collapsed_text = format!(
-                "Actions on the {} selected node{}",
-                nodes.len(),
-                if nodes.len() == 1 { "" } else { "s" }
-            );
-            html! {
-                <SidebarSectionHeader header_text={header} collapsed_text={collapsed_text}><ul>
-                    <AddFilterSidebar {new_filter} {nodes} general_filters={false}/>
-                </ul></SidebarSectionHeader>
-            }
-        });
+        let selected_nodes =
+            (selected_nodes && !ctx.link().get_state().unwrap().state.ml_viewer_mode).then(|| {
+                let new_filter = ctx.link().callback(|f| Msg::AddFilter(false, f));
+                let nodes = ctx.props().file.selected_nodes.clone();
+                let header = format!(
+                    "Selected {} Node{}",
+                    nodes.len(),
+                    if nodes.len() == 1 { "" } else { "s" }
+                );
+                let collapsed_text = format!(
+                    "Actions on the {} selected node{}",
+                    nodes.len(),
+                    if nodes.len() == 1 { "" } else { "s" }
+                );
+                html! {
+                    <SidebarSectionHeader header_text={header} collapsed_text={collapsed_text}><ul>
+                        <AddFilterSidebar {new_filter} {nodes} general_filters={false}/>
+                    </ul></SidebarSectionHeader>
+                }
+            });
 
         // Operations
         let class = match (self.dragging, self.will_delete) {

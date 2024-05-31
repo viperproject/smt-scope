@@ -28,7 +28,8 @@ use smt_log_parser::{
         RawNodeIndex, VisibleEdgeIndex,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::QuantIdx, NonMaxU32,
+    items::QuantIdx,
+    NonMaxU32,
 };
 use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
 use viz_js::VizInstance;
@@ -554,9 +555,15 @@ impl Component for SVGResult {
                             format!(
                                 "label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
                                 match &node_data {
-                                    MLGraphNode::QI(quant, pattern) => format!("{}: {}", rc_parser.parser.borrow()[*quant].kind.with(&ctxt), pattern.with(&ctxt)),
-                                    MLGraphNode::ENode(matched_term) => format!("{}", matched_term.with(&ctxt)),
-                                    MLGraphNode::Equality(from, to) => format!("{} = {}", from.with(&ctxt), to.with(&ctxt)),
+                                    MLGraphNode::QI(quant, pattern) => format!(
+                                        "{}: {}",
+                                        rc_parser.parser.borrow()[*quant].kind.with(&ctxt),
+                                        pattern.with(&ctxt)
+                                    ),
+                                    MLGraphNode::ENode(matched_term) =>
+                                        format!("{}", matched_term.with(&ctxt)),
+                                    MLGraphNode::Equality(from, to) =>
+                                        format!("{} = {}", from.with(&ctxt), to.with(&ctxt)),
                                 },
                                 "box",
                                 match &node_data {

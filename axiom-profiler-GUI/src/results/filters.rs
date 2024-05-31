@@ -213,7 +213,7 @@ impl Filter {
 pub enum FilterOutput {
     LongestPath(Vec<RawNodeIndex>),
     MatchingLoopGeneralizedTerms(Vec<String>),
-    MatchingLoopGraph(Graph<(String, MLGraphNode), ()>),
+    MatchingLoopGraph(Graph<MLGraphNode, ()>),
     None,
 }
 

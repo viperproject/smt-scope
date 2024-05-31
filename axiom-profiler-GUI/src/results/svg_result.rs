@@ -28,8 +28,7 @@ use smt_log_parser::{
         RawNodeIndex, VisibleEdgeIndex,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::QuantIdx,
-    NonMaxU32,
+    items::QuantIdx, NonMaxU32,
 };
 use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
 use viz_js::VizInstance;
@@ -284,6 +283,7 @@ impl Component for SVGResult {
                 false
             }
             Msg::RenderGraph => {
+                log::debug!("Rendering graph");
                 if self
                     .rendered
                     .as_ref()
@@ -295,9 +295,12 @@ impl Component for SVGResult {
                     .calculated
                     .take()
                     .filter(|c| inst_graph.visible_unchanged(c));
+                    log::debug!("after calculated 1");
                 let calculated = calculated.unwrap_or_else(|| inst_graph.to_visible());
+                    log::debug!("after calculated 2");
                 let (node_count, edge_count) =
                     (calculated.graph.node_count(), calculated.graph.edge_count());
+                log::debug!("node_count: {}, edge_count: {}", node_count, edge_count);
                 self.graph_dim.node_count = node_count;
                 self.graph_dim.edge_count = edge_count;
                 if edge_count <= self.permissions.edge_count
@@ -340,6 +343,7 @@ impl Component for SVGResult {
                         // "pack=32;",
                         // "packMode=\"graph\";",
                     ];
+                    log::debug!("Before computing dot_output");
                     let dot_output = format!(
                         "digraph {{\n{}\n{:?}\n}}",
                         settings.join("\n"),
@@ -438,6 +442,7 @@ impl Component for SVGResult {
                             },
                         )
                     );
+                    log::debug!("After computing dot_output");
                     ctx.props()
                         .progress
                         .emit(GraphState::Rendering(RenderingState::RenderingGraph));
@@ -555,15 +560,9 @@ impl Component for SVGResult {
                             format!(
                                 "label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
                                 match &node_data {
-                                    MLGraphNode::QI(quant, pattern) => format!(
-                                        "{}: {}",
-                                        rc_parser.parser.borrow()[*quant].kind.with(ctxt),
-                                        pattern.with(ctxt)
-                                    ),
-                                    MLGraphNode::ENode(matched_term) =>
-                                        format!("{}", matched_term.with(ctxt)),
-                                    MLGraphNode::Equality(from, to) =>
-                                        format!("{} = {}", from.with(ctxt), to.with(ctxt)),
+                                    MLGraphNode::QI(quant, pattern) => format!("{}: {}", rc_parser.parser.borrow()[*quant].kind.with(&ctxt), pattern.with(&ctxt)),
+                                    MLGraphNode::ENode(matched_term) => format!("{}", matched_term.with(&ctxt)),
+                                    MLGraphNode::Equality(from, to) => format!("{} = {}", from.with(&ctxt), to.with(&ctxt)),
                                 },
                                 "box",
                                 match &node_data {

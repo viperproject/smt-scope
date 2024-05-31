@@ -15,8 +15,7 @@ use petgraph::{
 use crate::{
     graph_idx,
     items::{
-        ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx,
-        TransitiveExplSegmentKind,
+        ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx, TransitiveExplSegmentKind
     },
     DiGraph, FxHashMap, NonMaxU32, Result, TiVec, Z3Parser,
 };
@@ -33,6 +32,7 @@ pub struct RawInstGraph {
     eq_trans_idx: RawNodeIndex,
     inst_idx: RawNodeIndex,
     eq_given_idx: FxHashMap<(EqGivenIdx, Option<NonMaxU32>), RawNodeIndex>,
+    proofs_idx: RawNodeIndex,
 
     pub(crate) stats: GraphStats,
 }
@@ -76,6 +76,10 @@ impl RawInstGraph {
                 }
             }
         }
+        let proofs_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
+        for ps_idx in parser.proof_steps.keys() {
+            graph.add_node(Node::new(NodeKind::ProofStep(ps_idx)));
+        }
         let stats = GraphStats {
             hidden: graph.node_count() as u32,
             disabled: 0,
@@ -87,6 +91,7 @@ impl RawInstGraph {
             eq_given_idx,
             eq_trans_idx,
             inst_idx,
+            proofs_idx,
             stats,
         };
 
@@ -158,6 +163,12 @@ impl RawInstGraph {
             }
         }
 
+        for (idx, ps) in parser.proof_steps.iter_enumerated() {
+            for prerequisite in ps.prerequisites.iter() {
+                self_.add_edge(*prerequisite, idx, EdgeKind::ProofStep)
+            }
+        }
+
         Ok(self_)
     }
     fn add_edge(
@@ -219,6 +230,7 @@ impl RawInstGraph {
             NodeKind::GivenEquality(eq, use_) => (eq, use_).index(self),
             NodeKind::TransEquality(eq) => eq.index(self),
             NodeKind::Instantiation(inst) => inst.index(self),
+            NodeKind::ProofStep(ps) => ps.index(self),
         }
     }
 
@@ -383,6 +395,7 @@ pub enum NodeKind {
     /// **Parents:** arbitrary count, will always be `ENode` or `TransEquality`.\
     /// **Children:** arbitrary count, will always be `ENode`.
     Instantiation(InstIdx),
+    ProofStep(ProofIdx),
 }
 
 impl fmt::Display for NodeKind {
@@ -398,6 +411,7 @@ impl fmt::Display for NodeKind {
             ),
             NodeKind::TransEquality(eq) => write!(f, "{eq:?}"),
             NodeKind::Instantiation(inst) => write!(f, "{inst:?}"),
+            NodeKind::ProofStep(ps) => write!(f, "{ps:?}"),
         }
     }
 }
@@ -445,6 +459,7 @@ pub enum EdgeKind {
     TEqualitySimple { forward: bool },
     /// TransEquality -> TransEquality (`TransitiveExplSegmentKind::Transitive`)
     TEqualityTransitive { forward: bool },
+    ProofStep,
 }
 
 pub trait IndexesInstGraph {
@@ -474,6 +489,13 @@ impl IndexesInstGraph for InstIdx {
 impl IndexesInstGraph for (EqGivenIdx, Option<NonMaxU32>) {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
         graph.eq_given_idx[self]
+    }
+}
+impl IndexesInstGraph for ProofIdx {
+    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
+        RawNodeIndex(NodeIndex::new(
+            graph.proofs_idx.0.index() + usize::from(*self),
+        ))
     }
 }
 impl IndexesInstGraph for RawNodeIndex {

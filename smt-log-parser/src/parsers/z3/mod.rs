@@ -29,7 +29,7 @@ impl<T: Z3LogParser + Default> LogParser for T {
             "[tool-version]" => self.version_info(split),
             "[mk-quant]" | "[mk-lambda]" => self.mk_quant(split),
             "[mk-var]" => self.mk_var(split),
-            "[mk-proof]" => self.mk_proof_app(split, true),
+            "[mk-proof]" => self.mk_proof(split),
             "[mk-app]" => self.mk_proof_app(split, false),
             "[attach-meaning]" => self.attach_meaning(split),
             "[attach-var-names]" => self.attach_var_names(split),
@@ -83,6 +83,7 @@ pub trait Z3LogParser {
     fn mk_quant<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn mk_var<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn mk_proof_app<'a>(&mut self, l: impl Iterator<Item = &'a str>, is_proof: bool) -> Result<()>;
+    fn mk_proof<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn attach_meaning<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn attach_var_names<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn attach_enode<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;

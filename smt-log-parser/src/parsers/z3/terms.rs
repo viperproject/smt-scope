@@ -19,6 +19,9 @@ pub struct Terms {
 }
 
 impl Terms {
+    pub(super) fn get_term_idx_of_id(&self, tid: TermId) -> Option<TermIdx> {
+        self.term_id_map.get_term(&tid)
+    }
     pub(super) fn new(strings: &mut StringTable) -> Self {
         Self {
             term_id_map: TermIdToIdxMap::new(strings),

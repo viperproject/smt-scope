@@ -557,13 +557,13 @@ impl Component for SVGResult {
                                 match &node_data {
                                     MLGraphNode::QI(quant, pattern) => format!(
                                         "{}: {}",
-                                        rc_parser.parser.borrow()[*quant].kind.with(&ctxt),
-                                        pattern.with(&ctxt)
+                                        rc_parser.parser.borrow()[*quant].kind.with(ctxt),
+                                        pattern.with(ctxt)
                                     ),
                                     MLGraphNode::ENode(matched_term) =>
-                                        format!("{}", matched_term.with(&ctxt)),
+                                        format!("{}", matched_term.with(ctxt)),
                                     MLGraphNode::Equality(from, to) =>
-                                        format!("{} = {}", from.with(&ctxt), to.with(&ctxt)),
+                                        format!("{} = {}", from.with(ctxt), to.with(ctxt)),
                                 },
                                 "box",
                                 match &node_data {

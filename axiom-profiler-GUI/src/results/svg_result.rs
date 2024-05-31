@@ -283,7 +283,6 @@ impl Component for SVGResult {
                 false
             }
             Msg::RenderGraph => {
-                log::debug!("Rendering graph");
                 if self
                     .rendered
                     .as_ref()
@@ -295,12 +294,9 @@ impl Component for SVGResult {
                     .calculated
                     .take()
                     .filter(|c| inst_graph.visible_unchanged(c));
-                    log::debug!("after calculated 1");
                 let calculated = calculated.unwrap_or_else(|| inst_graph.to_visible());
-                    log::debug!("after calculated 2");
                 let (node_count, edge_count) =
                     (calculated.graph.node_count(), calculated.graph.edge_count());
-                log::debug!("node_count: {}, edge_count: {}", node_count, edge_count);
                 self.graph_dim.node_count = node_count;
                 self.graph_dim.edge_count = edge_count;
                 if edge_count <= self.permissions.edge_count
@@ -343,7 +339,6 @@ impl Component for SVGResult {
                         // "pack=32;",
                         // "packMode=\"graph\";",
                     ];
-                    log::debug!("Before computing dot_output");
                     let dot_output = format!(
                         "digraph {{\n{}\n{:?}\n}}",
                         settings.join("\n"),
@@ -442,7 +437,6 @@ impl Component for SVGResult {
                             },
                         )
                     );
-                    log::debug!("After computing dot_output");
                     ctx.props()
                         .progress
                         .emit(GraphState::Rendering(RenderingState::RenderingGraph));

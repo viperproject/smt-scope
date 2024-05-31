@@ -22,21 +22,57 @@ pub fn run(logfile: PathBuf, depth: u32, pretty_print: bool) -> Result<(), Strin
     let (_metadata, parser) = Z3Parser::from_file(path).unwrap();
     let parser = parser.process_all().map_err(|e| e.to_string())?;
     let inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
-    let mut axiom_deps = build_axiom_dependency_graph(&parser, &inst_graph);
+    let (total, axiom_deps) = build_axiom_dependency_graph(&parser, &inst_graph);
 
+    if depth == 1 {
+        // TODO: deduplicate
+        for (axiom, (count, deps)) in axiom_deps {
+            let percentage = 100.0 * count as f64 / total as f64;
+            let total = deps.values().sum::<usize>() as f64;
+            if pretty_print {
+                println!(
+                    "axiom {axiom} ({percentage:.1}%) depends on {} axioms:",
+                    deps.len()
+                );
+                for (dep, count) in deps {
+                    let percentage = 100.0 * count as f64 / total;
+                    println!(" - {dep} ({percentage:.1}%)");
+                }
+            } else {
+                let deps: Vec<String> = deps
+                    .into_iter()
+                    .map(|(dep, count)| {
+                        let percentage = 100.0 * count as f64 / total;
+                        format!("{dep} ({percentage:.1}%)")
+                    })
+                    .collect();
+                println!("{axiom} ({percentage:.1}%) = {}", deps.join(", "));
+            }
+        }
+        return Ok(());
+    }
+
+    let mut axiom_deps = axiom_deps
+        .into_iter()
+        .map(|(k, (count, v))| (k, (count, v.into_keys().collect::<FxHashSet<_>>())))
+        .collect::<FxHashMap<_, _>>();
     for _ in 1..depth {
         extend_by_transitive_deps(&mut axiom_deps);
     }
 
-    for (axiom, deps) in axiom_deps {
+    for (axiom, (count, deps)) in axiom_deps {
+        let percentage = count as f64 / total as f64 * 100.0;
         if pretty_print {
-            println!("axiom {} depends on {} axioms:", axiom, deps.len());
+            println!(
+                "axiom {axiom} ({percentage:.1}%) depends on {} axioms:",
+                deps.len()
+            );
             for dep in deps {
-                println!(" - {}", dep);
+                println!(" - {dep}");
             }
         } else {
             let deps: Vec<&str> = deps.into_iter().collect();
-            println!("{} = {}", axiom, deps.join(", "));
+            println!("{axiom} ({percentage:.1}%) = {}", deps.join(", "));
         }
     }
 
@@ -52,13 +88,16 @@ fn named_instantiations(parser: &Z3Parser) -> impl Iterator<Item = (InstIdx, &'_
         .filter_map(|(idx, quant_id)| parser[quant_id].kind.user_name().map(|v| (idx, &parser[v])))
 }
 
+pub type DependencyMap<'a> = FxHashMap<&'a str, (usize, FxHashMap<&'a str, usize>)>;
+
 /// Constructs a mapping from axioms to the immediately preceding axiom that produced a term that triggered them.
 fn build_axiom_dependency_graph<'a>(
     parser: &'a Z3Parser,
     inst_graph: &InstGraph,
-) -> FxHashMap<&'a str, FxHashSet<&'a str>> {
+) -> (usize, DependencyMap<'a>) {
     let node_name_map: FxHashMap<InstIdx, &str> = named_instantiations(parser).collect();
-    let mut node_dep_map: FxHashMap<&str, FxHashSet<&str>> = FxHashMap::default();
+    let total = node_name_map.len();
+    let mut node_dep_map: FxHashMap<&str, (usize, FxHashMap<&str, usize>)> = FxHashMap::default();
 
     for (idx, name) in &node_name_map {
         let named_node = idx.index(&inst_graph.raw);
@@ -89,19 +128,23 @@ fn build_axiom_dependency_graph<'a>(
             .filter_map(|inst| node_name_map.get(&inst).copied());
 
         let entry = node_dep_map.entry(name);
-        entry.or_default().extend(dependent_on);
+        let entry = entry.or_default();
+        entry.0 += 1;
+        for dependent_on in dependent_on {
+            *entry.1.entry(dependent_on).or_default() += 1;
+        }
     }
 
-    node_dep_map
+    (total, node_dep_map)
 }
 
 /// Extends the dependency graph by 1 transitive step
-fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, FxHashSet<&str>>) {
+fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, (usize, FxHashSet<&str>)>) {
     let old_deps = axiom_deps.clone();
-    for (axiom, deps) in &old_deps {
+    for (axiom, (_, deps)) in &old_deps {
         for dep in deps {
-            if let Some(extended_deps) = old_deps.get(dep) {
-                axiom_deps.get_mut(axiom).unwrap().extend(extended_deps);
+            if let Some((_, extended_deps)) = old_deps.get(dep) {
+                axiom_deps.get_mut(axiom).unwrap().1.extend(extended_deps);
             }
         }
     }

@@ -527,19 +527,6 @@ impl Component for SVGResult {
                     "nslimit=6;",
                     "mclimit=0.6;",
                 ];
-                // let ctxt = ctx.link().get_state().unwrap().state.term_display;
-                // let ctxt = DisplayCtxt {
-                //     parser: &rc_parser.parser.borrow(),
-                //     config: DisplayConfiguration {
-                //         display_term_ids: false,
-                //         display_quantifier_name: false,
-                //         html: true,
-                //         enode_char_limit: None,
-                //         ast_depth_limit: Some(AST_DEPTH_LIMIT),
-                //         replace_symbols: todo!(),
-                //     },
-                //     term_display: todo!(),
-                // };
                 let dot_output = format!(
                     "digraph {{\n{}\n{:?}\n}}",
                     settings.join("\n"),

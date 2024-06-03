@@ -333,7 +333,7 @@ impl Component for FileDataComponent {
                 // remove any old parser in the state
                 let state = ctx.link().get_state().unwrap();
                 state.update_parser(|p| p.take().is_some());
-                state.set_ml_viewer_mode(false);
+                state.set_viewer_mode(Default::default());
                 // hide the flags page if shown
                 self.flags_visible.borrow().emit(Some(false));
 

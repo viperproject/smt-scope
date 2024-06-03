@@ -4,7 +4,7 @@ use yew::{function_component, html, use_context, Callback, Html, NodeRef, Proper
 
 use crate::{
     infobars::{ml_omnibox::MlOmnibox, Omnibox, SearchActionResult},
-    state::StateProvider,
+    state::{StateProvider, ViewerMode},
     utils::lookup::Kind,
     LoadingState,
 };
@@ -61,8 +61,7 @@ pub fn Topbar(props: &TopbarProps) -> Html {
         indeterminate = false;
     }
     let state = use_context::<std::rc::Rc<StateProvider>>().expect("no ctx found");
-    let ml_viewer_mode = state.state.ml_viewer_mode;
-    let omnibox = if ml_viewer_mode {
+    let omnibox = if matches!(state.state.viewer_mode, ViewerMode::MatchingLoops) {
         let found_mls = state.state.parser.as_ref().unwrap().found_mls.unwrap();
         html! {
             <MlOmnibox progress={props.progress.clone()} message={props.message.clone()} omnibox={props.omnibox.clone()} {found_mls} pick_nth_ml={props.pick_nth_ml.clone()} />

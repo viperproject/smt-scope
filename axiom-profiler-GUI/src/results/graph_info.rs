@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{state::StateProvider, utils::split_div::SplitDiv};
+use crate::{state::{StateProvider, ViewerMode}, utils::split_div::SplitDiv};
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
@@ -19,7 +19,7 @@ pub struct GraphInfo {
     generalized_terms: Vec<String>,
     graph_container: WeakComponentLink<graph_container::GraphContainer>,
     displayed_matching_loop_graph: Option<AttrValue>,
-    in_ml_viewer_mode: bool,
+    viewer_mode: ViewerMode,
     _context_listener: ContextHandle<Rc<StateProvider>>,
 }
 
@@ -110,7 +110,7 @@ impl Component for GraphInfo {
             generalized_terms: Vec::new(),
             graph_container: WeakComponentLink::default(),
             displayed_matching_loop_graph: None,
-            in_ml_viewer_mode: state.state.ml_viewer_mode,
+            viewer_mode: state.state.viewer_mode,
             _context_listener: context_listener,
         }
     }
@@ -222,8 +222,8 @@ impl Component for GraphInfo {
                 false
             }
             Msg::ContextUpdated(msg) => {
-                if self.in_ml_viewer_mode != msg.state.ml_viewer_mode {
-                    self.in_ml_viewer_mode = msg.state.ml_viewer_mode;
+                if self.viewer_mode != msg.state.viewer_mode {
+                    self.viewer_mode = msg.state.viewer_mode;
                     true
                 } else {
                     false
@@ -258,7 +258,7 @@ impl Component for GraphInfo {
             .then(|| html! {<div class="outdated"></div>});
         let hide_right_bar = self.selected_nodes.is_empty()
             && self.selected_edges.is_empty()
-            && !(self.in_ml_viewer_mode && self.displayed_matching_loop_graph.is_some());
+            && !(matches!(self.viewer_mode, ViewerMode::MatchingLoops) && self.displayed_matching_loop_graph.is_some());
         let left_bound = if hide_right_bar { 1.0 } else { 0.3 };
         html! {
             <>
@@ -278,7 +278,7 @@ impl Component for GraphInfo {
                     <SelectedNodesInfo selected_nodes={self.selected_nodes.iter().map(|(k, v)| (*k, *v)).collect::<Vec<_>>()} on_click={on_node_click} />
                     <SelectedEdgesInfo selected_edges={self.selected_edges.iter().map(|(k, v)| (*k, *v)).collect::<Vec<_>>()} rendered={ctx.props().rendered.clone()} on_click={on_edge_click} />
                     { if let Some(graph) = &self.displayed_matching_loop_graph {
-                        if self.in_ml_viewer_mode {
+                        if matches!(self.viewer_mode, ViewerMode::MatchingLoops) {
                             html!{
                                 <>
                                     <h2>{"Information on Displayed Matching Loop"}</h2>

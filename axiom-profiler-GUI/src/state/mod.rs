@@ -11,6 +11,24 @@ use crate::{
     RcParser,
 };
 
+#[derive(Clone, Copy, Default, PartialEq)]
+pub enum ViewerMode {
+    #[default]
+    QuantifierInstantiations,
+    MatchingLoops,
+    ProofSteps,
+}
+
+impl std::fmt::Display for ViewerMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ViewerMode::QuantifierInstantiations => write!(f, "QIs"),
+            ViewerMode::MatchingLoops => write!(f, "MLs"),
+            ViewerMode::ProofSteps => write!(f, "PSs"),
+        }
+    }
+}
+
 // Public
 
 #[derive(Clone, Default, PartialEq)]
@@ -19,7 +37,7 @@ pub struct State {
     /// Calculated automatically based on the set file_info.
     pub term_display: TermDisplayContext,
     pub parser: Option<RcParser>,
-    pub ml_viewer_mode: bool,
+    pub viewer_mode: ViewerMode,
     pub overlay_visible: bool,
 }
 
@@ -57,10 +75,10 @@ impl StateProvider {
         });
     }
 
-    pub fn set_ml_viewer_mode(&self, ml_viewer_mode: bool) {
+    pub fn set_viewer_mode(&self, viewer_mode: ViewerMode) {
         self.update.update(move |state| {
-            (state.ml_viewer_mode != ml_viewer_mode).then(|| {
-                state.ml_viewer_mode = ml_viewer_mode;
+            (state.viewer_mode != viewer_mode).then(|| {
+                state.viewer_mode = viewer_mode;
                 StateUpdateKind::Other
             })
         });

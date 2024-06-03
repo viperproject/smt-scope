@@ -185,6 +185,20 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 .collect(),
         )
     }
+    pub fn prerequisites(&self) -> Option<Vec<String>> {
+        let NodeKind::ProofStep(ps_idx) = *self.node.kind() else {
+            return None
+        };
+        let ps = &self.ctxt.parser[ps_idx];
+        Some(ps.prerequisites.iter().map(|pre| pre.with(self.ctxt).to_string()).collect())
+    }
+    pub fn proof_step_name(&self) -> Option<String> {
+        let NodeKind::ProofStep(ps) = *self.node.kind() else {
+            return None
+        };
+        let ps_name = self.ctxt.parser[ps].name;
+        Some(self.ctxt.parser.strings[*ps_name].to_string())
+    }
 }
 
 #[derive(Properties, PartialEq)]
@@ -263,15 +277,20 @@ pub fn SelectedNodesInfo(
                 }).collect();
                 html! { <>{yields}<hr/></> }
             });
-            html! {
-                <details {open}>
-                <summary {onclick}>{summary}{description}</summary>
-                <ul>
-                    {quantifier_body}
-                    {blame}
-                    {bound_terms}
-                    {resulting_term}
-                    {yield_terms}
+            let prerequisites = info.prerequisites().map(|prerequisites| {
+                let requires: Html = prerequisites.into_iter().map(|prerequisite| html! {
+                    <InfoLine header="Prerequisite" text={prerequisite} code=true />
+                }).collect();
+                html! { <>{requires}</> }
+            });
+            let proof_step_name = info.proof_step_name().map(|ps_name| {
+                    html!{<InfoLine header="Proof Step Name" text={ps_name} code=true />}
+            }); 
+            let node_stats = match info.node.kind() {
+                NodeKind::ProofStep(_) => None,
+                _ => {
+                    Some(html! {
+                    <>
                     <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
                     <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
                     <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
@@ -281,6 +300,23 @@ pub fn SelectedNodesInfo(
                             graph.raw.neighbors_directed(node, petgraph::Direction::Outgoing).len()
                         )
                     } code=false />
+                    </>
+                    }
+                    )
+                }
+            };
+            html! {
+                <details {open}>
+                <summary {onclick}>{summary}{description}</summary>
+                <ul>
+                    {quantifier_body}
+                    {blame}
+                    {bound_terms}
+                    {resulting_term}
+                    {yield_terms}
+                    {node_stats}
+                    {prerequisites}
+                    {proof_step_name}
                 </ul>
                 </details>
             }

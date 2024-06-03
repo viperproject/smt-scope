@@ -125,6 +125,9 @@ impl Terms {
             tidx
         }
     }
+    pub(super) fn get_term_idx_of_id(&self, tid: TermId) -> Option<TermIdx> {
+        self.term_id_map.get_term(&tid)
+    }
 }
 
 impl std::ops::Index<TermIdx> for Terms {

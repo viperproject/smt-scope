@@ -74,6 +74,7 @@ impl CostInitialiser for DefaultCost {
             NodeKind::GivenEquality(_, _) => 1,
             NodeKind::TransEquality(eq) => parser[*eq].given_len.min(1),
             NodeKind::Instantiation(_) => 1,
+            NodeKind::ProofStep(_) => 1,
         }
     }
     fn transfer(

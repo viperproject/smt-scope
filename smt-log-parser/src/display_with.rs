@@ -249,6 +249,18 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, Option<QuantIdx>> for TermIdx {
     }
 }
 
+impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for ProofIdx {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'_>,
+        _data: &mut (),
+    ) -> fmt::Result {
+        let ps_result = ctxt.parser[self].result;
+        write!(f, "{}", ps_result.with(ctxt))
+    }
+}
+
 impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for ENodeIdx {
     fn fmt_with(
         self,

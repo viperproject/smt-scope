@@ -140,7 +140,7 @@ impl Filter {
                         }
                     }
                 } else {
-                   true 
+                   false 
                 })
             }
             Filter::ShowOnlyFalseProofSteps => {
@@ -209,7 +209,7 @@ impl Disabler {
             Disabler::AllEqualities =>
                 node.kind().eq_given().is_some() || node.kind().eq_trans().is_some(),
             Disabler::Smart => match node.kind() {
-                NodeKind::ENode(_) | NodeKind::ProofStep(_) => {
+                NodeKind::ENode(_) => {
                     // Should only be 0 or 1
                     let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
                     let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
@@ -227,6 +227,11 @@ impl Disabler {
                     parents == 0 || (parents == 1 && children == 1)
                 }
                 NodeKind::Instantiation(_) => false,
+                NodeKind::ProofStep(_) => {
+                    let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
+                    let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
+                    (parents == 0 && children == 0) || (parents == 1 && children == 1)
+                },
             },
             Disabler::ProofSteps => node.kind().proof_step().is_some(),
         }

@@ -1,8 +1,8 @@
 pub mod cost;
 pub mod depth;
 pub mod matching_loop;
-pub mod next_insts;
 pub mod next_enabled;
+pub mod next_insts;
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};

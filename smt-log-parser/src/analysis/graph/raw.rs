@@ -227,8 +227,18 @@ impl RawInstGraph {
     }
     pub fn neighbors_directed(&self, node: RawNodeIndex, dir: Direction) -> Vec<RawNodeIndex> {
         match dir {
-            Outgoing => self.graph[node.0].enabled_children.nodes.iter().map(|nx| *nx).collect::<Vec<RawNodeIndex>>(),
-            Incoming => self.graph[node.0].enabled_parents.nodes.iter().map(|nx| *nx).collect::<Vec<RawNodeIndex>>(),
+            Outgoing => self.graph[node.0]
+                .enabled_children
+                .nodes
+                .iter()
+                .map(|nx| *nx)
+                .collect::<Vec<RawNodeIndex>>(),
+            Incoming => self.graph[node.0]
+                .enabled_parents
+                .nodes
+                .iter()
+                .map(|nx| *nx)
+                .collect::<Vec<RawNodeIndex>>(),
         }
     }
 

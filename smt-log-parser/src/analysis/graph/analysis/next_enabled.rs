@@ -52,7 +52,9 @@ impl<C: NextEnabledInitialiser<FORWARD>, const FORWARD: bool> Initialiser<FORWAR
         NextEnabledInitialiser::reset(self)
     }
 }
-impl<C: NextEnabledInitialiser<FORWARD>, const FORWARD: bool> TransferInitialiser<FORWARD, 3> for C {
+impl<C: NextEnabledInitialiser<FORWARD>, const FORWARD: bool> TransferInitialiser<FORWARD, 3>
+    for C
+{
     type Observed = C::Observed;
     fn observe(&mut self, node: &Node, parser: &Z3Parser) -> Self::Observed {
         NextEnabledInitialiser::observe(self, node, parser)

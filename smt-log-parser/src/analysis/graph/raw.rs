@@ -449,6 +449,12 @@ impl NodeKind {
             _ => None,
         }
     }
+    pub fn proof_step(&self) -> Option<ProofIdx> {
+        match self {
+            Self::ProofStep(ps) => Some(*ps),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

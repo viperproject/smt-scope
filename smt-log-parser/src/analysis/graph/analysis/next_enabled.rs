@@ -115,7 +115,8 @@ impl<const FORWARD: bool> NextEnabledInitialiser<FORWARD> for DefaultNextEnabled
         _idx: usize,
         _incoming: &[Self::Observed],
     ) -> NextInsts {
-        let value = match node.disabled() {
+        
+        match node.disabled() {
             false => NextInsts {
                 nodes: std::iter::once(from_idx).collect(),
             },
@@ -126,7 +127,6 @@ impl<const FORWARD: bool> NextEnabledInitialiser<FORWARD> for DefaultNextEnabled
                     node.enabled_children.clone()
                 }
             }
-        };
-        value
+        }
     }
 }

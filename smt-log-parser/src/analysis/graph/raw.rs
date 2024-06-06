@@ -230,14 +230,12 @@ impl RawInstGraph {
             Outgoing => self.graph[node.0]
                 .enabled_children
                 .nodes
-                .iter()
-                .map(|nx| *nx)
+                .iter().copied()
                 .collect::<Vec<RawNodeIndex>>(),
             Incoming => self.graph[node.0]
                 .enabled_parents
                 .nodes
-                .iter()
-                .map(|nx| *nx)
+                .iter().copied()
                 .collect::<Vec<RawNodeIndex>>(),
         }
     }

@@ -115,7 +115,6 @@ impl<const FORWARD: bool> NextEnabledInitialiser<FORWARD> for DefaultNextEnabled
         _idx: usize,
         _incoming: &[Self::Observed],
     ) -> NextInsts {
-        
         match node.disabled() {
             false => NextInsts {
                 nodes: std::iter::once(from_idx).collect(),

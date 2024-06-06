@@ -3,6 +3,7 @@ mod manage_filter;
 
 use std::fmt::Display;
 
+use gloo::console::log;
 use material_yew::icon::MatIcon;
 use material_yew::list::{MatListItem, SelectedDetail};
 use material_yew::select::{MatSelect, ListIndex::Single};
@@ -50,6 +51,7 @@ pub enum Msg {
     AddFilter(bool, Filter),
     ToggleDisabler(usize),
     SwitchViewerMode(ViewerMode),
+    DisableAllButProofSteps,
 }
 
 pub struct FiltersState {
@@ -230,6 +232,19 @@ impl Component for FiltersState {
                 self.reset_disabled(&ctx.props().file);
                 false
             }
+            Msg::DisableAllButProofSteps => {
+                log!("In DisableAllButProofSteps-branch");
+                for (disabler, b) in self.disabler_chain.iter_mut() {
+                    let new_value = match disabler {
+                        Disabler::ProofSteps => false,
+                        _ => true,
+                    };
+                    *b = new_value 
+                }
+                self.reset_disabled(&ctx.props().file);
+                log!("After reset_disabled");
+                false
+            }
             Msg::SwitchViewerMode(viewer_mode) => {
                 let search_matching_loops = ctx.props().search_matching_loops.clone();
 
@@ -239,6 +254,9 @@ impl Component for FiltersState {
                     ctx.props().search_matching_loops.emit(());
                 }
                 state.set_viewer_mode(viewer_mode);
+                if matches!(viewer_mode, ViewerMode::ProofSteps) {
+                    ctx.link().send_message(Msg::DisableAllButProofSteps)
+                }
                 true
             }
         }

@@ -1,3 +1,4 @@
+use gloo::console::log;
 use petgraph::{
     visit::{Dfs, Walker},
     Direction, Graph,
@@ -24,7 +25,18 @@ pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
     (Disabler::ENodes, false),
     (Disabler::GivenEqualities, false),
     (Disabler::AllEqualities, false),
+    (Disabler::ProofSteps, true),
+    (Disabler::Instantiations, false),
 ];
+
+// pub const PROOF_STEPS_DISABLER_CHAIN: &[(Disabler, bool)] = &[
+//     (Disabler::Smart, true),
+//     (Disabler::ENodes, true),
+//     (Disabler::GivenEqualities, true),
+//     (Disabler::AllEqualities, true),
+//     (Disabler::Instantiations, true),
+//     (Disabler::ProofSteps, false),
+// ];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Filter {
@@ -223,6 +235,8 @@ pub enum Disabler {
     ENodes,
     GivenEqualities,
     AllEqualities,
+    ProofSteps,
+    Instantiations,
 }
 
 impl Disabler {
@@ -235,7 +249,7 @@ impl Disabler {
                 node.kind().eq_given().is_some() || node.kind().eq_trans().is_some()
             }
             Disabler::Smart => match node.kind() {
-                NodeKind::ENode(_) | NodeKind::ProofStep(_) => {
+                NodeKind::ENode(_) => {
                     // Should only be 0 or 1
                     let parents = graph
                         .graph
@@ -271,7 +285,14 @@ impl Disabler {
                     parents == 0 || (parents == 1 && children == 1)
                 }
                 NodeKind::Instantiation(_) => false,
+                NodeKind::ProofStep(_) => {
+                    let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
+                    let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
+                    (parents == 0 && children == 0) || (parents == 1 && children == 1)
+                }
             },
+            Disabler::ProofSteps => node.kind().proof_step().is_some(),
+            Disabler::Instantiations => node.kind().inst().is_some(),
         }
     }
     pub fn apply(
@@ -290,6 +311,8 @@ impl Disabler {
             Disabler::ENodes => "yield terms",
             Disabler::GivenEqualities => "yield equalities",
             Disabler::AllEqualities => "all equalities",
+            Disabler::ProofSteps => "proof steps",
+            Disabler::Instantiations => "instantiations",
         }
     }
     pub fn icon(&self) -> &'static str {
@@ -298,6 +321,8 @@ impl Disabler {
             Disabler::ENodes => "functions",
             Disabler::GivenEqualities => "compare_arrows",
             Disabler::AllEqualities => "compare_arrows",
+            Disabler::ProofSteps => "compare_arrows",
+            Disabler::Instantiations => "compare_arrows",
         }
     }
 }

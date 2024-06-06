@@ -2,9 +2,11 @@ pub mod cost;
 pub mod depth;
 pub mod matching_loop;
 pub mod next_insts;
+pub mod next_enabled;
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
+use next_enabled::DefaultNextEnabled;
 use petgraph::Direction;
 
 use crate::{Graph, Result, Z3Parser};
@@ -144,6 +146,8 @@ impl InstGraph {
         self.initialise_transfer(DefaultCost, parser);
         self.initialise_collect(DefaultDepth::<true>, parser);
         self.initialise_collect(DefaultDepth::<false>, parser);
+        self.initialise_transfer(DefaultNextEnabled::<true>, parser);
+        self.initialise_transfer(DefaultNextEnabled::<false>, parser);
 
         self.analyse();
     }

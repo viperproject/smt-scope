@@ -226,21 +226,10 @@ impl RawInstGraph {
         Reversed(&*self.graph)
     }
     pub fn neighbors_directed(&self, node: RawNodeIndex, dir: Direction) -> Vec<RawNodeIndex> {
-        let (mut disabled, mut enabled): (Vec<_>, Vec<_>) = self
-            .graph
-            .neighbors_directed(node.0, dir)
-            .map(RawNodeIndex)
-            .partition(|n| self.graph[n.0].disabled());
-        while let Some(next) = disabled.pop() {
-            for n in self.graph.neighbors_directed(next.0, dir).map(RawNodeIndex) {
-                if self.graph[n.0].disabled() {
-                    disabled.push(n);
-                } else {
-                    enabled.push(n);
-                }
-            }
+        match dir {
+            Outgoing => self.graph[node.0].enabled_children.nodes.iter().map(|nx| *nx).collect::<Vec<RawNodeIndex>>(),
+            Incoming => self.graph[node.0].enabled_parents.nodes.iter().map(|nx| *nx).collect::<Vec<RawNodeIndex>>(),
         }
-        enabled
     }
 
     pub fn visible_nodes(&self) -> usize {
@@ -293,6 +282,8 @@ pub struct Node {
     pub inst_parents: NextInsts,
     pub inst_children: NextInsts,
     pub part_of_ml: fxhash::FxHashSet<usize>,
+    pub enabled_parents: NextInsts,
+    pub enabled_children: NextInsts,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -332,6 +323,12 @@ impl Node {
                 nodes: FxHashSet::default(),
             },
             part_of_ml: FxHashSet::default(),
+            enabled_parents: NextInsts {
+                nodes: FxHashSet::default(),
+            },
+            enabled_children: NextInsts {
+                nodes: FxHashSet::default(),
+            },
         }
     }
     pub fn kind(&self) -> &NodeKind {

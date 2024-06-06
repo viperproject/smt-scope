@@ -71,7 +71,7 @@ pub fn Topbar(props: &TopbarProps) -> Html {
             <Omnibox progress={props.progress.clone()} message={props.message.clone()} omnibox={props.omnibox.clone()} search={props.search.clone()} pick={props.pick.clone()} select={props.select.clone()} />
         }
     };
-    let topbar_class = if ml_viewer_mode {
+    let topbar_class = if matches!(state.state.viewer_mode, ViewerMode::MatchingLoops) {
         "topbar ml-mode"
     } else {
         "topbar"

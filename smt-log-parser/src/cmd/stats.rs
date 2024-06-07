@@ -1,11 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use petgraph::Direction;
-use smt_log_parser::{
-    analysis::{raw::IndexesInstGraph, InstGraph, RawNodeIndex},
-    items::InstIdx,
-    LogParser, Z3Parser,
-};
+use smt_log_parser::{analysis::InstGraph, LogParser, Z3Parser};
 
 pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
     let path = std::path::Path::new(&logfile);

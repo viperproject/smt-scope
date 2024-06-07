@@ -160,7 +160,10 @@ impl InstGraph {
 
     pub fn analyse(&mut self) {
         log!("In analyse: before first sort");
-        log!(format!("self.analysis.cost has {} nodes", self.analysis.cost.len()));
+        log!(format!(
+            "self.analysis.cost has {} nodes",
+            self.analysis.cost.len()
+        ));
         self.analysis.cost.sort_by(|&a, &b| {
             self.raw.graph[a.0]
                 .cost
@@ -169,14 +172,20 @@ impl InstGraph {
                 .then_with(|| a.cmp(&b))
         });
         log!("In analyse: before second sort");
-        log!(format!("self.analysis.children has {} nodes", self.analysis.children.len()));
+        log!(format!(
+            "self.analysis.children has {} nodes",
+            self.analysis.children.len()
+        ));
         self.analysis.children.sort_by(|&a, &b| {
             let ac = self.raw.neighbors_directed(a, Direction::Outgoing).len();
             let bc = self.raw.neighbors_directed(b, Direction::Outgoing).len();
             ac.cmp(&bc).reverse().then_with(|| a.cmp(&b))
         });
         log!("In analyse: before third sort");
-        log!(format!("self.analysis.fwd_depth_min has {} nodes \n", self.analysis.fwd_depth_min.len()));
+        log!(format!(
+            "self.analysis.fwd_depth_min has {} nodes \n",
+            self.analysis.fwd_depth_min.len()
+        ));
         self.analysis.fwd_depth_min.sort_by(|&a, &b| {
             self.raw.graph[a.0]
                 .fwd_depth

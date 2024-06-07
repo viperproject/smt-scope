@@ -5,7 +5,7 @@ use std::fmt::Display;
 
 use material_yew::icon::MatIcon;
 use material_yew::list::{MatListItem, SelectedDetail};
-use material_yew::select::{MatSelect, ListIndex::Single};
+use material_yew::select::{ListIndex::Single, MatSelect};
 use petgraph::Direction;
 use smt_log_parser::analysis::{raw::NodeKind, RawNodeIndex};
 use smt_log_parser::parsers::ParseState;
@@ -240,8 +240,12 @@ impl Component for FiltersState {
                 }
                 state.set_viewer_mode(viewer_mode);
                 match viewer_mode {
-                    ViewerMode::QuantifierInstantiations | ViewerMode::MatchingLoops => self.disabler_chain = DEFAULT_DISABLER_CHAIN.to_vec(),
-                    ViewerMode::ProofSteps => self.disabler_chain = PROOF_STEPS_DISABLER_CHAIN.to_vec(),
+                    ViewerMode::QuantifierInstantiations | ViewerMode::MatchingLoops => {
+                        self.disabler_chain = DEFAULT_DISABLER_CHAIN.to_vec()
+                    }
+                    ViewerMode::ProofSteps => {
+                        self.disabler_chain = PROOF_STEPS_DISABLER_CHAIN.to_vec()
+                    }
                 }
                 self.reset_disabled(&ctx.props().file);
                 true
@@ -298,26 +302,30 @@ impl Component for FiltersState {
 
         // Selected nodes
         let selected_nodes = !ctx.props().file.selected_nodes.is_empty();
-        let selected_nodes =
-            (selected_nodes && !matches!(ctx.link().get_state().unwrap().state.viewer_mode, ViewerMode::MatchingLoops)).then(|| {
-                let new_filter = ctx.link().callback(|f| Msg::AddFilter(false, f));
-                let nodes = ctx.props().file.selected_nodes.clone();
-                let header = format!(
-                    "Selected {} Node{}",
-                    nodes.len(),
-                    if nodes.len() == 1 { "" } else { "s" }
-                );
-                let collapsed_text = format!(
-                    "Actions on the {} selected node{}",
-                    nodes.len(),
-                    if nodes.len() == 1 { "" } else { "s" }
-                );
-                html! {
-                    <SidebarSectionHeader header_text={header} collapsed_text={collapsed_text}><ul>
-                        <AddFilterSidebar {new_filter} {nodes} general_filters={false}/>
-                    </ul></SidebarSectionHeader>
-                }
-            });
+        let selected_nodes = (selected_nodes
+            && !matches!(
+                ctx.link().get_state().unwrap().state.viewer_mode,
+                ViewerMode::MatchingLoops
+            ))
+        .then(|| {
+            let new_filter = ctx.link().callback(|f| Msg::AddFilter(false, f));
+            let nodes = ctx.props().file.selected_nodes.clone();
+            let header = format!(
+                "Selected {} Node{}",
+                nodes.len(),
+                if nodes.len() == 1 { "" } else { "s" }
+            );
+            let collapsed_text = format!(
+                "Actions on the {} selected node{}",
+                nodes.len(),
+                if nodes.len() == 1 { "" } else { "s" }
+            );
+            html! {
+                <SidebarSectionHeader header_text={header} collapsed_text={collapsed_text}><ul>
+                    <AddFilterSidebar {new_filter} {nodes} general_filters={false}/>
+                </ul></SidebarSectionHeader>
+            }
+        });
 
         // Operations
         let class = match (self.dragging, self.will_delete) {
@@ -363,10 +371,10 @@ impl Component for FiltersState {
             },
             ViewerMode::MatchingLoops => html! {},
         };
-        let onselected = ctx.link().callback(
-            |e: SelectedDetail| {
-            let Single(Some(value)) = e.index else { 
-                return Msg::SwitchViewerMode(ViewerMode::QuantifierInstantiations)};
+        let onselected = ctx.link().callback(|e: SelectedDetail| {
+            let Single(Some(value)) = e.index else {
+                return Msg::SwitchViewerMode(ViewerMode::QuantifierInstantiations);
+            };
             let viewer_mode = match value {
                 0 => ViewerMode::QuantifierInstantiations,
                 1 => ViewerMode::MatchingLoops,
@@ -624,7 +632,10 @@ impl Filter {
                 format!("{show} only proof steps proving false")
             }
             Self::ShowNamedProofStep(name) => {
-                format!("{show} proof steps with name \"{}\"", display(name, applied))
+                format!(
+                    "{show} proof steps with name \"{}\"",
+                    display(name, applied)
+                )
             }
         }
     }

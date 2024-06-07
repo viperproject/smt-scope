@@ -292,10 +292,7 @@ impl Z3LogParser for Z3Parser {
         Ok(())
     }
 
-    fn mk_app<'a>(
-        &mut self,
-        mut l: impl Iterator<Item = &'a str>,
-    ) -> Result<()> {
+    fn mk_app<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let full_id = l.next().ok_or(Error::UnexpectedNewline)?;
         let full_id = TermId::parse(&mut self.strings, full_id)?;
         let name = IString(
@@ -314,10 +311,7 @@ impl Z3LogParser for Z3Parser {
         Ok(())
     }
 
-    fn mk_proof<'a>(
-        &mut self,
-        mut l: impl Iterator<Item = &'a str>,
-    ) -> Result<()> {
+    fn mk_proof<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let full_id = l.next().ok_or(Error::UnexpectedNewline)?;
         let full_id = TermId::parse(&mut self.strings, full_id)?;
         let name = IString(
@@ -327,13 +321,19 @@ impl Z3LogParser for Z3Parser {
         // TODO: add rewrite, monotonicity cases
         let prerequisites_and_result = self.gobble_children(l)?;
         let Some((result, prerequisites)) = prerequisites_and_result.split_last() else {
-            return Err(Error::UnexpectedEnd)
+            return Err(Error::UnexpectedEnd);
         };
-        let prerequisites = prerequisites.iter()
+        let prerequisites = prerequisites
+            .iter()
             .filter_map(|tidx| self.proof_step_of_term.get(tidx))
             .cloned()
             .collect();
-        let proof_step = ProofStep { id: Some(full_id), name, result: *result, prerequisites };
+        let proof_step = ProofStep {
+            id: Some(full_id),
+            name,
+            result: *result,
+            prerequisites,
+        };
         self.proof_steps.raw.try_reserve(1)?;
         let ps_idx = self.proof_steps.push_and_get_key(proof_step);
         let term = Term {

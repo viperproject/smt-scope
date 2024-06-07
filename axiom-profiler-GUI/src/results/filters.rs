@@ -20,7 +20,7 @@ pub const DEFAULT_FILTER_CHAIN: &[Filter] = &[
     Filter::MaxInsts(DEFAULT_NODE_COUNT),
 ];
 // the second field decides whether the disabler is set or not
-// the third field decides whether the disabler is applicable or not (depends on viewer mode) 
+// the third field decides whether the disabler is applicable or not (depends on viewer mode)
 pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
     (Disabler::Smart, true, true),
     (Disabler::ENodes, false, true),
@@ -30,7 +30,7 @@ pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
     (Disabler::Instantiations, false, false),
 ];
 // the second field decides whether the disabler is set or not
-// the third field decides whether the disabler is applicable or not (depends on viewer mode) 
+// the third field decides whether the disabler is applicable or not (depends on viewer mode)
 pub const PROOF_STEPS_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
     (Disabler::Smart, true, true),
     (Disabler::ENodes, true, false),
@@ -217,49 +217,66 @@ impl Filter {
                 // }
             }
             Filter::ShowProofSteps => {
-                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().proof_step().is_some());
+                graph
+                    .raw
+                    .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
+                        node.kind().proof_step().is_some()
+                    });
             }
             Filter::IgnoreTrivialProofSteps => {
-                let ctxt = config(parser); 
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| if let Some(ps) = node.kind().proof_step() {
-                    let ps_result = parser[ps].result.with(&ctxt).to_string();
-                    if ps_result == "false" {
-                        return false 
-                    } else {
-                        let ps_name = &parser.strings[*parser[ps].name];
-                        match ps_name {
-                            "mp" => true,
-                            "rewrite" => true,
-                            "monotonicity" => true,
-                            "trans" => true,
-                            "refl" => true,
-                            "commutativity" => true,
-                            "iff-true" => true,
-                            "iff-false" => true,
-                            "symm" => true,
-                            _ => false,
+                let ctxt = config(parser);
+                graph
+                    .raw
+                    .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
+                        if let Some(ps) = node.kind().proof_step() {
+                            let ps_result = parser[ps].result.with(&ctxt).to_string();
+                            if ps_result == "false" {
+                                return false;
+                            } else {
+                                let ps_name = &parser.strings[*parser[ps].name];
+                                match ps_name {
+                                    "mp" => true,
+                                    "rewrite" => true,
+                                    "monotonicity" => true,
+                                    "trans" => true,
+                                    "refl" => true,
+                                    "commutativity" => true,
+                                    "iff-true" => true,
+                                    "iff-false" => true,
+                                    "symm" => true,
+                                    _ => false,
+                                }
+                            }
+                        } else {
+                            false
                         }
-                    }
-                } else {
-                   false 
-                })
+                    })
             }
             Filter::ShowOnlyFalseProofSteps => {
-                let ctxt = config(parser); 
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| if let Some(ps) = node.kind().proof_step() {
-                    let ps_result = parser[ps].result.with(&ctxt).to_string();
-                    ps_result != "false"
-                } else {
-                   true 
-                })
+                let ctxt = config(parser);
+                graph
+                    .raw
+                    .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
+                        if let Some(ps) = node.kind().proof_step() {
+                            let ps_result = parser[ps].result.with(&ctxt).to_string();
+                            ps_result != "false"
+                        } else {
+                            true
+                        }
+                    })
             }
             Filter::ShowNamedProofStep(name) => {
-                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().proof_step().is_some_and(|ps|
-                    parser[parser[ps].result]
-                    .kind
-                    .ps_name()
-                    .map(|name| parser.strings[*name].to_string()).is_some_and(|s| s == name)
-                ))
+                graph
+                    .raw
+                    .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
+                        node.kind().proof_step().is_some_and(|ps| {
+                            parser[parser[ps].result]
+                                .kind
+                                .ps_name()
+                                .map(|name| parser.strings[*name].to_string())
+                                .is_some_and(|s| s == name)
+                        })
+                    })
             }
         }
         FilterOutput::None
@@ -337,8 +354,14 @@ impl Disabler {
                 }
                 NodeKind::Instantiation(_) => false,
                 NodeKind::ProofStep(_) => {
-                    let parents = graph.graph.neighbors_directed(idx.0, Direction::Incoming).count();
-                    let children = graph.graph.neighbors_directed(idx.0, Direction::Outgoing).count();
+                    let parents = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Incoming)
+                        .count();
+                    let children = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Outgoing)
+                        .count();
                     (parents == 0 && children == 0) || (parents == 1 && children == 1)
                 }
             },

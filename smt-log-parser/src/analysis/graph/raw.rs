@@ -462,17 +462,26 @@ pub enum EdgeKind {
     /// Instantiation -> ENode
     Yield,
     /// ENode -> Instantiation
-    Blame { trigger_term: u16 },
+    Blame {
+        trigger_term: u16,
+    },
     /// TransEquality -> Instantiation
-    BlameEq { trigger_term: u16, eq_order: u16 },
+    BlameEq {
+        trigger_term: u16,
+        eq_order: u16,
+    },
     /// ENode -> GivenEquality (`EqualityExpl::Literal`)
     EqualityFact,
     /// TransEquality -> GivenEquality (`EqualityExpl::Congruence`)
     EqualityCongruence,
     /// GivenEquality -> TransEquality (`TransitiveExplSegmentKind::Leaf`)
-    TEqualitySimple { forward: bool },
+    TEqualitySimple {
+        forward: bool,
+    },
     /// TransEquality -> TransEquality (`TransitiveExplSegmentKind::Transitive`)
-    TEqualityTransitive { forward: bool },
+    TEqualityTransitive {
+        forward: bool,
+    },
     ProofStep,
 }
 
@@ -508,7 +517,7 @@ impl IndexesInstGraph for (EqGivenIdx, Option<NonMaxU32>) {
 impl IndexesInstGraph for ProofIdx {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
         RawNodeIndex(NodeIndex::new(
-            graph.proofs_idx.0.index() + usize::from(*self)
+            graph.proofs_idx.0.index() + usize::from(*self),
         ))
     }
 }

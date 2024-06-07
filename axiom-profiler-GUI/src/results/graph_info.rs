@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use crate::{state::{StateProvider, ViewerMode}, utils::split_div::SplitDiv};
+use crate::{
+    state::{StateProvider, ViewerMode},
+    utils::split_div::SplitDiv,
+};
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
@@ -258,7 +261,8 @@ impl Component for GraphInfo {
             .then(|| html! {<div class="outdated"></div>});
         let hide_right_bar = self.selected_nodes.is_empty()
             && self.selected_edges.is_empty()
-            && !(matches!(self.viewer_mode, ViewerMode::MatchingLoops) && self.displayed_matching_loop_graph.is_some());
+            && !(matches!(self.viewer_mode, ViewerMode::MatchingLoops)
+                && self.displayed_matching_loop_graph.is_some());
         let left_bound = if hide_right_bar { 1.0 } else { 0.3 };
         html! {
             <>

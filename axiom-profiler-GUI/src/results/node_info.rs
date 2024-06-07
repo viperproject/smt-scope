@@ -187,14 +187,19 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
     }
     pub fn prerequisites(&self) -> Option<Vec<String>> {
         let NodeKind::ProofStep(ps_idx) = *self.node.kind() else {
-            return None
+            return None;
         };
         let ps = &self.ctxt.parser[ps_idx];
-        Some(ps.prerequisites.iter().map(|pre| pre.with(self.ctxt).to_string()).collect())
+        Some(
+            ps.prerequisites
+                .iter()
+                .map(|pre| pre.with(self.ctxt).to_string())
+                .collect(),
+        )
     }
     pub fn proof_step_name(&self) -> Option<String> {
         let NodeKind::ProofStep(ps) = *self.node.kind() else {
-            return None
+            return None;
         };
         let ps_name = self.ctxt.parser[ps].name;
         Some(self.ctxt.parser.strings[*ps_name].to_string())
@@ -284,8 +289,7 @@ pub fn SelectedNodesInfo(
                 html! { <>{requires}</> }
             });
             let proof_step_name = info.proof_step_name().map(|ps_name| {
-                    html!{<InfoLine header="Proof Step Name" text={ps_name} code=true />}
-            }); 
+                    html!{<InfoLine header="Proof Step Name" text={ps_name} code=true />}}); 
             let node_stats = match info.node.kind() {
                 NodeKind::ProofStep(_) => None,
                 _ => {

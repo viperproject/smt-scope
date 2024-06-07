@@ -55,7 +55,11 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
         ];
         match data.state.viewer_mode {
             ViewerMode::QuantifierInstantiations | ViewerMode::MatchingLoops => qi_mode_filters,
-            ViewerMode::ProofSteps => qi_mode_filters.iter().chain(proof_steps_mode_filters.iter()).map(|f| f.clone()).collect(),
+            ViewerMode::ProofSteps => qi_mode_filters
+                .iter()
+                .chain(proof_steps_mode_filters.iter())
+                .map(|f| f.clone())
+                .collect(),
         }
     } else {
         let Some(graph) = parser.graph.as_ref() else {

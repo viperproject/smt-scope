@@ -513,13 +513,13 @@ impl Filter {
             }
             Self::ShowMatchingLoopSubgraph => "S only likely matching loops".to_string(),
             Self::ShowProofSteps => {
-                format!("S proof steps")
+                "S proof steps".to_string()
             }
             Self::IgnoreTrivialProofSteps => {
-                format!("H trivial proof steps")
+                "H trivial proof steps".to_string()
             }
             Self::ShowOnlyFalseProofSteps => {
-                format!("S only false proof steps")
+                "S only false proof steps".to_string()
             }
             Self::ShowNamedProofStep(name) => {
                 format!("Show proof step \"{name}\"")

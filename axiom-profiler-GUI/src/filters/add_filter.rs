@@ -57,8 +57,7 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
             ViewerMode::QuantifierInstantiations | ViewerMode::MatchingLoops => qi_mode_filters,
             ViewerMode::ProofSteps => qi_mode_filters
                 .iter()
-                .chain(proof_steps_mode_filters.iter())
-                .map(|f| f.clone())
+                .chain(proof_steps_mode_filters.iter()).cloned()
                 .collect(),
         }
     } else {

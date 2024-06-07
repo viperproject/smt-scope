@@ -231,21 +231,10 @@ impl Filter {
                         if let Some(ps) = node.kind().proof_step() {
                             let ps_result = parser[ps].result.with(&ctxt).to_string();
                             if ps_result == "false" {
-                                return false;
+                                false
                             } else {
                                 let ps_name = &parser.strings[*parser[ps].name];
-                                match ps_name {
-                                    "mp" => true,
-                                    "rewrite" => true,
-                                    "monotonicity" => true,
-                                    "trans" => true,
-                                    "refl" => true,
-                                    "commutativity" => true,
-                                    "iff-true" => true,
-                                    "iff-false" => true,
-                                    "symm" => true,
-                                    _ => false,
-                                }
+                                matches!(ps_name, "mp" | "rewrite" | "monotonicity" | "trans" | "refl" | "commutativity" | "iff-true" | "iff-false" | "symm")
                             }
                         } else {
                             false

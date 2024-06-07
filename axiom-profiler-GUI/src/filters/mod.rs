@@ -448,7 +448,7 @@ impl Filter {
             Filter::ShowNamedQuantifier(_) => "fingerprint",
             Filter::SelectNthMatchingLoop(_) => "repeat_one",
             Filter::ShowMatchingLoopSubgraph => "repeat",
-            Filter::IgnoreAllButProofSteps => "account_tree",
+            Filter::ShowProofSteps => "account_tree",
             Filter::IgnoreTrivialProofSteps => "filter_alt",
             Filter::ShowOnlyFalseProofSteps => "bolt",
             Filter::ShowNamedProofStep(_) => "fingerprint",
@@ -501,8 +501,8 @@ impl Filter {
                 format!("Show only |{}{ordinal}| matching loop", n + 1)
             }
             Self::ShowMatchingLoopSubgraph => "S only likely matching loops".to_string(),
-            Self::IgnoreAllButProofSteps => {
-                format!("S only proof steps")
+            Self::ShowProofSteps => {
+                format!("S proof steps")
             }
             Self::IgnoreTrivialProofSteps => {
                 format!("H trivial proof steps")
@@ -611,8 +611,8 @@ impl Filter {
             Self::ShowMatchingLoopSubgraph => {
                 format!("{show} only nodes in any potential matching loop")
             }
-            Self::IgnoreAllButProofSteps => {
-                format!("{show} only proof steps")
+            Self::ShowProofSteps => {
+                format!("{show} proof steps")
             }
             Self::IgnoreTrivialProofSteps => {
                 format!("{hide} trivial proof steps")

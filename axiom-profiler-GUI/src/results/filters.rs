@@ -58,7 +58,7 @@ pub enum Filter {
     ShowNamedQuantifier(String),
     SelectNthMatchingLoop(usize),
     ShowMatchingLoopSubgraph,
-    IgnoreAllButProofSteps,
+    ShowProofSteps,
     IgnoreTrivialProofSteps,
     ShowOnlyFalseProofSteps,
     ShowNamedProofStep(String),
@@ -217,8 +217,8 @@ impl Filter {
                 //     }
                 // }
             }
-            Filter::IgnoreAllButProofSteps => {
-                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().proof_step().is_none());
+            Filter::ShowProofSteps => {
+                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().proof_step().is_some());
             }
             Filter::IgnoreTrivialProofSteps => {
                 let ctxt = config(parser); 

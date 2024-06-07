@@ -48,7 +48,7 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
             mls_all,
         ];
         let proof_steps_mode_filters = vec![
-            vec![Filter::IgnoreAllButProofSteps],
+            vec![Filter::ShowProofSteps],
             vec![Filter::IgnoreTrivialProofSteps],
             vec![Filter::ShowOnlyFalseProofSteps],
             vec![Filter::ShowNamedProofStep("name".to_string())],

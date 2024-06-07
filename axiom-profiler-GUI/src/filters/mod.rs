@@ -363,23 +363,26 @@ impl Component for FiltersState {
             },
             ViewerMode::MatchingLoops => html! {},
         };
+        let onselected = ctx.link().callback(
+            |e: SelectedDetail| {
+            let Single(Some(value)) = e.index else { 
+                return Msg::SwitchViewerMode(ViewerMode::QuantifierInstantiations)};
+            let viewer_mode = match value {
+                0 => ViewerMode::QuantifierInstantiations,
+                1 => ViewerMode::MatchingLoops,
+                2 => ViewerMode::ProofSteps,
+                _ => unreachable!(),
+            };
+            Msg::SwitchViewerMode(viewer_mode)
+        });
         html! {
         <>
             <SidebarSectionHeader header_text="Current Trace" collapsed_text="Actions on the current trace"><ul>
                 <li><a draggable="false" class="trace-file-name">{details}</a></li>
                 <section>
                     <div class="view-selector">
-                    <MatSelect label="View" onselected={ctx.link().callback(|e: SelectedDetail| {
-                        let Single(Some(value)) = e.index else { return Msg::SwitchViewerMode(ViewerMode::QuantifierInstantiations)};
-                        let viewer_mode = match value {
-                            0 => ViewerMode::QuantifierInstantiations,
-                            1 => ViewerMode::MatchingLoops,
-                            2 => ViewerMode::ProofSteps,
-                            _ => unreachable!(),
-                        };
-                        Msg::SwitchViewerMode(viewer_mode)
-                    })}>
-                        <MatListItem value="0" selected=true>
+                    <MatSelect label="View" {onselected}>
+                        <MatListItem value="0">
                             <li><a draggable="false" href="#" >{"quantifier instantiations"}</a></li>
                         </MatListItem>
                         <MatListItem value="1">

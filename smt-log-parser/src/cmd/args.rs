@@ -23,6 +23,15 @@ pub enum Commands {
         #[arg(short, long, default_value_t = false)]
         pretty_print: bool,
     },
+    #[cfg(feature = "analysis")]
+    /// Print out statistics for the SMT solver
+    Stats {
+        /// The path to the smt log file
+        logfile: std::path::PathBuf,
+        /// how many of the most instantiated axioms to print
+        #[arg(short)]
+        k: Option<usize>,
+    },
     /// Tests the parser and analysis, printing out timing information
     Test {
         /// The paths to the smt log files

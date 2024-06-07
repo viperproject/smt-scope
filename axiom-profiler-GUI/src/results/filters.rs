@@ -1,4 +1,3 @@
-use gloo::console::log;
 use petgraph::{
     visit::{Dfs, Walker},
     Direction, Graph,

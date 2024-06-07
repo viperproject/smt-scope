@@ -512,15 +512,9 @@ impl Filter {
                 format!("Show only |{}{ordinal}| matching loop", n + 1)
             }
             Self::ShowMatchingLoopSubgraph => "S only likely matching loops".to_string(),
-            Self::ShowProofSteps => {
-                "S proof steps".to_string()
-            }
-            Self::IgnoreTrivialProofSteps => {
-                "H trivial proof steps".to_string()
-            }
-            Self::ShowOnlyFalseProofSteps => {
-                "S only false proof steps".to_string()
-            }
+            Self::ShowProofSteps => "S proof steps".to_string(),
+            Self::IgnoreTrivialProofSteps => "H trivial proof steps".to_string(),
+            Self::ShowOnlyFalseProofSteps => "S only false proof steps".to_string(),
             Self::ShowNamedProofStep(name) => {
                 format!("Show proof step \"{name}\"")
             }

@@ -234,7 +234,17 @@ impl Filter {
                                 false
                             } else {
                                 let ps_name = &parser.strings[*parser[ps].name];
-                                matches!(ps_name, "mp" | "rewrite" | "monotonicity" | "trans" | "refl" | "commutativity" | "iff-true" | "iff-false" | "symm")
+                                matches!(
+                                    ps_name,
+                                    "mp" | "rewrite"
+                                        | "monotonicity"
+                                        | "trans"
+                                        | "refl"
+                                        | "commutativity"
+                                        | "iff-true"
+                                        | "iff-false"
+                                        | "symm"
+                                )
                             }
                         } else {
                             false

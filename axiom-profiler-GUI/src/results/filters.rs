@@ -58,6 +58,10 @@ pub enum Filter {
     ShowNamedQuantifier(String),
     SelectNthMatchingLoop(usize),
     ShowMatchingLoopSubgraph,
+    IgnoreAllButProofSteps,
+    IgnoreTrivialProofSteps,
+    ShowOnlyFalseProofSteps,
+    ShowNamedProofStep(String),
 }
 
 impl Filter {
@@ -212,6 +216,51 @@ impl Filter {
                 //         graph.raw.set_visibility_many(false, nodes.into_iter())
                 //     }
                 // }
+            }
+            Filter::IgnoreAllButProofSteps => {
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| node.kind().proof_step().is_none());
+            }
+            Filter::IgnoreTrivialProofSteps => {
+                let ctxt = config(parser); 
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| if let Some(ps) = node.kind().proof_step() {
+                    let ps_result = parser[ps].result.with(&ctxt).to_string();
+                    if ps_result == "false" {
+                        return false 
+                    } else {
+                        let ps_name = &parser.strings[*parser[ps].name];
+                        match ps_name {
+                            "mp" => true,
+                            "rewrite" => true,
+                            "monotonicity" => true,
+                            "trans" => true,
+                            "refl" => true,
+                            "commutativity" => true,
+                            "iff-true" => true,
+                            "iff-false" => true,
+                            "symm" => true,
+                            _ => false,
+                        }
+                    }
+                } else {
+                   false 
+                })
+            }
+            Filter::ShowOnlyFalseProofSteps => {
+                let ctxt = config(parser); 
+                graph.raw.set_visibility_when(true, |_: RawNodeIndex, node: &Node| if let Some(ps) = node.kind().proof_step() {
+                    let ps_result = parser[ps].result.with(&ctxt).to_string();
+                    ps_result != "false"
+                } else {
+                   true 
+                })
+            }
+            Filter::ShowNamedProofStep(name) => {
+                graph.raw.set_visibility_when(false, |_: RawNodeIndex, node: &Node| node.kind().proof_step().is_some_and(|ps|
+                    parser[parser[ps].result]
+                    .kind
+                    .ps_name()
+                    .map(|name| parser.strings[*name].to_string()).is_some_and(|s| s == name)
+                ))
             }
         }
         FilterOutput::None

@@ -411,6 +411,10 @@ impl Filter {
                 Filter::SelectNthMatchingLoop(new_data[0].max(1) - 1)
             }
             Filter::ShowMatchingLoopSubgraph => Filter::ShowMatchingLoopSubgraph,
+            Filter::IgnoreAllButProofSteps => Filter::IgnoreAllButProofSteps,
+            Filter::IgnoreTrivialProofSteps => Filter::IgnoreTrivialProofSteps,
+            Filter::ShowOnlyFalseProofSteps => Filter::ShowOnlyFalseProofSteps,
+            Filter::ShowNamedProofStep(_) => Filter::ShowNamedProofStep(new_strings[0].clone()),
         }
     }
 }

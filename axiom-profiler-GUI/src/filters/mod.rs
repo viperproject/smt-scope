@@ -354,7 +354,7 @@ impl Component for FiltersState {
                 }
         });
         let view = match ctx.link().get_state().unwrap().state.viewer_mode {
-            ViewerMode::QuantifierInstantiations => html! {
+            ViewerMode::QuantifierInstantiations | ViewerMode::ProofSteps => html! {
                 <>
                 <AddFilterSidebar new_filter={new_filter} found_mls={found_mls} nodes={Vec::new()} general_filters={true}/>
                 <li><a draggable="false" href="#" onclick={reset}><div class="material-icons"><MatIcon>{"restore"}</MatIcon></div>{"Reset operations"}</a></li>
@@ -362,7 +362,6 @@ impl Component for FiltersState {
                 </>
             },
             ViewerMode::MatchingLoops => html! {},
-            ViewerMode::ProofSteps => html! {},
         };
         html! {
         <>
@@ -449,6 +448,10 @@ impl Filter {
             Filter::ShowNamedQuantifier(_) => "fingerprint",
             Filter::SelectNthMatchingLoop(_) => "repeat_one",
             Filter::ShowMatchingLoopSubgraph => "repeat",
+            Filter::IgnoreAllButProofSteps => "account_tree",
+            Filter::IgnoreTrivialProofSteps => "filter_alt",
+            Filter::ShowOnlyFalseProofSteps => "bolt",
+            Filter::ShowNamedProofStep(_) => "fingerprint",
         }
     }
     pub fn short_text(&self, d: impl Fn(RawNodeIndex) -> NodeKind) -> String {
@@ -498,6 +501,18 @@ impl Filter {
                 format!("Show only |{}{ordinal}| matching loop", n + 1)
             }
             Self::ShowMatchingLoopSubgraph => "S only likely matching loops".to_string(),
+            Self::IgnoreAllButProofSteps => {
+                format!("S only proof steps")
+            }
+            Self::IgnoreTrivialProofSteps => {
+                format!("H trivial proof steps")
+            }
+            Self::ShowOnlyFalseProofSteps => {
+                format!("S only false proof steps")
+            }
+            Self::ShowNamedProofStep(name) => {
+                format!("Show proof step \"{name}\"")
+            }
         }
     }
     pub fn long_text(&self, d: impl Fn(RawNodeIndex) -> NodeKind, applied: bool) -> String {
@@ -595,6 +610,18 @@ impl Filter {
             }
             Self::ShowMatchingLoopSubgraph => {
                 format!("{show} only nodes in any potential matching loop")
+            }
+            Self::IgnoreAllButProofSteps => {
+                format!("{show} only proof steps")
+            }
+            Self::IgnoreTrivialProofSteps => {
+                format!("{hide} trivial proof steps")
+            }
+            Self::ShowOnlyFalseProofSteps => {
+                format!("{show} only proof steps proving false")
+            }
+            Self::ShowNamedProofStep(name) => {
+                format!("{show} proof steps with name \"{}\"", display(name, applied))
             }
         }
     }

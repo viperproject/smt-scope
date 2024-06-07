@@ -10,7 +10,7 @@ use yew::{function_component, html, use_context, Callback, Html, MouseEvent, Pro
 
 use crate::{
     results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT},
-    state::StateProvider,
+    state::{StateProvider, ViewerMode},
 };
 
 #[derive(PartialEq, Properties)]
@@ -36,7 +36,7 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
             mls = vec![Filter::SelectNthMatchingLoop(0)];
             mls_all = vec![Filter::ShowMatchingLoopSubgraph];
         };
-        vec![
+        let qi_mode_filters = vec![
             vec![Filter::MaxNodeIdx(1000)],
             vec![Filter::MinNodeIdx(1000)],
             vec![Filter::IgnoreTheorySolving],
@@ -46,7 +46,17 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
             vec![Filter::ShowNamedQuantifier("name".to_string())],
             mls,
             mls_all,
-        ]
+        ];
+        let proof_steps_mode_filters = vec![
+            vec![Filter::IgnoreAllButProofSteps],
+            vec![Filter::IgnoreTrivialProofSteps],
+            vec![Filter::ShowOnlyFalseProofSteps],
+            vec![Filter::ShowNamedProofStep("name".to_string())],
+        ];
+        match data.state.viewer_mode {
+            ViewerMode::QuantifierInstantiations | ViewerMode::MatchingLoops => qi_mode_filters,
+            ViewerMode::ProofSteps => qi_mode_filters.iter().chain(proof_steps_mode_filters.iter()).map(|f| f.clone()).collect(),
+        }
     } else {
         let Some(graph) = parser.graph.as_ref() else {
             return html! {};

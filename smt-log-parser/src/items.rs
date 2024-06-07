@@ -101,6 +101,15 @@ impl TermKind {
             _ => None,
         }
     }
+    pub fn ps_name(&self) -> Option<IString> {
+        match self {
+            Self::ProofOrApp(ProofOrApp {
+                is_proof: true,
+                name,
+            }) => Some(*name),
+            _ => None,
+        }
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]

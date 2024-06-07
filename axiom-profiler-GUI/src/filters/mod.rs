@@ -3,7 +3,6 @@ mod manage_filter;
 
 use std::fmt::Display;
 
-use gloo::console::log;
 use material_yew::icon::MatIcon;
 use material_yew::list::{MatListItem, SelectedDetail};
 use material_yew::select::{MatSelect, ListIndex::Single};
@@ -12,6 +11,7 @@ use smt_log_parser::analysis::{raw::NodeKind, RawNodeIndex};
 use smt_log_parser::parsers::ParseState;
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
+use crate::results::filters::PROOF_STEPS_DISABLER_CHAIN;
 use crate::state::ViewerMode;
 use crate::{
     filters::{
@@ -51,14 +51,14 @@ pub enum Msg {
     AddFilter(bool, Filter),
     ToggleDisabler(usize),
     SwitchViewerMode(ViewerMode),
-    DisableAllButProofSteps,
+    // DisableAllButProofSteps,
 }
 
 pub struct FiltersState {
     dragging: bool,
     delete_node: NodeRef,
     will_delete: bool,
-    disabler_chain: Vec<(Disabler, bool)>,
+    disabler_chain: Vec<(Disabler, bool, bool)>,
     filter_chain: Vec<Filter>,
     applied_filter_chain: Vec<Filter>,
     prev_filter_chain: Vec<Filter>,
@@ -90,8 +90,8 @@ impl FiltersState {
         let msg = SVGMsg::SetDisabled(
             self.disabler_chain
                 .iter()
-                .filter(|&(_d, b)| *b)
-                .map(|(d, _b)| *d)
+                .filter(|&(_d, b, _)| *b)
+                .map(|(d, _b, _)| *d)
                 .collect(),
         );
         let msgs = self.rerender_msgs();
@@ -232,31 +232,18 @@ impl Component for FiltersState {
                 self.reset_disabled(&ctx.props().file);
                 false
             }
-            Msg::DisableAllButProofSteps => {
-                log!("In DisableAllButProofSteps-branch");
-                for (disabler, b) in self.disabler_chain.iter_mut() {
-                    let new_value = match disabler {
-                        Disabler::ProofSteps => false,
-                        _ => true,
-                    };
-                    *b = new_value 
-                }
-                self.reset_disabled(&ctx.props().file);
-                log!("After reset_disabled");
-                false
-            }
             Msg::SwitchViewerMode(viewer_mode) => {
-                let search_matching_loops = ctx.props().search_matching_loops.clone();
-
                 let state = ctx.link().get_state().unwrap();
                 let found_mls = &state.state.parser.as_ref().unwrap().found_mls;
                 if found_mls.is_none() {
                     ctx.props().search_matching_loops.emit(());
                 }
                 state.set_viewer_mode(viewer_mode);
-                if matches!(viewer_mode, ViewerMode::ProofSteps) {
-                    ctx.link().send_message(Msg::DisableAllButProofSteps)
+                match viewer_mode {
+                    ViewerMode::QuantifierInstantiations | ViewerMode::MatchingLoops => self.disabler_chain = DEFAULT_DISABLER_CHAIN.to_vec(),
+                    ViewerMode::ProofSteps => self.disabler_chain = PROOF_STEPS_DISABLER_CHAIN.to_vec(),
                 }
+                self.reset_disabled(&ctx.props().file);
                 true
             }
         }
@@ -352,14 +339,19 @@ impl Component for FiltersState {
         });
         // Disablers
         let toggle = ctx.link().callback(Msg::ToggleDisabler);
-        let selected: Vec<_> = DEFAULT_DISABLER_CHAIN.iter().map(|(_, b)| *b).collect();
-        let disablers = self.disabler_chain.iter().map(|(d, b)| {
-            let onclick = Callback::from(move |e: MouseEvent| e.prevent_default());
-            let action = if *b { "Enable " } else { "Disable " };
-            let icon = if *b { "visibility_off" } else { "visibility" };
-            html! { <a draggable="false" href="#" {onclick} class="disabler">
-                <div class="material-icons"><MatIcon>{icon}</MatIcon></div>{action}{d.description()}
-            </a> }
+        let selected: Vec<_> = self.disabler_chain.iter().map(|(_, b, _)| *b).collect();
+        let disablers = self.disabler_chain.iter()
+            .map(|(d, b, applicable)| {
+                if *applicable {
+                    let onclick = Callback::from(move |e: MouseEvent| e.prevent_default());
+                    let action = if *b { "Enable " } else { "Disable " };
+                    let icon = if *b { "visibility_off" } else { "visibility" };
+                    html! { <a draggable="false" href="#" {onclick} class="disabler">
+                        <div class="material-icons"><MatIcon>{icon}</MatIcon></div>{action}{d.description()}
+                    </a> }
+                } else {
+                    html! {}
+                }
         });
         let view = match ctx.link().get_state().unwrap().state.viewer_mode {
             ViewerMode::QuantifierInstantiations => html! {

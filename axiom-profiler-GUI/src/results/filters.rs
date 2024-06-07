@@ -20,23 +20,26 @@ pub const DEFAULT_FILTER_CHAIN: &[Filter] = &[
     Filter::IgnoreTheorySolving,
     Filter::MaxInsts(DEFAULT_NODE_COUNT),
 ];
-pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
-    (Disabler::Smart, true),
-    (Disabler::ENodes, false),
-    (Disabler::GivenEqualities, false),
-    (Disabler::AllEqualities, false),
-    (Disabler::ProofSteps, true),
-    (Disabler::Instantiations, false),
+// the second field decides whether the disabler is set or not
+// the third field decides whether the disabler is applicable or not (depends on viewer mode) 
+pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
+    (Disabler::Smart, true, true),
+    (Disabler::ENodes, false, true),
+    (Disabler::GivenEqualities, false, true),
+    (Disabler::AllEqualities, false, true),
+    (Disabler::ProofSteps, true, false),
+    (Disabler::Instantiations, false, false),
 ];
-
-// pub const PROOF_STEPS_DISABLER_CHAIN: &[(Disabler, bool)] = &[
-//     (Disabler::Smart, true),
-//     (Disabler::ENodes, true),
-//     (Disabler::GivenEqualities, true),
-//     (Disabler::AllEqualities, true),
-//     (Disabler::Instantiations, true),
-//     (Disabler::ProofSteps, false),
-// ];
+// the second field decides whether the disabler is set or not
+// the third field decides whether the disabler is applicable or not (depends on viewer mode) 
+pub const PROOF_STEPS_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
+    (Disabler::Smart, true, true),
+    (Disabler::ENodes, true, false),
+    (Disabler::GivenEqualities, true, false),
+    (Disabler::AllEqualities, true, false),
+    (Disabler::ProofSteps, false, false),
+    (Disabler::Instantiations, true, true),
+];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Filter {

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use smt_log_parser::{analysis::InstGraph, LogParser, Z3Parser};
+use smt_log_parser::{analysis::InstGraph, items::Match, LogParser, Z3Parser};
 
 pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
     let path = std::path::Path::new(&logfile);
@@ -17,6 +17,24 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
 
     let parser = parser.process_all().map_err(|e| e.to_string())?;
     let inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
+
+
+    let (no_mbqi, no_theory_solving, no_axioms, no_quantifiers) = {
+        let mut no_mbqi = 0;
+        let mut no_theory_solving = 0;
+        let mut no_axioms = 0;
+        let mut no_quantifiers = 0;
+        
+        for (_inst_id, inst) in parser.instantiations() {
+            match &parser[inst.match_].kind {
+                smt_log_parser::items::MatchKind::MBQI { quant, bound_terms } => no_mbqi += 1,
+                smt_log_parser::items::MatchKind::TheorySolving { axiom_id, bound_terms, rewrite_of } => no_theory_solving += 1,
+                smt_log_parser::items::MatchKind::Axiom { axiom, pattern, bound_terms } => no_axioms += 1,
+                smt_log_parser::items::MatchKind::Quantifier { quant, pattern, bound_terms } => no_quantifiers += 1,
+            }
+        }
+        (no_mbqi, no_theory_solving, no_axioms, no_quantifiers)
+    };
 
     let (no_enodes, no_geqs, no_treqs, no_insts) = {
         let mut no_enodes = 0;
@@ -62,7 +80,12 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
     println!("no-given-equalities: {}", no_geqs);
     println!("no-trans-equalities: {}", no_treqs);
     println!("no-instantiations: {}", no_insts);
+    println!("no-mbqi-instantiations: {}", no_mbqi);
+    println!("no-theory-solving-instantiations: {}", no_theory_solving);
+    println!("no-axioms-instantiations: {}", no_axioms);
+    println!("no-quantifiers-instantiations: {}", no_quantifiers);
     println!("nodes-count: {}", inst_graph.raw.graph.node_count());
+
     println!("top-instantiations=");
     let iter = instantiations_occurrances.iter();
     match top_k {

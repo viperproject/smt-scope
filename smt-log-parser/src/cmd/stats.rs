@@ -18,19 +18,30 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
     let parser = parser.process_all().map_err(|e| e.to_string())?;
     let inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
 
-
     let (no_mbqi, no_theory_solving, no_axioms, no_quantifiers) = {
         let mut no_mbqi = 0;
         let mut no_theory_solving = 0;
         let mut no_axioms = 0;
         let mut no_quantifiers = 0;
-        
+
         for (_inst_id, inst) in parser.instantiations() {
             match &parser[inst.match_].kind {
                 smt_log_parser::items::MatchKind::MBQI { quant, bound_terms } => no_mbqi += 1,
-                smt_log_parser::items::MatchKind::TheorySolving { axiom_id, bound_terms, rewrite_of } => no_theory_solving += 1,
-                smt_log_parser::items::MatchKind::Axiom { axiom, pattern, bound_terms } => no_axioms += 1,
-                smt_log_parser::items::MatchKind::Quantifier { quant, pattern, bound_terms } => no_quantifiers += 1,
+                smt_log_parser::items::MatchKind::TheorySolving {
+                    axiom_id,
+                    bound_terms,
+                    rewrite_of,
+                } => no_theory_solving += 1,
+                smt_log_parser::items::MatchKind::Axiom {
+                    axiom,
+                    pattern,
+                    bound_terms,
+                } => no_axioms += 1,
+                smt_log_parser::items::MatchKind::Quantifier {
+                    quant,
+                    pattern,
+                    bound_terms,
+                } => no_quantifiers += 1,
             }
         }
         (no_mbqi, no_theory_solving, no_axioms, no_quantifiers)

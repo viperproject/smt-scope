@@ -4,7 +4,6 @@ pub mod matching_loop;
 pub mod next_enabled;
 pub mod next_insts;
 
-use gloo_console::log;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 use next_enabled::DefaultNextEnabled;

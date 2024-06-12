@@ -17,6 +17,7 @@ pub enum ViewerMode {
     QuantifierInstantiations,
     MatchingLoops,
     ProofSteps,
+    OnlyProofSteps,
 }
 
 impl std::fmt::Display for ViewerMode {
@@ -25,6 +26,7 @@ impl std::fmt::Display for ViewerMode {
             ViewerMode::QuantifierInstantiations => write!(f, "QIs"),
             ViewerMode::MatchingLoops => write!(f, "MLs"),
             ViewerMode::ProofSteps => write!(f, "PSs"),
+            ViewerMode::OnlyProofSteps => write!(f, "OPSs"),
         }
     }
 }

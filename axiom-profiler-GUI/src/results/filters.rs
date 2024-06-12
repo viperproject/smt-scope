@@ -40,6 +40,15 @@ pub const PROOF_STEPS_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
     (Disabler::Instantiations, true, true),
 ];
 
+pub const ONLY_PROOF_STEPS_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
+    (Disabler::Smart, true, true),
+    (Disabler::ENodes, true, false),
+    (Disabler::GivenEqualities, true, false),
+    (Disabler::AllEqualities, true, false),
+    (Disabler::ProofSteps, false, false),
+    (Disabler::Instantiations, true, false),
+];
+
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Filter {
     MaxNodeIdx(usize),

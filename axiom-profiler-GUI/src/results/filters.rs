@@ -368,6 +368,17 @@ impl Disabler {
                         .count();
                     (parents == 0 && children == 0) || (parents == 1 && children == 1)
                 }
+                NodeKind::Decision(_) => {
+                    let parents = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Incoming)
+                        .count();
+                    let children = graph
+                        .graph
+                        .neighbors_directed(idx.0, Direction::Outgoing)
+                        .count();
+                    (parents == 0 && children == 0) || (parents == 1 && children == 1)
+                }
             },
             Disabler::ProofSteps => node.kind().proof_step().is_some(),
             Disabler::Instantiations => node.kind().inst().is_some(),

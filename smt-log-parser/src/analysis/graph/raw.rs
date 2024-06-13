@@ -15,8 +15,7 @@ use petgraph::{
 use crate::{
     graph_idx,
     items::{
-        ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx,
-        TransitiveExplSegmentKind,
+        DecisionIdx, ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx, TransitiveExplSegmentKind
     },
     DiGraph, FxHashMap, NonMaxU32, Result, TiVec, Z3Parser,
 };
@@ -34,6 +33,7 @@ pub struct RawInstGraph {
     inst_idx: RawNodeIndex,
     eq_given_idx: FxHashMap<(EqGivenIdx, Option<NonMaxU32>), RawNodeIndex>,
     proofs_idx: RawNodeIndex,
+    cdcl_idx: RawNodeIndex,
 
     pub(crate) stats: GraphStats,
 }
@@ -81,6 +81,10 @@ impl RawInstGraph {
         for ps_idx in parser.proof_steps.keys() {
             graph.add_node(Node::new(NodeKind::ProofStep(ps_idx)));
         }
+        let cdcl_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
+        for dec_idx in parser.decision_assigns.keys() {
+            graph.add_node(Node::new(NodeKind::Decision(dec_idx)));
+        }
         let stats = GraphStats {
             hidden: graph.node_count() as u32,
             disabled: 0,
@@ -93,6 +97,7 @@ impl RawInstGraph {
             eq_trans_idx,
             inst_idx,
             proofs_idx,
+            cdcl_idx,
             stats,
         };
 
@@ -180,6 +185,15 @@ impl RawInstGraph {
             }
         }
 
+        for (idx, dec) in parser.decision_assigns.iter_enumerated() {
+            let current_lvl = dec.lvl;
+            let pred_lvl = parser[idx].lvl;
+            match current_lvl < pred_lvl {
+                true => self_.add_edge(dec.prev_decision, idx, EdgeKind::BacktrackDecision),
+                false => self_.add_edge(dec.prev_decision, idx, EdgeKind::Decision(parser[dec.prev_decision].assignment)),
+            }
+        }
+
         Ok(self_)
     }
     fn add_edge(
@@ -242,6 +256,7 @@ impl RawInstGraph {
             NodeKind::TransEquality(eq) => eq.index(self),
             NodeKind::Instantiation(inst) => inst.index(self),
             NodeKind::ProofStep(ps) => ps.index(self),
+            NodeKind::Decision(dec) => dec.index(self),
         }
     }
 
@@ -414,6 +429,7 @@ pub enum NodeKind {
     /// **Children:** arbitrary count, will always be `ENode`.
     Instantiation(InstIdx),
     ProofStep(ProofIdx),
+    Decision(DecisionIdx),
 }
 
 impl fmt::Display for NodeKind {
@@ -430,6 +446,7 @@ impl fmt::Display for NodeKind {
             NodeKind::TransEquality(eq) => write!(f, "{eq:?}"),
             NodeKind::Instantiation(inst) => write!(f, "{inst:?}"),
             NodeKind::ProofStep(ps) => write!(f, "{ps:?}"),
+            NodeKind::Decision(dec) => write!(f, "{dec:?}"),
         }
     }
 }
@@ -493,6 +510,8 @@ pub enum EdgeKind {
         forward: bool,
     },
     ProofStep,
+    Decision(bool),
+    BacktrackDecision,
 }
 
 pub trait IndexesInstGraph {
@@ -528,6 +547,13 @@ impl IndexesInstGraph for ProofIdx {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
         RawNodeIndex(NodeIndex::new(
             graph.proofs_idx.0.index() + usize::from(*self),
+        ))
+    }
+}
+impl IndexesInstGraph for DecisionIdx {
+    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
+        RawNodeIndex(NodeIndex::new(
+            graph.cdcl_idx.0.index() + usize::from(*self),
         ))
     }
 }

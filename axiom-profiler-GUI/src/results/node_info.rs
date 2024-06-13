@@ -54,6 +54,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             NodeKind::GivenEquality(..) => "Equality",
             NodeKind::TransEquality(_) => "Equality",
             NodeKind::ProofStep(_) => "Proof Step Result",
+            NodeKind::Decision(_) => "Decision",
             NodeKind::Instantiation(inst) => {
                 match &self.ctxt.parser[self.ctxt.parser[inst].match_].kind {
                     MatchKind::MBQI { .. } => "MBQI",
@@ -89,6 +90,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             NodeKind::GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
             NodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
             NodeKind::ProofStep(ps) => ps.with(&ctxt).to_string(),
+            NodeKind::Decision(dec) => dec.with(&ctxt).to_string(),
             NodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
                 MatchKind::MBQI { quant, .. } => ctxt.parser[*quant].kind.with(&ctxt).to_string(),
                 MatchKind::TheorySolving { axiom_id, .. } => {
@@ -381,6 +383,9 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
                 (!forward).then_some("Reverse ").unwrap_or_default()
             ),
             VisibleEdgeKind::Direct(_, EdgeKind::ProofStep) => "Proof Step".to_string(),
+            VisibleEdgeKind::Direct(_, EdgeKind::Decision(true)) => "Assign true".to_string(),
+            VisibleEdgeKind::Direct(_, EdgeKind::Decision(false)) => "Assign false".to_string(),
+            VisibleEdgeKind::Direct(_, EdgeKind::BacktrackDecision) => "Backtrack".to_string(),
             VisibleEdgeKind::YieldBlame { trigger_term, .. } => {
                 format!("Yield/Blame trigger #{trigger_term}")
             }

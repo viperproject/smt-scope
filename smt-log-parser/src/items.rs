@@ -46,6 +46,7 @@ idx!(EqGivenIdx, "≡{}");
 idx!(EqTransIdx, "={}");
 idx!(GraphIdx, "g{}");
 idx!(ProofIdx, "p{}");
+idx!(DecisionIdx, "d{}");
 
 /// A Z3 term and associated data.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -709,4 +710,17 @@ pub struct ProofStep {
     pub name: IString,
     pub result: TermIdx,
     pub prerequisites: Box<[ProofIdx]>,
+}
+
+/// A Z3 assign decision axiom and associated data.
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug)]
+pub struct Decision {
+    pub result: TermIdx,
+    pub assignment: bool,
+    pub lvl: usize,
+    pub results_in_conflict: bool,
+    pub clause_propagations: Box<[TermIdx]>,
+    pub prev_decision: DecisionIdx,
 }

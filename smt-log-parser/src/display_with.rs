@@ -260,6 +260,22 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for ProofIdx {
         write!(f, "{}", ps_result.with(ctxt))
     }
 }
+impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for DecisionIdx {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'_>,
+        _data: &mut (),
+    ) -> fmt::Result {
+        let dec = &ctxt.parser[self];
+        let dec_result = ctxt.parser[self].result;
+        match dec.assignment {
+            true => write!(f, "{}", dec_result.with(ctxt)),
+            false => write!(f, "not({})", dec_result.with(ctxt)),
+        }
+        
+    }
+}
 
 impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for ENodeIdx {
     fn fmt_with(

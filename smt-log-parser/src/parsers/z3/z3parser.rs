@@ -33,6 +33,10 @@ pub struct Z3Parser {
     pub(crate) proof_steps: TiVec<ProofIdx, ProofStep>,
     pub(crate) proof_step_of_term: std::collections::HashMap<TermIdx, ProofIdx>,
 
+    pub(crate) decision_assigns: TiVec<DecisionIdx, Decision>, 
+    current_cdcl_lvl: usize,
+    current_decision: DecisionIdx,
+
     pub strings: StringTable,
 }
 
@@ -49,6 +53,9 @@ impl Default for Z3Parser {
             stack: Default::default(),
             proof_steps: Default::default(),
             proof_step_of_term: Default::default(),
+            decision_assigns: Default::default(),
+            current_cdcl_lvl: 0,
+            current_decision: DecisionIdx::from(0),
             strings,
         }
     }
@@ -647,6 +654,7 @@ impl Z3LogParser for Z3Parser {
     fn push<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let scope = l.next().ok_or(Error::UnexpectedNewline)?;
         let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
+        self.current_cdcl_lvl = scope + 1;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
         self.stack.new_frame(scope)
@@ -657,6 +665,7 @@ impl Z3LogParser for Z3Parser {
         let num = num.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
         let scope = l.next().ok_or(Error::UnexpectedNewline)?;
         let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
+        self.current_cdcl_lvl = scope - num;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
         self.stack.pop_frames(num, scope)
@@ -726,6 +735,12 @@ impl std::ops::Index<ProofIdx> for Z3Parser {
     type Output = ProofStep;
     fn index(&self, idx: ProofIdx) -> &Self::Output {
         &self.proof_steps[idx]
+    }
+}
+impl std::ops::Index<DecisionIdx> for Z3Parser {
+    type Output = Decision;
+    fn index(&self, idx: DecisionIdx) -> &Self::Output {
+        &self.decision_assigns[idx]
     }
 }
 impl std::ops::Index<IString> for Z3Parser {

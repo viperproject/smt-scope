@@ -31,7 +31,7 @@ use smt_log_parser::{
     items::QuantIdx,
     NonMaxU32,
 };
-use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
+use std::{cell::RefCell, num::NonZeroUsize, rc::{self, Rc}};
 use viz_js::VizInstance;
 use web_sys::window;
 use yew::prelude::*;
@@ -422,6 +422,11 @@ impl Component for SVGResult {
                                     }
                                     NodeKind::ENode(..) => {
                                         fillcolor = Some("lightgrey".to_string());
+                                    }
+                                    NodeKind::Decision(dec_idx) => {
+                                        if rc_parser.parser.borrow()[*dec_idx].results_in_conflict {
+                                            fillcolor = Some("red".to_string());
+                                        }
                                     }
                                     _ => (),
                                 };

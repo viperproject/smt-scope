@@ -206,6 +206,24 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         let ps_name = self.ctxt.parser[ps].name;
         Some(self.ctxt.parser.strings[*ps_name].to_string())
     }
+    pub fn propagations(&self) -> Option<Vec<String>> {
+        let NodeKind::Decision(dec_idx) = *self.node.kind() else {
+            return None;
+        };
+        let dec = &self.ctxt.parser[dec_idx];
+        Some(
+            dec.clause_propagations
+                .iter()
+                .map(|(cl, val)| format!("{} → {}", cl.with(self.ctxt), val))
+                .collect(),
+        )
+    }
+    pub fn results_in_conflict(&self) -> Option<bool> {
+        let NodeKind::Decision(dec) = *self.node.kind() else {
+            return None;
+        };
+        Some(self.ctxt.parser[dec].results_in_conflict)
+    }
 }
 
 #[derive(Properties, PartialEq)]
@@ -292,8 +310,21 @@ pub fn SelectedNodesInfo(
             });
             let proof_step_name = info.proof_step_name().map(|ps_name| {
                     html!{<InfoLine header="Proof Step Name" text={ps_name} code=true />}}); 
+            let clause_propagations = info.propagations().map(|propagations| {
+                let propagates: Html = propagations.into_iter().map(|propagation| html! {
+                    <InfoLine header="Propagates" text={propagation} code=true />
+                }).collect();
+                html! { <>{propagates}</> }
+            });
+            let results_in_conflict = info.results_in_conflict().map(|conflict| { 
+                if conflict {
+                    html!{<InfoLine header="Results in conflict!" text={""} code=true />}
+                } else {
+                    html!{}
+                }
+            });
             let node_stats = match info.node.kind() {
-                NodeKind::ProofStep(_) => None,
+                NodeKind::ProofStep(_) | NodeKind::Decision(_) => None,
                 _ => {
                     Some(html! {
                     <>
@@ -323,6 +354,8 @@ pub fn SelectedNodesInfo(
                     {node_stats}
                     {prerequisites}
                     {proof_step_name}
+                    {clause_propagations}
+                    {results_in_conflict}
                 </ul>
                 </details>
             }

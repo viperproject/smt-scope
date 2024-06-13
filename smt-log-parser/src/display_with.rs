@@ -268,12 +268,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for DecisionIdx {
         _data: &mut (),
     ) -> fmt::Result {
         let dec = &ctxt.parser[self];
-        let dec_result = ctxt.parser[self].result;
-        match dec.assignment {
-            true => write!(f, "{}", dec_result.with(ctxt)),
-            false => write!(f, "not({})", dec_result.with(ctxt)),
-        }
-        
+        write!(f, "{} → {}", dec.result.with(ctxt), dec.assignment)
     }
 }
 

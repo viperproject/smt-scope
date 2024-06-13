@@ -709,7 +709,7 @@ impl Z3LogParser for Z3Parser {
                     result,
                     assignment,
                     lvl: self.current_cdcl_lvl,
-                    results_in_conflict: None,
+                    results_in_conflict: false,
                     clause_propagations: Default::default(),
                     prev_decision: self.current_decision,
                     backtracked_from: Default::default(),
@@ -732,6 +732,9 @@ impl Z3LogParser for Z3Parser {
 
     fn conflict<'a>(&mut self, mut _l: impl Iterator<Item = &'a str>) -> Result<()> {
         self.detected_conflict = true;
+        if let Some(dec) = self.current_decision {
+            self.decision_assigns.get_mut(dec).unwrap().results_in_conflict = true;
+        }
         // let mut terms: Vec<String> = Vec::new();
         // while let Some(lit) = _l.next() {
         //     if lit.starts_with("(not") {

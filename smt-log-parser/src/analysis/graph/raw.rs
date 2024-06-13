@@ -188,10 +188,17 @@ impl RawInstGraph {
         for (idx, dec) in parser.decision_assigns.iter_enumerated() {
             let current_lvl = dec.lvl;
             let pred_lvl = parser[idx].lvl;
-            match current_lvl < pred_lvl {
-                true => self_.add_edge(dec.prev_decision, idx, EdgeKind::BacktrackDecision),
-                false => self_.add_edge(dec.prev_decision, idx, EdgeKind::Decision(parser[dec.prev_decision].assignment)),
+            if let Some(prev_decision) = dec.prev_decision {
+                self_.add_edge(prev_decision, idx, EdgeKind::Decision(parser[prev_decision].assignment));
+                // match current_lvl < pred_lvl {
+                    // true => self_.add_edge(prev_decision, idx, EdgeKind::BacktrackDecision),
+                    // false => self_.add_edge(prev_decision, idx, EdgeKind::Decision(parser[prev_decision].assignment)),
+                // }
             }
+            // for backtracked_dec in &dec.backtracked_from {
+            //     self_.add_edge(*backtracked_dec, idx, EdgeKind::BacktrackDecision);
+            // }
+
         }
 
         Ok(self_)

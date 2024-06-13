@@ -1,3 +1,4 @@
+use gloo_console::log;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
@@ -35,7 +36,8 @@ pub struct Z3Parser {
 
     pub(crate) decision_assigns: TiVec<DecisionIdx, Decision>, 
     current_cdcl_lvl: usize,
-    current_decision: DecisionIdx,
+    current_decision: Option<DecisionIdx>,
+    detected_conflict: bool,
 
     pub strings: StringTable,
 }
@@ -55,7 +57,8 @@ impl Default for Z3Parser {
             proof_step_of_term: Default::default(),
             decision_assigns: Default::default(),
             current_cdcl_lvl: 0,
-            current_decision: DecisionIdx::from(0),
+            current_decision: None,
+            detected_conflict: false,
             strings,
         }
     }
@@ -669,6 +672,113 @@ impl Z3LogParser for Z3Parser {
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
         self.stack.pop_frames(num, scope)
+    }
+    fn assign<'a>(&mut self, mut _l: impl Iterator<Item = &'a str>) -> Result<()> {
+        if self.detected_conflict {
+            let mut dec = self.current_decision.unwrap();
+            let backtracked_from = dec;
+            while let Some(d) = self.decision_assigns.get(dec) {
+                if d.lvl == self.current_cdcl_lvl {
+                    self.current_decision = Some(dec);
+                    self.decision_assigns.get_mut(dec).unwrap().backtracked_from.push(backtracked_from);
+                    break
+                } else {
+                    if let Some(prev_dec) = d.prev_decision {
+                        dec = prev_dec
+                    } else {
+                        break
+                    }
+                }
+            }
+            self.detected_conflict = false;
+        }
+        let lit = _l.next().ok_or(Error::UnexpectedNewline)?;
+        let (result, assignment) = if lit.starts_with("(not") {
+            let lit = _l.next().ok_or(Error::UnexpectedNewline)?;
+            let term_id = lit.strip_suffix(")").ok_or(Error::TupleMissingParens)?;
+            let term_id = self.terms.parse_existing_id(&mut self.strings, term_id)?;
+            (term_id, false) 
+        } else {
+            let term_id = self.terms.parse_existing_id(&mut self.strings, lit)?;
+            (term_id, true) 
+        };
+        let assign_type = _l.next().ok_or(Error::UnexpectedNewline)?;
+        match assign_type {
+            "decision" => {
+                let dec = Decision {
+                    result,
+                    assignment,
+                    lvl: self.current_cdcl_lvl,
+                    results_in_conflict: None,
+                    clause_propagations: Default::default(),
+                    prev_decision: self.current_decision,
+                    backtracked_from: Default::default(),
+                };
+                self.decision_assigns.raw.try_reserve(1)?;
+                let dec_idx = self.decision_assigns.push_and_get_key(dec.clone());
+                self.current_decision = Some(dec_idx);
+                log!(format!("Created {} with idx {}", dec, dec_idx))
+            },
+            "clause" => {
+                let current_dec = self.decision_assigns.get_mut(self.current_decision.unwrap()).unwrap();
+                current_dec.clause_propagations.push((result, assignment));
+                log!(format!("\t Updated dec idx {} to {}", self.current_decision.unwrap(), current_dec))
+            },
+            _ => ()
+        }
+        Ok(())
+
+    }
+
+    fn conflict<'a>(&mut self, mut _l: impl Iterator<Item = &'a str>) -> Result<()> {
+        self.detected_conflict = true;
+        // let mut terms: Vec<String> = Vec::new();
+        // while let Some(lit) = _l.next() {
+        //     if lit.starts_with("(not") {
+        //         let lit = _l.next().ok_or(Error::UnexpectedNewline)?;
+        //         let term_id = lit.strip_suffix(")").ok_or(Error::TupleMissingParens)?;
+        //         let term_id = self.terms.parse_existing_id(&mut self.strings, term_id)?;
+        //         // let default_config = DisplayConfiguration {
+        //         //     display_term_ids: false,
+        //         //     display_quantifier_name: false,
+        //         //     replace_symbols: SymbolReplacement::Code,
+        //         //     html: true,
+        //         //     // Set manually elsewhere
+        //         //     enode_char_limit: None,
+        //         //     ast_depth_limit: None,
+        //         // };
+        //         // let ctxt = &DisplayCtxt {
+        //         //     parser: &self,
+        //         //     term_display: &TermDisplayContext::default(),
+        //         //     config: default_config,
+        //         // };
+        //         // terms.try_reserve(1)?;
+        //         // let pretty_term = format!("(not {})", term_id.with(ctxt));
+        //         // terms.push(pretty_term);
+        //     } else {
+        //         let term_id = self.terms.parse_existing_id(&mut self.strings, lit)?;
+        //         // let default_config = DisplayConfiguration {
+        //         //     display_term_ids: false,
+        //         //     display_quantifier_name: false,
+        //         //     replace_symbols: SymbolReplacement::Code,
+        //         //     html: true,
+        //         //     // Set manually elsewhere
+        //         //     enode_char_limit: None,
+        //         //     ast_depth_limit: None,
+        //         // };
+        //         // let ctxt = &DisplayCtxt {
+        //         //     parser: &self,
+        //         //     term_display: &TermDisplayContext::default(),
+        //         //     config: default_config,
+        //         // };
+        //         // terms.try_reserve(1)?;
+        //         // let pretty_term = format!("{}", term_id.with(ctxt));
+        //         // terms.push(pretty_term);
+        //     }
+        // }
+        // let all_pretty_terms = terms.join(" "); 
+        // log!(format!("[conflict] {} at lvl {}", all_pretty_terms, self.current_scope));
+        Ok(())
     }
 }
 

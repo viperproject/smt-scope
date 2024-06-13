@@ -715,12 +715,25 @@ pub struct ProofStep {
 /// A Z3 assign decision axiom and associated data.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Decision {
     pub result: TermIdx,
     pub assignment: bool,
     pub lvl: usize,
-    pub results_in_conflict: bool,
-    pub clause_propagations: Box<[TermIdx]>,
-    pub prev_decision: DecisionIdx,
+    pub results_in_conflict: Option<bool>,
+    pub clause_propagations: Vec<(TermIdx, bool)>,
+    pub prev_decision: Option<DecisionIdx>,
+    pub backtracked_from: Vec<DecisionIdx>,
+}
+
+impl std::fmt::Display for Decision {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let propagations = self.clause_propagations.iter().map(|(tidx, val)| format!("{} to {}", val, tidx.0)).collect::<Vec<String>>().join(", ");
+        let prev_decision = if let Some(prev_decision) = self.prev_decision { format!("{}", prev_decision.0) } else { "".to_string() }; 
+        match self.assignment {
+            true => write!(f, "[assign] {} decision axiom at lvl {}, propagating values {} with prev dec {}", self.result.0, self.lvl, propagations, prev_decision),
+            false => write!(f, "[assign] (not {}) decision axiom at lvl {}, propagating values {} with prev dec {}", self.result.0, self.lvl, propagations, prev_decision)
+        }
+        
+    }
 }

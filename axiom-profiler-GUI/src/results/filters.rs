@@ -278,11 +278,7 @@ impl Filter {
                     .raw
                     .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
                         node.kind().proof_step().is_some_and(|ps| {
-                            parser[parser[ps].result]
-                                .kind
-                                .ps_name()
-                                .map(|name| parser.strings[*name].to_string())
-                                .is_some_and(|s| s == name)
+                            parser[parser[ps].name].to_string() == name
                         })
                     })
             }

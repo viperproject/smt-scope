@@ -169,6 +169,16 @@ impl RawInstGraph {
                 self_.add_edge(*prerequisite, idx, EdgeKind::ProofStep)
             }
         }
+         
+        for (idx, inst) in parser.insts.insts.iter_enumerated() {
+            if let Some(proof_id) = inst.proof_id {
+                if let Ok(proof_term_idx) = proof_id.into_result() {
+                    if let Some(proof_idx) = parser.proof_step_of_term.get(&proof_term_idx) {
+                        self_.add_edge(idx, *proof_idx, EdgeKind::ProofStep);
+                    }
+                }
+            }
+        }
 
         Ok(self_)
     }

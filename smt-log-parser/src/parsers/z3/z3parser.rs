@@ -31,7 +31,7 @@ pub struct Z3Parser {
     pub(crate) stack: Stack,
 
     pub(crate) proof_steps: TiVec<ProofIdx, ProofStep>,
-    proof_step_of_term: std::collections::HashMap<TermIdx, ProofIdx>,
+    pub(crate) proof_step_of_term: std::collections::HashMap<TermIdx, ProofIdx>,
 
     pub strings: StringTable,
 }

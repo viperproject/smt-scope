@@ -379,8 +379,15 @@ impl Component for SVGResult {
                                     }
                                     _ => "normal",
                                 };
+                                let label = match inst_graph.raw[fg[edge_data.target()].idx].kind() {
+                                    NodeKind::Decision(dec_idx) => {
+                                        let search_path = rc_parser.parser.borrow()[*dec_idx].search_path;
+                                        format!("label={}", search_path)
+                                    },
+                                    _ => "".to_string(),
+                                };
                                 format!(
-                                    "id=edge_{} tooltip=\"{tooltip}\" style={style} class={class} arrowhead={arrowhead}",
+                                    "id=edge_{} tooltip=\"{tooltip}\" style={style} class={class} arrowhead={arrowhead} {label}",
                                     // For edges the `id` is the `VisibleEdgeIndex` from the VisibleGraph!
                                     edge_data.id().index(),
                                 )

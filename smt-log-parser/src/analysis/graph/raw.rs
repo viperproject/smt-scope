@@ -189,7 +189,7 @@ impl RawInstGraph {
             let current_lvl = dec.lvl;
             let pred_lvl = parser[idx].lvl;
             if let Some(prev_decision) = dec.prev_decision {
-                self_.add_edge(prev_decision, idx, EdgeKind::Decision(parser[prev_decision].assignment));
+                self_.add_edge(prev_decision, idx, EdgeKind::Decision {assigned_to: parser[prev_decision].assignment });
                 // match current_lvl < pred_lvl {
                     // true => self_.add_edge(prev_decision, idx, EdgeKind::BacktrackDecision),
                     // false => self_.add_edge(prev_decision, idx, EdgeKind::Decision(parser[prev_decision].assignment)),
@@ -517,7 +517,9 @@ pub enum EdgeKind {
         forward: bool,
     },
     ProofStep,
-    Decision(bool),
+    Decision {
+        assigned_to: bool,
+    },
     BacktrackDecision,
 }
 

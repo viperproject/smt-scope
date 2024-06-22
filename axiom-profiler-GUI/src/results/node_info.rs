@@ -416,8 +416,8 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
                 (!forward).then_some("Reverse ").unwrap_or_default()
             ),
             VisibleEdgeKind::Direct(_, EdgeKind::ProofStep) => "Proof Step".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::Decision(true)) => "Assign true".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::Decision(false)) => "Assign false".to_string(),
+            VisibleEdgeKind::Direct(_, EdgeKind::Decision { assigned_to, .. }) => format!("Assign {}", assigned_to),
+            // VisibleEdgeKind::Direct(_, EdgeKind::Decision(false)) => "Assign false".to_string(),
             VisibleEdgeKind::Direct(_, EdgeKind::BacktrackDecision) => "Backtrack".to_string(),
             VisibleEdgeKind::YieldBlame { trigger_term, .. } => {
                 format!("Yield/Blame trigger #{trigger_term}")

@@ -724,6 +724,7 @@ pub struct Decision {
     pub clause_propagations: Vec<(TermIdx, bool)>,
     pub prev_decision: Option<DecisionIdx>,
     pub backtracked_from: Vec<DecisionIdx>,
+    pub search_path: usize,
 }
 
 impl std::fmt::Display for Decision {

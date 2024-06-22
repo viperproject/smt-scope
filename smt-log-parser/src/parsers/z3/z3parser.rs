@@ -38,6 +38,7 @@ pub struct Z3Parser {
     current_cdcl_lvl: usize,
     current_decision: Option<DecisionIdx>,
     detected_conflict: bool,
+    search_path: usize,
 
     pub strings: StringTable,
 }
@@ -59,6 +60,7 @@ impl Default for Z3Parser {
             current_cdcl_lvl: 0,
             current_decision: None,
             detected_conflict: false,
+            search_path: 0,
             strings,
         }
     }
@@ -686,6 +688,7 @@ impl Z3LogParser for Z3Parser {
                     if let Some(prev_dec) = d.prev_decision {
                         dec = prev_dec
                     } else {
+                        self.current_decision = None;
                         break
                     }
                 }
@@ -713,6 +716,7 @@ impl Z3LogParser for Z3Parser {
                     clause_propagations: Default::default(),
                     prev_decision: self.current_decision,
                     backtracked_from: Default::default(),
+                    search_path: self.search_path,
                 };
                 self.decision_assigns.raw.try_reserve(1)?;
                 let dec_idx = self.decision_assigns.push_and_get_key(dec.clone());
@@ -720,9 +724,27 @@ impl Z3LogParser for Z3Parser {
                 log!(format!("Created {} with idx {}", dec, dec_idx))
             },
             "clause" => {
-                let current_dec = self.decision_assigns.get_mut(self.current_decision.unwrap()).unwrap();
-                current_dec.clause_propagations.push((result, assignment));
-                log!(format!("\t Updated dec idx {} to {}", self.current_decision.unwrap(), current_dec))
+                // let current_dec = self.decision_assigns.get_mut(self.current_decision.unwrap()).unwrap();
+                if let Some(current_dec_idx) = self.current_decision {
+                    let current_dec = self.decision_assigns.get_mut(current_dec_idx).unwrap(); 
+                    current_dec.clause_propagations.push((result, assignment));
+                    log!(format!("\t Updated dec idx {} to {}", self.current_decision.unwrap(), current_dec))
+                }
+                // } else {
+                //     let dec = Decision {
+                //         result, 
+                //         assignment,
+                //         lvl: self.current_cdcl_lvl,
+                //         results_in_conflict: false,
+                //         clause_propagations: vec![(result, assignment)],
+                //         prev_decision: None,
+                //         backtracked_from: Default::default(),
+                //         search_path: self.search_path,
+                //     };
+                //     self.decision_assigns.raw.try_reserve(1)?;
+                //     let dec_idx = self.decision_assigns.push_and_get_key(dec.clone());
+                //     self.current_decision = Some(dec_idx);
+                // }
             },
             _ => ()
         }
@@ -732,6 +754,7 @@ impl Z3LogParser for Z3Parser {
 
     fn conflict<'a>(&mut self, mut _l: impl Iterator<Item = &'a str>) -> Result<()> {
         self.detected_conflict = true;
+        self.search_path += 1;
         if let Some(dec) = self.current_decision {
             self.decision_assigns.get_mut(dec).unwrap().results_in_conflict = true;
         }

@@ -727,7 +727,8 @@ impl Z3LogParser for Z3Parser {
                 // let current_dec = self.decision_assigns.get_mut(self.current_decision.unwrap()).unwrap();
                 if let Some(current_dec_idx) = self.current_decision {
                     let current_dec = self.decision_assigns.get_mut(current_dec_idx).unwrap(); 
-                    current_dec.clause_propagations.push((result, assignment));
+                    // current_dec.clause_propagations.push((result, assignment));
+                    current_dec.clause_propagations.push(Propagation { clause: result, value: assignment, search_path: self.search_path });
                     log!(format!("\t Updated dec idx {} to {}", self.current_decision.unwrap(), current_dec))
                 }
                 // } else {

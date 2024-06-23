@@ -214,7 +214,8 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         Some(
             dec.clause_propagations
                 .iter()
-                .map(|(cl, val)| format!("{} → {}", cl.with(self.ctxt), val))
+                // .map(|(cl, val)| format!("{} → {}", cl.with(self.ctxt), val))
+                .map(|prop| format!("{} → {} on path {}", prop.clause.with(self.ctxt), prop.value, prop.search_path))
                 .collect(),
         )
     }

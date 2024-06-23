@@ -721,7 +721,6 @@ impl Z3LogParser for Z3Parser {
                 self.decision_assigns.raw.try_reserve(1)?;
                 let dec_idx = self.decision_assigns.push_and_get_key(dec.clone());
                 self.current_decision = Some(dec_idx);
-                log!(format!("Created {} with idx {}", dec, dec_idx))
             },
             "clause" => {
                 // let current_dec = self.decision_assigns.get_mut(self.current_decision.unwrap()).unwrap();
@@ -729,7 +728,6 @@ impl Z3LogParser for Z3Parser {
                     let current_dec = self.decision_assigns.get_mut(current_dec_idx).unwrap(); 
                     // current_dec.clause_propagations.push((result, assignment));
                     current_dec.clause_propagations.push(Propagation { clause: result, value: assignment, search_path: self.search_path });
-                    log!(format!("\t Updated dec idx {} to {}", self.current_decision.unwrap(), current_dec))
                 }
                 // } else {
                 //     let dec = Decision {

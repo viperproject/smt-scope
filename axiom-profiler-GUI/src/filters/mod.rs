@@ -11,7 +11,7 @@ use smt_log_parser::analysis::{raw::NodeKind, RawNodeIndex};
 use smt_log_parser::parsers::ParseState;
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
-use crate::results::filters::{ONLY_PROOF_STEPS_DISABLER_CHAIN, PROOF_STEPS_DISABLER_CHAIN};
+use crate::results::filters::{CDCL_DISABLER_CHAIN, ONLY_PROOF_STEPS_DISABLER_CHAIN, PROOF_STEPS_DISABLER_CHAIN};
 use crate::state::ViewerMode;
 use crate::{
     filters::{
@@ -249,6 +249,9 @@ impl Component for FiltersState {
                     ViewerMode::OnlyProofSteps => {
                         self.disabler_chain = ONLY_PROOF_STEPS_DISABLER_CHAIN.to_vec()
                     }
+                    ViewerMode::CDCL => {
+                        self.disabler_chain = CDCL_DISABLER_CHAIN.to_vec()
+                    }
                 }
                 self.reset_disabled(&ctx.props().file);
                 true
@@ -365,7 +368,7 @@ impl Component for FiltersState {
                 }
         });
         let view = match ctx.link().get_state().unwrap().state.viewer_mode {
-            ViewerMode::QuantifierInstantiations | ViewerMode::ProofSteps | ViewerMode::OnlyProofSteps => html! {
+            ViewerMode::QuantifierInstantiations | ViewerMode::ProofSteps | ViewerMode::OnlyProofSteps | ViewerMode::CDCL => html! {
                 <>
                 <AddFilterSidebar new_filter={new_filter} found_mls={found_mls} nodes={Vec::new()} general_filters={true}/>
                 <li><a draggable="false" href="#" onclick={reset}><div class="material-icons"><MatIcon>{"restore"}</MatIcon></div>{"Reset operations"}</a></li>
@@ -383,6 +386,7 @@ impl Component for FiltersState {
                 1 => ViewerMode::MatchingLoops,
                 2 => ViewerMode::ProofSteps,
                 3 => ViewerMode::OnlyProofSteps,
+                4 => ViewerMode::CDCL,
                 _ => unreachable!(),
             };
             Msg::SwitchViewerMode(viewer_mode)
@@ -405,6 +409,9 @@ impl Component for FiltersState {
                         </MatListItem>
                         <MatListItem value="3">
                             <li><a draggable="false" href="#" >{"only proof steps"}</a></li>
+                        </MatListItem>
+                        <MatListItem value="4">
+                            <li><a draggable="false" href="#" >{"CDCL graph"}</a></li>
                         </MatListItem>
                     </MatSelect>
                     </div>

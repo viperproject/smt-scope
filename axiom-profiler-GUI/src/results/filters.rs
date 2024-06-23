@@ -28,6 +28,7 @@ pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
     (Disabler::AllEqualities, false, true),
     (Disabler::ProofSteps, true, false),
     (Disabler::Instantiations, false, false),
+    (Disabler::Decisions, true, false),
 ];
 // the second field decides whether the disabler is set or not
 // the third field decides whether the disabler is applicable or not (depends on viewer mode)
@@ -38,6 +39,7 @@ pub const PROOF_STEPS_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
     (Disabler::AllEqualities, true, false),
     (Disabler::ProofSteps, false, false),
     (Disabler::Instantiations, true, true),
+    (Disabler::Decisions, true, false),
 ];
 
 pub const ONLY_PROOF_STEPS_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
@@ -47,6 +49,17 @@ pub const ONLY_PROOF_STEPS_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
     (Disabler::AllEqualities, true, false),
     (Disabler::ProofSteps, false, false),
     (Disabler::Instantiations, true, false),
+    (Disabler::Decisions, true, false),
+];
+
+pub const CDCL_DISABLER_CHAIN: &[(Disabler, bool, bool)] = &[
+    (Disabler::Smart, true, true),
+    (Disabler::ENodes, true, false),
+    (Disabler::GivenEqualities, true, false),
+    (Disabler::AllEqualities, true, false),
+    (Disabler::ProofSteps, true, false),
+    (Disabler::Instantiations, true, false),
+    (Disabler::Decisions, false, false),
 ];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -309,6 +322,7 @@ pub enum Disabler {
     AllEqualities,
     ProofSteps,
     Instantiations,
+    Decisions,
 }
 
 impl Disabler {
@@ -382,6 +396,7 @@ impl Disabler {
             },
             Disabler::ProofSteps => node.kind().proof_step().is_some(),
             Disabler::Instantiations => node.kind().inst().is_some(),
+            Disabler::Decisions => node.kind().dec().is_some(),
         }
     }
     pub fn apply(
@@ -402,6 +417,7 @@ impl Disabler {
             Disabler::AllEqualities => "all equalities",
             Disabler::ProofSteps => "proof steps",
             Disabler::Instantiations => "instantiations",
+            Disabler::Decisions => "decisions",
         }
     }
     pub fn icon(&self) -> &'static str {
@@ -412,6 +428,7 @@ impl Disabler {
             Disabler::AllEqualities => "compare_arrows",
             Disabler::ProofSteps => "compare_arrows",
             Disabler::Instantiations => "compare_arrows",
+            Disabler::Decisions => "compare_arrows",
         }
     }
 }

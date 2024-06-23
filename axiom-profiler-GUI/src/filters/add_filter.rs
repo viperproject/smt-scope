@@ -61,6 +61,7 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
                 .cloned()
                 .collect(),
             ViewerMode::OnlyProofSteps => proof_steps_mode_filters.to_vec(),
+            ViewerMode::CDCL => vec![],
         }
     } else {
         let Some(graph) = parser.graph.as_ref() else {

@@ -489,6 +489,12 @@ impl NodeKind {
             _ => None,
         }
     }
+    pub fn dec(&self) -> Option<DecisionIdx> {
+        match self {
+            Self::Decision(dec) => Some(*dec),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

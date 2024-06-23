@@ -18,6 +18,7 @@ pub enum ViewerMode {
     MatchingLoops,
     ProofSteps,
     OnlyProofSteps,
+    CDCL,
 }
 
 impl std::fmt::Display for ViewerMode {
@@ -27,6 +28,7 @@ impl std::fmt::Display for ViewerMode {
             ViewerMode::MatchingLoops => write!(f, "MLs"),
             ViewerMode::ProofSteps => write!(f, "PSs"),
             ViewerMode::OnlyProofSteps => write!(f, "OPSs"),
+            ViewerMode::CDCL => write!(f, "CDCL"),
         }
     }
 }

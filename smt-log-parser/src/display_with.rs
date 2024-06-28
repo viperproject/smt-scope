@@ -268,7 +268,25 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for DecisionIdx {
         _data: &mut (),
     ) -> fmt::Result {
         let dec = &ctxt.parser[self];
-        write!(f, "{} → {}", dec.result.with(ctxt), dec.assignment)
+        // write!(f, "{} → {}", dec.result.with(ctxt), dec.assignment)
+        write!(f, "{} → {}", dec.result.to_string(), dec.assignment)
+        // if let Some(enode_char_limit) = ctxt.config.enode_char_limit {
+        //     log!("Before computing owner");
+        //     let owner = ctxt.parser[self]
+        //         .result
+        //         .with_data(ctxt, &mut None)
+        //         .to_string();
+        //     if owner.len() <= enode_char_limit.get() as usize {
+        //         log!("In non-trimming branch");
+        //         write!(f, "{owner}")
+        //     } else {
+        //         log!("Trimming Decision-term");
+        //         write!(f, "{}...", &owner[..enode_char_limit.get() as usize - 3])
+        //     }
+        // } else {
+        //     log!("In else-branch");
+        //     ctxt.parser[self].result.fmt_with(f, ctxt, &mut None)
+        // }
     }
 }
 

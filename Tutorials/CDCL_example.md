@@ -162,6 +162,9 @@ Note that only the `[assign]` lines where the literal is followed by `decision` 
     }
 ```
 
+## Shortcoming/To-Do
+
+The current code does not yet support the `[decide-and-or]`-line cases in Z3 logs. These seem to be connected with case splits that Z3 does during a solver run.
 
 
 

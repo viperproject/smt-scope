@@ -1,4 +1,7 @@
-use std::{borrow::Cow, fmt};
+use std::{
+    borrow::{Borrow, Cow},
+    fmt,
+};
 
 use crate::{
     formatter::{
@@ -109,12 +112,22 @@ pub struct DisplayConfiguration {
     pub display_quantifier_name: bool,
     pub replace_symbols: SymbolReplacement,
     /// Use tags for formatting
+    #[cfg(feature = "display_html")]
     pub html: bool,
 
     // If `enode_char_limit` is Some, then any term longer than
     // the limit will be truncated.
     pub enode_char_limit: Option<NonMaxU32>,
     pub ast_depth_limit: Option<NonMaxU32>,
+}
+
+impl DisplayConfiguration {
+    pub fn html(&self) -> bool {
+        #[cfg(feature = "display_html")]
+        return self.html;
+        #[cfg(not(feature = "display_html"))]
+        return false;
+    }
 }
 
 mod private {
@@ -314,7 +327,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for EqTransIdx {
     ) -> fmt::Result {
         let path = ctxt.parser.egraph.equalities.path(self);
         path.first().unwrap().fmt_with(f, ctxt, data)?;
-        if ctxt.config.html {
+        if ctxt.config.html() {
             write!(f, " =<sup>{}</sup> ", path.len() - 1)?;
         } else {
             write!(f, " =[{}] ", path.len() - 1)?;
@@ -365,7 +378,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &QuantKind {
             QuantKind::Lambda => {
                 if matches!(ctxt.config.replace_symbols, SymbolReplacement::Math) {
                     write!(f, "λ")
-                } else if ctxt.config.html {
+                } else if ctxt.config.html() {
                     write!(f, "&lt;null&gt;")
                 } else {
                     write!(f, "<null>")
@@ -402,11 +415,11 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a Term 
                 }
             }
             if let Some(meaning) = ctxt.parser.meaning(data.term) {
-                if ctxt.config.html {
+                if ctxt.config.html() {
                     write!(f, "<i style=\"color:#666\">")?;
                 }
                 write!(f, "{}", meaning.with_data(ctxt, data))?;
-                if ctxt.config.html {
+                if ctxt.config.html() {
                     write!(f, "</i>")?;
                 }
             } else {
@@ -434,11 +447,13 @@ impl VarNames {
                 },
             ),
         };
-        if config.html {
+        if config.html() {
             const COLORS: [&str; 9] = [
                 "blue", "green", "olive", "maroon", "teal", "purple", "red", "fuchsia", "navy",
             ];
             let color = COLORS[idx % COLORS.len()];
+            #[cfg(feature = "display_html")]
+            let name = ammonia::clean_text(name.borrow());
             let name = format!("<span style=\"color:{color}\">{name}</span>");
             Cow::Owned(name)
         } else {
@@ -535,21 +550,29 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResu
                             let Some(capture) = get_capture(*idx) else {
                                 continue;
                             };
-                            if let Some(as_math) = ctxt.config.replace_symbols.as_math() {
-                                match capture {
-                                    "and" if as_math => write!(f, "∧")?,
-                                    "and" if !as_math => write!(f, "&&")?,
-                                    "or" if as_math => write!(f, "∨")?,
-                                    "or" if !as_math => write!(f, "||")?,
-                                    "not" if as_math => write!(f, "¬")?,
-                                    "not" if !as_math => write!(f, "!")?,
-                                    "<=" if as_math => write!(f, "≤")?,
-                                    ">=" if as_math => write!(f, "≥")?,
-                                    _ => write!(f, "{capture}")?,
-                                }
+                            let capture =
+                                if let Some(as_math) = ctxt.config.replace_symbols.as_math() {
+                                    match capture {
+                                        "and" if as_math => "∧",
+                                        "and" if !as_math => "&&",
+                                        "or" if as_math => "∨",
+                                        "or" if !as_math => "||",
+                                        "not" if as_math => "¬",
+                                        "not" if !as_math => "!",
+                                        "<=" if as_math => "≤",
+                                        ">=" if as_math => "≥",
+                                        _ => capture,
+                                    }
+                                } else {
+                                    capture
+                                };
+                            #[cfg(feature = "display_html")]
+                            let capture = if ctxt.config.html() {
+                                Cow::Owned(ammonia::clean_text(capture))
                             } else {
-                                write!(f, "{capture}")?
-                            }
+                                Cow::Borrowed(capture)
+                            };
+                            write!(f, "{capture}")?;
                         }
                         SubFormatter::Single { index, bind_power } => {
                             let Some(child) = get_child(*index, data) else {

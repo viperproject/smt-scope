@@ -105,6 +105,64 @@ In the following, we can see a pretty-printed version of the log-file to make th
 [assign] (not x10) decision axiom   // decide x10 -> false
 ```
 
+This examples the CDCL viewer mode that we have in the Axiom Profiler 2.0. Note in the figure below that we have labelled the edges with numbers to show the current search path. In particular, for the decision `d1` this makes sense 
+as we can then correctly identify that after backtracking, on path 1, we assign `x9` to `false` and not on path 0 where we decide on a value for `x9` at d2.
+
+<img width="1014" alt="image" src="https://github.com/viperproject/axiom-profiler-2/assets/23278394/7a0f9f69-edc1-4180-8ab9-022dec05020c">
+
+
+Note that only the `[assign]` lines where the literal is followed by `decision` correspond to decisions. All others are propagations as we can extract from the Z3 source code:
+
+```cpp
+// in src > smt > smt_context_pp.cpp at lin 676-686:
+    void context::trace_assign(literal l, b_justification j, bool decision) const {
+        SASSERT(m.has_trace_stream());
+        std::ostream & out = m.trace_stream();
+        ast_manager::suspend_trace _st(m);
+        out << "[assign] ";
+        display_literal(out, l);
+        if (decision)
+            out << " decision";
+        out << " ";
+        display_compact_j(out, j);
+    }
+```
+
+```cpp
+// in src > smt > smt_context.cpp at lin 270-299:
+    void context::assign_core(literal l, b_justification j, bool decision) {
+        m_assigned_literals.push_back(l);
+        m_assignment[l.index()]    = l_true;
+        m_assignment[(~l).index()] = l_false;
+        bool_var_data & d          = get_bdata(l.var());
+        set_justification(l.var(), d, j);
+        d.m_scope_lvl              = m_scope_lvl;
+        if (m_fparams.m_restart_adaptive && d.m_phase_available) {
+            m_agility             *= m_fparams.m_agility_factor;
+            if (!decision && d.m_phase == l.sign())
+                m_agility         += (1.0 - m_fparams.m_agility_factor);
+        }
+        d.m_phase_available        = true;
+        d.m_phase                  = !l.sign();
+        TRACE("assign_core", tout << (decision?"decision: ":"propagating: ") << l << " ";
+              display_literal_smt2(tout, l) << "\n";
+              tout << "relevant: " << is_relevant_core(l) << " level: " << m_scope_lvl << " is atom " << d.is_atom() << "\n";
+              display(tout, j);
+              );
+        TRACE("phase_selection", tout << "saving phase, is_pos: " << d.m_phase << " l: " << l << "\n";);
+
+        if (d.is_atom() && (relevancy_lvl() == 0 || (relevancy_lvl() == 1 && !d.is_quantifier()) || is_relevant_core(l))) {
+            m_atom_propagation_queue.push_back(l);
+        }
+
+        if (m.has_trace_stream())
+            trace_assign(l, j, decision);
+
+        m_case_split_queue->assign_lit_eh(l);
+    }
+```
+
+
 
 
 

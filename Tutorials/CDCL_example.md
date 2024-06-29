@@ -1,4 +1,6 @@
-# CDCL graph
+# Reconstructing CDCL Graphs from Z3 Logs
+
+**Author:** [Oskari Jyrkinen](https://github.com/oskari1)
 
 ## Table of Contents
 - [Introduction](#introduction)
@@ -125,12 +127,16 @@ In the following, we can see a pretty-printed version of the log-file to make th
 
 We can view this example in the CDCL viewer mode of the Axiom Profiler 2.0. Note that in the CDCL graph of the AP2, we don't have separate nodes for conflicts. Instead, we colour the nodes in red that correspond to decisions that led 
 to conflicts, i.e., node `d3` corresponds to the decision `x7 -> false`. The nodes are labelled with `d_` which reflects the order in which the decisions were made. Furthermore, we don't have "back-edges" as in the illustration before for backtracking decisions. Instead, we label edges by a number indicating the "search path", i.e.,
-each time a conflict is found, a new search path is started from another node. In this sense, the backtracking information is implicitly displayed in the CDCL graph. Introducing these search path indices also has the advantage that we can
+each time a conflict is found, a new search path is started from another node. In this sense, the backtracking information is implicitly displayed in the CDCL graph. Not having back-edges has the advantage that the CDCL graph stays a 
+directed acyclic graph (DAG) hence improving runtimes of various graph algorithms for subsequent analysis. Introducing these search path indices also has the advantage that we can
 distinguish between the propagations made on the various paths. In the example below, on our initial search path 0, we propagated the value `true` to `x12` after deciding to set `x8` to `false` in `d1`. After that, we made the decision `d2` 
 where we assigned `false` to `x9`. Later, we found a conflict due to which we backjumped to decision `d1` and started the search path 1. With the newly learned clause, we obtained the propagations `x7 -> true` and `x9 -> false` at `d1`.
 Therefore, we always denote on what search path the propagations happen in the CDCL graph of the AP2. 
 
 ![image](https://github.com/viperproject/axiom-profiler-2/assets/23278394/feec612a-6c3e-4433-95bf-47c84e6c8510)
+
+> **Note:** Our example only involves propositional logic to keep it simple but the CDCL search is also used in the general case involving predicate logic. In that case, Z3 performs CDCL(T) on a propositional abstraction of the
+> input formulas (see [here](https://z3prover.github.io/papers/z3internals.html#back-fn-unitremove) and [here](http://homepage.divms.uiowa.edu/~ajreynol/pres-dpllt15.pdf)).  
 
 ## Shortcomings and Assumptions
 
@@ -169,7 +175,7 @@ The function below shows the Z3-function `trace_assign` (in `src > smt > smt_con
     }
 ```
 
-This function is called in the Z3-function `assign_core` (in src > smt > smt_context.cpp at line 270-299 of [Z3 version 4.13.0](https://github.com/Z3Prover/z3)).
+This function is called in the Z3-function `assign_core` (in `src > smt > smt_context.cpp` at line 270-299 of [Z3 version 4.13.0](https://github.com/Z3Prover/z3)).
 
 ```cpp
 // in src > smt > smt_context.cpp at line 270-299:
@@ -204,6 +210,60 @@ This function is called in the Z3-function `assign_core` (in src > smt > smt_con
         m_case_split_queue->assign_lit_eh(l);
     }
 ```
+
+As you can see, there are commands in the function that call `TRACE(...)` that can be used to log more information about the assignment. To obtain these more detailed logs, we can pass [additional command line flags to Z3](https://stackoverflow.com/questions/13102789/printing-internal-solver-formulas-in-z3). However, we need to [compile Z3 in debug mode](https://stackoverflow.com/questions/33898956/z3py-how-to-check-trace-information-when-using-z3-python-api).
+So in our case, after cloning the Z3 Github repo, we can run 
+
+```
+python scripts/mk_make.py --debug
+```
+
+from the root directory of the repo. After it has compiled, we need to change into `z3/build/`
+
+```
+cd build
+```
+
+and run 
+
+```
+./z3 trace=true proof=true trace-file-name=foo.log ./input.smt2 -tr:assign_core
+```
+
+After we've done this, we obtain a file called `.z3-trace` that contains more detailed information about the solver run. In our case, an excerpt of it is given below:
+
+```
+-------- [assign_core] assign_core ../src/smt/smt_context.cpp:288 ---------
+decision: -1 (not x1) 
+relevant: 1 level: 1 is atom 0
+axiom
+------------------------------------------------
+-------- [assign_core] assign_core ../src/smt/smt_context.cpp:288 ---------
+propagating: 2 x4 
+relevant: 1 level: 1 is atom 0
+clause 2 1
+------------------------------------------------
+-------- [assign_core] assign_core ../src/smt/smt_context.cpp:288 ---------
+decision: -3 (not x8) 
+relevant: 1 level: 2 is atom 0
+axiom
+------------------------------------------------
+-------- [assign_core] assign_core ../src/smt/smt_context.cpp:288 ---------
+propagating: 5 x12 
+relevant: 1 level: 2 is atom 0
+clause 5 3 1
+```
+
+We evidently see the close resemblance to the ordinary log below. In particular, note how `-1` corresponds to `not x1`, `2` to `x4`, `-3` to `not x8`, and `5` to `x12`. Therefore `clause 5 3 1` corresponds to `or x12 x8 x1` as claimed before.
+This syntax is, presumably, inspired by [DIMACS CNF](https://jix.github.io/varisat/manual/0.2.0/formats/dimacs.html#:~:text=The%20DIMACS%20CNF%20format%20is,a%20negation%20of%20a%20variable.).
+
+```
+[assign] (not x1) decision axiom    // decide x1 -> false
+[assign] x4 clause 2 1              // propagate x4 -> true due to clause (or x1 x4)
+[assign] (not x8) decision axiom    // decide x8 -> false
+[assign] x12 clause 5 3 1           // propagate x12 -> true due to clause (or x1 x8 x12)
+```
+
 
 
 

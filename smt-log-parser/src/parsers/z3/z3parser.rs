@@ -1,4 +1,4 @@
-use gloo_console::log;
+
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
@@ -688,13 +688,11 @@ impl Z3LogParser for Z3Parser {
                         .backtracked_from
                         .push(backtracked_from);
                     break;
+                } else if let Some(prev_dec) = d.prev_decision {
+                    dec = prev_dec
                 } else {
-                    if let Some(prev_dec) = d.prev_decision {
-                        dec = prev_dec
-                    } else {
-                        self.current_decision = None;
-                        break;
-                    }
+                    self.current_decision = None;
+                    break;
                 }
             }
             self.detected_conflict = false;
@@ -702,7 +700,7 @@ impl Z3LogParser for Z3Parser {
         let lit = _l.next().ok_or(Error::UnexpectedNewline)?;
         let (result, assignment) = if lit.starts_with("(not") {
             let lit = _l.next().ok_or(Error::UnexpectedNewline)?;
-            let term_id = lit.strip_suffix(")").ok_or(Error::TupleMissingParens)?;
+            let term_id = lit.strip_suffix(')').ok_or(Error::TupleMissingParens)?;
             let term_id = self.terms.parse_existing_id(&mut self.strings, term_id)?;
             (term_id, false)
         } else {

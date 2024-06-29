@@ -34,7 +34,7 @@ use smt_log_parser::{
 use std::{
     cell::RefCell,
     num::NonZeroUsize,
-    rc::{self, Rc},
+    rc::{Rc},
 };
 use viz_js::VizInstance;
 use web_sys::window;

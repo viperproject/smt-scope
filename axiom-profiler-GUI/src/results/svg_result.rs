@@ -31,11 +31,7 @@ use smt_log_parser::{
     items::QuantIdx,
     NonMaxU32,
 };
-use std::{
-    cell::RefCell,
-    num::NonZeroUsize,
-    rc::{Rc},
-};
+use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
 use viz_js::VizInstance;
 use web_sys::window;
 use yew::prelude::*;

@@ -740,12 +740,25 @@ pub struct Propagation {
 impl std::fmt::Display for Decision {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // let propagations = self.clause_propagations.iter().map(|(tidx, val)| format!("{} to {}", val, tidx.0)).collect::<Vec<String>>().join(", ");
-        let propagations = self.clause_propagations.iter().map(|propagation| format!("{} to {} on path {}", propagation.value, propagation.clause.0, propagation.search_path)).collect::<Vec<String>>().join(", ");
-        let prev_decision = if let Some(prev_decision) = self.prev_decision { format!("{}", prev_decision.0) } else { "".to_string() }; 
+        let propagations = self
+            .clause_propagations
+            .iter()
+            .map(|propagation| {
+                format!(
+                    "{} to {} on path {}",
+                    propagation.value, propagation.clause.0, propagation.search_path
+                )
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+        let prev_decision = if let Some(prev_decision) = self.prev_decision {
+            format!("{}", prev_decision.0)
+        } else {
+            "".to_string()
+        };
         match self.assignment {
             true => write!(f, "[assign] {} decision axiom at lvl {}, propagating values {} with prev dec {}", self.result.0, self.lvl, propagations, prev_decision),
             false => write!(f, "[assign] (not {}) decision axiom at lvl {}, propagating values {} with prev dec {}", self.result.0, self.lvl, propagations, prev_decision)
         }
-        
     }
 }

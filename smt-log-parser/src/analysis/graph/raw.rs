@@ -15,7 +15,8 @@ use petgraph::{
 use crate::{
     graph_idx,
     items::{
-        DecisionIdx, ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx, TransitiveExplSegmentKind
+        DecisionIdx, ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx,
+        TransitiveExplSegmentKind,
     },
     DiGraph, FxHashMap, NonMaxU32, Result, TiVec, Z3Parser,
 };
@@ -174,7 +175,7 @@ impl RawInstGraph {
                 self_.add_edge(*prerequisite, idx, EdgeKind::ProofStep)
             }
         }
-         
+
         for (idx, inst) in parser.insts.insts.iter_enumerated() {
             if let Some(proof_id) = inst.proof_id {
                 if let Ok(proof_term_idx) = proof_id.into_result() {
@@ -189,16 +190,21 @@ impl RawInstGraph {
             // let current_lvl = dec.lvl;
             // let pred_lvl = parser[idx].lvl;
             if let Some(prev_decision) = dec.prev_decision {
-                self_.add_edge(prev_decision, idx, EdgeKind::Decision {assigned_to: parser[prev_decision].assignment });
+                self_.add_edge(
+                    prev_decision,
+                    idx,
+                    EdgeKind::Decision {
+                        assigned_to: parser[prev_decision].assignment,
+                    },
+                );
                 // match current_lvl < pred_lvl {
-                    // true => self_.add_edge(prev_decision, idx, EdgeKind::BacktrackDecision),
-                    // false => self_.add_edge(prev_decision, idx, EdgeKind::Decision(parser[prev_decision].assignment)),
+                // true => self_.add_edge(prev_decision, idx, EdgeKind::BacktrackDecision),
+                // false => self_.add_edge(prev_decision, idx, EdgeKind::Decision(parser[prev_decision].assignment)),
                 // }
             }
             // for backtracked_dec in &dec.backtracked_from {
             //     self_.add_edge(*backtracked_dec, idx, EdgeKind::BacktrackDecision);
             // }
-
         }
 
         Ok(self_)

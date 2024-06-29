@@ -34,7 +34,7 @@ pub struct Z3Parser {
     pub(crate) proof_steps: TiVec<ProofIdx, ProofStep>,
     pub(crate) proof_step_of_term: std::collections::HashMap<TermIdx, ProofIdx>,
 
-    pub(crate) decision_assigns: TiVec<DecisionIdx, Decision>, 
+    pub(crate) decision_assigns: TiVec<DecisionIdx, Decision>,
     current_cdcl_lvl: usize,
     current_decision: Option<DecisionIdx>,
     detected_conflict: bool,
@@ -682,14 +682,18 @@ impl Z3LogParser for Z3Parser {
             while let Some(d) = self.decision_assigns.get(dec) {
                 if d.lvl == self.current_cdcl_lvl {
                     self.current_decision = Some(dec);
-                    self.decision_assigns.get_mut(dec).unwrap().backtracked_from.push(backtracked_from);
-                    break
+                    self.decision_assigns
+                        .get_mut(dec)
+                        .unwrap()
+                        .backtracked_from
+                        .push(backtracked_from);
+                    break;
                 } else {
                     if let Some(prev_dec) = d.prev_decision {
                         dec = prev_dec
                     } else {
                         self.current_decision = None;
-                        break
+                        break;
                     }
                 }
             }
@@ -700,10 +704,10 @@ impl Z3LogParser for Z3Parser {
             let lit = _l.next().ok_or(Error::UnexpectedNewline)?;
             let term_id = lit.strip_suffix(")").ok_or(Error::TupleMissingParens)?;
             let term_id = self.terms.parse_existing_id(&mut self.strings, term_id)?;
-            (term_id, false) 
+            (term_id, false)
         } else {
             let term_id = self.terms.parse_existing_id(&mut self.strings, lit)?;
-            (term_id, true) 
+            (term_id, true)
         };
         let assign_type = _l.next().ok_or(Error::UnexpectedNewline)?;
         match assign_type {
@@ -721,17 +725,21 @@ impl Z3LogParser for Z3Parser {
                 self.decision_assigns.raw.try_reserve(1)?;
                 let dec_idx = self.decision_assigns.push_and_get_key(dec.clone());
                 self.current_decision = Some(dec_idx);
-            },
+            }
             "clause" => {
                 // let current_dec = self.decision_assigns.get_mut(self.current_decision.unwrap()).unwrap();
                 if let Some(current_dec_idx) = self.current_decision {
-                    let current_dec = self.decision_assigns.get_mut(current_dec_idx).unwrap(); 
+                    let current_dec = self.decision_assigns.get_mut(current_dec_idx).unwrap();
                     // current_dec.clause_propagations.push((result, assignment));
-                    current_dec.clause_propagations.push(Propagation { clause: result, value: assignment, search_path: self.search_path });
+                    current_dec.clause_propagations.push(Propagation {
+                        clause: result,
+                        value: assignment,
+                        search_path: self.search_path,
+                    });
                 }
                 // } else {
                 //     let dec = Decision {
-                //         result, 
+                //         result,
                 //         assignment,
                 //         lvl: self.current_cdcl_lvl,
                 //         results_in_conflict: false,
@@ -744,18 +752,20 @@ impl Z3LogParser for Z3Parser {
                 //     let dec_idx = self.decision_assigns.push_and_get_key(dec.clone());
                 //     self.current_decision = Some(dec_idx);
                 // }
-            },
-            _ => ()
+            }
+            _ => (),
         }
         Ok(())
-
     }
 
     fn conflict<'a>(&mut self, mut _l: impl Iterator<Item = &'a str>) -> Result<()> {
         self.detected_conflict = true;
         self.search_path += 1;
         if let Some(dec) = self.current_decision {
-            self.decision_assigns.get_mut(dec).unwrap().results_in_conflict = true;
+            self.decision_assigns
+                .get_mut(dec)
+                .unwrap()
+                .results_in_conflict = true;
         }
         // let mut terms: Vec<String> = Vec::new();
         // while let Some(lit) = _l.next() {
@@ -801,7 +811,7 @@ impl Z3LogParser for Z3Parser {
         //         // terms.push(pretty_term);
         //     }
         // }
-        // let all_pretty_terms = terms.join(" "); 
+        // let all_pretty_terms = terms.join(" ");
         // log!(format!("[conflict] {} at lvl {}", all_pretty_terms, self.current_scope));
         Ok(())
     }

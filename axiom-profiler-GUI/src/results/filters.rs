@@ -290,9 +290,9 @@ impl Filter {
                 graph
                     .raw
                     .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
-                        node.kind().proof_step().is_some_and(|ps| {
-                            parser[parser[ps].name].to_string() == name
-                        })
+                        node.kind()
+                            .proof_step()
+                            .is_some_and(|ps| parser[parser[ps].name].to_string() == name)
                     })
             }
         }

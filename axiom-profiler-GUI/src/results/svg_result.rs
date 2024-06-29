@@ -31,7 +31,11 @@ use smt_log_parser::{
     items::QuantIdx,
     NonMaxU32,
 };
-use std::{cell::RefCell, num::NonZeroUsize, rc::{self, Rc}};
+use std::{
+    cell::RefCell,
+    num::NonZeroUsize,
+    rc::{self, Rc},
+};
 use viz_js::VizInstance;
 use web_sys::window;
 use yew::prelude::*;
@@ -382,11 +386,13 @@ impl Component for SVGResult {
                                     }
                                     _ => "normal",
                                 };
-                                let label = match inst_graph.raw[fg[edge_data.target()].idx].kind() {
+                                let label = match inst_graph.raw[fg[edge_data.target()].idx].kind()
+                                {
                                     NodeKind::Decision(dec_idx) => {
-                                        let search_path = rc_parser.parser.borrow()[*dec_idx].search_path;
+                                        let search_path =
+                                            rc_parser.parser.borrow()[*dec_idx].search_path;
                                         format!("label={}", search_path)
-                                    },
+                                    }
                                     _ => "".to_string(),
                                 };
                                 format!(

@@ -216,7 +216,14 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             dec.clause_propagations
                 .iter()
                 // .map(|(cl, val)| format!("{} → {}", cl.with(self.ctxt), val))
-                .map(|prop| format!("{} → {} on path {}", prop.clause.with(self.ctxt), prop.value, prop.search_path))
+                .map(|prop| {
+                    format!(
+                        "{} → {} on path {}",
+                        prop.clause.with(self.ctxt),
+                        prop.value,
+                        prop.search_path
+                    )
+                })
                 .collect(),
         )
     }
@@ -321,7 +328,7 @@ pub fn SelectedNodesInfo(
                 }).collect();
                 html! { <>{propagates}</> }
             });
-            let results_in_conflict = info.results_in_conflict().map(|conflict| { 
+            let results_in_conflict = info.results_in_conflict().map(|conflict| {
                 if conflict {
                     html!{<InfoLine header="Results in conflict!" text={""} code=true />}
                 } else {
@@ -421,7 +428,9 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
                 (!forward).then_some("Reverse ").unwrap_or_default()
             ),
             VisibleEdgeKind::Direct(_, EdgeKind::ProofStep) => "Proof Step".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::Decision { assigned_to, .. }) => format!("Assign {}", assigned_to),
+            VisibleEdgeKind::Direct(_, EdgeKind::Decision { assigned_to, .. }) => {
+                format!("Assign {}", assigned_to)
+            }
             // VisibleEdgeKind::Direct(_, EdgeKind::Decision(false)) => "Assign false".to_string(),
             VisibleEdgeKind::Direct(_, EdgeKind::BacktrackDecision) => "Backtrack".to_string(),
             VisibleEdgeKind::YieldBlame { trigger_term, .. } => {

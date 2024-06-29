@@ -79,6 +79,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         };
         ctxt.config.html = html;
         ctxt.config.enode_char_limit = char_limit;
+        ctxt.config.ast_depth_limit = NonMaxU32::new(5);
         match *self.node.kind() {
             NodeKind::ENode(enode) => {
                 ctxt.config.enode_char_limit = ctxt
@@ -250,10 +251,13 @@ pub fn SelectedNodesInfo(
     let graph = parser.graph.as_ref().unwrap();
     let parser = &*parser.parser;
     let graph = graph.borrow();
+    // TODO: make this a feature?
+    let mut config = cfg.config.display.clone();
+    config.ast_depth_limit = NonMaxU32::new(10);
     let ctxt = &DisplayCtxt {
         parser: &parser.borrow(),
         term_display: &data.state.term_display,
-        config: cfg.config.display.clone(),
+        config,
     };
 
     let infos = selected_nodes

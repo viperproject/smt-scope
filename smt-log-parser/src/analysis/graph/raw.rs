@@ -186,8 +186,8 @@ impl RawInstGraph {
         }
 
         for (idx, dec) in parser.decision_assigns.iter_enumerated() {
-            let current_lvl = dec.lvl;
-            let pred_lvl = parser[idx].lvl;
+            // let current_lvl = dec.lvl;
+            // let pred_lvl = parser[idx].lvl;
             if let Some(prev_decision) = dec.prev_decision {
                 self_.add_edge(prev_decision, idx, EdgeKind::Decision {assigned_to: parser[prev_decision].assignment });
                 // match current_lvl < pred_lvl {

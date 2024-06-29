@@ -317,10 +317,13 @@ impl Component for SVGResult {
                         .emit(GraphState::Rendering(RenderingState::GraphToDot));
                     let filtered_graph = &calculated.graph;
                     let cfg = ctx.link().get_configuration().unwrap();
+                    // TODO: make this a feature?
+                    let mut config = cfg.config.display.clone();
+                    config.ast_depth_limit = NonMaxU32::new(10);
                     let ctxt = &DisplayCtxt {
                         parser: &parser.borrow(),
                         term_display: &data.state.term_display,
-                        config: cfg.config.display.clone(),
+                        config,
                     };
 
                     // Performance observations (default value is in [])

@@ -1,7 +1,13 @@
 # CDCL graph
 
+## Table of Contents
+- [Running example](#running-example)
+- [CDCL search in the log](#cdcl-search-in-the-log)
+- [Shortcomings and Assumptions](#shortcomings-and-assumptions)
+- [Appendix A](#appendix-a)
+
 According to [the Z3 docs](https://z3prover.github.io/papers/programmingz3.html#simple-cdclt), Z3 uses [CDCL](https://en.wikipedia.org/wiki/Conflict-driven_clause_learning)
-to solve the SAT problem. In this tutorial, we aim to use the example given in [this Wikipedia example](https://en.wikipedia.org/wiki/Conflict-driven_clause_learning#Example)
+to solve the SAT problem. In this tutorial, we aim to use [this Wikipedia example](https://en.wikipedia.org/wiki/Conflict-driven_clause_learning#Example)
 to explain how the information for constructing the "CDCL graph" can be obtained from the log.
 
 We can encode the example from Wikipedia using smt2-syntax as follows:
@@ -36,7 +42,7 @@ We can encode the example from Wikipedia using smt2-syntax as follows:
 We will first show a potential solver run of Z3 using CDCL to explain the concept of the CDCL graph. Then, we will explain how all the information needed to construct the CDCL graph
 automatically from the log-files can be extracted.
 
-## Example solver run of Z3
+## Running example
 
 The first observation we can make is that the assertion `(assert (or x2 x11))` can be trivially satisfied by simply assigning each literal to `true` as neither literal appears in any other clause.
 
@@ -58,8 +64,15 @@ After this, Z3 can make the decision to set `x7` to `false`. This decision will 
 <img width="708" alt="image" src="https://github.com/viperproject/axiom-profiler-2/assets/23278394/b04f2122-2ea3-4bbf-a750-93a442460664">
 
 But at the same time, the clause `(assert (or x7 x10 (not x12)))` propagates 
-`true` to `x10`, i.e., we have a conflict. In a CDCL search, Z3 will try to find a "cut" that explains the conflict. More specifically, in our case the assignments `x8 = false`, `x7 = false` together with the clause `(assert (or x7 x8 (not x10)))`
-led to the propagation `x10 = false` and the assignments `x7 = false`, `x12 = true` together with the clause `(assert (or x7 x10 (not x12)))` led to the propagation `x10 = true`. In other words, the clause `(not x8) and x12 and (not x7)` leads to 
+`true` to `x10`, i.e., we have a conflict. This means that one of the previous decisions should be reverted. In [DPLL](https://en.wikipedia.org/wiki/DPLL_algorithm#:~:text=In%20logic%20and%20computer%20science,solving%20the%20CNF%2DSAT%20problem.), we would just revert the previous decision where we set `x7` to `false` and continue from there. However, Z3 uses a more optimized version of DPLL called [CDCL(T)](https://z3prover.github.io/papers/z3internals.html#back-fn-unitremove) that uses _backjumping_ to reduce the search space.
+In our case, we can visualise the conflict as in the graph below. Nodes without any incoming edges represent assignments that were made by decision. If a node has incoming edges, it means that its value was propagated due to some previous 
+assignments, e.g., there is an edge from `x1 -> 0` to `x4 -> 1` because the value `true` was propagated to `x4` after assigning `false` to `x1` due to the clause `or x1 x4`.
+
+![image](https://github.com/viperproject/axiom-profiler-2/assets/23278394/2b4e4f42-2684-453d-a6f3-2149fa5af186)
+
+
+Z3 will try to find a "cut" that explains the conflict. More specifically, in our case the conflict is between the nodes `x10 -> 0` and `x10 -> 1` and the cut crosses the edges coming from the nodes `x8 -> 0`, `x12 -> 1`, `x7 -> 0`.
+In other words, the clause `(not x8) and x12 and (not x7)` leads to 
 a conflict and hence we can add its negation `x8 or (not x12) or x7` as a new, _learned_ clause (hence the L in CDCL) to the clauses and backtrack to the earliest decision among the literals in this clause (in our case `x8`):
 
 <img width="695" alt="image" src="https://github.com/viperproject/axiom-profiler-2/assets/23278394/c9280f18-5ad6-48d9-a20b-a1a5020edef2">
@@ -75,7 +88,7 @@ At this point, Z3 has successfully found a model that satisfies the input proble
 
 <img width="726" alt="image" src="https://github.com/viperproject/axiom-profiler-2/assets/23278394/ed145015-a7ca-4b2e-af62-d5ea423b58a2">
 
-## Extracting this information from log files
+## CDCL search in the log
 
 We can generate a log file during a solver run of Z3 to gain more insight into the decisions and propagations that are made by passing additional flags to the command line:
 
@@ -105,16 +118,41 @@ In the following, we can see a pretty-printed version of the log-file to make th
 [assign] (not x10) decision axiom   // decide x10 -> false
 ```
 
-This examples the CDCL viewer mode that we have in the Axiom Profiler 2.0. Note in the figure below that we have labelled the edges with numbers to show the current search path. In particular, for the decision `d1` this makes sense 
-as we can then correctly identify that after backtracking, on path 1, we assign `x9` to `false` and not on path 0 where we decide on a value for `x9` at d2.
+> **Note:** The numbers that are listed on the `[assign] ... clause`-lines correspond to the internal indices that Z3 uses during the CDCL search (see Appendix A for more details). 
 
-<img width="1014" alt="image" src="https://github.com/viperproject/axiom-profiler-2/assets/23278394/7a0f9f69-edc1-4180-8ab9-022dec05020c">
+We can view this example in the CDCL viewer mode of the Axiom Profiler 2.0. Note that in the CDCL graph of the AP2, we don't have separate nodes for conflicts. Instead, we colour the nodes in red that correspond to decisions that led 
+to conflicts, i.e., node `d3` corresponds to the decision `x7 -> false`. The nodes are labelled with `d_` which reflects the order in which the decisions were made. Furthermore, we don't have "back-edges" as in the illustration before for backtracking decisions. Instead, we label edges by a number indicating the "search path", i.e.,
+each time a conflict is found, a new search path is started from another node. In this sense, the backtracking information is implicitly displayed in the CDCL graph. Introducing these search path indices also has the advantage that we can
+distinguish between the propagations made on the various paths. In the example below, on our initial search path 0, we propagated the value `true` to `x12` after deciding to set `x8` to `false` in `d1`. After that, we made the decision `d2` 
+where we assigned `false` to `x9`. Later, we found a conflict due to which we backjumped to decision `d1` and started the search path 1. With the newly learned clause, we obtained the propagations `x7 -> true` and `x9 -> false` at `d1`.
+Therefore, we always denote on what search path the propagations happen in the CDCL graph of the AP2. 
 
+![image](https://github.com/viperproject/axiom-profiler-2/assets/23278394/feec612a-6c3e-4433-95bf-47c84e6c8510)
 
-Note that only the `[assign]` lines where the literal is followed by `decision` correspond to decisions. All others are propagations as we can extract from the Z3 source code:
+## Shortcomings and Assumptions
+
+The current code does not yet support the `[decide-and-or]`-line cases in Z3 logs. These seem to be connected with case splits that Z3 does during a solver run.
+The current code stores in each decision the preceding decisions and backtracks to the last decision made at the level to which we backtrack. I do not know if 
+this is a valid assumption.
+
+## Appendix A
+
+We claimed in the example below that `clause 5 3 1` corresponds to the clause `or x1 x8 x12`. From the log itself, this is not evident but we can nevertheless 
+support this claim by inspecting the Z3 source code.
+
+```
+[push] 0                            // after this at lvl 1
+[assign] (not x1) decision axiom    // decide x1 -> false
+[assign] x4 clause 2 1              // propagate x4 -> true due to clause (or x1 x4)
+[push] 1                            // after this at lvl 2
+[assign] (not x8) decision axiom    // decide x8 -> false
+[assign] x12 clause 5 3 1           // propagate x12 -> true due to clause (or x1 x8 x12)
+```
+
+The function below shows the Z3-function `trace_assign` (in `src > smt > smt_context_pp.cpp` at line 676-686 of [Z3 version 4.13.0](https://github.com/Z3Prover/z3)) that prints out the `[assign]`-lines in the log:
 
 ```cpp
-// in src > smt > smt_context_pp.cpp at lin 676-686:
+// in src > smt > smt_context_pp.cpp at line 676-686:
     void context::trace_assign(literal l, b_justification j, bool decision) const {
         SASSERT(m.has_trace_stream());
         std::ostream & out = m.trace_stream();
@@ -128,8 +166,10 @@ Note that only the `[assign]` lines where the literal is followed by `decision` 
     }
 ```
 
+This function is called in the Z3-function `assign_core` (in src > smt > smt_context.cpp at line 270-299 of [Z3 version 4.13.0](https://github.com/Z3Prover/z3)).
+
 ```cpp
-// in src > smt > smt_context.cpp at lin 270-299:
+// in src > smt > smt_context.cpp at line 270-299:
     void context::assign_core(literal l, b_justification j, bool decision) {
         m_assigned_literals.push_back(l);
         m_assignment[l.index()]    = l_true;
@@ -162,9 +202,7 @@ Note that only the `[assign]` lines where the literal is followed by `decision` 
     }
 ```
 
-## Shortcoming/To-Do
 
-The current code does not yet support the `[decide-and-or]`-line cases in Z3 logs. These seem to be connected with case splits that Z3 does during a solver run.
 
 
 

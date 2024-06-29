@@ -6,6 +6,7 @@
 - [Introduction](#introduction)
 - [Running example](#running-example)
 - [CDCL search in the log](#cdcl-search-in-the-log)
+- [Going more general](#going-more-general)
 - [Shortcomings and Assumptions](#shortcomings-and-assumptions)
 - [Appendix A](#appendix-a)
 
@@ -135,14 +136,76 @@ Therefore, we always denote on what search path the propagations happen in the C
 
 ![image](https://github.com/viperproject/axiom-profiler-2/assets/23278394/feec612a-6c3e-4433-95bf-47c84e6c8510)
 
-> **Note:** Our example only involves propositional logic to keep it simple but the CDCL search is also used in the general case involving predicate logic. In that case, Z3 performs CDCL(T) on a propositional abstraction of the
-> input formulas (see [here](https://z3prover.github.io/papers/z3internals.html#back-fn-unitremove) and [here](http://homepage.divms.uiowa.edu/~ajreynol/pres-dpllt15.pdf)).  
+## Going more General
+
+The example we have considered so far only involves propositional logic to keep it simple but the CDCL search is also used in the general case involving predicate logic. In that case, Z3 performs CDCL(T) on a propositional abstraction 
+of the input formulas (see [here](https://z3prover.github.io/papers/z3internals.html#back-fn-unitremove) and [here](http://homepage.divms.uiowa.edu/~ajreynol/pres-dpllt15.pdf)). We will use a simple example to illustrate this:
+
+```
+(declare-const x (List Int))
+(declare-const y Int)
+(assert (and (or (= (+ (head x) 3) y) (= x (insert (+ y 1) nil))) (> (head x) (+ y 1))))
+; more readable:
+; ((head(x)+3 = y) or (x = insert(y+1, nil))) and (head(x) > y+1)
+; <=> (A or B) and C where
+; A: (head(x)+3 = y)
+; B: (x = insert(y+1, nil))
+; C: (head(x) > y+1)
+
+(check-sat)
+```
+
+Notice that we have denoted above the clause `(A or B) and C` as the propositional abstraction of the input formula.
+If we pass this smt2-problem to Z3 and pretty-print the log we get
+
+```
+[assign] 1+y = head(insert(1+y, nil)) justification 7: at lvl 0
+[assign] nil = tail(insert(1+y, nil)) justification 7: at lvl 0
+[assign] not (head(x) - y <= 1) justification -1: at lvl 0
+[assign] not (head(x) - y <= -3) justification -1: -8 at lvl 0
+[assign] head(x) - y >= -3 justification -1: -8 at lvl 0
+[assign] not (-3 = head(x) - y) clause -2 3 at lvl 0
+[push] 0
+[assign] not (x = insert(1+y, nil)) decision axiom at lvl 1        // decision B -> false made here 
+[assign] head(x) - y = -3 clause 1 7 at lvl 1                      // propagation A -> true happens here
+[conflict] not (head(x) - y = -3) at lvl 1                         // learned clause not A
+[pop] 1 1
+[assign] not (head(x) - y = -3) justification -1: at lvl 0
+[assign] x = insert(1+y, nil) clause 7 1 at lvl 0
+[assign] head(x) = 1+y justification -1: 5 7 at lvl 0
+[assign] head(x) - (1+y) <= 0 justification -1: 9 at lvl 0
+[assign] head(x) - (1+y) >= 0 justification -1: 9 at lvl 0
+```
+
+Notice that Z3 does a case split on `(A or B)` by setting `B`, i.e., `(x = insert(y+1, nil))`, to `false`. The clause `(A or B)` propagates `true` to `A`.
+Subsequently, we obtain a conflict because of the decision of setting `B` to `false` and hence we add the learned clause `not A`, i.e., `not (head(x)+3 = y)`.
+
+Unlike in the previous example, here we also have lines of the form `[assign] ... justification ...`. These are, however, not directly relevant to the structure 
+of the CDCL graph, i.e., to construct the CDCL graph in AP2, only the following log-lines are relevant:
+
+```
+[assign] not (-3 = head(x) - y) clause -2 3 at lvl 0
+[push] 0
+[assign] not (x = insert(1+y, nil)) decision axiom at lvl 1        // decision B -> false made here 
+[assign] head(x) - y = -3 clause 1 7 at lvl 1                      // propagation A -> true happens here
+[conflict] not (head(x) - y = -3) at lvl 1                         // learned clause not A
+[pop] 1 1
+[assign] x = insert(1+y, nil) clause 7 1 at lvl 0
+```
+
+Note that the first `[assign]`-line contains a propagation that is not due to a previous decision. Therefore, it is ignored. Likewise, the last `[assign]`-line contains a propagation
+that is not preceded by any decision coming after the conflicting decision and hence also ignored. In the code, this is accomplished by backtracking to the last decision made at the 
+current level after detecting a `[conflict]`. In this case, once we arrive at the last `[assign]`-line, we are at level `0` (as `[pop] 1 1` puts us back to level `1-1 = 0`) but as 
+there are no decisions at level 0 (in fact there is only one decision overall at level `1`) its last decision made is `None`.
+
+> **Note**: This implicitly assumes that the most recent decision made at the correct backtracking level of the CDCL tree is the right decision to backtrack to. I do not know if it
+> is possible that there are multiple decisions at the same correct backtracking level and if we hence have to disambiguate/identify the correct decision to backtrack to.
 
 ## Shortcomings and Assumptions
 
 The current code does not yet support the `[decide-and-or]`-line cases in Z3 logs. These seem to be connected with case splits that Z3 does during a solver run.
-The current code stores in each decision the preceding decisions and backtracks to the last decision made at the level to which we backtrack. I do not know if 
-this is a valid assumption.
+
+See previous section for an assumption.
 
 ## Appendix A
 

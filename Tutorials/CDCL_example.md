@@ -1,10 +1,13 @@
 # CDCL graph
 
 ## Table of Contents
+- [Introduction](#introduction)
 - [Running example](#running-example)
 - [CDCL search in the log](#cdcl-search-in-the-log)
 - [Shortcomings and Assumptions](#shortcomings-and-assumptions)
 - [Appendix A](#appendix-a)
+
+## Introduction
 
 According to [the Z3 docs](https://z3prover.github.io/papers/programmingz3.html#simple-cdclt), Z3 uses [CDCL](https://en.wikipedia.org/wiki/Conflict-driven_clause_learning)
 to solve the SAT problem. In this tutorial, we aim to use [this Wikipedia example](https://en.wikipedia.org/wiki/Conflict-driven_clause_learning#Example)
@@ -39,8 +42,8 @@ We can encode the example from Wikipedia using smt2-syntax as follows:
 (get-model)
 ```
 
-We will first show a potential solver run of Z3 using CDCL to explain the concept of the CDCL graph. Then, we will explain how all the information needed to construct the CDCL graph
-automatically from the log-files can be extracted.
+We will first show a potential solver run of Z3 using CDCL to explain the concept of the CDCL graph. Then, we will explain how we can extract all the information needed to construct the CDCL graph
+automatically from the log-files.
 
 ## Running example
 

@@ -20,7 +20,7 @@ wasm-bindgen-futures = "0.4.38"
 yew-router = "0.17.0"
 scraper = "0.17.1"
 getrandom = { version = "0.2", features = ["js"] }
-smt-log-parser = { path = "../smt-log-parser", features = ["never_panic", "serde"] }
+smt-log-parser = { path = "../smt-log-parser", features = ["display_html", "never_panic", "serde"] }
 petgraph = "0.6.4"
 viz-js = "3.1.0"
 wasm-streams = "0.4.0"

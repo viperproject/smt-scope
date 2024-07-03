@@ -23,6 +23,7 @@ mem_dbg = { version = "0.1.8", features = ["std", "derive"], default-features = 
 regex = { version = "1.10", optional = true }
 # For the command line interface
 clap = { version = "4.5.4", features = ["derive"] }
+ammonia = { version = "4.0.0", optional = true }
 
 [dev-dependencies]
 memory-stats = "1.1.0"
@@ -32,6 +33,7 @@ smt-log-parser = { path = ".", features = ["mem_dbg"] }
 [features]
 default = ["display", "analysis"]
 display = ["dep:regex"]
+display_html = ["dep:ammonia"]
 analysis = []
 # Tries to catch memory allocation errors, in some cases spends some extra time with test allocations
 # when a crate doesn't support `try_reserve`. Currently some panics may still happen.

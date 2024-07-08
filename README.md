@@ -38,9 +38,7 @@ Similarly, if you have a log file which takes too long to load into the Axiom Pr
 
 To obtain a Z3 log with Boogie, use e.g:
 
-    boogie /vcsCores:1 /z3opt:trace=true /z3opt:PROOF=true ./file.bpl
-
-Note that you may also want to pass the /vcsCores:1 option to disable concurrency (since otherwise many Z3 instances may write to the same file)
+    boogie /vcsCores:1 /proverOpt:O:trace=true /proverOpt:O:proof=true ./file.bpl
 
 ### Silicon
 
@@ -63,7 +61,7 @@ in Windows command prompt.
 To obtain a Z3 log with the Viper verification condition generation verifier (Carbon), use e.g:
 
     carbon --print ./file.bpl ./file.vpr
-    boogie /vcsCores:1 /z3opt:trace=true /z3opt:proof=true ./file.bpl
+    boogie /vcsCores:1 /proverOpt:O:trace=true /proverOpt:O:proof=true ./file.bpl
 
 In all cases, the Z3 log should be stored in `./z3.log` (this can also be altered by correspondingly passing z3 the trace-file-name option described above)
 

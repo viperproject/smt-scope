@@ -87,17 +87,17 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
 
     instantiations_occurrances.sort_by(|l: &(i32, &str), r: &(i32, &str)| Ord::cmp(&r.0, &l.0));
 
-    println!("no-enodes: {}", no_enodes);
-    println!("no-given-equalities: {}", no_geqs);
-    println!("no-trans-equalities: {}", no_treqs);
-    println!("no-instantiations: {}", no_insts);
-    println!("no-mbqi-instantiations: {}", no_mbqi);
-    println!("no-theory-solving-instantiations: {}", no_theory_solving);
-    println!("no-axioms-instantiations: {}", no_axioms);
-    println!("no-quantifiers-instantiations: {}", no_quantifiers);
-    println!("nodes-count: {}", inst_graph.raw.graph.node_count());
-
-    println!("top-instantiations=");
+    // println!("no-enodes: {}", no_enodes);
+    // println!("no-given-equalities: {}", no_geqs);
+    // println!("no-trans-equalities: {}", no_treqs);
+    // println!("no-instantiations: {}", no_insts);
+    // println!("no-mbqi-instantiations: {}", no_mbqi);
+    // println!("no-theory-solving-instantiations: {}", no_theory_solving);
+    // println!("no-axioms-instantiations: {}", no_axioms);
+    // println!("no-quantifiers-instantiations: {}", no_quantifiers);
+    // println!("nodes-count: {}", inst_graph.raw.graph.node_count());
+    // println!("top-instantiations=");
+    
     let iter = instantiations_occurrances.iter();
     match top_k {
         None => {

@@ -591,7 +591,7 @@ impl Z3LogParser for Z3Parser {
         // `[new-match]`). We can try to remove the `can_duplicate` in the future.
         let iidx =
             self.insts
-                .new_inst(fingerprint, inst, self.version_info.is_version(4, 12, 2))?;
+                .new_inst(fingerprint, inst, true)?;
         self.inst_stack.try_reserve(1)?;
         self.inst_stack.push((iidx, Vec::new()));
         Ok(())

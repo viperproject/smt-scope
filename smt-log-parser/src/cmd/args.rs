@@ -32,6 +32,11 @@ pub enum Commands {
         #[arg(short)]
         k: Option<usize>,
     },
+    /// Check for overlapping subsets of instantiations in a file
+    Subsets {
+        /// The path to the smt log file
+        logfile: std::path::PathBuf,
+    },
     /// Tests the parser and analysis, printing out timing information
     Test {
         /// The paths to the smt log files

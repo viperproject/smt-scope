@@ -2,6 +2,7 @@ mod args;
 #[cfg(feature = "analysis")]
 mod dependencies;
 mod stats;
+mod subsets;
 mod test;
 
 use clap::Parser;
@@ -16,6 +17,7 @@ pub fn run() -> Result<(), String> {
         } => dependencies::run(logfile, depth, pretty_print)?,
         #[cfg(feature = "analysis")]
         args::Commands::Stats { logfile, k } => stats::run(logfile, k)?,
+        args::Commands::Subsets { logfile } => subsets::run(logfile)?,
         args::Commands::Test { logfiles } => test::run(logfiles)?,
     }
 

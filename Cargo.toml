@@ -2,6 +2,7 @@
 members = [
     "smt-log-parser",
     "axiom-profiler-GUI",
+    "py-axiom-profiler",
 ]
 resolver = "2"
 

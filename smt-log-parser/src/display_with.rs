@@ -251,6 +251,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, Option<QuantIdx>> for TermIdx {
         ctxt: &DisplayCtxt<'_>,
         quant: &mut Option<QuantIdx>,
     ) -> fmt::Result {
+        assert!(quant.is_none());
         let mut data = DisplayData::new(self);
         if let Some(quant) = quant {
             data.with_quant(&ctxt.parser[*quant], |data| {

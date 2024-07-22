@@ -407,8 +407,8 @@ pub struct Equality {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
 pub struct Equalities {
-    pub(crate) given: TiVec<EqGivenIdx, EqualityExpl>,
-    pub(crate) transitive: TiVec<EqTransIdx, TransitiveExpl>,
+    pub given: TiVec<EqGivenIdx, EqualityExpl>,
+    pub transitive: TiVec<EqTransIdx, TransitiveExpl>,
 }
 
 impl Equalities {

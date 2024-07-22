@@ -24,10 +24,10 @@ pub struct Z3Parser {
 
     pub(crate) quantifiers: TiVec<QuantIdx, Quantifier>,
 
-    pub(crate) insts: Insts,
+    pub insts: Insts,
     pub(crate) inst_stack: Vec<(InstIdx, Vec<ENodeIdx>)>,
 
-    pub(crate) egraph: EGraph,
+    pub egraph: EGraph,
     pub(crate) stack: Stack,
 
     pub strings: StringTable,

@@ -321,6 +321,14 @@ impl MatchKind {
             _ => None,
         }
     }
+    pub fn short_description(&self) -> &str {
+        match self {
+            Self::MBQI { .. } => "MBQI",
+            Self::TheorySolving { .. } => "theory-solving",
+            Self::Axiom { .. } => "axiom",
+            Self::Quantifier { .. } => "quantifier",
+        }
+    }
 }
 
 /// The kind of dependency between two quantifier instantiations.

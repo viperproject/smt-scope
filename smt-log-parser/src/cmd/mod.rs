@@ -1,5 +1,7 @@
 mod args;
 #[cfg(feature = "analysis")]
+mod branching;
+#[cfg(feature = "analysis")]
 mod dependencies;
 mod test;
 
@@ -13,6 +15,8 @@ pub fn run() -> Result<(), String> {
             depth,
             pretty_print,
         } => dependencies::run(logfile, depth, pretty_print)?,
+        #[cfg(feature = "analysis")]
+        args::Commands::BranchingAnalysis { logfile } => branching::run(logfile)?,
         args::Commands::Test { logfiles } => test::run(logfiles)?,
     }
 

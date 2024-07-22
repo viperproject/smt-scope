@@ -1,3 +1,35 @@
+**Changes in this branch:**
+
+1. Added command `branching-analysis` for analysing duplicate work that results
+   from Z3 branching. To execute the command, run:
+
+   ```bash
+   cargo build --release
+   target/release/smt-log-parser branching-analysis <path-to-z3-log>
+   ```
+
+   The command will produce two files:
+
+   * `report-duplicate-instances.csv` – a CSV file that shows terms that were
+     derived by Z3 more than once (two terms are considered the same if pretty
+     printing produces the same string) and instantiations from the Z3 log that
+     generated them.
+   * `instantiate_duplicates.smt2` – an SMT2 file containing the terms to
+     trigger the quantifiers at the top level. By inserting the terms before
+     the problematic check-sat one can check the performance degradation caused
+     by the duplicated quantifier instantiations. Note: the generated terms can
+     trigger only the instantiation of user-defined quantifiers; I have not
+     found yet a way to force Z3 to precompute the theory work.
+
+2. Added Python bindings `py-axiom-profiler` (see `README.md` inside the
+   corresponding directory).
+
+Observations:
+
+1. It is not clear how to reliably preinstantiate quantifiers. If the
+   triggering term is more complex than a single fuction application, Z3 may
+   instantiate the quantifier anyway learning no new information.
+
 # Axiom Profiler 2.0
 
 [Runs online](https://viperproject.github.io/axiom-profiler-2/)

@@ -1,0 +1,16 @@
+[package]
+name = "py-axiom-profiler"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+name = "axiom_profiler"
+
+[dependencies]
+pyo3 = { version = "0.15", features = ["extension-module"] }
+smt-log-parser = { path = "../smt-log-parser", features = ["display_html", "never_panic", "serde"] }
+fxhash = "0.2"
+
+[dev-dependencies]
+maturin = "0.12"

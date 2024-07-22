@@ -23,6 +23,12 @@ pub enum Commands {
         #[arg(short, long, default_value_t = false)]
         pretty_print: bool,
     },
+    #[cfg(feature = "analysis")]
+    /// Analyses what work is redone on branches.
+    BranchingAnalysis {
+        /// The path to the smt log file
+        logfile: std::path::PathBuf,
+    },
     /// Tests the parser and analysis, printing out timing information
     Test {
         /// The paths to the smt log files

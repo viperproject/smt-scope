@@ -8,7 +8,7 @@ use smt_log_parser::{
     LogParser, Z3Parser,
 };
 
-pub fn run(logfile: PathBuf, depth: u32, pretty_print: bool) -> Result<(), String> {
+pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(), String> {
     let path = std::path::Path::new(&logfile);
     let filename = path
         .file_name()
@@ -24,7 +24,7 @@ pub fn run(logfile: PathBuf, depth: u32, pretty_print: bool) -> Result<(), Strin
     let inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
     let (total, axiom_deps) = build_axiom_dependency_graph(&parser, &inst_graph);
 
-    if depth == 1 {
+    if depth.is_some_and(|depth| depth == 1) {
         // TODO: deduplicate
         for (axiom, (count, deps)) in axiom_deps {
             let percentage = 100.0 * count as f64 / total as f64;
@@ -56,8 +56,14 @@ pub fn run(logfile: PathBuf, depth: u32, pretty_print: bool) -> Result<(), Strin
         .into_iter()
         .map(|(k, (count, v))| (k, (count, v.into_keys().collect::<FxHashSet<_>>())))
         .collect::<FxHashMap<_, _>>();
-    for _ in 1..depth {
-        extend_by_transitive_deps(&mut axiom_deps);
+
+    match depth {
+        Some (depth) =>
+            for _ in 1..depth {
+                extend_by_transitive_deps(&mut axiom_deps);
+            }
+        None =>
+            while extend_by_transitive_deps(&mut axiom_deps) {}
     }
 
     for (axiom, (count, deps)) in axiom_deps {
@@ -139,8 +145,10 @@ fn build_axiom_dependency_graph<'a>(
 }
 
 /// Extends the dependency graph by 1 transitive step
-fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, (usize, FxHashSet<&str>)>) {
+fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, (usize, FxHashSet<&str>)>) -> bool {
     let old_deps = axiom_deps.clone();
+    let old_cnt : FxHashMap<&str, usize> =
+        axiom_deps.iter().map(|(name, (_, deps))| (*name, deps.len())).collect();
     for (axiom, (_, deps)) in &old_deps {
         for dep in deps {
             if let Some((_, extended_deps)) = old_deps.get(dep) {
@@ -148,4 +156,15 @@ fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, (usize, FxHashSet<
             }
         }
     }
+
+    let mut any_changes = false;
+    for (k,(_, elts)) in axiom_deps.iter() {
+        let old_cnt = old_cnt[k];
+        if old_cnt != elts.len() {
+            any_changes = true;
+            break;
+        }
+    }
+    any_changes
 }
+

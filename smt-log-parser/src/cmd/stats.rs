@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use smt_log_parser::{analysis::InstGraph, items::Match, LogParser, Z3Parser};
+use smt_log_parser::{analysis::InstGraph, LogParser, Z3Parser};
 
 pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
     let path = std::path::Path::new(&logfile);
@@ -26,21 +26,21 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
 
         for (_inst_id, inst) in parser.instantiations() {
             match &parser[inst.match_].kind {
-                smt_log_parser::items::MatchKind::MBQI { quant, bound_terms } => no_mbqi += 1,
+                smt_log_parser::items::MatchKind::MBQI { quant: _, bound_terms: _ } => no_mbqi += 1,
                 smt_log_parser::items::MatchKind::TheorySolving {
-                    axiom_id,
-                    bound_terms,
-                    rewrite_of,
+                    axiom_id: _,
+                    bound_terms: _,
+                    rewrite_of: _,
                 } => no_theory_solving += 1,
                 smt_log_parser::items::MatchKind::Axiom {
-                    axiom,
-                    pattern,
-                    bound_terms,
+                    axiom: _,
+                    pattern: _,
+                    bound_terms: _,
                 } => no_axioms += 1,
                 smt_log_parser::items::MatchKind::Quantifier {
-                    quant,
-                    pattern,
-                    bound_terms,
+                    quant: _,
+                    pattern: _,
+                    bound_terms: _,
                 } => no_quantifiers += 1,
             }
         }

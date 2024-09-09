@@ -157,7 +157,7 @@ impl Component for SplitDiv {
             middle_width * position
         );
 
-        let style_middle = format!("width:{}px; height:100%; cursor:ew-resize; background-color:rgb(229, 231, 235); background-repeat:no-repeat; background-position:50% center; background-image:url(\"/html/vertical.png\");", middle_width);
+        let style_middle = format!("width:{}px; height:100%; cursor:ew-resize; background-color:rgb(229, 231, 235); background-repeat:no-repeat; background-position:50% center; background-image:url(\"html/vertical.png\");", middle_width);
 
         let inverse = 1.0 - position;
         let style_right = format!(

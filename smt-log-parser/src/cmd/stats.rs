@@ -26,7 +26,10 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
 
         for (_inst_id, inst) in parser.instantiations() {
             match &parser[inst.match_].kind {
-                smt_log_parser::items::MatchKind::MBQI { quant: _, bound_terms: _ } => no_mbqi += 1,
+                smt_log_parser::items::MatchKind::MBQI {
+                    quant: _,
+                    bound_terms: _,
+                } => no_mbqi += 1,
                 smt_log_parser::items::MatchKind::TheorySolving {
                     axiom_id: _,
                     bound_terms: _,

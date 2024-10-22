@@ -58,12 +58,12 @@ pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(
         .collect::<FxHashMap<_, _>>();
 
     match depth {
-        Some (depth) =>
+        Some(depth) => {
             for _ in 1..depth {
                 extend_by_transitive_deps(&mut axiom_deps);
             }
-        None =>
-            while extend_by_transitive_deps(&mut axiom_deps) {}
+        }
+        None => while extend_by_transitive_deps(&mut axiom_deps) {},
     }
 
     for (axiom, (count, deps)) in axiom_deps {
@@ -147,8 +147,10 @@ fn build_axiom_dependency_graph<'a>(
 /// Extends the dependency graph by 1 transitive step
 fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, (usize, FxHashSet<&str>)>) -> bool {
     let old_deps = axiom_deps.clone();
-    let old_cnt : FxHashMap<&str, usize> =
-        axiom_deps.iter().map(|(name, (_, deps))| (*name, deps.len())).collect();
+    let old_cnt: FxHashMap<&str, usize> = axiom_deps
+        .iter()
+        .map(|(name, (_, deps))| (*name, deps.len()))
+        .collect();
     for (axiom, (_, deps)) in &old_deps {
         for dep in deps {
             if let Some((_, extended_deps)) = old_deps.get(dep) {
@@ -158,7 +160,7 @@ fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, (usize, FxHashSet<
     }
 
     let mut any_changes = false;
-    for (k,(_, elts)) in axiom_deps.iter() {
+    for (k, (_, elts)) in axiom_deps.iter() {
         let old_cnt = old_cnt[k];
         if old_cnt != elts.len() {
             any_changes = true;
@@ -167,4 +169,3 @@ fn extend_by_transitive_deps(axiom_deps: &mut FxHashMap<&str, (usize, FxHashSet<
     }
     any_changes
 }
-

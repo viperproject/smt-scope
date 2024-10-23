@@ -8,9 +8,11 @@ use smt_log_parser::{
 
 pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(), String> {
     let parser = super::run_on_logfile(logfile)?;
-    let inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
+    let mut inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
+    inst_graph.initialise_inst_succs_and_preds(&parser);
+
     let qanalysis = QuantifierAnalysis::new(&parser, &inst_graph);
-    let total_insts = parser.instantiations().len();
+    let total_costs = qanalysis.total_costs();
     fn get_quant_name(parser: &Z3Parser, qidx: QuantIdx) -> Option<&str> {
         parser[qidx].kind.user_name().map(|name| &parser[name])
     }
@@ -21,7 +23,7 @@ pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(
             let Some(name) = get_quant_name(&parser, qidx) else {
                 continue;
             };
-            let percentage = (100.0 * info.instantiations as f64) / total_insts as f64;
+            let percentage = (100.0 * info.costs) / total_costs as f64;
             let total = info.direct_deps.values().sum::<u32>() as f64;
             let named = || {
                 info.direct_deps.iter().flat_map(|(ddep, count)| {
@@ -29,11 +31,15 @@ pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(
                 })
             };
             if pretty_print {
-                println!(
-                    "axiom {name} ({percentage:.1}%) depends on {} axioms, of those {} are named:",
-                    info.direct_deps.len(),
-                    named().count()
-                );
+                let named_count = named().count();
+                if info.direct_deps.len() == named_count {
+                    println!("axiom {name} ({percentage:.1}%) depends on {named_count} axioms:");
+                } else {
+                    println!(
+                        "axiom {name} ({percentage:.1}%) depends on {} axioms, of those {named_count} are named:",
+                        info.direct_deps.len(),
+                    );
+                }
                 for (dep, count) in named() {
                     let percentage = 100.0 * count as f64 / total;
                     println!(" - {dep} ({percentage:.1}%)");
@@ -45,12 +51,16 @@ pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(
                         format!("{dep} ({percentage:.1}%)")
                     })
                     .collect();
-                println!(
-                    "{name} ({percentage:.1}%), {}/{} -> {}",
-                    deps.len(),
-                    info.direct_deps.len(),
-                    deps.join(", ")
-                );
+                let named_count = deps.len();
+                if info.direct_deps.len() == named_count {
+                    println!("{name} ({percentage:.1}%) -> {}", deps.join(", "));
+                } else {
+                    println!(
+                        "{name} ({percentage:.1}%), {named_count}/{} named -> {}",
+                        info.direct_deps.len(),
+                        deps.join(", ")
+                    );
+                }
             }
         }
         return Ok(());
@@ -63,7 +73,7 @@ pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(
         let Some(name) = get_quant_name(&parser, qidx) else {
             continue;
         };
-        let percentage = (100.0 * info.instantiations as f64) / total_insts as f64;
+        let percentage = (100.0 * info.costs as f64) / total_costs as f64;
         let named = || deps.iter().flat_map(|ddep| get_quant_name(&parser, *ddep));
         if pretty_print {
             println!(

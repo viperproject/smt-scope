@@ -11,8 +11,9 @@ pub struct QuantifierAnalysis(TiVec<QuantIdx, QuantifierInfo>);
 
 #[derive(Default, Clone)]
 pub struct QuantifierInfo {
-    /// How many times was this quantifier instantiated.
-    pub instantiations: u32,
+    /// How much total cost did this quantifier accrue from individual
+    /// instantiations.
+    pub costs: f64,
     /// How many times does an instantiation of this quantifier depend on an
     /// instantiation of the other quantifier.
     pub direct_deps: FxHashMap<QuantIdx, u32>,
@@ -28,6 +29,8 @@ impl Deref for QuantifierAnalysis {
 }
 
 impl QuantifierAnalysis {
+    /// Calculate the analysis. Make sure that you have run
+    /// `initialise_inst_succs_and_preds` on the `inst_graph`!
     pub fn new(parser: &Z3Parser, inst_graph: &InstGraph) -> Self {
         let mut self_ = Self(
             parser
@@ -42,8 +45,8 @@ impl QuantifierAnalysis {
                 continue;
             };
             let qinfo = &mut self_.0[qidx];
-            qinfo.instantiations += 1;
             let ginst = &inst_graph.raw[iidx];
+            qinfo.costs += ginst.cost;
             for &parent_iidx in &ginst.inst_parents.nodes {
                 let parent_inst = &parser.insts[parent_iidx];
                 let parent_match_ = &parser.insts[parent_inst.match_];
@@ -54,6 +57,10 @@ impl QuantifierAnalysis {
             }
         }
         self_
+    }
+
+    pub fn total_costs(&self) -> f64 {
+        self.iter().map(|info| info.costs).sum()
     }
 
     pub fn calculate_transitive(&self, mut steps: Option<u32>) -> TransQuantAnalaysis {

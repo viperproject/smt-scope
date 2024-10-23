@@ -1,5 +1,6 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
+use typed_index_collections::TiSlice;
 
 use crate::{
     items::*,
@@ -636,11 +637,11 @@ impl Z3Parser {
         (self.quantifiers.len(), self.insts.has_theory_solving_inst())
     }
 
-    pub fn quantifiers(&self) -> impl Iterator<Item = (QuantIdx, &Quantifier)> {
-        self.quantifiers.iter_enumerated()
+    pub fn quantifiers(&self) -> &TiSlice<QuantIdx, Quantifier> {
+        &self.quantifiers
     }
-    pub fn instantiations(&self) -> impl Iterator<Item = (InstIdx, &Instantiation)> {
-        self.insts.insts.iter_enumerated()
+    pub fn instantiations(&self) -> &TiSlice<InstIdx, Instantiation> {
+        &self.insts.insts
     }
 }
 

@@ -1,0 +1,96 @@
+use std::{cmp::Ordering, ops::Deref};
+
+use fxhash::FxHashSet;
+
+use crate::{items::QuantIdx, FxHashMap, TiVec, Z3Parser};
+
+use super::InstGraph;
+
+#[derive(Clone)]
+pub struct QuantifierAnalysis(TiVec<QuantIdx, QuantifierInfo>);
+
+#[derive(Default, Clone)]
+pub struct QuantifierInfo {
+    /// How many times was this quantifier instantiated.
+    pub instantiations: u32,
+    /// How many times does an instantiation of this quantifier depend on an
+    /// instantiation of the other quantifier.
+    pub direct_deps: FxHashMap<QuantIdx, u32>,
+}
+
+type TransQuantAnalaysis = TiVec<QuantIdx, FxHashSet<QuantIdx>>;
+
+impl Deref for QuantifierAnalysis {
+    type Target = TiVec<QuantIdx, QuantifierInfo>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl QuantifierAnalysis {
+    pub fn new(parser: &Z3Parser, inst_graph: &InstGraph) -> Self {
+        let mut self_ = Self(
+            parser
+                .quantifiers
+                .iter()
+                .map(|_| QuantifierInfo::default())
+                .collect(),
+        );
+        for (iidx, inst) in parser.insts.insts.iter_enumerated() {
+            let match_ = &parser.insts[inst.match_];
+            let Some(qidx) = match_.kind.quant_idx() else {
+                continue;
+            };
+            let qinfo = &mut self_.0[qidx];
+            qinfo.instantiations += 1;
+            let ginst = &inst_graph.raw[iidx];
+            for &parent_iidx in &ginst.inst_parents.nodes {
+                let parent_inst = &parser.insts[parent_iidx];
+                let parent_match_ = &parser.insts[parent_inst.match_];
+                let Some(parent_qidx) = parent_match_.kind.quant_idx() else {
+                    continue;
+                };
+                *qinfo.direct_deps.entry(parent_qidx).or_default() += 1;
+            }
+        }
+        self_
+    }
+
+    pub fn calculate_transitive(&self, mut steps: Option<u32>) -> TransQuantAnalaysis {
+        let mut initial = self
+            .iter()
+            .map(|info| info.direct_deps.keys().copied().collect())
+            .collect();
+        while !steps.is_some_and(|steps| steps == 0) {
+            if !self.calculate_transitive_one(&mut initial) {
+                break;
+            }
+            if let Some(steps) = &mut steps {
+                *steps -= 1;
+            }
+        }
+        initial
+    }
+    fn calculate_transitive_one(&self, analysis: &mut TransQuantAnalaysis) -> bool {
+        let mut changed = false;
+        for (idx, info) in self.iter_enumerated() {
+            for &ddep in info.direct_deps.keys() {
+                let (curr, ddep) = match idx.cmp(&ddep) {
+                    Ordering::Less => {
+                        let (left, right) = analysis.split_at_mut(ddep);
+                        (&mut left[idx], right.first().unwrap())
+                    }
+                    Ordering::Greater => {
+                        let (left, right) = analysis.split_at_mut(idx);
+                        (right.first_mut().unwrap(), &left[ddep])
+                    }
+                    Ordering::Equal => continue,
+                };
+                let old_len = curr.len();
+                curr.extend(ddep);
+                changed |= old_len != curr.len();
+            }
+        }
+        changed
+    }
+}

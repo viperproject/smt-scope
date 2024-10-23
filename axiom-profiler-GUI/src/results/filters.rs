@@ -141,7 +141,15 @@ impl Filter {
                 let nodes_of_nth_matching_loop = graph
                     .raw
                     .node_indices()
-                    .filter(|nx| graph.raw[*nx].part_of_ml.contains(&n))
+                    .flat_map(|nx| {
+                        let node = &graph.raw[nx];
+                        match *node.kind() {
+                            NodeKind::Instantiation(iidx) => {
+                                node.part_of_ml.contains(&n).then_some(iidx)
+                            }
+                            _ => None,
+                        }
+                    })
                     .collect::<fxhash::FxHashSet<_>>();
                 let relevant_non_qi_nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nth_ml_endnode.0)
                     .iter(graph.raw.rev())

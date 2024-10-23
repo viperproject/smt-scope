@@ -115,6 +115,11 @@ impl<K, V> Default for TiVec<K, V> {
         Self(typed_index_collections::TiVec::default())
     }
 }
+impl<K, V> FromIterator<V> for TiVec<K, V> {
+    fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
+        Self(typed_index_collections::TiVec::from_iter(iter))
+    }
+}
 
 // FxHashMap
 
@@ -122,6 +127,11 @@ derive_wrapper!(fxhash::FxHashMap<K, V>);
 impl<K, V> Default for FxHashMap<K, V> {
     fn default() -> Self {
         Self(fxhash::FxHashMap::default())
+    }
+}
+impl<K: Eq + std::hash::Hash, V> FromIterator<(K, V)> for FxHashMap<K, V> {
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        Self(fxhash::FxHashMap::from_iter(iter))
     }
 }
 

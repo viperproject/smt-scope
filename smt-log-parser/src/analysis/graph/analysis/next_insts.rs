@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use petgraph::Direction;
 
 use crate::{
@@ -37,9 +35,7 @@ impl<C: NextInstsInitialiser<FORWARD>, const FORWARD: bool> Initialiser<FORWARD,
         }
     }
     fn base(&mut self, _node: &Node, _parser: &Z3Parser) -> Self::Value {
-        NextInsts {
-            nodes: HashSet::default(),
-        }
+        NextInsts::default()
     }
     fn assign(&mut self, node: &mut Node, value: Self::Value) {
         if FORWARD {
@@ -68,25 +64,9 @@ impl<C: NextInstsInitialiser<FORWARD>, const FORWARD: bool> TransferInitialiser<
     }
     fn add(&mut self, node: &mut Node, value: Self::Value) {
         if FORWARD {
-            node.inst_parents = NextInsts {
-                nodes: node
-                    .inst_parents
-                    .nodes
-                    .iter()
-                    .cloned()
-                    .chain(value.nodes.iter().cloned())
-                    .collect(),
-            };
+            node.inst_parents.nodes.extend(value.nodes);
         } else {
-            node.inst_children = NextInsts {
-                nodes: node
-                    .inst_children
-                    .nodes
-                    .iter()
-                    .cloned()
-                    .chain(value.nodes.iter().cloned())
-                    .collect(),
-            };
+            node.inst_children.nodes.extend(value.nodes);
         }
     }
 }
@@ -94,28 +74,20 @@ impl<C: NextInstsInitialiser<FORWARD>, const FORWARD: bool> TransferInitialiser<
 pub struct DefaultNextInsts<const FORWARD: bool>;
 impl<const FORWARD: bool> NextInstsInitialiser<FORWARD> for DefaultNextInsts<FORWARD> {
     fn base(&mut self, _node: &Node, _parser: &Z3Parser) -> NextInsts {
-        NextInsts {
-            nodes: HashSet::default(),
-        }
+        NextInsts::default()
     }
-    type Observed = NextInsts;
-    fn observe(&mut self, node: &Node, _parser: &Z3Parser) -> Self::Observed {
-        if FORWARD {
-            node.inst_parents.clone()
-        } else {
-            node.inst_children.clone()
-        }
-    }
+    type Observed = ();
+    fn observe(&mut self, _node: &Node, _parser: &Z3Parser) -> Self::Observed {}
     fn transfer(
         &mut self,
         node: &Node,
-        from_idx: RawNodeIndex,
+        _from_idx: RawNodeIndex,
         _idx: usize,
         _incoming: &[Self::Observed],
     ) -> NextInsts {
-        let value = match node.kind() {
-            NodeKind::Instantiation(_) => NextInsts {
-                nodes: std::iter::once(from_idx).collect(),
+        match *node.kind() {
+            NodeKind::Instantiation(iidx) => NextInsts {
+                nodes: std::iter::once(iidx).collect(),
             },
             _ => {
                 if FORWARD {
@@ -124,7 +96,6 @@ impl<const FORWARD: bool> NextInstsInitialiser<FORWARD> for DefaultNextInsts<FOR
                     node.inst_children.clone()
                 }
             }
-        };
-        value
+        }
     }
 }

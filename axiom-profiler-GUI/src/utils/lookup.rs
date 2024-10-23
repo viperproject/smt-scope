@@ -76,7 +76,7 @@ pub type StringLookupZ3 = StringLookup<FxHashMap<Kind, Entry>>;
 impl StringLookupZ3 {
     pub fn init(parser: &Z3Parser) -> Self {
         let mut lookup = Self::new();
-        for (idx, instantiation) in parser.instantiations() {
+        for (idx, instantiation) in parser.instantiations().iter_enumerated() {
             let match_ = &parser[instantiation.match_];
             if let Some(quant) = match_.kind.quant_idx() {
                 let name = match &parser[quant].kind {

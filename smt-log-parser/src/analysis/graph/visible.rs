@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     analysis::matching_loop::MIN_MATCHING_LOOP_LENGTH,
-    raw::{EdgeKind, Node, NodeKind},
+    raw::{EdgeKind, IndexesInstGraph, Node, NodeKind},
     InstGraph, RawEdgeIndex, RawNodeIndex,
 };
 
@@ -126,7 +126,8 @@ impl InstGraph {
         for (i, node) in self.raw.graph.node_weights().enumerate() {
             let from = node_index_map[i];
             if from != NodeIndex::end() {
-                for next_inst in node.inst_children.nodes.clone() {
+                for &next_inst in &node.inst_children.nodes {
+                    let next_inst = next_inst.index(&self.raw);
                     let to = node_index_map[next_inst.0.index()];
                     if to != NodeIndex::end() {
                         graph.add_edge(

@@ -313,7 +313,7 @@ pub struct Depth {
 #[derive(Debug, Clone, Default)]
 pub struct NextInsts {
     /// What are the immediate next instantiation nodes
-    pub nodes: FxHashSet<RawNodeIndex>,
+    pub nodes: FxHashSet<InstIdx>,
 }
 
 impl Node {
@@ -325,12 +325,8 @@ impl Node {
             bwd_depth: Depth::default(),
             subgraph: None,
             kind,
-            inst_parents: NextInsts {
-                nodes: FxHashSet::default(),
-            },
-            inst_children: NextInsts {
-                nodes: FxHashSet::default(),
-            },
+            inst_parents: NextInsts::default(),
+            inst_children: NextInsts::default(),
             part_of_ml: FxHashSet::default(),
         }
     }

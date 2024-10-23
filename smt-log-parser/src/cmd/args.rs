@@ -16,7 +16,7 @@ pub enum Commands {
         logfile: std::path::PathBuf,
 
         /// Depth of dependencies to lookup
-        #[arg(short, long)]
+        #[arg(short, long, default_value = "0")]
         depth: Option<u32>,
 
         /// Whether to pretty print the output results

@@ -1,21 +1,9 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use smt_log_parser::{analysis::InstGraph, LogParser, Z3Parser};
+use smt_log_parser::analysis::InstGraph;
 
 pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
-    let path = std::path::Path::new(&logfile);
-    let filename = path
-        .file_name()
-        .map(|f| f.to_string_lossy())
-        .unwrap_or_default();
-
-    if !path.is_file() {
-        return Err(format!("path {filename} did not point to a file"));
-    }
-
-    let (_metadata, parser) = Z3Parser::from_file(path).unwrap();
-
-    let parser = parser.process_all().map_err(|e| e.to_string())?;
+    let parser = super::run_on_logfile(logfile)?;
     let inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
 
     let (no_mbqi, no_theory_solving, no_axioms, no_quantifiers) = {
@@ -24,27 +12,12 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
         let mut no_axioms = 0;
         let mut no_quantifiers = 0;
 
-        for (_inst_id, inst) in parser.instantiations() {
+        for inst in parser.instantiations().iter() {
             match &parser[inst.match_].kind {
-                smt_log_parser::items::MatchKind::MBQI {
-                    quant: _,
-                    bound_terms: _,
-                } => no_mbqi += 1,
-                smt_log_parser::items::MatchKind::TheorySolving {
-                    axiom_id: _,
-                    bound_terms: _,
-                    rewrite_of: _,
-                } => no_theory_solving += 1,
-                smt_log_parser::items::MatchKind::Axiom {
-                    axiom: _,
-                    pattern: _,
-                    bound_terms: _,
-                } => no_axioms += 1,
-                smt_log_parser::items::MatchKind::Quantifier {
-                    quant: _,
-                    pattern: _,
-                    bound_terms: _,
-                } => no_quantifiers += 1,
+                smt_log_parser::items::MatchKind::MBQI { .. } => no_mbqi += 1,
+                smt_log_parser::items::MatchKind::TheorySolving { .. } => no_theory_solving += 1,
+                smt_log_parser::items::MatchKind::Axiom { .. } => no_axioms += 1,
+                smt_log_parser::items::MatchKind::Quantifier { .. } => no_quantifiers += 1,
             }
         }
         (no_mbqi, no_theory_solving, no_axioms, no_quantifiers)
@@ -78,6 +51,7 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
 
         for (name, _) in parser
             .instantiations()
+            .iter_enumerated()
             .filter_map(|(idx, inst)| parser[inst.match_].kind.quant_idx().map(|v| (idx, v)))
             .filter_map(|(idx, quant_id)| {
                 parser[quant_id].kind.user_name().map(|v| (&parser[v], idx))

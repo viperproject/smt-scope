@@ -82,6 +82,7 @@ pub trait Z3LogParser {
     */
     fn version_info<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn mk_quant<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
+    fn mk_lambda<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn mk_var<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn mk_app<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn mk_proof<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
@@ -96,10 +97,6 @@ pub trait Z3LogParser {
     fn push<'a>(&mut self, _l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn pop<'a>(&mut self, _l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn eof(&mut self);
-
-    fn mk_lambda<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()> {
-        self.mk_quant(l)
-    }
 
     // unused in original parser
     fn decide_and_or<'a>(&mut self, _l: impl Iterator<Item = &'a str>) -> Result<()> {

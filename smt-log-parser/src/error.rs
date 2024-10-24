@@ -54,6 +54,8 @@ pub enum Error {
     VarNamesListInconsistent, // attach var names
     VarNamesNoBar,
     UnknownQuantifierIdx(TermIdx),
+    NonNullLambdaName(String),
+    InvalidQVarInteger(ParseIntError),
 
     // Inst discovered
     /// theory-solving non-rewrite axiom should blame valid enodes

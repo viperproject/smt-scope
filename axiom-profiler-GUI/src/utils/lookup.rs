@@ -4,7 +4,7 @@ use fxhash::FxHashMap;
 use nucleo_matcher::{Config, Matcher, Utf32String};
 use smt_log_parser::{
     analysis::{raw::IndexesInstGraph, visible::VisibleInstGraph, InstGraph, RawNodeIndex},
-    items::{ENodeIdx, InstIdx, QuantIdx, QuantKind, TermIdx, TermKind},
+    items::{ENodeIdx, InstIdx, QuantIdx, TermIdx, TermKind},
     Z3Parser,
 };
 
@@ -79,14 +79,9 @@ impl StringLookupZ3 {
         for (idx, instantiation) in parser.instantiations().iter_enumerated() {
             let match_ = &parser[instantiation.match_];
             if let Some(quant) = match_.kind.quant_idx() {
-                let name = match &parser[quant].kind {
-                    QuantKind::Other(name) => Some(name),
-                    QuantKind::Lambda => None,
-                    QuantKind::NamedQuant(name) => Some(name),
-                    QuantKind::UnnamedQuant { .. } => None,
-                };
+                let name = parser[quant].kind.user_name();
                 if let Some(name) = name {
-                    let entry = lookup.get_or_insert_default(&parser[*name]);
+                    let entry = lookup.get_or_insert_default(&parser[name]);
                     let entry = entry.entry(Kind::Quantifier).or_default();
                     entry.references.push(idx);
                     entry.qidx = Some(quant);

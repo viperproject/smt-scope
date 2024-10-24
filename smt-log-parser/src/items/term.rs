@@ -3,7 +3,7 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{Error, FxHashMap, IString, NonMaxU32, Result, StringTable};
 
-use super::{QuantIdx, TermIdx};
+use super::{ProofIdx, QuantIdx, TermIdx};
 
 /// A Z3 term and associated data.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -72,7 +72,7 @@ pub struct TermAndMeaning<'a> {
 pub struct Quantifier {
     pub kind: QuantKind,
     pub num_vars: usize,
-    pub term: Option<TermIdx>,
+    pub term: TermIdx,
     pub vars: Option<VarNames>,
 }
 
@@ -81,8 +81,7 @@ pub struct Quantifier {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub enum QuantKind {
-    Other(IString), // From `[inst-discovered]` with `theory-solving` or `MBQI`
-    Lambda,
+    Lambda(Box<[ProofIdx]>),
     NamedQuant(IString),
     /// Represents a name string of the form `name!id`
     UnnamedQuant {
@@ -96,9 +95,6 @@ impl QuantKind {
     /// 0 is used for identifiers without a number
     /// (usually for theory-solving 'quantifiers' such as "basic#", "arith#")    
     pub(crate) fn parse(strings: &mut StringTable, value: &str) -> Self {
-        if value == "<null>" {
-            return Self::Lambda;
-        }
         let mut split = value.split('!');
         let name = split.next().expect(value);
         split
@@ -110,12 +106,9 @@ impl QuantKind {
             })
             .unwrap_or_else(|| Self::NamedQuant(IString(strings.get_or_intern(value))))
     }
-    pub fn is_discovered(&self) -> bool {
-        matches!(self, Self::Other(_))
-    }
     pub fn user_name(&self) -> Option<IString> {
         match self {
-            Self::NamedQuant(name) | Self::Other(name) => Some(*name),
+            Self::NamedQuant(name) => Some(*name),
             _ => None,
         }
     }

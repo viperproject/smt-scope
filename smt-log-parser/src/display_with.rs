@@ -293,14 +293,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for QuantIdx {
         _data: &mut (),
     ) -> fmt::Result {
         let quant = &ctxt.parser[self];
-        if let Some(term) = quant.term {
-            term.fmt_with(f, ctxt, &mut None)
-        } else {
-            let QuantKind::Other(name) = quant.kind else {
-                panic!()
-            };
-            write!(f, "{}", &ctxt.parser[name])
-        }
+        quant.term.fmt_with(f, ctxt, &mut None)
     }
 }
 
@@ -374,8 +367,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &QuantKind {
         _data: &mut (),
     ) -> fmt::Result {
         match *self {
-            QuantKind::Other(kind) => write!(f, "{}", &ctxt.parser[kind]),
-            QuantKind::Lambda => {
+            QuantKind::Lambda(_) => {
                 if matches!(ctxt.config.replace_symbols, SymbolReplacement::Math) {
                     write!(f, "λ")
                 } else if ctxt.config.html() {
@@ -385,7 +377,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &QuantKind {
                 }
             }
             QuantKind::NamedQuant(name) => write!(f, "{}", &ctxt.parser[name]),
-            QuantKind::UnnamedQuant { name, id } => {
+            QuantKind::UnnamedQuant { name, id, .. } => {
                 write!(f, "{}!{id}", &ctxt.parser[name])
             }
         }

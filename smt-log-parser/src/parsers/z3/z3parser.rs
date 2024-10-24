@@ -80,7 +80,21 @@ impl Z3Parser {
         }
     }
 
-    fn gobble_children<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<Box<[TermIdx]>> {
+    fn gobble_proof_children<'a>(
+        &mut self,
+        l: impl Iterator<Item = &'a str>,
+    ) -> Result<Box<[ProofIdx]>> {
+        l.map(|id| {
+            self.terms
+                .proof_terms
+                .parse_existing_id(&mut self.strings, id)
+        })
+        .collect()
+    }
+    fn gobble_term_children<'a>(
+        &mut self,
+        l: impl Iterator<Item = &'a str>,
+    ) -> Result<Box<[TermIdx]>> {
         l.map(|id| {
             self.terms
                 .app_terms
@@ -239,6 +253,32 @@ impl Z3Parser {
     fn mk_string(&mut self, s: &str) -> Result<IString> {
         Ok(IString(self.strings.try_get_or_intern(s)?))
     }
+
+    fn quant_or_lamda(
+        &mut self,
+        full_id: TermId,
+        child_ids: Box<[TermIdx]>,
+        num_vars: usize,
+        kind: QuantKind,
+    ) -> Result<()> {
+        let qidx = self.quantifiers.next_key();
+        let term = Term {
+            id: Some(full_id),
+            kind: TermKind::Quant(qidx),
+            child_ids,
+        };
+        let tidx = self.terms.app_terms.new_term(term)?;
+        let q = Quantifier {
+            num_vars,
+            term: tidx,
+            kind,
+            vars: None,
+        };
+        self.quantifiers.raw.try_reserve(1)?;
+        let qidx2 = self.quantifiers.push_and_get_key(q);
+        debug_assert_eq!(qidx, qidx2);
+        Ok(())
+    }
 }
 
 impl Z3LogParser for Z3Parser {
@@ -266,25 +306,24 @@ impl Z3LogParser for Z3Parser {
         }
         let quant_name = QuantKind::parse(&mut self.strings, &quant_name);
         let num_vars = num_vars.unwrap();
-        let child_ids = self.gobble_children(l)?;
+        let child_ids = self.gobble_term_children(l)?;
         assert!(!child_ids.is_empty());
-        let qidx = self.quantifiers.next_key();
-        let term = Term {
-            id: Some(full_id),
-            kind: TermKind::Quant(qidx),
-            child_ids,
-        };
-        let tidx = self.terms.app_terms.new_term(term)?;
-        let q = Quantifier {
-            num_vars,
-            kind: quant_name,
-            term: Some(tidx),
-            vars: None,
-        };
-        self.quantifiers.raw.try_reserve(1)?;
-        let qidx2 = self.quantifiers.push_and_get_key(q);
-        debug_assert_eq!(qidx, qidx2);
-        Ok(())
+        self.quant_or_lamda(full_id, child_ids, num_vars, quant_name)
+    }
+
+    fn mk_lambda<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
+        let full_id = self.parse_new_full_id(l.next())?;
+        let lambda_name = l.next().ok_or(Error::UnexpectedNewline)?;
+        if lambda_name != "<null>" {
+            return Err(Error::NonNullLambdaName(lambda_name.to_string()));
+        }
+        let num_vars = l.next().ok_or(Error::UnexpectedNewline)?;
+        let num_vars = num_vars
+            .parse::<usize>()
+            .map_err(Error::InvalidQVarInteger)?;
+        let child_ids = self.gobble_proof_children(l)?;
+        let kind = QuantKind::Lambda(child_ids);
+        self.quant_or_lamda(full_id, Vec::new().into_boxed_slice(), num_vars, kind)
     }
 
     fn mk_var<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
@@ -306,7 +345,7 @@ impl Z3LogParser for Z3Parser {
         let full_id = self.parse_new_full_id(l.next())?;
         let name = l.next().ok_or(Error::UnexpectedNewline)?;
         let name = self.mk_string(name)?;
-        let child_ids = self.gobble_children(l)?;
+        let child_ids = self.gobble_term_children(l)?;
         let term = Term {
             id: Some(full_id),
             kind: TermKind::App(name),
@@ -376,6 +415,10 @@ impl Z3LogParser for Z3Parser {
             .parse_existing_id(&mut self.strings, id)?;
         let qidx = self.terms.quant(tidx)?;
         assert!(self.quantifiers[qidx].vars.is_none());
+        assert!(!matches!(
+            self.quantifiers[qidx].kind,
+            QuantKind::Lambda { .. }
+        ));
         self.quantifiers[qidx].vars = Some(var_names);
         Ok(())
     }

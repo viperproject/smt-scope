@@ -529,7 +529,7 @@ impl ProofStepKind {
         })?;
         let kind_str = kind_str
             .replace("_STAR", "*")
-            .replace("_QEQ", "~")
+            .replace("_OEQ", "~")
             .replace('_', "-")
             .to_ascii_lowercase();
         Ok(kind_str)

@@ -94,8 +94,8 @@ impl StringLookupZ3 {
             }
             let mut handle_term = |enode: ENodeIdx| {
                 let tidx = parser[enode].owner;
-                let name = match &parser[tidx].kind {
-                    TermKind::ProofOrApp(poa) => Some(poa.name),
+                let name = match parser[tidx].kind {
+                    TermKind::App(name) => Some(name),
                     _ => None,
                 };
                 if let Some(name) = name {

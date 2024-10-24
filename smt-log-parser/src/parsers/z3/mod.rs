@@ -27,10 +27,11 @@ impl<T: Z3LogParser + Default> LogParser for T {
         let parse = match first {
             // match the line case
             "[tool-version]" => self.version_info(split),
-            "[mk-quant]" | "[mk-lambda]" => self.mk_quant(split),
+            "[mk-quant]" => self.mk_quant(split),
+            "[mk-lambda]" => self.mk_lambda(split),
             "[mk-var]" => self.mk_var(split),
-            "[mk-proof]" => self.mk_proof_app(split, true),
-            "[mk-app]" => self.mk_proof_app(split, false),
+            "[mk-app]" => self.mk_app(split),
+            "[mk-proof]" => self.mk_proof(split),
             "[attach-meaning]" => self.attach_meaning(split),
             "[attach-var-names]" => self.attach_var_names(split),
             "[attach-enode]" => self.attach_enode(split),
@@ -82,7 +83,8 @@ pub trait Z3LogParser {
     fn version_info<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn mk_quant<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn mk_var<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
-    fn mk_proof_app<'a>(&mut self, l: impl Iterator<Item = &'a str>, is_proof: bool) -> Result<()>;
+    fn mk_app<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
+    fn mk_proof<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn attach_meaning<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn attach_var_names<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn attach_enode<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()>;
@@ -94,6 +96,10 @@ pub trait Z3LogParser {
     fn push<'a>(&mut self, _l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn pop<'a>(&mut self, _l: impl Iterator<Item = &'a str>) -> Result<()>;
     fn eof(&mut self);
+
+    fn mk_lambda<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()> {
+        self.mk_quant(l)
+    }
 
     // unused in original parser
     fn decide_and_or<'a>(&mut self, _l: impl Iterator<Item = &'a str>) -> Result<()> {
@@ -149,14 +155,6 @@ impl VersionInfo {
         self.version()
             .is_some_and(|v| v == &semver::Version::new(major, minor, patch))
     }
-
-    pub fn is_version_minor(&self, major: u64, minor: u64) -> bool {
-        self.version().is_some_and(|v| {
-            &semver::Version::new(major, minor, 0) <= v
-                && v <= &semver::Version::new(major, minor, u64::MAX)
-        })
-    }
-
     pub fn is_ge_version(&self, major: u64, minor: u64, patch: u64) -> bool {
         self.version()
             .is_some_and(|v| v >= &semver::Version::new(major, minor, patch))

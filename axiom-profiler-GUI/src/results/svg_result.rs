@@ -145,7 +145,7 @@ impl Component for SVGResult {
                 Ok(inst_graph) => inst_graph,
                 Err(err) => {
                     log::error!("Failed constructing instantiation graph: {err:?}");
-                    let error = if err.is_allocation() {
+                    let error = if err.is_oom() {
                         "Out of memory, try stopping earlier".to_string()
                     } else {
                         // Should not be reachable

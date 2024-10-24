@@ -7,23 +7,28 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-futures = "0.3"
-petgraph = "0.6.4"
-wasm-timer = "0.2"
-semver = "1.0"
+# Collections and useful types
 typed-index-collections = "3.1"
 fxhash = "0.2"
-duplicate = "1.0"
-gloo-console = "0.3.0"
-roaring = "0.10"
 lasso = "0.7"
 nonmax = "0.5"
-serde = { version = "1.0.183", features = ["derive"], optional = true }
+# Parsing and instrumenting
+futures = "0.3"
+semver = "1.0"
+wasm-timer = "0.2"
 mem_dbg = { version = "0.1.8", features = ["std", "derive"], default-features = false, optional = true }
+# Analysis
+petgraph = "0.6.4"
+roaring = "0.10"
+# Printing
+serde = { version = "1.0.183", features = ["derive"], optional = true }
 regex = { version = "1.10", optional = true }
+ammonia = { version = "4.0.0", optional = true }
+# Convinient macros
+duplicate = "1.0"
+strum = { version = "0.26", features = ["derive"] }
 # For the command line interface
 clap = { version = "4.5.4", features = ["derive"] }
-ammonia = { version = "4.0.0", optional = true }
 
 [dev-dependencies]
 memory-stats = "1.1.0"

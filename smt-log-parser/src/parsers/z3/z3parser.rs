@@ -51,8 +51,15 @@ impl Default for Z3Parser {
 }
 
 impl Z3Parser {
+    pub fn parse_new_full_id(&mut self, id: Option<&str>) -> Result<TermId> {
+        let full_id = id.ok_or(Error::UnexpectedNewline)?;
+        TermId::parse(&mut self.strings, full_id)
+    }
     pub fn parse_existing_enode(&mut self, id: &str) -> Result<ENodeIdx> {
-        let idx = self.terms.parse_existing_id(&mut self.strings, id)?;
+        let idx = self
+            .terms
+            .app_terms
+            .parse_existing_id(&mut self.strings, id)?;
         let enode = self.egraph.get_enode(idx, &self.stack);
         if self.version_info.is_version(4, 12, 2) && enode.is_err() {
             // Very rarely in version 4.12.2, an `[attach-enode]` is not emitted. Create it here.
@@ -74,8 +81,12 @@ impl Z3Parser {
     }
 
     fn gobble_children<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<Box<[TermIdx]>> {
-        l.map(|id| self.terms.parse_existing_id(&mut self.strings, id))
-            .collect()
+        l.map(|id| {
+            self.terms
+                .app_terms
+                .parse_existing_id(&mut self.strings, id)
+        })
+        .collect()
     }
     fn gobble_var_names_list<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<VarNames> {
         let mut t = Self::gobble_tuples::<true>(l);
@@ -83,9 +94,9 @@ impl Z3Parser {
         // replace with default case.
         let (first, second) = t.next().ok_or(Error::UnexpectedEnd)??;
         if first.is_empty() {
-            let first = Ok(IString(self.strings.get_or_intern(second)));
+            let first = self.mk_string(second);
             let tuples = t.map(|t| match t? {
-                ("", second) => Ok(IString(self.strings.get_or_intern(second))),
+                ("", second) => self.mk_string(second),
                 _ => Err(Error::VarNamesListInconsistent),
             });
             let types = [first].into_iter().chain(tuples);
@@ -224,6 +235,10 @@ impl Z3Parser {
         l.next()
             .map_or(Ok(()), |more| Err(Error::ExpectedNewline(more.to_string())))
     }
+
+    fn mk_string(&mut self, s: &str) -> Result<IString> {
+        Ok(IString(self.strings.try_get_or_intern(s)?))
+    }
 }
 
 impl Z3LogParser for Z3Parser {
@@ -239,8 +254,7 @@ impl Z3LogParser for Z3Parser {
     }
 
     fn mk_quant<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
-        let full_id = l.next().ok_or(Error::UnexpectedNewline)?;
-        let full_id = TermId::parse(&mut self.strings, full_id)?;
+        let full_id = self.parse_new_full_id(l.next())?;
         let mut quant_name = std::borrow::Cow::Borrowed(l.next().ok_or(Error::UnexpectedNewline)?);
         let mut num_vars_str = l.next().ok_or(Error::UnexpectedNewline)?;
         let mut num_vars = num_vars_str.parse::<usize>();
@@ -260,7 +274,7 @@ impl Z3LogParser for Z3Parser {
             kind: TermKind::Quant(qidx),
             child_ids,
         };
-        let tidx = self.terms.new_term(term)?;
+        let tidx = self.terms.app_terms.new_term(term)?;
         let q = Quantifier {
             num_vars,
             kind: quant_name,
@@ -274,8 +288,7 @@ impl Z3LogParser for Z3Parser {
     }
 
     fn mk_var<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
-        let full_id = l.next().ok_or(Error::UnexpectedNewline)?;
-        let full_id = TermId::parse(&mut self.strings, full_id)?;
+        let full_id = self.parse_new_full_id(l.next())?;
         let kind = l.next().ok_or(Error::UnexpectedNewline)?;
         let kind = TermKind::parse_var(kind)?;
         // Return if there is unexpectedly more data
@@ -285,42 +298,71 @@ impl Z3LogParser for Z3Parser {
             kind,
             child_ids: Default::default(),
         };
-        self.terms.new_term(term)?;
+        self.terms.app_terms.new_term(term)?;
         Ok(())
     }
 
-    fn mk_proof_app<'a>(
-        &mut self,
-        mut l: impl Iterator<Item = &'a str>,
-        is_proof: bool,
-    ) -> Result<()> {
-        let full_id = l.next().ok_or(Error::UnexpectedNewline)?;
-        let full_id = TermId::parse(&mut self.strings, full_id)?;
-        let name = IString(
-            self.strings
-                .get_or_intern(l.next().ok_or(Error::UnexpectedNewline)?),
-        );
-        let kind = TermKind::parse_proof_app(is_proof, name);
-        // TODO: add rewrite, monotonicity cases
+    fn mk_app<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
+        let full_id = self.parse_new_full_id(l.next())?;
+        let name = l.next().ok_or(Error::UnexpectedNewline)?;
+        let name = self.mk_string(name)?;
         let child_ids = self.gobble_children(l)?;
         let term = Term {
             id: Some(full_id),
-            kind,
+            kind: TermKind::App(name),
             child_ids,
         };
-        self.terms.new_term(term)?;
+        self.terms.app_terms.new_term(term)?;
+        Ok(())
+    }
+
+    fn mk_proof<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
+        let full_id = self.parse_new_full_id(l.next())?;
+        let name = l.next().ok_or(Error::UnexpectedNewline)?;
+        let kind = match name.parse() {
+            Ok(kind) => kind,
+            Err(_) => {
+                debug_assert!(false, "Unknown proof step kind {name:?}");
+                ProofStepKind::PR_OTHER(self.mk_string(name)?)
+            }
+        };
+        let mut next = l.next().ok_or(Error::UnexpectedNewline)?;
+        let mut prerequisites = Vec::new();
+        for n in l {
+            let curr = next;
+            next = n;
+
+            let prereq = self
+                .terms
+                .proof_terms
+                .parse_existing_id(&mut self.strings, curr)?;
+            prerequisites.push(prereq);
+        }
+        let result = self
+            .terms
+            .app_terms
+            .parse_existing_id(&mut self.strings, next)?;
+
+        let proof_step = ProofStep {
+            id: full_id,
+            kind,
+            result,
+            prerequisites: prerequisites.into_boxed_slice(),
+        };
+        self.terms.proof_terms.new_term(proof_step)?;
         Ok(())
     }
 
     fn attach_meaning<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let id = l.next().ok_or(Error::UnexpectedNewline)?;
-        let theory = IString(
-            self.strings
-                .get_or_intern(l.next().ok_or(Error::UnexpectedNewline)?),
-        );
-        let value = IString(self.strings.get_or_intern(l.collect::<Vec<_>>().join(" ")));
+        let theory = l.next().ok_or(Error::UnexpectedNewline)?;
+        let theory = self.mk_string(theory)?;
+        let value = self.mk_string(&l.collect::<Vec<_>>().join(" "))?;
         let meaning = Meaning { theory, value };
-        let idx = self.terms.parse_existing_id(&mut self.strings, id)?;
+        let idx = self
+            .terms
+            .app_terms
+            .parse_existing_id(&mut self.strings, id)?;
         self.terms.new_meaning(idx, meaning)?;
         Ok(())
     }
@@ -328,7 +370,10 @@ impl Z3LogParser for Z3Parser {
     fn attach_var_names<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let id = l.next().ok_or(Error::UnexpectedNewline)?;
         let var_names = self.gobble_var_names_list(l)?;
-        let tidx = self.terms.parse_existing_id(&mut self.strings, id)?;
+        let tidx = self
+            .terms
+            .app_terms
+            .parse_existing_id(&mut self.strings, id)?;
         let qidx = self.terms.quant(tidx)?;
         assert!(self.quantifiers[qidx].vars.is_none());
         self.quantifiers[qidx].vars = Some(var_names);
@@ -337,7 +382,10 @@ impl Z3LogParser for Z3Parser {
 
     fn attach_enode<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let id = l.next().ok_or(Error::UnexpectedNewline)?;
-        let idx = self.terms.parse_existing_id(&mut self.strings, id);
+        let idx = self
+            .terms
+            .app_terms
+            .parse_existing_id(&mut self.strings, id);
         let Ok(idx) = idx else {
             if self.version_info.is_version(4, 8, 7) {
                 // Z3 4.8.7 seems to have a bug where it can emit a non-existent term id here.
@@ -398,10 +446,8 @@ impl Z3LogParser for Z3Parser {
                     }
                 }
                 "th" => {
-                    let theory = IString(
-                        self.strings
-                            .get_or_intern(kind_dependent_info.next().ok_or(Error::UnexpectedEnd)?),
-                    );
+                    let theory = kind_dependent_info.next().ok_or(Error::UnexpectedEnd)?;
+                    let theory = self.mk_string(theory)?;
                     Self::expect_completed(kind_dependent_info)?;
                     let to =
                         self.parse_existing_enode(l.next().ok_or(Error::UnexpectedNewline)?)?;
@@ -415,12 +461,12 @@ impl Z3LogParser for Z3Parser {
                 }
                 kind => {
                     let args = kind_dependent_info
-                        .map(|s| IString(self.strings.get_or_intern(s)))
-                        .collect();
+                        .map(|s| self.mk_string(s))
+                        .collect::<Result<_>>()?;
                     let to =
                         self.parse_existing_enode(l.next().ok_or(Error::UnexpectedNewline)?)?;
                     EqualityExpl::Unknown {
-                        kind: IString(self.strings.get_or_intern(kind)),
+                        kind: self.mk_string(kind)?,
                         from,
                         args,
                         to,
@@ -440,17 +486,23 @@ impl Z3LogParser for Z3Parser {
         let fingerprint = Fingerprint::parse(fingerprint)?;
         let idx = self
             .terms
+            .app_terms
             .parse_existing_id(&mut self.strings, l.next().ok_or(Error::UnexpectedNewline)?)?;
         let quant = self.terms.quant(idx)?;
         let pattern = self
             .terms
+            .app_terms
             .parse_existing_id(&mut self.strings, l.next().ok_or(Error::UnexpectedNewline)?)?;
         let bound_terms = Self::iter_until_eq(&mut l, ";");
         let is_axiom = fingerprint.is_zero();
 
         let kind = if is_axiom {
             let bound_terms = bound_terms
-                .map(|id| self.terms.parse_existing_id(&mut self.strings, id))
+                .map(|id| {
+                    self.terms
+                        .app_terms
+                        .parse_existing_id(&mut self.strings, id)
+                })
                 .collect::<Result<_>>()?;
             MatchKind::Axiom {
                 axiom: quant,
@@ -512,13 +564,20 @@ impl Z3LogParser for Z3Parser {
                 let axiom_id = TermId::parse(&mut self.strings, axiom_id)?;
 
                 let bound_terms = Self::iter_until_eq(&mut l, ";")
-                    .map(|id| self.terms.parse_existing_id(&mut self.strings, id))
+                    .map(|id| {
+                        self.terms
+                            .app_terms
+                            .parse_existing_id(&mut self.strings, id)
+                    })
                     .collect::<Result<_>>()?;
 
                 let mut blamed = Vec::new();
                 let mut rewrite_of = None;
                 for word in l.by_ref() {
-                    let term = self.terms.parse_existing_id(&mut self.strings, word)?;
+                    let term = self
+                        .terms
+                        .app_terms
+                        .parse_existing_id(&mut self.strings, word)?;
                     if let Ok(enode) = self.egraph.get_enode(term, &self.stack) {
                         if let Some(rewrite_of) = rewrite_of {
                             return Err(Error::NonRewriteAxiomInvalidEnode(rewrite_of));
@@ -544,7 +603,7 @@ impl Z3LogParser for Z3Parser {
                 (kind, blamed)
             }
             "MBQI" => {
-                let quant = self.terms.parse_existing_id(
+                let quant = self.terms.app_terms.parse_existing_id(
                     &mut self.strings,
                     l.next().ok_or(Error::UnexpectedNewline)?,
                 )?;
@@ -570,7 +629,7 @@ impl Z3LogParser for Z3Parser {
         let fingerprint = Fingerprint::parse(fingerprint)?;
         let mut proof = Self::iter_until_eq(&mut l, ";");
         let proof_id = if let Some(proof) = proof.next() {
-            Some(self.terms.parse_id(&mut self.strings, proof)?)
+            Some(self.terms.app_terms.parse_id(&mut self.strings, proof)?)
         } else {
             None
         };
@@ -588,12 +647,12 @@ impl Z3LogParser for Z3Parser {
             z3_generation,
             yields_terms: Default::default(),
         };
-        // In version 4.12.2 & 4.12.4, I have on very rare occasions seen an
-        // `[instance]` repeated twice with the same fingerprint (without an
-        // intermediate `[new-match]`). We can try to remove the `can_duplicate`
-        // in the future.
-        let can_duplicate = self.version_info.is_version_minor(4, 12);
-        let iidx = self.insts.new_inst(fingerprint, inst, can_duplicate)?;
+        // In version 4.12.2, I have on very rare occasions seen an `[instance]`
+        // repeated twice with the same fingerprint (without an intermediate
+        // `[new-match]`). We can try to remove the `can_duplicate` in the future.
+        let iidx =
+            self.insts
+                .new_inst(fingerprint, inst, self.version_info.is_version(4, 12, 2))?;
         self.inst_stack.try_reserve(1)?;
         self.inst_stack.push((iidx, Vec::new()));
         Ok(())
@@ -648,6 +707,12 @@ impl Z3Parser {
 impl std::ops::Index<TermIdx> for Z3Parser {
     type Output = Term;
     fn index(&self, idx: TermIdx) -> &Self::Output {
+        &self.terms[idx]
+    }
+}
+impl std::ops::Index<ProofIdx> for Z3Parser {
+    type Output = ProofStep;
+    fn index(&self, idx: ProofIdx) -> &Self::Output {
         &self.terms[idx]
     }
 }

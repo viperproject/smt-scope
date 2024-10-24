@@ -3,36 +3,47 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
     error::Either,
-    items::{Meaning, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap, TermIdx, TermKind},
+    items::{
+        Meaning, ProofIdx, ProofStep, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap,
+        TermIdx, TermKind,
+    },
     Error, FxHashMap, Result, StringTable, TiVec,
 };
 
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug)]
-pub struct Terms {
-    term_id_map: TermIdToIdxMap,
-    terms: TiVec<TermIdx, Term>,
-    meanings: FxHashMap<TermIdx, Meaning>,
-    parsed_terms: Option<TermIdx>,
-
-    synthetic_terms: FxHashMap<TermAndMeaning<'static>, TermIdx>,
+pub trait HasTermId {
+    fn term_id(&self) -> Option<TermId>;
 }
 
-impl Terms {
+impl HasTermId for Term {
+    fn term_id(&self) -> Option<TermId> {
+        self.id
+    }
+}
+
+impl HasTermId for ProofStep {
+    fn term_id(&self) -> Option<TermId> {
+        Some(self.id)
+    }
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug)]
+pub struct TermStorage<K: From<usize> + Copy, V: HasTermId> {
+    term_id_map: TermIdToIdxMap<K>,
+    terms: TiVec<K, V>,
+}
+
+impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
     pub(super) fn new(strings: &mut StringTable) -> Self {
         Self {
             term_id_map: TermIdToIdxMap::new(strings),
             terms: TiVec::default(),
-            meanings: FxHashMap::default(),
-            parsed_terms: None,
-
-            synthetic_terms: FxHashMap::default(),
         }
     }
 
-    pub(super) fn new_term(&mut self, term: Term) -> Result<TermIdx> {
+    pub(super) fn new_term(&mut self, term: V) -> Result<K> {
         self.terms.raw.try_reserve(1)?;
-        let id = term.id;
+        let id = term.term_id();
         let idx = self.terms.push_and_get_key(term);
         if let Some(id) = id {
             self.term_id_map.register_term(id, idx)?;
@@ -44,7 +55,7 @@ impl Terms {
         &self,
         strings: &mut StringTable,
         id: &str,
-    ) -> Result<Either<TermIdx, TermId>> {
+    ) -> Result<Either<K, TermId>> {
         let term_id = TermId::parse(strings, id)?;
         Ok(self
             .term_id_map
@@ -52,10 +63,36 @@ impl Terms {
             .map(Either::Left)
             .unwrap_or(Either::Right(term_id)))
     }
-    pub(super) fn parse_existing_id(&self, strings: &mut StringTable, id: &str) -> Result<TermIdx> {
+    pub(super) fn parse_existing_id(&self, strings: &mut StringTable, id: &str) -> Result<K> {
         self.parse_id(strings, id)?
             .into_result()
             .map_err(Error::UnknownId)
+    }
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug)]
+pub struct Terms {
+    pub(super) app_terms: TermStorage<TermIdx, Term>,
+    pub(super) proof_terms: TermStorage<ProofIdx, ProofStep>,
+
+    meanings: FxHashMap<TermIdx, Meaning>,
+    parsed_terms: Option<TermIdx>,
+
+    synthetic_terms: FxHashMap<TermAndMeaning<'static>, TermIdx>,
+}
+
+impl Terms {
+    pub(super) fn new(strings: &mut StringTable) -> Self {
+        Self {
+            app_terms: TermStorage::new(strings),
+            proof_terms: TermStorage::new(strings),
+
+            meanings: FxHashMap::default(),
+            parsed_terms: None,
+
+            synthetic_terms: FxHashMap::default(),
+        }
     }
 
     pub fn meaning(&self, tidx: TermIdx) -> Option<&Meaning> {
@@ -82,13 +119,13 @@ impl Terms {
 
     pub fn get_term(&self, term: TermIdx) -> TermAndMeaning {
         TermAndMeaning {
-            term: &self.terms[term],
+            term: &self[term],
             meaning: self.meanings.get(&term),
         }
     }
 
     pub(super) fn end_of_file(&mut self) {
-        self.parsed_terms = Some(self.terms.next_key());
+        self.parsed_terms = Some(self.app_terms.terms.next_key());
     }
 
     pub(crate) fn new_synthetic_term(
@@ -109,7 +146,7 @@ impl Terms {
         if let Some(&tidx) = self.synthetic_terms.get(&term_and_meaning) {
             tidx
         } else {
-            let tidx = self.terms.push_and_get_key(term);
+            let tidx = self.app_terms.terms.push_and_get_key(term);
             if let Some(meaning) = meaning {
                 self.meanings.insert(tidx, meaning);
             }
@@ -130,12 +167,25 @@ impl Terms {
 impl std::ops::Index<TermIdx> for Terms {
     type Output = Term;
     fn index(&self, idx: TermIdx) -> &Self::Output {
-        &self.terms[idx]
+        &self.app_terms.terms[idx]
     }
 }
 
 impl std::ops::IndexMut<TermIdx> for Terms {
     fn index_mut(&mut self, idx: TermIdx) -> &mut Self::Output {
-        &mut self.terms[idx]
+        &mut self.app_terms.terms[idx]
+    }
+}
+
+impl std::ops::Index<ProofIdx> for Terms {
+    type Output = ProofStep;
+    fn index(&self, idx: ProofIdx) -> &Self::Output {
+        &self.proof_terms.terms[idx]
+    }
+}
+
+impl std::ops::IndexMut<ProofIdx> for Terms {
+    fn index_mut(&mut self, idx: ProofIdx) -> &mut Self::Output {
+        &mut self.proof_terms.terms[idx]
     }
 }

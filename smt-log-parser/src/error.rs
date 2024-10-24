@@ -1,6 +1,7 @@
 use core::fmt;
 use std::{collections::TryReserveError, num::ParseIntError};
 
+use lasso::LassoError;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
@@ -86,6 +87,7 @@ pub enum Error {
     FileRead(std::io::Error),
 
     Allocation(TryReserveError),
+    Lasso(LassoError),
 }
 
 impl From<semver::Error> for Error {
@@ -100,14 +102,21 @@ impl From<TryReserveError> for Error {
     }
 }
 
+impl From<LassoError> for Error {
+    fn from(value: LassoError) -> Self {
+        Self::Lasso(value)
+    }
+}
+
 impl Error {
-    pub fn is_allocation(&self) -> bool {
-        matches!(self, Self::Allocation(_))
+    pub fn is_oom(&self) -> bool {
+        matches!(self, Self::Allocation(_) | Self::Lasso(_))
     }
 
     pub fn as_fatal(self) -> Option<FatalError> {
         match self {
             Self::Allocation(alloc) => Some(FatalError::Allocation(alloc)),
+            Self::Lasso(lasso) => Some(FatalError::Lasso(lasso)),
             _ => None,
         }
     }
@@ -116,6 +125,7 @@ impl Error {
 #[derive(Debug, Clone)]
 pub enum FatalError {
     Allocation(TryReserveError),
+    Lasso(LassoError),
     Io(std::rc::Rc<std::io::Error>),
 }
 
@@ -129,6 +139,7 @@ impl fmt::Display for FatalError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Allocation(alloc) => write!(f, "Allocation error: {alloc}"),
+            Self::Lasso(lasso) => write!(f, "String interning error: {lasso}"),
             Self::Io(err) => write!(f, "IO error: {err}"),
         }
     }

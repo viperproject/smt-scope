@@ -468,14 +468,19 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind 
         ctxt: &DisplayCtxt<'b>,
         data: &mut DisplayData<'b>,
     ) -> fmt::Result {
-        match self {
-            &TermKind::Var(mut idx) => {
+        match *self {
+            TermKind::Var(mut idx) => {
                 let vars = data.find_quant(&mut idx).and_then(|q| q.vars.as_ref());
                 let name = VarNames::get_name(&ctxt.parser.strings, vars, idx, &ctxt.config);
                 write!(f, "{name}")
             }
-            TermKind::ProofOrApp(poa) => write!(f, "{}", poa.with_data(ctxt, data)),
-            TermKind::Quant(idx) => write!(f, "{}", ctxt.parser[*idx].with_data(ctxt, data)),
+            TermKind::App(name) => {
+                let name = &ctxt.parser[name];
+                let children = NonMaxU32::new(data.children().len() as u32).unwrap();
+                let match_ = ctxt.term_display.match_str(name, children);
+                match_.fmt_with(f, ctxt, data)
+            }
+            TermKind::Quant(idx) => write!(f, "{}", ctxt.parser[idx].with_data(ctxt, data)),
             // TODO: it would be nice to display some extra information here
             TermKind::Generalised => write!(f, "_"),
         }
@@ -496,19 +501,6 @@ fn display_child<'b>(
     .unwrap_or_else(|| write!(f, "..."))
 }
 
-impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a ProofOrApp {
-    fn fmt_with(
-        self,
-        f: &mut fmt::Formatter<'_>,
-        ctxt: &DisplayCtxt<'b>,
-        data: &mut DisplayData<'b>,
-    ) -> fmt::Result {
-        let name = &ctxt.parser[self.name];
-        let children = NonMaxU32::new(data.children().len() as u32).unwrap();
-        let match_ = ctxt.term_display.match_str(name, children);
-        match_.fmt_with(f, ctxt, data)
-    }
-}
 impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResult<'a, 'a> {
     fn fmt_with(
         self,

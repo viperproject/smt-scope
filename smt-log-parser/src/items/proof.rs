@@ -135,7 +135,9 @@ pub enum ProofStepKind {
     /// T1: f
     /// [proof-bind T1] forall (x) f
     /// ```
-    PR_BIND,
+    ///
+    /// *Renamed from `PR_BIND`*
+    PR_PROOF_BIND,
     /// Distributivity proof object.
     ///
     /// Given that `f (= or)` distributes over `g (= and)`, produces a proof for
@@ -513,7 +515,25 @@ pub enum ProofStepKind {
     PR_HYPER_RESOLVE,
 
     /// Unrecognised proof step was encountered.
-    PR_OTHER(IString),
+    OTHER(IString),
+}
+
+impl ProofStepKind {
+    pub fn to_z3_string(self) -> Result<String, IString> {
+        let kind_str = format!("{self:?}");
+        let kind_str = kind_str.strip_prefix("PR_").ok_or_else(|| {
+            let Self::OTHER(istr) = self else {
+                unreachable!("The variant `ProofStepKind::{self:?}` does not start with \"PR_\"!");
+            };
+            istr
+        })?;
+        let kind_str = kind_str
+            .replace("_STAR", "*")
+            .replace("_QEQ", "~")
+            .replace('_', "-")
+            .to_ascii_lowercase();
+        Ok(kind_str)
+    }
 }
 
 static SEARCH_MAP: OnceLock<FxHashMap<String, ProofStepKind>> = OnceLock::new();
@@ -524,13 +544,9 @@ impl FromStr for ProofStepKind {
         let map = SEARCH_MAP.get_or_init(|| {
             let mut map = FxHashMap::default();
             for kind in ProofStepKind::iter() {
-                let kind_str = format!("{kind:?}");
-                let kind_str = kind_str.strip_prefix("PR_").unwrap();
-                let kind_str = kind_str
-                    .replace("_STAR", "*")
-                    .replace("_QEQ", "~")
-                    .replace('_', "-")
-                    .to_ascii_lowercase();
+                let Ok(kind_str) = kind.to_z3_string() else {
+                    continue;
+                };
                 map.insert(kind_str, kind);
             }
             map

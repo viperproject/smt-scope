@@ -323,7 +323,7 @@ impl Z3LogParser for Z3Parser {
             Ok(kind) => kind,
             Err(_) => {
                 debug_assert!(false, "Unknown proof step kind {name:?}");
-                ProofStepKind::PR_OTHER(self.mk_string(name)?)
+                ProofStepKind::OTHER(self.mk_string(name)?)
             }
         };
         let mut next = l.next().ok_or(Error::UnexpectedNewline)?;

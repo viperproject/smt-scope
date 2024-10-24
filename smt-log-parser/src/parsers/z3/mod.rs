@@ -153,6 +153,14 @@ impl VersionInfo {
         self.version()
             .is_some_and(|v| v == &semver::Version::new(major, minor, patch))
     }
+
+    pub fn is_version_minor(&self, major: u64, minor: u64) -> bool {
+        self.version().is_some_and(|v| {
+            &semver::Version::new(major, minor, 0) <= v
+                && v <= &semver::Version::new(major, minor, u64::MAX)
+        })
+    }
+
     pub fn is_ge_version(&self, major: u64, minor: u64, patch: u64) -> bool {
         self.version()
             .is_some_and(|v| v >= &semver::Version::new(major, minor, patch))

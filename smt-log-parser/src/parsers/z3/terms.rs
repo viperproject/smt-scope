@@ -1,5 +1,6 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
+use typed_index_collections::TiSlice;
 
 use crate::{
     error::Either,
@@ -67,6 +68,10 @@ impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
         self.parse_id(strings, id)?
             .into_result()
             .map_err(Error::UnknownId)
+    }
+
+    pub(super) fn terms(&self) -> &TiSlice<K, V> {
+        &self.terms
     }
 }
 

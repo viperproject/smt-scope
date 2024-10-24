@@ -33,6 +33,15 @@ impl FromIterator<TermDisplay> for Result<TermDisplayContext, TdcError> {
 }
 
 impl TermDisplayContext {
+    pub fn new(fallback: Formatter) -> Self {
+        Self {
+            string_matchers: Default::default(),
+            regex_matchers: Default::default(),
+            regex_set: Default::default(),
+            fallback: FallbackFormatter(fallback),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.string_matchers.is_empty() && self.regex_matchers.is_empty()
     }

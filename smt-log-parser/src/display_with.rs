@@ -8,7 +8,7 @@ use crate::{
         BindPowerPair, ChildIndex, MatchResult, SubFormatter, TermDisplayContext, QUANT_BIND,
     },
     items::*,
-    parsers::z3::z3parser::Z3Parser,
+    parsers::z3::{stm2::Event, z3parser::Z3Parser},
     NonMaxU32, StringTable,
 };
 
@@ -695,5 +695,41 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                 Ok(())
             })
         })
+    }
+}
+
+impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, ()> for &'a Event {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'a>,
+        _data: &mut (),
+    ) -> fmt::Result {
+        match *self {
+            Event::NewConst(term_idx) => {
+                let term = &ctxt.parser[term_idx];
+                let name = &ctxt.parser[term.kind.app_name().unwrap()];
+                if term.child_ids.is_empty() {
+                    write!(f, "(declare-const {name} ?)")
+                } else {
+                    write!(f, "(declare-fun {name} (?")?;
+                    for _ in 0..term.child_ids.len() - 1 {
+                        write!(f, " ?")?;
+                    }
+                    write!(f, ") ?)")
+                }
+            }
+            Event::Assert(proof_idx) => {
+                let proof = &ctxt.parser[proof_idx];
+                let display = proof.result.with(ctxt);
+                write!(f, "(assert {display})")
+            }
+            Event::Push => write!(f, "(push)"),
+            Event::Pop(num) => match num {
+                Some(num) => write!(f, "(pop {})", num.get()),
+                None => write!(f, "(pop)"),
+            },
+            Event::BeginCheck => write!(f, "(check-sat)"),
+        }
     }
 }

@@ -23,7 +23,6 @@ pub enum Commands {
         #[arg(short, long, default_value_t = false)]
         pretty_print: bool,
     },
-    #[cfg(feature = "analysis")]
     /// Print out statistics for the SMT solver
     Stats {
         /// The path to the smt log file
@@ -36,5 +35,10 @@ pub enum Commands {
     Test {
         /// The paths to the smt log files
         logfiles: Vec<std::path::PathBuf>,
+    },
+    /// Try to reconstruct the `.smt2` file
+    Reconstruct {
+        /// The path to the smt log file
+        logfile: std::path::PathBuf,
     },
 }

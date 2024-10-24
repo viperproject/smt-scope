@@ -23,7 +23,7 @@ impl Stack {
         self.stack_frames[idx].active = active;
         Some(idx)
     }
-    fn ensure_height(&mut self, height: usize) -> Result<()> {
+    pub(super) fn ensure_height(&mut self, height: usize) -> Result<()> {
         let mut res = Ok(());
         // Neither condition should hold, but handle it as best we can.
         while height > self.stack.len() {
@@ -48,7 +48,8 @@ impl Stack {
         res
     }
 
-    pub(super) fn pop_frames(&mut self, count: usize, idx: usize) -> Result<()> {
+    pub(super) fn pop_frames(&mut self, count: core::num::NonZeroUsize, idx: usize) -> Result<()> {
+        let count = count.get();
         debug_assert!(0 < count && count <= idx);
         let res = self.ensure_height(idx);
         for _ in 0..count {

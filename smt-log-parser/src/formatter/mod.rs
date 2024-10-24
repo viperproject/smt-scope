@@ -51,6 +51,11 @@ pub const IF: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse(
 
 // pub const SLOT_TEST: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("slot", "$-8$&$[#0|9,-16]$[$[#1|4,4]$]$-8$"));
 
+pub const S_EXPRESSION: FormatterConst<'static> =
+    unwrap!(FormatterConst::parse("$-1$(${0}$$(#0:-1|1$ | |)$)$-1$"));
+pub const S_EXPRESSION_LEAF: TermDisplayConst<'static> =
+    unwrap!(TermDisplayConst::parse("(/.*/)", "$-1$${0}$$-1$"));
+
 impl TermDisplayContext {
     pub fn basic() -> Self {
         let self_: Result<Self, _> = [TRIGGER, UNARY_OP, NEG, BINARY_OP, IF]
@@ -58,6 +63,14 @@ impl TermDisplayContext {
             .map(|td| TermDisplay::try_from(td).unwrap())
             .collect();
         self_.unwrap()
+    }
+
+    pub fn s_expression() -> Self {
+        let fallback = Formatter::try_from(S_EXPRESSION).unwrap();
+        let mut self_ = Self::new(fallback);
+        let leaf = TermDisplay::try_from(S_EXPRESSION_LEAF).unwrap();
+        self_.push(leaf).unwrap();
+        self_
     }
 }
 

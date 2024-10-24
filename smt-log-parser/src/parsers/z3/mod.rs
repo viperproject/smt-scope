@@ -6,6 +6,7 @@ use crate::{Error, FResult, Result};
 pub mod egraph;
 pub mod inst;
 pub mod stack;
+pub mod stm2;
 pub mod terms;
 /// Original Z3 log parser. Works with Z3 v.4.12.1, should work with other versions
 /// as long as the log format is the same for the important line cases.

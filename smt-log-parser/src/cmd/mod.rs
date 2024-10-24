@@ -1,6 +1,7 @@
 mod args;
 #[cfg(feature = "analysis")]
 mod dependencies;
+mod reconstruct;
 mod stats;
 mod test;
 
@@ -15,9 +16,9 @@ pub fn run() -> Result<(), String> {
             depth,
             pretty_print,
         } => dependencies::run(logfile, depth, pretty_print)?,
-        #[cfg(feature = "analysis")]
         args::Commands::Stats { logfile, k } => stats::run(logfile, k)?,
         args::Commands::Test { logfiles } => test::run(logfiles)?,
+        args::Commands::Reconstruct { logfile } => reconstruct::run(logfile)?,
     }
 
     Ok(())

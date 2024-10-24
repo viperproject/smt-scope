@@ -12,6 +12,7 @@ use super::{
     egraph::{EGraph, ENode},
     inst::Insts,
     stack::Stack,
+    stm2::EventLog,
     terms::Terms,
 };
 
@@ -32,6 +33,7 @@ pub struct Z3Parser {
     pub(crate) stack: Stack,
 
     pub strings: StringTable,
+    pub events: EventLog,
 }
 
 impl Default for Z3Parser {
@@ -45,6 +47,7 @@ impl Default for Z3Parser {
             inst_stack: Default::default(),
             egraph: Default::default(),
             stack: Default::default(),
+            events: EventLog::new(&mut strings),
             strings,
         }
     }
@@ -359,7 +362,9 @@ impl Z3LogParser for Z3Parser {
             kind: TermKind::App(name),
             child_ids,
         };
-        self.terms.app_terms.new_term(term)?;
+        let term_idx = self.terms.app_terms.new_term(term)?;
+        self.events
+            .new_term(term_idx, &self.terms[term_idx], &self.strings)?;
         Ok(())
     }
 
@@ -396,7 +401,13 @@ impl Z3LogParser for Z3Parser {
             result,
             prerequisites: prerequisites.into_boxed_slice(),
         };
-        self.terms.proof_terms.new_term(proof_step)?;
+        let proof_idx = self.terms.proof_terms.new_term(proof_step)?;
+        self.events.new_proof_step(
+            proof_idx,
+            &self.terms[proof_idx],
+            &self.terms,
+            &self.strings,
+        )?;
         Ok(())
     }
 
@@ -411,6 +422,7 @@ impl Z3LogParser for Z3Parser {
             .app_terms
             .parse_existing_id(&mut self.strings, id)?;
         self.terms.new_meaning(idx, meaning)?;
+        self.events.new_meaning(idx, meaning, &self.strings)?;
         Ok(())
     }
 
@@ -717,6 +729,7 @@ impl Z3LogParser for Z3Parser {
 
     fn eof(&mut self) {
         self.terms.end_of_file();
+        self.events.new_eof();
     }
 
     fn push<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
@@ -724,17 +737,31 @@ impl Z3LogParser for Z3Parser {
         let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
-        self.stack.new_frame(scope)
+        self.stack.new_frame(scope)?;
+        self.events.new_push()?;
+        Ok(())
     }
 
     fn pop<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let num = l.next().ok_or(Error::UnexpectedNewline)?;
-        let num = num.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
+        let num = num
+            .parse::<core::num::NonZeroUsize>()
+            .map_err(Error::InvalidFrameInteger)?;
         let scope = l.next().ok_or(Error::UnexpectedNewline)?;
         let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
-        self.stack.pop_frames(num, scope)
+        self.stack.pop_frames(num, scope)?;
+        self.events.new_pop(num)?;
+        Ok(())
+    }
+
+    fn begin_check<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
+        let scope = l.next().ok_or(Error::UnexpectedNewline)?;
+        let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
+        self.stack.ensure_height(scope)?;
+        self.events.new_begin_check()?;
+        Ok(())
     }
 }
 
@@ -752,6 +779,12 @@ impl Z3Parser {
     }
     pub fn instantiations(&self) -> &TiSlice<InstIdx, Instantiation> {
         &self.insts.insts
+    }
+    pub fn terms(&self) -> &TiSlice<TermIdx, Term> {
+        self.terms.app_terms.terms()
+    }
+    pub fn proofs(&self) -> &TiSlice<ProofIdx, ProofStep> {
+        self.terms.proof_terms.terms()
     }
 }
 

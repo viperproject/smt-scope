@@ -254,6 +254,14 @@ impl Z3Parser {
         Ok(IString(self.strings.try_get_or_intern(s)?))
     }
 
+    fn expected_null_str(&self) -> &'static str {
+        if self.version_info.is_ge_version(4, 11, 0) {
+            "<null>"
+        } else {
+            "null"
+        }
+    }
+
     fn quant_or_lamda(
         &mut self,
         full_id: TermId,
@@ -314,7 +322,7 @@ impl Z3LogParser for Z3Parser {
     fn mk_lambda<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let full_id = self.parse_new_full_id(l.next())?;
         let lambda_name = l.next().ok_or(Error::UnexpectedNewline)?;
-        if lambda_name != "<null>" {
+        if lambda_name != self.expected_null_str() {
             return Err(Error::NonNullLambdaName(lambda_name.to_string()));
         }
         let num_vars = l.next().ok_or(Error::UnexpectedNewline)?;

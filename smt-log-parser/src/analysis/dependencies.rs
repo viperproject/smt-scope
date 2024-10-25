@@ -29,8 +29,6 @@ impl Deref for QuantifierAnalysis {
 }
 
 impl QuantifierAnalysis {
-    /// Calculate the analysis. Make sure that you have run
-    /// `initialise_inst_succs_and_preds` on the `inst_graph`!
     pub fn new(parser: &Z3Parser, inst_graph: &InstGraph) -> Self {
         let mut self_ = Self(
             parser

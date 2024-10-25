@@ -145,12 +145,10 @@ impl InstGraph {
         self.initialise_collect(DefaultDepth::<true>, parser);
         self.initialise_collect(DefaultDepth::<false>, parser);
 
-        self.analyse();
-    }
-
-    pub fn initialise_inst_succs_and_preds(&mut self, parser: &Z3Parser) {
         self.initialise_transfer(DefaultNextInsts::<true>, parser);
         self.initialise_transfer(DefaultNextInsts::<false>, parser);
+
+        self.analyse();
     }
 
     pub fn analyse(&mut self) {

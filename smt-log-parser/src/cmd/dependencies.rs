@@ -8,8 +8,7 @@ use smt_log_parser::{
 
 pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(), String> {
     let parser = super::run_on_logfile(logfile)?;
-    let mut inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
-    inst_graph.initialise_inst_succs_and_preds(&parser);
+    let inst_graph = InstGraph::new(&parser).map_err(|e| format!("{e:?}"))?;
 
     let qanalysis = QuantifierAnalysis::new(&parser, &inst_graph);
     let total_costs = qanalysis.total_costs();

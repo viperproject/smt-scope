@@ -206,7 +206,6 @@ pub enum MLGraphNode {
 impl InstGraph {
     pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> usize {
         let currently_disabled_nodes = self.disabled_nodes();
-        self.initialise_inst_succs_and_preds(parser);
         // disable all nodes that do not correspond to QIs
         self.reset_disabled_to(parser, |nx, g| {
             !matches!(g[nx].kind(), NodeKind::Instantiation(_))

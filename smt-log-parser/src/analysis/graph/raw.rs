@@ -225,18 +225,25 @@ impl RawInstGraph {
     pub fn rev(&self) -> Reversed<&petgraph::graph::DiGraph<Node, EdgeKind, RawIx>> {
         Reversed(&*self.graph)
     }
-    pub fn neighbors_directed(&self, node: RawNodeIndex, dir: Direction) -> Vec<RawNodeIndex> {
-        let (mut disabled, mut enabled): (Vec<_>, Vec<_>) = self
+    pub fn neighbors_directed(
+        &self,
+        node: RawNodeIndex,
+        dir: Direction,
+    ) -> FxHashSet<RawNodeIndex> {
+        let (mut visited, mut enabled): (FxHashSet<_>, FxHashSet<_>) = self
             .graph
             .neighbors_directed(node.0, dir)
             .map(RawNodeIndex)
             .partition(|n| self.graph[n.0].disabled());
+        let mut disabled: Vec<_> = visited.iter().copied().collect();
         while let Some(next) = disabled.pop() {
             for n in self.graph.neighbors_directed(next.0, dir).map(RawNodeIndex) {
-                if self.graph[n.0].disabled() {
-                    disabled.push(n);
-                } else {
-                    enabled.push(n);
+                if visited.insert(n) {
+                    if self.graph[n.0].disabled() {
+                        disabled.push(n);
+                    } else {
+                        enabled.insert(n);
+                    }
                 }
             }
         }

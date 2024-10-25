@@ -3,8 +3,8 @@ use std::ops::{Index, IndexMut};
 use fxhash::{FxHashMap, FxHashSet};
 use petgraph::{
     graph::{DiGraph, EdgeIndex, NodeIndex},
-    visit::{EdgeRef, IntoEdgeReferences, Topo},
-    Direction::{self, Incoming, Outgoing},
+    visit::{Dfs, EdgeRef, IntoEdgeReferences, Reversed, Topo, Walker},
+    Direction::{self, Incoming},
 };
 
 use crate::{
@@ -14,7 +14,6 @@ use crate::{
 };
 
 use super::{
-    analysis::matching_loop::MIN_MATCHING_LOOP_LENGTH,
     raw::{EdgeKind, IndexesInstGraph, Node, NodeKind},
     InstGraph, RawEdgeIndex, RawNodeIndex,
 };
@@ -90,48 +89,45 @@ impl InstGraph {
             DiGraph::with_capacity(self.raw.visible_nodes(), 0);
         // mapping from old node index to new node index, end represents removed.
         let mut node_index_map = vec![NodeIndex::end(); self.raw.graph.node_count()];
-        let node_map = |idx, node: &Node| {
-            node.visible().then(|| VisibleNode {
+        for (i, node) in self.raw.graph.node_weights().enumerate() {
+            if !node.visible() {
+                continue;
+            }
+            let idx = RawNodeIndex(NodeIndex::new(i));
+            let nw = VisibleNode {
                 idx,
-                // hidden_parents: self.raw.neighbors_directed(idx, Direction::Incoming).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
-                hidden_parents: self.raw.graph[idx.0]
+                hidden_parents: self.raw[idx]
                     .inst_parents
                     .nodes
                     .iter()
                     .filter(|&n| self.raw[*n].hidden())
                     .count() as u32,
-                // hidden_children: self.raw.neighbors_directed(idx, Direction::Outgoing).into_iter().filter(|n| self.raw.graph[n.0].hidden()).count() as u32,
-                hidden_children: self.raw.graph[idx.0]
+                hidden_children: self.raw[idx]
                     .inst_children
                     .nodes
                     .iter()
                     .filter(|&n| self.raw[*n].hidden())
                     .count() as u32,
                 max_depth: 0,
-            })
-        };
-        for (i, node) in self.raw.graph.node_weights().enumerate() {
-            if let Some(nw) = node_map(RawNodeIndex(NodeIndex::new(i)), node) {
-                node_index_map[i] = graph.add_node(nw);
-            }
+            };
+            node_index_map[i] = graph.add_node(nw);
         }
         // assumes that inst-nodes in self.raw.graph are ordered in topological order
         let mut edge_idx = 0;
         for (i, node) in self.raw.graph.node_weights().enumerate() {
             let from = node_index_map[i];
-            if from != NodeIndex::end() {
-                for &next_inst in &node.inst_children.nodes {
-                    let next_inst = next_inst.index(&self.raw);
-                    let to = node_index_map[next_inst.0.index()];
-                    if to != NodeIndex::end() {
-                        graph.add_edge(
-                            from,
-                            to,
-                            VisibleEdge::Direct(RawEdgeIndex(EdgeIndex::new(edge_idx))),
-                        );
-                        edge_idx += 1;
-                    }
+            if from == NodeIndex::end() {
+                continue;
+            }
+            for &next_inst in &node.inst_children.nodes {
+                let next_inst = next_inst.index(&self.raw);
+                let to = node_index_map[next_inst.0.index()];
+                if to == NodeIndex::end() {
+                    continue;
                 }
+                let weight = VisibleEdge::Direct(RawEdgeIndex(EdgeIndex::new(edge_idx)));
+                graph.add_edge(from, to, weight);
+                edge_idx += 1;
             }
         }
         let reverse: FxHashMap<_, _> = graph
@@ -152,6 +148,10 @@ impl VisibleInstGraph {
     /// Does the hidden instantiation graph contain the given node?
     pub fn contains(&self, i_idx: RawNodeIndex) -> bool {
         self.reverse.contains_key(&i_idx)
+    }
+
+    pub(super) fn reverse(&self, i_idx: RawNodeIndex) -> Option<VisibleNodeIndex> {
+        self.reverse.get(&i_idx).copied()
     }
 
     fn reconnect(&mut self, igraph: &InstGraph) {
@@ -308,92 +308,44 @@ impl VisibleInstGraph {
         }
     }
 
-    pub fn find_longest_paths(&mut self) -> FxHashSet<RawNodeIndex> {
+    /// Collect all nodes that are part of a path of at least `min_length`
+    /// nodes. Additionally, returns a list of all of the leaves of these long
+    /// paths along with their max depth.
+    pub(crate) fn collect_nodes_in_long_paths(
+        &mut self,
+        min_length: usize,
+    ) -> (
+        impl Iterator<Item = (usize, RawNodeIndex)> + '_,
+        impl Iterator<Item = RawNodeIndex> + '_,
+    ) {
         // traverse this subtree in topological order to compute longest distances from root nodes
         Self::compute_longest_distances_from_roots(self);
-        let furthest_away_end_nodes = self
+        let long_path_leaves: Vec<_> = self
             .graph
             .node_indices()
             // only want to keep end nodes of longest paths, i.e., nodes without any children
-            .filter(|nx| self.graph.neighbors_directed(*nx, Outgoing).count() == 0)
+            .filter(|nx| self.graph.neighbors(*nx).next().is_none())
             // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
-            .filter(|nx| {
-                self.graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1
-            })
+            .filter(|nx| self.graph[*nx].max_depth >= min_length - 1)
             .collect();
-        // backtrack longest paths from furthest away nodes in subgraph until we reach a root
-        let mut matching_loop_nodes: FxHashSet<RawNodeIndex> = FxHashSet::default();
-        let mut visitor: Vec<NodeIndex<VisibleIx>> = furthest_away_end_nodes;
-        let mut visited: FxHashSet<_> = FxHashSet::default();
-        while let Some(curr) = visitor.pop() {
-            // matching_loop_nodes.insert(self.graph.node_weight(curr).unwrap().orig_graph_idx());
-            matching_loop_nodes.insert(self.graph[curr].idx);
-            let curr_distance = self.graph.node_weight(curr).unwrap().max_depth;
-            let preds = self
-                .graph
-                .neighbors_directed(curr, Incoming)
-                .filter(|pred| {
-                    let pred_distance = self.graph.node_weight(*pred).unwrap().max_depth;
-                    pred_distance == curr_distance - 1
-                });
-            for pred in preds {
-                if visited.insert(pred) {
-                    visitor.push(pred);
-                }
-            }
-        }
-        matching_loop_nodes
-    }
+        // Walk backwards from leaves to collect all nodes
+        let rev_graph = Reversed(&self.graph);
+        let mut dfs = Dfs::empty(rev_graph);
+        dfs.stack = long_path_leaves.clone();
 
-    pub fn find_end_nodes_of_longest_paths(&mut self) -> FxHashSet<RawNodeIndex> {
-        // traverse this subtree in topological order to compute longest distances from root nodes
-        Self::compute_longest_distances_from_roots(self);
-        let furthest_away_end_nodes = self
-            .graph
-            .node_indices()
-            // only want to keep end nodes of longest paths, i.e., nodes without any children
-            .filter(|nx| self.graph.neighbors_directed(*nx, Outgoing).count() == 0)
-            // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
-            .filter(|nx| {
-                self.graph.node_weight(*nx).unwrap().max_depth >= MIN_MATCHING_LOOP_LENGTH - 1
-            })
-            .collect();
-        // backtrack longest paths from furthest away nodes in subgraph until we reach a root
-        let mut matching_loop_nodes: FxHashSet<RawNodeIndex> = FxHashSet::default();
-        let mut visitor: Vec<NodeIndex<VisibleIx>> = furthest_away_end_nodes;
-        let mut visited: FxHashSet<_> = FxHashSet::default();
-        while let Some(curr) = visitor.pop() {
-            // matching_loop_nodes.insert(self.graph.node_weight(curr).unwrap().orig_graph_idx());
-            matching_loop_nodes.insert(self.graph[curr].idx);
-            let curr_distance = self.graph.node_weight(curr).unwrap().max_depth;
-            let preds = self
-                .graph
-                .neighbors_directed(curr, Incoming)
-                .filter(|pred| {
-                    let pred_distance = self.graph.node_weight(*pred).unwrap().max_depth;
-                    pred_distance == curr_distance - 1
-                });
-            for pred in preds {
-                if visited.insert(pred) {
-                    visitor.push(pred);
-                }
-            }
-        }
-        matching_loop_nodes
+        let long_path_leaves = long_path_leaves
+            .into_iter()
+            .map(|nx| (self.graph[nx].max_depth, self.graph[nx].idx));
+        let long_path_nodes = dfs.iter(rev_graph).map(|nx| self.graph[nx].idx);
+        (long_path_leaves, long_path_nodes)
     }
 
     pub fn compute_longest_distances_from_roots(&mut self) {
         let mut topo = Topo::new(&self.graph);
         while let Some(nx) = topo.next(&self.graph) {
             let parents = self.graph.neighbors_directed(nx, Incoming);
-            let max_parent_depth = parents
-                .map(|nx| self.graph.node_weight(nx).unwrap().max_depth)
-                .max();
-            if let Some(depth) = max_parent_depth {
-                self.graph[nx].max_depth = depth + 1;
-            } else {
-                self.graph[nx].max_depth = 0;
-            }
+            let max_parent_depth = parents.map(|nx| self.graph[nx].max_depth + 1).max();
+            self.graph[nx].max_depth = max_parent_depth.unwrap_or_default();
         }
     }
 }

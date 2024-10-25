@@ -65,4 +65,11 @@ impl LogInfo {
             quants,
         }
     }
+
+    pub fn quants_iter(&self) -> impl Iterator<Item = (QuantIdx, u64)> + '_ {
+        self.quants
+            .0
+            .iter_enumerated()
+            .map(|(i, count)| (i, *count))
+    }
 }

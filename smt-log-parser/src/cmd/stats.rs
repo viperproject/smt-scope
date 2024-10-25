@@ -7,9 +7,7 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
     let info = LogInfo::new(&parser);
 
     let mut instantiations_occurrances: Vec<_> = info
-        .quants
-        .0
-        .iter_enumerated()
+        .quants_iter()
         .flat_map(|(qidx, icount)| {
             parser[qidx]
                 .kind

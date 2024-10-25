@@ -24,6 +24,7 @@ pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
     (Disabler::ENodes, false),
     (Disabler::GivenEqualities, false),
     (Disabler::AllEqualities, false),
+    (Disabler::Instantiations, false),
 ];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
@@ -231,6 +232,7 @@ pub enum Disabler {
     ENodes,
     GivenEqualities,
     AllEqualities,
+    Instantiations,
 }
 
 impl Disabler {
@@ -242,6 +244,7 @@ impl Disabler {
             Disabler::AllEqualities => {
                 node.kind().eq_given().is_some() || node.kind().eq_trans().is_some()
             }
+            Disabler::Instantiations => node.kind().inst().is_some(),
             Disabler::Smart => match node.kind() {
                 NodeKind::ENode(_) => {
                     // Should only be 0 or 1
@@ -298,6 +301,7 @@ impl Disabler {
             Disabler::ENodes => "yield terms",
             Disabler::GivenEqualities => "yield equalities",
             Disabler::AllEqualities => "all equalities",
+            Disabler::Instantiations => "instantiations",
         }
     }
     pub fn icon(&self) -> &'static str {
@@ -306,6 +310,7 @@ impl Disabler {
             Disabler::ENodes => "functions",
             Disabler::GivenEqualities => "compare_arrows",
             Disabler::AllEqualities => "compare_arrows",
+            Disabler::Instantiations => "functions",
         }
     }
 }

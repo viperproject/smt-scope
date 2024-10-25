@@ -92,6 +92,8 @@ pub struct DisplayCtxt<'a> {
 pub enum SymbolReplacement {
     Math,
     Code,
+    /// Display quantifiers and symbols in the smt2 format, using the
+    /// [`TermDisplayContext::s_expression`] formatter is recommended.
     None,
 }
 
@@ -102,6 +104,10 @@ impl SymbolReplacement {
             SymbolReplacement::Code => Some(false),
             SymbolReplacement::None => None,
         }
+    }
+
+    pub fn is_none(self) -> bool {
+        matches!(self, SymbolReplacement::None)
     }
 }
 
@@ -660,15 +666,7 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
         // for this, we need to store the quantifier in the context
         data.with_quant(self, |data| {
             data.with_outer_bind_power(f, QUANT_BIND, |data, f| {
-                if matches!(ctxt.config.replace_symbols, SymbolReplacement::Math) {
-                    write!(f, "∀ ")?;
-                } else {
-                    write!(f, "FORALL ")?;
-                }
-                if ctxt.config.display_quantifier_name {
-                    write!(f, "\"{}\" ", self.kind.with(ctxt))?;
-                }
-                for idx in 0..self.num_vars {
+                let vars = (0..self.num_vars).map(|idx| {
                     let name = VarNames::get_name(
                         &ctxt.parser.strings,
                         self.vars.as_ref(),
@@ -676,21 +674,54 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                         &ctxt.config,
                     );
                     let ty = VarNames::get_type(&ctxt.parser.strings, self.vars.as_ref(), idx);
-                    if idx != 0 {
-                        write!(f, ", ")?;
+                    (idx != 0, name, ty)
+                });
+                let (body, patterns) = data.children().split_last().unwrap();
+                if ctxt.config.replace_symbols.is_none() {
+                    write!(f, "(forall (")?;
+                    for (not_first, name, ty) in vars {
+                        if not_first {
+                            write!(f, " ")?;
+                        }
+                        write!(f, "({name} {})", ty.unwrap_or("?"))?;
                     }
-                    write!(f, "{name}{ty}")?;
-                }
-                let sep = if matches!(ctxt.config.replace_symbols, SymbolReplacement::Math) {
-                    "."
+                    write!(f, ") (!\n  ")?;
+                    display_child(f, *body, ctxt, data)?;
+                    for &pattern in patterns {
+                        write!(f, "\n  ")?;
+                        display_child(f, pattern, ctxt, data)?;
+                    }
+                    if let Some(name) = self.kind.user_name() {
+                        write!(f, "\n  :qid {}", &ctxt.parser[name])?;
+                    }
+                    write!(f, "\n))")?;
                 } else {
-                    " ::"
-                };
-                write!(f, "{sep}")?;
-                for child in data.children() {
-                    write!(f, " ")?;
+                    let (start, sep) = match ctxt.config.replace_symbols {
+                        SymbolReplacement::Math => ("∀", "."),
+                        SymbolReplacement::Code => ("FORALL", " ::"),
+                        SymbolReplacement::None => unreachable!(),
+                    };
+                    write!(f, "{} ", start)?;
+                    if ctxt.config.display_quantifier_name {
+                        write!(f, "\"{}\" ", self.kind.with(ctxt))?;
+                    }
+                    for (not_first, name, ty) in vars {
+                        if not_first {
+                            write!(f, ", ")?;
+                        }
+                        if let Some(ty) = ty {
+                            write!(f, "{name}: {ty}")?;
+                        } else {
+                            write!(f, "{name}")?;
+                        }
+                    }
+                    write!(f, "{sep} ")?;
+                    for &pattern in patterns {
+                        display_child(f, pattern, ctxt, data)?;
+                        write!(f, " ")?;
+                    }
                     // TODO: binding power!
-                    display_child(f, *child, ctxt, data)?;
+                    display_child(f, *body, ctxt, data)?;
                 }
                 Ok(())
             })

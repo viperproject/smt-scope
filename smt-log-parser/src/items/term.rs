@@ -122,16 +122,18 @@ pub enum VarNames {
     NameAndType(Box<[(IString, IString)]>),
 }
 impl VarNames {
-    pub fn get_type(strings: &StringTable, this: Option<&Self>, idx: usize) -> String {
-        this.as_ref()
-            .map(|this| {
-                let ty = match this {
-                    Self::TypeOnly(names) => names[idx],
-                    Self::NameAndType(names) => names[idx].1,
-                };
-                format!(": {}", &strings[*ty])
-            })
-            .unwrap_or_default()
+    pub fn get_type<'a>(
+        strings: &'a StringTable,
+        this: Option<&Self>,
+        idx: usize,
+    ) -> Option<&'a str> {
+        this.as_ref().map(|this| {
+            let ty = match this {
+                Self::TypeOnly(names) => names[idx],
+                Self::NameAndType(names) => names[idx].1,
+            };
+            &strings[*ty]
+        })
     }
 
     pub fn is_empty(&self) -> bool {

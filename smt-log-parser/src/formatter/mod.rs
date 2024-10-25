@@ -55,6 +55,10 @@ pub const S_EXPRESSION: FormatterConst<'static> =
     unwrap!(FormatterConst::parse("$-1$(${0}$$(#0:-1|1$ | |)$)$-1$"));
 pub const S_EXPRESSION_LEAF: TermDisplayConst<'static> =
     unwrap!(TermDisplayConst::parse("(/.*/)", "$-1$${0}$$-1$"));
+pub const S_EXPRESSION_PATTERN: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse(
+    "pattern",
+    "$-1$:pattern ($(#0:-1|1$| |)$)$-1$"
+));
 
 impl TermDisplayContext {
     pub fn basic() -> Self {
@@ -68,8 +72,12 @@ impl TermDisplayContext {
     pub fn s_expression() -> Self {
         let fallback = Formatter::try_from(S_EXPRESSION).unwrap();
         let mut self_ = Self::new(fallback);
+
         let leaf = TermDisplay::try_from(S_EXPRESSION_LEAF).unwrap();
         self_.push(leaf).unwrap();
+        let pattern = TermDisplay::try_from(S_EXPRESSION_PATTERN).unwrap();
+        self_.push(pattern).unwrap();
+
         self_
     }
 }

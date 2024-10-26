@@ -275,8 +275,8 @@ pub fn SelectedNodesInfo(
                     <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
                     <InfoLine header="Degree" text={
                         format!("parents {}, children {}",
-                            graph.raw.neighbors_directed(node, petgraph::Direction::Incoming).len(),
-                            graph.raw.neighbors_directed(node, petgraph::Direction::Outgoing).len()
+                            graph.raw.neighbors_directed_count(node, petgraph::Direction::Incoming),
+                            graph.raw.neighbors_directed_count(node, petgraph::Direction::Outgoing),
                         )
                     } code=false />
                 </ul>

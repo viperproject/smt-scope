@@ -89,7 +89,7 @@ impl Filter {
             Filter::MaxInsts(n) => graph.keep_first_n_cost(n),
             Filter::MaxBranching(n) => graph.keep_first_n_children(n),
             Filter::ShowNeighbours(nidx, direction) => {
-                let nodes = graph.raw.neighbors_directed(nidx, direction);
+                let nodes = graph.raw.neighbors_directed_collect(nidx, direction);
                 graph.raw.set_visibility_many(false, nodes.into_iter())
             }
             Filter::VisitSubTreeWithRoot(nidx, retain) => {

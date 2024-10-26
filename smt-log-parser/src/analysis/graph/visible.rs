@@ -39,21 +39,15 @@ impl InstGraph {
         // mapping from old node index to new node index, end represents removed.
         let mut node_index_map = vec![NodeIndex::end(); self.raw.graph.node_count()];
         let node_map = |idx, node: &Node| {
-            node.visible().then(|| VisibleNode {
-                idx,
-                hidden_parents: self
-                    .raw
-                    .neighbors_directed(idx, Direction::Incoming)
-                    .into_iter()
-                    .filter(|n| self.raw.graph[n.0].hidden())
-                    .count() as u32,
-                hidden_children: self
-                    .raw
-                    .neighbors_directed(idx, Direction::Outgoing)
-                    .into_iter()
-                    .filter(|n| self.raw.graph[n.0].hidden())
-                    .count() as u32,
-                max_depth: 0,
+            node.visible().then(|| {
+                let hidden_parents = self.raw.neighbors_directed_count_hidden(idx, Incoming);
+                let hidden_children = self.raw.neighbors_directed_count_hidden(idx, Outgoing);
+                VisibleNode {
+                    idx,
+                    hidden_parents: hidden_parents as u32,
+                    hidden_children: hidden_children as u32,
+                    max_depth: 0,
+                }
             })
         };
         for (i, node) in self.raw.graph.node_weights().enumerate() {

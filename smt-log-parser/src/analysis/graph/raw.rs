@@ -225,29 +225,61 @@ impl RawInstGraph {
     pub fn rev(&self) -> Reversed<&petgraph::graph::DiGraph<Node, EdgeKind, RawIx>> {
         Reversed(&*self.graph)
     }
+    /// Similar to `self.graph.neighbors_directed` but will walk through
+    /// disabled nodes.
     pub fn neighbors_directed(
         &self,
         node: RawNodeIndex,
         dir: Direction,
-    ) -> FxHashSet<RawNodeIndex> {
-        let (mut visited, mut enabled): (FxHashSet<_>, FxHashSet<_>) = self
-            .graph
-            .neighbors_directed(node.0, dir)
-            .map(RawNodeIndex)
-            .partition(|n| self.graph[n.0].disabled());
+        mut f: impl FnMut(RawNodeIndex),
+    ) {
+        let mut visited = FxHashSet::default();
+        for n in self.graph.neighbors_directed(node.0, dir) {
+            if self.graph[n].disabled() {
+                visited.insert(n);
+            } else {
+                f(RawNodeIndex(n));
+            }
+        }
         let mut disabled: Vec<_> = visited.iter().copied().collect();
         while let Some(next) = disabled.pop() {
-            for n in self.graph.neighbors_directed(next.0, dir).map(RawNodeIndex) {
-                if visited.insert(n) {
-                    if self.graph[n.0].disabled() {
-                        disabled.push(n);
-                    } else {
-                        enabled.insert(n);
-                    }
+            for n in self.graph.neighbors_directed(next, dir) {
+                if !visited.insert(n) {
+                    continue;
+                }
+                if self.graph[n].disabled() {
+                    disabled.push(n);
+                } else {
+                    f(RawNodeIndex(n));
                 }
             }
         }
-        enabled
+    }
+    /// Faster than [`Self::neighbors_directed_collect`] if you only need the count.
+    pub fn neighbors_directed_count(&self, node: RawNodeIndex, dir: Direction) -> usize {
+        let mut neighbors = 0;
+        self.neighbors_directed(node, dir, |_| neighbors += 1);
+        neighbors
+    }
+    pub fn neighbors_directed_count_hidden(&self, node: RawNodeIndex, dir: Direction) -> usize {
+        let mut hidden_neighbors = 0;
+        self.neighbors_directed(node, dir, |ix| {
+            if self[ix].hidden() {
+                hidden_neighbors += 1;
+            }
+        });
+        hidden_neighbors
+    }
+    pub fn neighbors_directed_collect(
+        &self,
+        node: RawNodeIndex,
+        dir: Direction,
+    ) -> FxHashSet<RawNodeIndex> {
+        let mut neighbors = FxHashSet::default();
+        self.neighbors_directed(node, dir, |ix| {
+            neighbors.insert(ix);
+        });
+        neighbors
     }
 
     pub fn visible_nodes(&self) -> usize {

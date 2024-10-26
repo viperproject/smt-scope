@@ -159,10 +159,9 @@ impl InstGraph {
                 .reverse()
                 .then_with(|| a.cmp(&b))
         });
-        self.analysis.children.sort_by(|&a, &b| {
-            let ac = self.raw.neighbors_directed(a, Direction::Outgoing).len();
-            let bc = self.raw.neighbors_directed(b, Direction::Outgoing).len();
-            ac.cmp(&bc).reverse().then_with(|| a.cmp(&b))
+        self.analysis.children.sort_by_cached_key(|&a| {
+            let ac = self.raw.neighbors_directed_count(a, Direction::Outgoing);
+            (usize::MAX - ac, a)
         });
         self.analysis.fwd_depth_min.sort_by(|&a, &b| {
             self.raw.graph[a.0]

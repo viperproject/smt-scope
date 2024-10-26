@@ -24,7 +24,7 @@ pub fn run(logfiles: Vec<PathBuf>) -> Result<(), String> {
         // let parsed = StreamParser::parse_entire_string(&file, Duration::from_secs_f32(10.0));
         let to = Duration::from_secs_f32(15.0);
         let (_metadata, parser) = Z3Parser::from_file(path).unwrap();
-        let (timeout, result) = parser.process_all_timeout(to);
+        let (timeout, mut result) = parser.process_all_timeout(to);
         let elapsed_time = time.elapsed();
         println!(
             "{} parsing after {} seconds (timeout {timeout:?})",
@@ -37,7 +37,8 @@ pub fn run(logfiles: Vec<PathBuf>) -> Result<(), String> {
         );
         #[cfg(feature = "analysis")]
         {
-            let inst_graph = InstGraph::new(&result).unwrap();
+            let mut inst_graph = InstGraph::new(&result).unwrap();
+            inst_graph.search_matching_loops(&mut result);
             let _displayed = inst_graph.to_visible();
             let process_time = time.elapsed();
             println!(

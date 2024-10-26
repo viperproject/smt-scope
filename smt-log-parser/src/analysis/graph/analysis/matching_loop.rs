@@ -348,33 +348,36 @@ impl InstGraph {
                 let quant = match_.kind.quant_idx().unwrap();
                 for (n, matched_term) in matched_terms.iter().enumerate() {
                     let creator = parser[*matched_term].created_by;
-                    if let Some(inst) = creator {
-                        let match_ = &parser[parser[inst].match_];
-                        let creator_pattern = match_.kind.pattern().unwrap();
-                        let creator_quant = match_.kind.quant_idx().unwrap();
-                        let blame_term = parser[*matched_term].owner;
-                        if let Some(abstract_inst) = abstract_insts.get_mut(&(quant, pattern)) {
-                            abstract_inst.merge_nth_blame_term(
+                    let Some(inst) = creator else {
+                        continue;
+                    };
+                    let match_ = &parser[parser[inst].match_];
+                    let Some(creator_pattern) = match_.kind.pattern() else {
+                        continue;
+                    };
+                    let creator_quant = match_.kind.quant_idx().unwrap();
+                    let blame_term = parser[*matched_term].owner;
+                    if let Some(abstract_inst) = abstract_insts.get_mut(&(quant, pattern)) {
+                        abstract_inst.merge_nth_blame_term(
+                            n,
+                            blame_term,
+                            creator_quant,
+                            creator_pattern,
+                            parser,
+                        )
+                    } else {
+                        abstract_insts
+                            .insert((quant, pattern), AbstractInst::from((quant, pattern)));
+                        abstract_insts
+                            .get_mut(&(quant, pattern))
+                            .unwrap()
+                            .merge_nth_blame_term(
                                 n,
                                 blame_term,
                                 creator_quant,
                                 creator_pattern,
                                 parser,
                             )
-                        } else {
-                            abstract_insts
-                                .insert((quant, pattern), AbstractInst::from((quant, pattern)));
-                            abstract_insts
-                                .get_mut(&(quant, pattern))
-                                .unwrap()
-                                .merge_nth_blame_term(
-                                    n,
-                                    blame_term,
-                                    creator_quant,
-                                    creator_pattern,
-                                    parser,
-                                )
-                        }
                     }
                 }
                 for (n, equality) in equalities.iter().enumerate() {

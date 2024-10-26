@@ -4,7 +4,7 @@ use fxhash::{FxHashMap, FxHashSet};
 use petgraph::{
     graph::{DiGraph, EdgeIndex, NodeIndex},
     visit::{Dfs, EdgeRef, IntoEdgeReferences, Reversed, Topo, Walker},
-    Direction::{self, Incoming},
+    Direction::{self, Incoming, Outgoing},
 };
 
 use crate::{

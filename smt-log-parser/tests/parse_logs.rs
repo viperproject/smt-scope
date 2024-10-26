@@ -79,7 +79,8 @@ fn parse_all_logs() {
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
             );
-            parser.parser().mem_dbg(DbgFlags::default()).ok();
+            let mut parser = parser.take_parser();
+            parser.mem_dbg(DbgFlags::default()).ok();
 
             let middle_alloc = ALLOCATOR.allocated() as u64;
             // Limit memory usage to `ANALYSIS_OVERHEAD`x the parse amount + 64MiB. Reduce this if
@@ -92,7 +93,8 @@ fn parse_all_logs() {
                 mem_limit / mb,
             );
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
-            let inst_graph = InstGraph::new(parser.parser()).unwrap();
+            let mut inst_graph = InstGraph::new(&parser).unwrap();
+            inst_graph.search_matching_loops(&mut parser);
             let elapsed = now.elapsed();
             max_analysis_ovhd = f64::max(
                 max_analysis_ovhd,

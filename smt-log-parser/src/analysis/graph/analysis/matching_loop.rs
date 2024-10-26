@@ -8,11 +8,7 @@ use petgraph::{graph::NodeIndex, visit::Dfs};
 
 use super::RawNodeIndex;
 use crate::{
-    analysis::{
-        raw::{NodeKind, RawIx},
-        visible::VisibleEdge,
-        InstGraph, LogInfo,
-    },
+    analysis::{raw::NodeKind, visible::VisibleEdge, InstGraph, LogInfo},
     display_with::{DisplayCtxt, DisplayWithCtxt},
     items::{ENodeIdx, EqTransIdx, InstIdx, MatchKind, QuantIdx, TermIdx},
     Graph, Z3Parser,
@@ -223,17 +219,14 @@ impl InstGraph {
         long_path_leaves
             .sort_unstable_by(|(a_len, a_ix), (b_len, b_ix)| (b_len, a_ix).cmp(&(a_len, b_ix)));
 
-        let long_path_leaves: Vec<_> = long_path_leaves
-            .into_iter()
-            .map(|(_, ix)| long_paths_subgraph.reverse(ix).unwrap())
+        let long_path_leaves_sub_idx: Vec<_> = long_path_leaves
+            .iter()
+            .map(|(_, ix)| long_paths_subgraph.reverse(*ix).unwrap())
             .collect();
-
-        // compute end-nodes of matching loops
-        let matching_loop_end_nodes = long_path_leaves;
 
         // assign to each node in a matching loop which matching loops it belongs to, i.e., if a node is part of the
         // i-th longest matching loop, it stores the index i-1. Do this, by doing a reverse-DFS from all ML end nodes
-        for (i, end_node) in matching_loop_end_nodes.iter().enumerate() {
+        for (i, end_node) in long_path_leaves_sub_idx.iter().enumerate() {
             let mut dfs = Dfs::new(
                 petgraph::visit::Reversed(&long_paths_subgraph.graph),
                 end_node.0,
@@ -243,14 +236,9 @@ impl InstGraph {
                 self.raw.graph[orig_nx].part_of_ml.insert(i);
             }
         }
-        // collect all matching loop end nodes
-        let matching_loop_end_nodes_raw_indices: Vec<RawNodeIndex> = matching_loop_end_nodes
-            .iter()
-            .map(|nidx| long_paths_subgraph[*nidx].idx)
-            .collect();
         // return the total number of potential matching loops
-        let nr_matching_loop_end_nodes = matching_loop_end_nodes_raw_indices.len();
-        self.analysis.matching_loop_end_nodes = Some(matching_loop_end_nodes_raw_indices);
+        let nr_matching_loop_end_nodes = long_path_leaves.len();
+        self.analysis.matching_loop_end_nodes = Some(long_path_leaves);
 
         // compute the ML graphs for all the potential matching loops
         // first enable all of them
@@ -336,10 +324,10 @@ impl InstGraph {
             .graph
             .node_indices()
             .filter(|nx| self.raw.graph[*nx].part_of_ml.contains(&n))
-            .collect::<FxHashSet<NodeIndex<RawIx>>>();
+            .collect::<Vec<_>>();
         // here we "fold" a potential matching loop into an abstract instantiation graph that represents the repeating pattern of the potential matching loop
         // an abstract instantiation is defined by the quantifier and the pattern used for the pattern match
-        let mut abstract_insts: FxHashMap<(QuantIdx, TermIdx), AbstractInst> = HashMap::default();
+        let mut abstract_insts: FxHashMap<(QuantIdx, TermIdx), AbstractInst> = FxHashMap::default();
         // for each abstract instantiation, we identify the matched terms and the blamed equalities
         for nx in nodes_of_nth_matching_loop {
             let node_kind = self.raw.graph[nx].kind();

@@ -151,25 +151,26 @@ impl Filter {
                         }
                     })
                     .collect::<fxhash::FxHashSet<_>>();
-                let relevant_non_qi_nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nth_ml_endnode.0)
-                    .iter(graph.raw.rev())
-                    .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
-                    .filter(|nx| {
-                        graph.raw.graph[*nx]
-                            .inst_children
-                            .nodes
-                            .intersection(&nodes_of_nth_matching_loop)
-                            .count()
-                            > 0
-                            && graph.raw.graph[*nx]
-                                .inst_parents
+                let relevant_non_qi_nodes: Vec<_> =
+                    Dfs::new(&*graph.raw.graph, nth_ml_endnode.1 .0)
+                        .iter(graph.raw.rev())
+                        .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
+                        .filter(|nx| {
+                            graph.raw.graph[*nx]
+                                .inst_children
                                 .nodes
                                 .intersection(&nodes_of_nth_matching_loop)
                                 .count()
                                 > 0
-                    })
-                    .map(RawNodeIndex)
-                    .collect();
+                                && graph.raw.graph[*nx]
+                                    .inst_parents
+                                    .nodes
+                                    .intersection(&nodes_of_nth_matching_loop)
+                                    .count()
+                                    > 0
+                        })
+                        .map(RawNodeIndex)
+                        .collect();
                 graph
                     .raw
                     .set_visibility_many(false, relevant_non_qi_nodes.into_iter());

@@ -1,9 +1,10 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
+use subgraph::Subgraphs;
 
-use crate::{items::GraphIdx, Result, TiVec, Z3Parser};
+use crate::{Result, Z3Parser};
 
-use self::{analysis::Analysis, raw::RawInstGraph, subgraph::Subgraph, visible::VisibleInstGraph};
+use self::{analysis::Analysis, raw::RawInstGraph, visible::VisibleInstGraph};
 
 // TODO: once the ML algo is reimplemented, delete this
 // pub mod inst_graph;
@@ -22,7 +23,7 @@ pub use visible::{VisibleEdgeIndex, VisibleNodeIndex};
 #[derive(Debug)]
 pub struct InstGraph {
     pub raw: RawInstGraph,
-    pub subgraphs: TiVec<GraphIdx, Subgraph>,
+    pub subgraphs: Subgraphs,
     pub analysis: Analysis,
 }
 
@@ -100,6 +101,17 @@ macro_rules! graph_idx {
             #[cfg(feature = "mem_dbg")]
             impl CopyType for $edge {
                 type Copy = True;
+            }
+
+            impl From<usize> for $node {
+                fn from(x: usize) -> Self {
+                    Self(petgraph::graph::NodeIndex::new(x))
+                }
+            }
+            impl From<$node> for usize {
+                fn from(x: $node) -> Self {
+                    x.0.index()
+                }
             }
         }
         pub use $mod_name::{$edge, $inner, $node};

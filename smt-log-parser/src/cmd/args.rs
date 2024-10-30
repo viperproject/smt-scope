@@ -35,6 +35,9 @@ pub enum Commands {
     Test {
         /// The paths to the smt log files
         logfiles: Vec<std::path::PathBuf>,
+        /// The maximum time to spend parsing each file (in seconds)
+        #[arg(short, long, default_value_t = 15.0)]
+        timeout: f32,
     },
     /// Try to reconstruct the `.smt2` file
     Reconstruct {

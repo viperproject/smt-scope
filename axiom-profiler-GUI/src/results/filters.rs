@@ -89,7 +89,7 @@ impl Filter {
             Filter::MaxInsts(n) => graph.keep_first_n_cost(n),
             Filter::MaxBranching(n) => graph.keep_first_n_children(n),
             Filter::ShowNeighbours(nidx, direction) => {
-                let nodes = graph.raw.neighbors_directed_collect(nidx, direction);
+                let nodes: Vec<_> = graph.raw.neighbors_directed(nidx, direction).collect();
                 graph.raw.set_visibility_many(false, nodes.into_iter())
             }
             Filter::VisitSubTreeWithRoot(nidx, retain) => {
@@ -152,7 +152,7 @@ impl Filter {
                     })
                     .collect::<fxhash::FxHashSet<_>>();
                 let relevant_non_qi_nodes: Vec<_> =
-                    Dfs::new(&*graph.raw.graph, nth_ml_endnode.1 .0)
+                    Dfs::new(&*graph.raw.graph, nth_ml_endnode.1[0].1 .0)
                         .iter(graph.raw.rev())
                         .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
                         .filter(|nx| {

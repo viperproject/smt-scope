@@ -10,7 +10,7 @@ use super::{ProofIdx, QuantIdx, TermIdx};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Term {
-    pub id: Option<TermId>,
+    pub id: TermId,
     pub kind: TermKind,
     // Reduces memory usage compared to a Vec
     pub child_ids: Box<[TermIdx]>,
@@ -23,7 +23,6 @@ pub enum TermKind {
     Var(usize),
     App(IString),
     Quant(QuantIdx),
-    Generalised,
 }
 
 impl TermKind {
@@ -45,6 +44,9 @@ impl TermKind {
             _ => None,
         }
     }
+    pub fn is_var(&self) -> bool {
+        matches!(self, Self::Var(_))
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -55,14 +57,6 @@ pub struct Meaning {
     pub theory: IString,
     /// The value of the term (e.g. `#x0000000000000001` or `#b1`)
     pub value: IString,
-}
-
-/// Returned when indexing with `TermIdx`
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct TermAndMeaning<'a> {
-    pub term: &'a Term,
-    pub meaning: Option<&'a Meaning>,
 }
 
 /// A Z3 quantifier and associated data.

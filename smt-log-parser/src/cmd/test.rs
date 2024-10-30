@@ -5,7 +5,7 @@ use smt_log_parser::parsers::LogParser;
 use std::{path::PathBuf, time::Duration};
 use wasm_timer::Instant;
 
-pub fn run(logfiles: Vec<PathBuf>) -> Result<(), String> {
+pub fn run(logfiles: Vec<PathBuf>, timeout: f32) -> Result<(), String> {
     for path in logfiles {
         let path = std::path::Path::new(&path);
         let filename = path
@@ -22,7 +22,7 @@ pub fn run(logfiles: Vec<PathBuf>) -> Result<(), String> {
         // let file = std::fs::read_to_string(path).unwrap();
         // let len = file.chars().filter(|c| *c == '\n').count();
         // let parsed = StreamParser::parse_entire_string(&file, Duration::from_secs_f32(10.0));
-        let to = Duration::from_secs_f32(15.0);
+        let to = Duration::from_secs_f32(timeout);
         let (_metadata, parser) = Z3Parser::from_file(path).unwrap();
         let (timeout, mut result) = parser.process_all_timeout(to);
         let elapsed_time = time.elapsed();

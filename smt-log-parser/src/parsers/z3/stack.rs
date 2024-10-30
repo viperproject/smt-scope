@@ -1,37 +1,62 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::{items::StackIdx, Error, Result, TiVec};
+use crate::{
+    items::{StackFrame, StackIdx},
+    Error, Result, TiVec,
+};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Stack {
-    pub(super) stack: Vec<StackIdx>,
+    stack: Vec<StackIdx>,
     pub(super) stack_frames: TiVec<StackIdx, StackFrame>,
+    timestamp: u32,
+}
+
+impl Default for Stack {
+    fn default() -> Self {
+        let mut stack_frames: TiVec<StackIdx, StackFrame> = TiVec::default();
+        let idx = stack_frames.push_and_get_key(StackFrame::new(0));
+        Self {
+            stack: vec![idx],
+            stack_frames,
+            timestamp: 1,
+        }
+    }
 }
 
 impl Stack {
+    fn height(&self) -> usize {
+        self.stack.len() - 1
+    }
+
     fn add_frame(&mut self) -> Result<()> {
         self.stack_frames.raw.try_reserve(1)?;
-        let idx = self.stack_frames.push_and_get_key(StackFrame::new());
+        let idx = self
+            .stack_frames
+            .push_and_get_key(StackFrame::new(self.timestamp));
         self.stack.try_reserve(1)?;
         self.stack.push(idx);
+        self.timestamp += 1;
         Ok(())
     }
     fn remove_frame(&mut self, active: bool) -> Option<StackIdx> {
-        let idx = self.stack.pop()?;
-        self.stack_frames[idx].active = active;
+        let idx = self.stack.pop().unwrap();
+        assert!(!self.stack.is_empty());
+        self.stack_frames[idx].active.end(self.timestamp, active);
+        self.timestamp += 1;
         Some(idx)
     }
     pub(super) fn ensure_height(&mut self, height: usize) -> Result<()> {
         let mut res = Ok(());
         // Neither condition should hold, but handle it as best we can.
-        while height > self.stack.len() {
+        while height > self.height() {
             // Have not run into this case, so make tests fail if it happens.
             res = Err(Error::StackFrameNotPushed);
             self.add_frame()?;
         }
-        while height < self.stack.len() {
+        while height < self.height() {
             // This can happen when pushing a new frame in e.g. z3 v4.8.17 and
             // v4.11.2.
             // It seems that there is a bug where the pop doesn't get emitted
@@ -58,25 +83,7 @@ impl Stack {
         res
     }
 
-    pub(super) fn active_frame(&self) -> Option<StackIdx> {
-        self.stack.last().copied()
-    }
-}
-
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug, Clone, Copy)]
-pub struct StackFrame {
-    pub active: bool,
-}
-
-impl Default for StackFrame {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl StackFrame {
-    pub fn new() -> Self {
-        Self { active: true }
+    pub(super) fn active_frame(&self) -> StackIdx {
+        *self.stack.last().unwrap()
     }
 }

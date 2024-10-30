@@ -14,6 +14,7 @@ use crate::{
 };
 
 use super::{
+    analysis::reconnect::{BwdReachableVisAnalysis, ReconnectAnalysis},
     raw::{EdgeKind, IndexesInstGraph, Node, NodeKind},
     InstGraph, RawEdgeIndex, RawNodeIndex,
 };
@@ -28,6 +29,69 @@ pub struct VisibleInstGraph {
 }
 
 impl InstGraph {
+    pub fn to_visible_opt(&self) -> VisibleInstGraph {
+        let bwd_vis_reachable = self.topo_analysis(BwdReachableVisAnalysis);
+        let mut reconnect = self.topo_analysis(ReconnectAnalysis(bwd_vis_reachable));
+        let (mut nodes, mut edges) = (0, 0);
+        for (idx, data) in reconnect.iter_mut_enumerated() {
+            let node = &self.raw[idx];
+            if node.disabled() {
+                assert_eq!(data.len(), 0);
+            } else if node.hidden() {
+                data.clear();
+            }
+            nodes += 1;
+            edges += data.len();
+        }
+
+        let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> =
+            DiGraph::with_capacity(nodes, edges);
+
+        for idx in self.raw.node_indices() {
+            let i_node = &self.raw[idx];
+            if !i_node.visible() {
+                continue;
+            }
+            let hidden_parents = self.raw.neighbors_directed(idx, Incoming).count_hidden();
+            let hidden_children = self.raw.neighbors_directed(idx, Outgoing).count_hidden();
+            let v_node = VisibleNode {
+                idx,
+                hidden_parents: hidden_parents as u32,
+                hidden_children: hidden_children as u32,
+                max_depth: 0,
+            };
+            graph.add_node(v_node);
+        }
+
+        let reverse: FxHashMap<_, _> = graph
+            .node_indices()
+            .map(VisibleNodeIndex)
+            .map(|idx| (graph[idx.0].idx, idx))
+            .collect();
+        let mut self_ = VisibleInstGraph {
+            graph,
+            reverse,
+            generation: self.raw.stats.generation,
+        };
+
+        for (i_idx, data) in reconnect.iter_enumerated() {
+            let Some(&v_idx) = self_.reverse.get(&i_idx) else {
+                assert!(data.is_empty());
+                continue;
+            };
+            for &(from_v, from_h, _to_h) in data {
+                let v_from_v = self_.reverse[&from_v];
+                let edge = if from_v == from_h {
+                    VisibleEdge::Direct(RawEdgeIndex::default())
+                } else {
+                    VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default())
+                };
+                self_.graph.add_edge(v_from_v.0, v_idx.0, edge);
+            }
+        }
+        self_
+    }
+
     pub fn to_visible(&self) -> VisibleInstGraph {
         // debug_assert_eq!(self.hidden as usize, self.graph.node_weights().filter(|n| n.hidden).count());
 
@@ -39,8 +103,8 @@ impl InstGraph {
         let mut node_index_map = vec![NodeIndex::end(); self.raw.graph.node_count()];
         let node_map = |idx, node: &Node| {
             node.visible().then(|| {
-                let hidden_parents = self.raw.neighbors_directed_count_hidden(idx, Incoming);
-                let hidden_children = self.raw.neighbors_directed_count_hidden(idx, Outgoing);
+                let hidden_parents = self.raw.neighbors_directed(idx, Incoming).count_hidden();
+                let hidden_children = self.raw.neighbors_directed(idx, Outgoing).count_hidden();
                 VisibleNode {
                     idx,
                     hidden_parents: hidden_parents as u32,
@@ -225,28 +289,22 @@ impl VisibleInstGraph {
     fn reconnect_simplified(&mut self, igraph: &InstGraph) {
         // remember all direct edges (will be added to the graph in the end)
         let direct_edges = self.graph.raw_edges().to_vec();
-        // nodes with missing children
-        let out_set: Vec<NodeIndex<VisibleIx>> = self
-            .graph
-            .node_indices()
-            .filter(|node| {
-                // let new_child_count = self.graph.neighbors_directed(*node, Outgoing).count();
-                // let old_child_count = self.graph.node_weight(*node).unwrap().;
-                // new_child_count < old_child_count
-                self.graph.node_weight(*node).unwrap().hidden_children > 0
-            })
-            .collect();
         // nodes with missing parents
-        let in_set: Vec<NodeIndex<VisibleIx>> = self
+        let in_set: Vec<_> = self
             .graph
             .node_indices()
-            .filter(|node| self.graph.node_weight(*node).unwrap().hidden_parents > 0)
+            .filter(|node| self.graph[*node].hidden_parents > 0)
             .collect();
         // add all edges (u,v) in out_set x in_set to the self.graph where v is reachable from u in the original graph
         // and (u,v) is not an edge in the original graph, i.e., all indirect edges
-        for &u in &out_set {
-            let old_u = self.graph[u].idx;
-            let Some((subgraph_u, s_u)) = igraph.raw[old_u].subgraph else {
+        for u in self.graph.node_indices() {
+            let out_v = &self.graph[u];
+            if out_v.hidden_children == 0 {
+                // skip nodes without missing children
+                continue;
+            }
+
+            let Some((subgraph_u, s_u)) = igraph.raw[out_v.idx].subgraph else {
                 continue;
             };
             for &v in &in_set {

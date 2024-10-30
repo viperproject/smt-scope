@@ -6,25 +6,7 @@ use crate::{Error, Result};
 use std::fmt;
 use std::ops::Index;
 
-use super::{ENodeIdx, EqTransIdx, MatchIdx, QuantIdx, TermId, TermIdx};
-
-/// A Z3 instantiation.
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone)]
-pub struct Instantiation {
-    pub match_: MatchIdx,
-    pub fingerprint: Fingerprint,
-    pub proof_id: Option<Either<TermIdx, TermId>>,
-    pub z3_generation: Option<u32>,
-    pub yields_terms: Box<[ENodeIdx]>,
-}
-
-impl Instantiation {
-    pub fn get_resulting_term(&self) -> Option<TermIdx> {
-        self.proof_id.as_ref()?.as_result().ok().copied()
-    }
-}
+use super::{ENodeIdx, EqTransIdx, MatchIdx, ProofIdx, QuantIdx, StackIdx, TermId, TermIdx};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -122,6 +104,17 @@ impl MatchKind {
             _ => None,
         }
     }
+
+    pub fn bound_term(&self, to_tidx: impl Fn(ENodeIdx) -> TermIdx, qvar: usize) -> TermIdx {
+        match self {
+            Self::MBQI { bound_terms, .. } | Self::Quantifier { bound_terms, .. } => {
+                to_tidx(bound_terms[qvar])
+            }
+            Self::TheorySolving { bound_terms, .. } | Self::Axiom { bound_terms, .. } => {
+                bound_terms[qvar]
+            }
+        }
+    }
 }
 
 /// The kind of dependency between two quantifier instantiations.
@@ -201,4 +194,40 @@ impl fmt::Display for Fingerprint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:x}", self.0)
     }
+}
+
+/// A Z3 instantiation.
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone)]
+pub struct Instantiation {
+    pub match_: MatchIdx,
+    pub fingerprint: Fingerprint,
+    pub proof_id: InstProofLink,
+    pub z3_generation: Option<u32>,
+    pub frame: StackIdx,
+    /// The enodes that were yielded by the instantiation along with the
+    /// generalised terms for them (`MaybeSynthIdx::Parsed` if the yielded term
+    /// doesn't contain any quantified variables)
+    pub yields_terms: Box<[ENodeIdx]>,
+}
+
+/// A Z3 instantiation.
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy)]
+pub enum InstProofLink {
+    /// Axiom instantiations (i.e. those with `.fingerprint.is_zero()`) point to
+    /// a term regardless of whether proofs are enabled. These terms seem to
+    /// generally be an equality.
+    IsAxiom(TermIdx),
+    /// When proofs are enabled (i.e. if z3 was run with `proof=true`) non-axiom
+    /// instantiations will include a pointer to the instantiation proof step.
+    HasProof(ProofIdx),
+    /// When proofs are disabled, non-axiom instantiations have no link to the
+    /// fact (i.e. their body) that was instantiated. However, we use a hack to
+    /// try and find the proof term nevertheless: the `[mk-app]` immediately
+    /// preceding the `[instantiation]` line is generally the term we just
+    /// proved.
+    ProofsDisabled(Option<TermIdx>),
 }

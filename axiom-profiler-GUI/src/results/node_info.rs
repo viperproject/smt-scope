@@ -166,10 +166,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         let NodeKind::Instantiation(inst) = *self.node.kind() else {
             return None;
         };
-        let resulting_term = self.ctxt.parser[inst].get_resulting_term()?;
-        // The resulting term is of the form `quant-inst(¬(quant) ∨ (inst))`.
-        let resulting_term_or = *self.ctxt.parser[resulting_term].child_ids.first()?;
-        let resulting_term = *self.ctxt.parser[resulting_term_or].child_ids.get(1)?;
+        let resulting_term = self.ctxt.parser.get_instantiation_body(inst)?;
         Some(resulting_term.with(self.ctxt).to_string())
     }
     pub fn yield_terms(&self) -> Option<Vec<String>> {
@@ -182,6 +179,22 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 .map(|term| term.with(self.ctxt).to_string())
                 .collect(),
         )
+    }
+    pub fn extra_info(&self) -> Option<Vec<(&'static str, String)>> {
+        let mut extra_info = Vec::new();
+        if let Some(z3gen) = self
+            .node
+            .kind()
+            .inst()
+            .and_then(|i| self.ctxt.parser[i].z3_generation)
+        {
+            extra_info.push(("z3 gen", z3gen.to_string()));
+        }
+        if let Some(frame) = self.node.frame(&self.ctxt.parser) {
+            let frame = &self.ctxt.parser[frame];
+            extra_info.push(("Frame", frame.active.to_string()));
+        }
+        (!extra_info.is_empty()).then_some(extra_info)
     }
 }
 
@@ -229,7 +242,6 @@ pub fn SelectedNodesInfo(
             let header_text = info.kind();
             let summary = format!("[{index}] {header_text}: ");
             let description = info.description((!open).then(|| NonMaxU32::new(10).unwrap()));
-            let z3_gen = info.node.kind().inst().and_then(|i| (& *parser.borrow())[i].z3_generation).map(|g| format!(" (z3 gen {g})"));
 
             let quantifier_body = info.quantifier_body().map(|body| html! {
                 <><InfoLine header="Body" text={body} code=true /><hr/></>
@@ -261,6 +273,12 @@ pub fn SelectedNodesInfo(
                 }).collect();
                 html! { <>{yields}<hr/></> }
             });
+            let extra_info = info.extra_info().map(|extra_info| {
+                let extra_info: Html = extra_info.into_iter().map(|(header, info)| html! {
+                    <InfoLine {header} text={info} code=true />
+                }).collect();
+                html! { <>{extra_info}<hr/></> }
+            });
             html! {
                 <details {open}>
                 <summary {onclick}>{summary}{description}</summary>
@@ -270,13 +288,14 @@ pub fn SelectedNodesInfo(
                     {bound_terms}
                     {resulting_term}
                     {yield_terms}
-                    <InfoLine header="Cost" text={format!("{:.1}{}", info.node.cost, z3_gen.unwrap_or_default())} code=false />
-                    <InfoLine header="To Root" text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
-                    <InfoLine header="To Leaf" text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
-                    <InfoLine header="Degree" text={
+                    {extra_info}
+                    <InfoLine header="Cost"     text={format!("{:.1}", info.node.cost)} code=false />
+                    <InfoLine header="To Root"  text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
+                    <InfoLine header="To Leaf"  text={format!("short {}, long {}", info.node.bwd_depth.min, info.node.bwd_depth.max)} code=false />
+                    <InfoLine header="Degree"   text={
                         format!("parents {}, children {}",
-                            graph.raw.neighbors_directed_count(node, petgraph::Direction::Incoming),
-                            graph.raw.neighbors_directed_count(node, petgraph::Direction::Outgoing),
+                            graph.raw.neighbors_directed(node, petgraph::Direction::Incoming).count(),
+                            graph.raw.neighbors_directed(node, petgraph::Direction::Outgoing).count(),
                         )
                     } code=false />
                 </ul>

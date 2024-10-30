@@ -71,7 +71,8 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
                 .filter(|&(n, _, _)| {
                     graph
                         .raw
-                        .neighbors_directed_count_hidden(n, Direction::Outgoing)
+                        .neighbors_directed(n, Direction::Outgoing)
+                        .count_hidden()
                         > 0
                 })
                 .map(|(n, _, _)| Filter::ShowNeighbours(n, Direction::Outgoing))
@@ -81,7 +82,8 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
                 .filter(|&(n, _, _)| {
                     graph
                         .raw
-                        .neighbors_directed_count_hidden(n, Direction::Incoming)
+                        .neighbors_directed(n, Direction::Incoming)
+                        .count_hidden()
                         > 0
                 })
                 .map(|(n, _, _)| Filter::ShowNeighbours(n, Direction::Incoming))

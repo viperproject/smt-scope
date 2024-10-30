@@ -8,6 +8,14 @@ use crate::{
 
 use super::terms::Terms;
 
+/// Taken from `ast_smt_pp.cpp` of z3. These are not user defined and cannot be
+/// used as triggers.
+pub const M_PREDEF_NAMES: &'static [&'static str] = &[
+    "=", ">=", "<=", "+", "-", "*", ">", "<", "!=", "or", "and", "implies", "not", "iff", "xor",
+    "true", "false", "forall", "exists", "let", "flet", // Extended with the following.
+    "pi", "euler", "pattern", "to_int", "to_real",
+];
+
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
 pub struct EventLog {
@@ -22,14 +30,7 @@ impl EventLog {
 
     pub(super) fn new(strings: &mut StringTable) -> Self {
         let mut declared_functions = FxHashMap::default();
-        // Taken from `ast_smt_pp.cpp` of z3.
-        let m_predef_names = [
-            "=", ">=", "<=", "+", "-", "*", ">", "<", "!=", "or", "and", "implies", "not", "iff",
-            "xor", "true", "false", "forall", "exists", "let", "flet",
-            // Extended with the following.
-            "pi", "euler", "pattern",
-        ];
-        for predef_name in m_predef_names {
+        for predef_name in M_PREDEF_NAMES {
             let predef_name = IString(strings.get_or_intern_static(predef_name));
             declared_functions.insert(predef_name, u64::MAX);
         }
@@ -45,7 +46,7 @@ impl EventLog {
         term: &Term,
         strings: &StringTable,
     ) -> Result<()> {
-        if !term.id.is_some_and(|id| strings[*id.namespace].is_empty()) {
+        if !strings[*term.id.namespace].is_empty() {
             return Ok(());
         }
         let Some(iname) = term.kind.app_name() else {

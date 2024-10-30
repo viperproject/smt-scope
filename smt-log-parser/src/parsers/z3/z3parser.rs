@@ -3,16 +3,19 @@ use mem_dbg::{MemDbg, MemSize};
 use typed_index_collections::TiSlice;
 
 use crate::{
+    display_with::{DisplayCtxt, DisplayWithCtxt},
+    formatter::TermDisplayContext,
     items::*,
     parsers::z3::{VersionInfo, Z3LogParser},
     Error, IString, Result, StringTable, TiVec,
 };
 
 use super::{
-    egraph::{EGraph, ENode},
+    egraph::EGraph,
     inst::Insts,
     stack::Stack,
     stm2::EventLog,
+    synthetic::{MaybeSynthIdx, MaybeSynthTerm, SynthTerm, SynthTerms},
     terms::Terms,
 };
 
@@ -23,6 +26,7 @@ use super::{
 pub struct Z3Parser {
     pub(crate) version_info: VersionInfo,
     pub(crate) terms: Terms,
+    pub(crate) synth_terms: SynthTerms,
 
     pub(crate) quantifiers: TiVec<QuantIdx, Quantifier>,
 
@@ -42,6 +46,7 @@ impl Default for Z3Parser {
         Self {
             version_info: VersionInfo::default(),
             terms: Terms::new(&mut strings),
+            synth_terms: Default::default(),
             quantifiers: Default::default(),
             insts: Default::default(),
             inst_stack: Default::default(),
@@ -274,7 +279,7 @@ impl Z3Parser {
     ) -> Result<()> {
         let qidx = self.quantifiers.next_key();
         let term = Term {
-            id: Some(full_id),
+            id: full_id,
             kind: TermKind::Quant(qidx),
             child_ids,
         };
@@ -319,6 +324,16 @@ impl Z3LogParser for Z3Parser {
         let num_vars = num_vars.unwrap();
         let child_ids = self.gobble_term_children(l)?;
         assert!(!child_ids.is_empty());
+        let child_id_names = || {
+            child_ids[..child_ids.len() - 1]
+                .iter()
+                .map(|&id| self[id].kind.app_name().map(|name| &self[name]))
+        };
+        assert!(
+            child_id_names().all(|name| name.is_some_and(|name| name == "pattern")),
+            "Expected all but last child to be \"pattern\" but found {:?}",
+            child_id_names().collect::<Vec<_>>()
+        );
         self.quant_or_lamda(full_id, child_ids, num_vars, quant_name)
     }
 
@@ -344,7 +359,7 @@ impl Z3LogParser for Z3Parser {
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
         let term = Term {
-            id: Some(full_id),
+            id: full_id,
             kind,
             child_ids: Default::default(),
         };
@@ -358,7 +373,7 @@ impl Z3LogParser for Z3Parser {
         let name = self.mk_string(name)?;
         let child_ids = self.gobble_term_children(l)?;
         let term = Term {
-            id: Some(full_id),
+            id: full_id,
             kind: TermKind::App(name),
             child_ids,
         };
@@ -689,9 +704,33 @@ impl Z3LogParser for Z3Parser {
         let fingerprint = Fingerprint::parse(fingerprint)?;
         let mut proof = Self::iter_until_eq(&mut l, ";");
         let proof_id = if let Some(proof) = proof.next() {
-            Some(self.terms.app_terms.parse_id(&mut self.strings, proof)?)
+            // It seems that for `0x0` fingerprints the proof term points to an
+            // app term (usually an equality), while for "real" fingerprints it
+            // points to a proof term.
+            if fingerprint.is_zero() {
+                let axiom_body = self
+                    .terms
+                    .app_terms
+                    .parse_existing_id(&mut self.strings, proof)?;
+                InstProofLink::IsAxiom(axiom_body)
+            } else {
+                let proof = self
+                    .terms
+                    .proof_terms
+                    .parse_existing_id(&mut self.strings, proof)?;
+                InstProofLink::HasProof(proof)
+            }
+            // let proof = self.terms.parse_id(&mut self.strings, proof, is_app)?;
+            // assert!(proof.as_result().is_ok(), "{}",
+            //     proof.as_result().unwrap_err().with(&DisplayCtxt {parser: self, term_display: &TermDisplayContext::basic(), config: Default::default() }));
+            // Some(proof)
         } else {
-            None
+            assert!(
+                !fingerprint.is_zero(),
+                "Axiom instantiations should have an associated term"
+            );
+            let last_term = self.terms.last_term_from_instance(&self.strings);
+            InstProofLink::ProofsDisabled(last_term)
         };
         Self::expect_completed(proof)?;
         let z3_generation = Self::parse_z3_generation(&mut l)?;
@@ -705,6 +744,7 @@ impl Z3LogParser for Z3Parser {
             fingerprint,
             proof_id,
             z3_generation,
+            frame: self.stack.active_frame(),
             yields_terms: Default::default(),
         };
         // In version 4.12.2 & 4.12.4, I have on very rare occasions seen an
@@ -725,7 +765,6 @@ impl Z3LogParser for Z3Parser {
     }
 
     fn eof(&mut self) {
-        self.terms.end_of_file();
         self.events.new_eof();
     }
 
@@ -783,12 +822,45 @@ impl Z3Parser {
     pub fn proofs(&self) -> &TiSlice<ProofIdx, ProofStep> {
         self.terms.proof_terms.terms()
     }
+
+    pub fn patterns(&self, q: QuantIdx) -> &[TermIdx] {
+        let child_ids = &self[self[q].term].child_ids;
+        &child_ids[..child_ids.len() - 1]
+    }
+
+    pub fn get_instantiation_body(&self, inst: InstIdx) -> Option<TermIdx> {
+        self.terms.get_instantiation_body(&self[inst])
+    }
+
+    /// Returns the size in AST nodes of the term `tidx`. Note that z3 eagerly
+    /// reduces terms such as `1 + 1` to `2` meaning that a matching loop can be
+    /// constant in this size metric!
+    pub fn ast_size(&self, tidx: TermIdx) -> Option<u32> {
+        let term = &self[tidx];
+        let children_size = match term.kind {
+            TermKind::Var(_) => None,
+            TermKind::App(_) => term
+                .child_ids
+                .iter()
+                .map(|&idx| self.ast_size(idx))
+                .sum::<Option<u32>>(),
+            // TODO: decide if we want to return a size for quantifiers
+            TermKind::Quant(_) => self.ast_size(*term.child_ids.last().unwrap()),
+        };
+        Some(children_size? + 1)
+    }
 }
 
 impl std::ops::Index<TermIdx> for Z3Parser {
     type Output = Term;
     fn index(&self, idx: TermIdx) -> &Self::Output {
         &self.terms[idx]
+    }
+}
+impl std::ops::Index<SynthTermIdx> for Z3Parser {
+    type Output = SynthTerm;
+    fn index(&self, idx: SynthTermIdx) -> &Self::Output {
+        &self.synth_terms[idx]
     }
 }
 impl std::ops::Index<ProofIdx> for Z3Parser {
@@ -831,6 +903,12 @@ impl std::ops::Index<EqTransIdx> for Z3Parser {
     type Output = TransitiveExpl;
     fn index(&self, idx: EqTransIdx) -> &Self::Output {
         &self.egraph.equalities.transitive[idx]
+    }
+}
+impl std::ops::Index<StackIdx> for Z3Parser {
+    type Output = StackFrame;
+    fn index(&self, idx: StackIdx) -> &Self::Output {
+        &self.stack.stack_frames[idx]
     }
 }
 impl std::ops::Index<IString> for Z3Parser {

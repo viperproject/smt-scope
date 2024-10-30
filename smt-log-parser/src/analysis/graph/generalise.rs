@@ -1,15 +1,25 @@
 use crate::{
-    items::{Meaning, Term, TermIdx, TermKind},
-    parsers::z3::terms::Terms,
-    IString, StringTable,
+    items::{Meaning, SynthTermIdx, Term, TermIdx, TermKind},
+    parsers::z3::{
+        synthetic::{MaybeSynthIdx, MaybeSynthTerm, SynthTermKind, SynthTerms},
+        terms::Terms,
+    },
+    IString, Result, StringTable,
 };
 
-impl Terms {
+impl SynthTerms {
+    fn index_synth<'a>(&'a self, table: &'a Terms, idx: MaybeSynthIdx) -> MaybeSynthTerm<'a> {
+        match idx {
+            MaybeSynthIdx::Parsed(idx) => MaybeSynthTerm::Parsed(&table[idx]),
+            MaybeSynthIdx::Synth(idx) => MaybeSynthTerm::Synth(&self[idx]),
+        }
+    }
+
     pub fn generalise(
         &mut self,
-        strings: &mut StringTable,
-        terms: Vec<TermIdx>,
-    ) -> Option<TermIdx> {
+        table: &Terms,
+        terms_vec: Vec<MaybeSynthIdx>,
+    ) -> Result<MaybeSynthIdx> {
         fn check<T: Copy>(
             mut terms: impl Iterator<Item = T>,
             mut predicate: impl FnMut(T, T) -> bool,
@@ -25,87 +35,64 @@ impl Terms {
             }
             true
         }
+        let terms = || terms_vec.iter().copied();
 
-        let mut next = terms;
-        let mut stack: Vec<(Vec<&'static Term>, Option<Meaning>, Vec<TermIdx>)> = vec![];
-        loop {
-            let deref: Vec<&'static Term>;
-            if check(next.iter(), |t1, t2| t1 == t2) {
-                // if terms are equal, no need to generalize
-                assert!(!next.is_empty(), "generalise called with empty terms");
-                let Some((_, _, children)) = stack.last_mut() else {
-                    return Some(next[0]);
-                };
-                children.push(next[0]);
-            } else if check(next.iter().map(|t| self.meaning(*t)), |m1, m2| m1 == m2) && {
-                let d = next.iter().map(|t| &self[*t]).collect();
-                deref = unsafe { std::mem::transmute::<Vec<&Term>, Vec<&'static Term>>(d) };
-                check(deref.iter(), |t1, t2| {
-                    t1.kind == t2.kind && t1.child_ids.len() == t2.child_ids.len()
-                })
-            } {
-                // if neither term is generalized, check the meanings and kinds and recurse over children
-                let meaning = self.meaning(next[0]).copied();
-                stack.push((deref, meaning, vec![]));
-            } else {
-                // if meanings or kinds don't match up, need to generalize
-                let (_, _, children) = stack.last_mut()?;
-                let meaning = self.try_find_meaning(strings, &next);
-                let tidx = self.new_synthetic_term(
-                    TermKind::Generalised,
-                    next.into_boxed_slice(),
-                    meaning,
-                );
-                children.push(tidx);
-            }
-
-            let (mut deref, mut meaning, mut children) = stack.pop().unwrap();
-            while deref[0].child_ids.len() == children.len() {
-                let tidx =
-                    self.new_synthetic_term(deref[0].kind, children.into_boxed_slice(), meaning);
-                let Some((new_deref, new_meaning, new_children)) = stack.pop() else {
-                    return Some(tidx);
-                };
-                (deref, meaning, children) = (new_deref, new_meaning, new_children);
-                children.push(tidx);
-            }
-            next = deref.iter().map(|t| t.child_ids[children.len()]).collect();
-            stack.push((deref, meaning, children));
+        let deref: Vec<MaybeSynthTerm<'static>>;
+        if check(terms(), |t1, t2| t1 == t2) {
+            // if terms are equal, no need to generalize
+            let term = terms().next().expect("generalise called with empty terms");
+            Ok(term)
+        } else if check(
+            terms().map(|t| t.parsed().and_then(|t| table.meaning(t))),
+            |m1, m2| m1 == m2,
+        ) && {
+            let d = terms().map(|t| self.index_synth(table, t)).collect();
+            deref = unsafe {
+                std::mem::transmute::<Vec<MaybeSynthTerm>, Vec<MaybeSynthTerm<'static>>>(d)
+            };
+            check(deref.iter(), |t1, t2| {
+                t1.kind().either_eq(t2.kind()) && t1.child_ids().len() == t2.child_ids().len()
+            })
+        } {
+            let first = deref.first().expect("generalise called with empty terms");
+            let children = (0..first.child_ids().len().join()).map(|i| {
+                let terms_vec = deref.iter().map(|t| t.child_ids().get(i)).collect();
+                self.generalise(table, terms_vec)
+            });
+            let children = children.collect::<Result<_>>()?;
+            let kind = first.kind().map(SynthTermKind::new, |id| id).join();
+            let term = self.new_synthetic_term(kind, children)?;
+            Ok(MaybeSynthIdx::Synth(term))
+        } else {
+            let term =
+                self.new_synthetic_term(SynthTermKind::Generalised, terms_vec.into_boxed_slice())?;
+            Ok(MaybeSynthIdx::Synth(term))
         }
     }
 
-    pub fn generalise_pattern(&mut self, _strings: &mut StringTable, pattern: TermIdx) -> TermIdx {
-        match self[pattern].kind {
-            TermKind::Var(_) => {
-                self.new_synthetic_term(TermKind::Generalised, Default::default(), None)
-            }
-            TermKind::Generalised => pattern,
+    pub fn generalise_pattern(&mut self, table: &Terms, pattern: TermIdx) -> Result<MaybeSynthIdx> {
+        let pterm = &table[pattern];
+        match pterm.kind {
+            TermKind::Var(_) => self
+                .new_synthetic_term(SynthTermKind::Generalised, Default::default())
+                .map(MaybeSynthIdx::Synth),
             _ => {
-                let children = Vec::from(self[pattern].child_ids.clone())
-                    .into_iter()
-                    .map(|c| self.generalise_pattern(_strings, c))
-                    .collect();
-                self.new_synthetic_term(
-                    self[pattern].kind,
-                    children,
-                    self.meaning(pattern).copied(),
-                )
+                let child_ids: Box<[_]> = pterm
+                    .child_ids
+                    .iter()
+                    .map(|c| self.generalise_pattern(table, *c))
+                    .collect::<Result<_>>()?;
+                if child_ids
+                    .iter()
+                    .all(|c| matches!(c, MaybeSynthIdx::Parsed(_)))
+                {
+                    Ok(MaybeSynthIdx::Parsed(pattern))
+                } else {
+                    let kind = SynthTermKind::new(pterm.kind);
+                    self.new_synthetic_term(kind, child_ids)
+                        .map(MaybeSynthIdx::Synth)
+                }
             }
         }
-    }
-
-    pub fn try_find_meaning(
-        &self,
-        strings: &mut StringTable,
-        _terms: &[TermIdx],
-    ) -> Option<Meaning> {
-        let value = String::from("_");
-        // TODO: it would be nice here to try and find the repeating pattern,
-        // e.g. if we have `x`, `f(x)`, `f(f(x))`, ... we could generalise to `f^*(c)`.
-
-        (value != "_").then(|| Meaning {
-            theory: IString(strings.get_or_intern("generalisation")),
-            value: IString(strings.get_or_intern(value)),
-        })
     }
 }

@@ -32,6 +32,7 @@ macro_rules! idx {
     };
 }
 idx!(TermIdx, "t{}");
+idx!(SynthTermIdx, "y{}");
 idx!(QuantIdx, "q{}");
 idx!(InstIdx, "i{}");
 idx!(StackIdx, "s{}");

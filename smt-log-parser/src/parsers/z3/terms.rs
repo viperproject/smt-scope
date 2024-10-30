@@ -5,25 +5,25 @@ use typed_index_collections::TiSlice;
 use crate::{
     error::Either,
     items::{
-        Meaning, ProofIdx, ProofStep, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap,
-        TermIdx, TermKind,
+        InstProofLink, Instantiation, Meaning, ProofIdx, ProofStep, ProofStepKind, QuantIdx, Term,
+        TermId, TermIdToIdxMap, TermIdx, TermKind,
     },
     Error, FxHashMap, Result, StringTable, TiVec,
 };
 
 pub trait HasTermId {
-    fn term_id(&self) -> Option<TermId>;
+    fn term_id(&self) -> TermId;
 }
 
 impl HasTermId for Term {
-    fn term_id(&self) -> Option<TermId> {
+    fn term_id(&self) -> TermId {
         self.id
     }
 }
 
 impl HasTermId for ProofStep {
-    fn term_id(&self) -> Option<TermId> {
-        Some(self.id)
+    fn term_id(&self) -> TermId {
+        self.id
     }
 }
 
@@ -46,9 +46,7 @@ impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
         self.terms.raw.try_reserve(1)?;
         let id = term.term_id();
         let idx = self.terms.push_and_get_key(term);
-        if let Some(id) = id {
-            self.term_id_map.register_term(id, idx)?;
-        }
+        self.term_id_map.register_term(id, idx)?;
         Ok(idx)
     }
 
@@ -82,9 +80,6 @@ pub struct Terms {
     pub(super) proof_terms: TermStorage<ProofIdx, ProofStep>,
 
     meanings: FxHashMap<TermIdx, Meaning>,
-    parsed_terms: Option<TermIdx>,
-
-    synthetic_terms: FxHashMap<TermAndMeaning<'static>, TermIdx>,
 }
 
 impl Terms {
@@ -94,15 +89,32 @@ impl Terms {
             proof_terms: TermStorage::new(strings),
 
             meanings: FxHashMap::default(),
-            parsed_terms: None,
-
-            synthetic_terms: FxHashMap::default(),
         }
     }
 
-    pub fn meaning(&self, tidx: TermIdx) -> Option<&Meaning> {
+    pub(crate) fn meaning(&self, tidx: TermIdx) -> Option<&Meaning> {
         self.meanings.get(&tidx)
     }
+
+    pub(super) fn get_instantiation_body(&self, inst: &Instantiation) -> Option<TermIdx> {
+        let proved_term = match inst.proof_id {
+            InstProofLink::IsAxiom(term_idx) => return Some(term_idx),
+            InstProofLink::HasProof(proof_idx) => {
+                let proof = &self[proof_idx];
+                if matches!(proof.kind, ProofStepKind::PR_QUANT_INST) {
+                    self[proof_idx].result
+                } else {
+                    return Some(proof.result);
+                }
+            }
+            InstProofLink::ProofsDisabled(term_idx) => term_idx?,
+        };
+        // The proved term is of the form `quant-inst(¬(quant) ∨ (inst))`.
+        let proved_term = &self[proved_term];
+        assert_eq!(proved_term.child_ids.len(), 2);
+        Some(proved_term.child_ids[1])
+    }
+
     pub(super) fn quant(&self, quant: TermIdx) -> Result<QuantIdx> {
         self[quant]
             .kind
@@ -122,50 +134,28 @@ impl Terms {
         Ok(())
     }
 
-    pub fn get_term(&self, term: TermIdx) -> TermAndMeaning {
-        TermAndMeaning {
-            term: &self[term],
-            meaning: self.meanings.get(&term),
-        }
-    }
-
-    pub(super) fn end_of_file(&mut self) {
-        self.parsed_terms = Some(self.app_terms.terms.next_key());
-    }
-
-    pub(crate) fn new_synthetic_term(
-        &mut self,
-        kind: TermKind,
-        child_ids: Box<[TermIdx]>,
-        meaning: Option<Meaning>,
-    ) -> TermIdx {
-        let term = Term {
-            id: None,
-            kind,
-            child_ids,
-        };
-        let term_and_meaning = TermAndMeaning {
-            term: &term,
-            meaning: meaning.as_ref(),
-        };
-        if let Some(&tidx) = self.synthetic_terms.get(&term_and_meaning) {
-            tidx
-        } else {
-            let tidx = self.app_terms.terms.push_and_get_key(term);
-            if let Some(meaning) = meaning {
-                self.meanings.insert(tidx, meaning);
-            }
-            let term = self.get_term(tidx);
-            // Safety: this will only ever be stored in the keys of the
-            // `synthetic_terms` map and the API ensures that these keys never
-            // leak out. The keys of the map are dropped at the same time that
-            // the lifetime expires. The existing `Term` and `Meaning` values
-            // are never mutated.
-            let term =
-                unsafe { std::mem::transmute::<TermAndMeaning, TermAndMeaning<'static>>(term) };
-            self.synthetic_terms.insert(term, tidx);
-            tidx
-        }
+    /// Heuristic to get body of instantiated quantifier. See documentation of
+    /// [`InstProofLink::ProofsDisabled`].
+    pub(super) fn last_term_from_instance(&self, strings: &StringTable) -> Option<TermIdx> {
+        self.app_terms
+            .terms
+            .last_key_value()
+            .filter(|(_, term)| {
+                term.kind
+                    .app_name()
+                    .is_some_and(|name| &strings[*name] == "or")
+                    && term.child_ids.len() == 2
+                    && {
+                        let neg_quant = &self[term.child_ids[0]];
+                        neg_quant
+                            .kind
+                            .app_name()
+                            .is_some_and(|name| &strings[*name] == "not")
+                            && neg_quant.child_ids.len() == 1
+                            && self[neg_quant.child_ids[0]].kind.quant_idx().is_some()
+                    }
+            })
+            .map(|(idx, _)| idx)
     }
 }
 

@@ -67,6 +67,11 @@ macro_rules! derive_wrapper {
                 <$inner as serde::Deserialize<'de>>::deserialize(deserializer).map(Self)
             }
         }
+        impl$(<$($t),*>)? From<$inner> for $struct$(<$($t),*>)? {
+            fn from(inner: $inner) -> Self {
+                Self(inner)
+            }
+        }
     };
 }
 
@@ -120,6 +125,11 @@ impl<K, V> FromIterator<V> for TiVec<K, V> {
         Self(typed_index_collections::TiVec::from_iter(iter))
     }
 }
+impl<K, V> TiVec<K, V> {
+    pub fn into_iter(self) -> std::vec::IntoIter<V> {
+        self.0.into_iter()
+    }
+}
 
 // FxHashMap
 
@@ -132,6 +142,11 @@ impl<K, V> Default for FxHashMap<K, V> {
 impl<K: Eq + std::hash::Hash, V> FromIterator<(K, V)> for FxHashMap<K, V> {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         Self(fxhash::FxHashMap::from_iter(iter))
+    }
+}
+impl<K, V> FxHashMap<K, V> {
+    pub fn into_iter(self) -> std::collections::hash_map::IntoIter<K, V> {
+        self.0.into_iter()
     }
 }
 

@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use fxhash::FxHashSet;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
@@ -9,7 +11,82 @@ use petgraph::{
 };
 use roaring::RoaringBitmap;
 
-use super::{raw::RawIx, InstGraph, RawNodeIndex};
+use super::{
+    raw::{RawInstGraph, RawIx},
+    InstGraph, RawNodeIndex,
+};
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug)]
+pub struct Subgraphs {
+    pub subgraphs: TiVec<GraphIdx, Subgraph>,
+    pub singletons: Vec<RawNodeIndex>,
+}
+
+impl Deref for Subgraphs {
+    type Target = TiVec<GraphIdx, Subgraph>;
+    fn deref(&self) -> &Self::Target {
+        &self.subgraphs
+    }
+}
+
+impl RawInstGraph {
+    pub fn partition(&mut self) -> Result<Subgraphs> {
+        let mut subgraphs = TiVec::default();
+        let mut discovered = VisitBox {
+            dfs: self.graph.visit_map(),
+        };
+        for node in self.graph.node_indices().map(RawNodeIndex) {
+            let has_parents = self
+                .graph
+                .neighbors_directed(node.0, Incoming)
+                .next()
+                .is_some();
+            if has_parents {
+                continue;
+            }
+            let has_children = self
+                .graph
+                .neighbors_directed(node.0, Outgoing)
+                .next()
+                .is_some();
+            if !has_children {
+                continue;
+            }
+            // We've skipped all singleton nodes and all non-root nodes.
+
+            if self.graph[node.0].subgraph.is_some() {
+                continue;
+            }
+
+            // Construct subgraph
+            let idx = subgraphs.next_key();
+            let (subgraph, discovered_) = Subgraph::new(
+                node,
+                &mut self.graph,
+                discovered,
+                |node, i| node.subgraph = Some((idx, i)),
+                |node| node.subgraph.unwrap().1,
+            )?;
+            discovered = discovered_;
+            subgraphs.raw.try_reserve(1)?;
+            subgraphs.push(subgraph);
+        }
+
+        // Collect all missing singleton nodes
+        discovered.dfs.toggle_range(..);
+        debug_assert!(discovered.visited().all(|a| {
+            let no_parents = self.graph.edges_directed(a.0, Incoming).next().is_none();
+            let no_children = self.graph.edges_directed(a.0, Outgoing).next().is_none();
+            no_parents && no_children
+        }));
+        let singletons = discovered.visited().collect();
+        Ok(Subgraphs {
+            singletons,
+            subgraphs,
+        })
+    }
+}
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
@@ -23,6 +100,12 @@ pub struct Subgraph {
 
 pub struct VisitBox<D: VisitMap<NodeIndex<RawIx>>> {
     pub dfs: D,
+}
+
+impl VisitBox<<petgraph::graph::DiGraph<(), ()> as petgraph::visit::Visitable>::Map> {
+    pub fn visited(&self) -> impl Iterator<Item = RawNodeIndex> + '_ {
+        self.dfs.ones().map(NodeIndex::new).map(RawNodeIndex)
+    }
 }
 
 impl Subgraph {
@@ -238,7 +321,7 @@ pub(super) struct SubgraphStartNodes<'g, N, E, Ix: IndexType> {
 }
 use petgraph::visit::*;
 
-use crate::Result;
+use crate::{items::GraphIdx, Result, TiVec};
 
 impl<N, E, Ix: IndexType> GraphBase for SubgraphStartNodes<'_, N, E, Ix> {
     type NodeId = NodeIndex<Ix>;

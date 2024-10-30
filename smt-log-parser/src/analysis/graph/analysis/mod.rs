@@ -21,7 +21,7 @@ use self::{
 
 use super::{raw::Node, InstGraph, RawNodeIndex};
 
-pub type MlEndNodes = Vec<(MlSignature, Vec<(usize, RawNodeIndex)>)>;
+pub type MlEndNodes = Vec<(MlSignature, Vec<(u32, RawNodeIndex)>)>;
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]

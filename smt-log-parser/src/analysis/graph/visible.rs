@@ -10,7 +10,7 @@ use petgraph::{
 use crate::{
     graph_idx,
     items::{ENodeIdx, EqGivenIdx},
-    NonMaxU32,
+    NonMaxU32, TiVec, Z3Parser,
 };
 
 use super::{
@@ -58,7 +58,6 @@ impl InstGraph {
                 idx,
                 hidden_parents: hidden_parents as u32,
                 hidden_children: hidden_children as u32,
-                max_depth: 0,
             };
             graph.add_node(v_node);
         }
@@ -109,7 +108,6 @@ impl InstGraph {
                     idx,
                     hidden_parents: hidden_parents as u32,
                     hidden_children: hidden_children as u32,
-                    max_depth: 0,
                 }
             })
         };
@@ -172,7 +170,6 @@ impl InstGraph {
                     .iter()
                     .filter(|&n| self.raw[*n].hidden())
                     .count() as u32,
-                max_depth: 0,
             };
             node_index_map[i] = graph.add_node(nw);
         }
@@ -369,22 +366,22 @@ impl VisibleInstGraph {
     /// Collect all nodes that are part of a path of at least `min_length`
     /// nodes. Additionally, returns a list of all of the leaves of these long
     /// paths along with their max depth.
-    pub(crate) fn collect_nodes_in_long_paths(
-        &mut self,
-        min_length: usize,
+    pub(crate) fn collect_nodes_in_long_paths<'a>(
+        &'a mut self,
+        max_depths: &'a TiVec<VisibleNodeIndex, u32>,
+        min_length: u32,
     ) -> (
-        impl Iterator<Item = (usize, RawNodeIndex)> + '_,
-        impl Iterator<Item = RawNodeIndex> + '_,
+        impl Iterator<Item = (u32, RawNodeIndex)> + 'a,
+        impl Iterator<Item = RawNodeIndex> + 'a,
     ) {
         // traverse this subtree in topological order to compute longest distances from root nodes
-        Self::compute_longest_distances_from_roots(self);
         let long_path_leaves: Vec<_> = self
             .graph
             .node_indices()
             // only want to keep end nodes of longest paths, i.e., nodes without any children
             .filter(|nx| self.graph.neighbors(*nx).next().is_none())
             // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
-            .filter(|nx| self.graph[*nx].max_depth >= min_length - 1)
+            .filter(|nx| max_depths[VisibleNodeIndex(*nx)] >= min_length - 1)
             .collect();
         // Walk backwards from leaves to collect all nodes
         let rev_graph = Reversed(&self.graph);
@@ -393,18 +390,45 @@ impl VisibleInstGraph {
 
         let long_path_leaves = long_path_leaves
             .into_iter()
-            .map(|nx| (self.graph[nx].max_depth, self.graph[nx].idx));
+            .map(|nx| (max_depths[VisibleNodeIndex(nx)], self.graph[nx].idx));
         let long_path_nodes = dfs.iter(rev_graph).map(|nx| self.graph[nx].idx);
         (long_path_leaves, long_path_nodes)
     }
 
-    pub fn compute_longest_distances_from_roots(&mut self) {
+    pub fn compute_longest_distances_from_roots(
+        &self,
+        graph: &InstGraph,
+        parser: &Z3Parser,
+    ) -> TiVec<VisibleNodeIndex, u32> {
+        let mut ast_sizes: TiVec<VisibleNodeIndex, u32> =
+            self.graph.node_indices().map(|_| u32::MAX).collect();
+        let mut max_depths: TiVec<VisibleNodeIndex, u32> =
+            self.graph.node_indices().map(|_| 0).collect();
         let mut topo = Topo::new(&self.graph);
         while let Some(nx) = topo.next(&self.graph) {
+            let ast_size = graph.raw[self.graph[nx].idx]
+                .kind()
+                .inst()
+                .map(|inst| {
+                    let bound_terms = parser[parser[inst].match_]
+                        .kind
+                        .bound_terms(|e| parser[e].owner, |t| t);
+                    bound_terms
+                        .iter()
+                        .map(|&tidx| parser.ast_size(tidx).unwrap())
+                        .sum()
+                })
+                .unwrap_or_default();
+            ast_sizes[VisibleNodeIndex(nx)] = ast_size;
+
             let parents = self.graph.neighbors_directed(nx, Incoming);
-            let max_parent_depth = parents.map(|nx| self.graph[nx].max_depth + 1).max();
-            self.graph[nx].max_depth = max_parent_depth.unwrap_or_default();
+            let max_parent_depth = parents
+                .map(VisibleNodeIndex)
+                .filter_map(|nx| (ast_size >= ast_sizes[nx]).then_some(max_depths[nx] + 1))
+                .max();
+            max_depths[VisibleNodeIndex(nx)] = max_parent_depth.unwrap_or_default();
         }
+        max_depths
     }
 }
 
@@ -436,7 +460,6 @@ pub struct VisibleNode {
     pub idx: RawNodeIndex,
     pub hidden_parents: u32,
     pub hidden_children: u32,
-    pub max_depth: usize,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]

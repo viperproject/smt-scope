@@ -6,4 +6,4 @@ mod signature;
 pub use node::*;
 pub use signature::*;
 
-pub const MIN_MATCHING_LOOP_LENGTH: usize = 3;
+pub const MIN_MATCHING_LOOP_LENGTH: u32 = 6;

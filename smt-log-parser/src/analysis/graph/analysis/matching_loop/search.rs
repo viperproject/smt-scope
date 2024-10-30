@@ -4,7 +4,7 @@ use crate::{
     analysis::{
         analysis::MlEndNodes, raw::NodeKind, visible::VisibleEdge, InstGraph, RawNodeIndex,
     },
-    items::{InstIdx, TermIdx, TimeRange},
+    items::{GraphIdx, InstIdx, TermIdx, TimeRange},
     Z3Parser,
 };
 
@@ -56,23 +56,34 @@ impl InstGraph {
     }
 
     fn has_n_overlapping_stacks(
+        &self,
         parser: &Z3Parser,
         i: impl Iterator<Item = InstIdx>,
-        n: usize,
+        n: u32,
     ) -> bool {
-        let mut frames: Vec<_> = i.map(|inst| parser[parser[inst].frame].active).collect();
+        let mut frames: Vec<_> = i
+            .map(|inst| {
+                (
+                    self.raw[inst].subgraph.map(|s| s.0),
+                    parser[parser[inst].frame].active,
+                )
+            })
+            .collect();
         frames.sort_unstable();
-        let mut frame_stack = Vec::<TimeRange>::new();
-        for frame in frames {
+        let mut frame_stack = Vec::<(GraphIdx, TimeRange)>::new();
+        for (subgraph, frame) in frames {
+            let Some(subgraph) = subgraph else {
+                continue;
+            };
             while let Some(last) = frame_stack.last() {
-                if last.sorted_overlap(&frame) {
+                if subgraph == last.0 && last.1.sorted_overlap(&frame) {
                     break;
                 } else {
                     frame_stack.pop();
                 }
             }
-            frame_stack.push(frame);
-            if frame_stack.len() >= n {
+            frame_stack.push((subgraph, frame));
+            if frame_stack.len() >= n as usize {
                 return true;
             }
         }
@@ -88,7 +99,7 @@ impl InstGraph {
         let mut signatures: Vec<_> = signatures
             .into_iter()
             .filter_map(|(sig, insts)| {
-                Self::has_n_overlapping_stacks(
+                self.has_n_overlapping_stacks(
                     parser,
                     insts.iter().copied(),
                     MIN_MATCHING_LOOP_LENGTH,
@@ -109,13 +120,15 @@ impl InstGraph {
                 .set_visibility_many(false, insts.iter().copied().map(to_raw));
             let mut single_quant_subgraph = self.to_visible_opt();
 
-            let (leaves, nodes) =
-                single_quant_subgraph.collect_nodes_in_long_paths(MIN_MATCHING_LOOP_LENGTH);
+            let max_depths =
+                single_quant_subgraph.compute_longest_distances_from_roots(self, parser);
+            let (leaves, nodes) = single_quant_subgraph
+                .collect_nodes_in_long_paths(&max_depths, MIN_MATCHING_LOOP_LENGTH);
             let mut leaves: Vec<_> = leaves.collect();
             if leaves.is_empty() {
                 continue;
             }
-            leaves.sort_unstable_by_key(|(len, idx)| (usize::MAX - *len, *idx));
+            leaves.sort_unstable_by_key(|(len, idx)| (u32::MAX - *len, *idx));
             long_path_leaves.push((sig, leaves));
             long_path_nodes.extend(nodes);
         }

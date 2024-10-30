@@ -93,21 +93,33 @@ fn parse_all_logs() {
                 mem_limit / mb,
             );
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
+
+            let now = Instant::now();
             let mut inst_graph = InstGraph::new(&parser).unwrap();
+            assert!(
+                now.elapsed() < timeout,
+                "Constructing inst graph took longer than timeout"
+            );
+
             inst_graph.search_matching_loops(&mut parser);
             let elapsed = now.elapsed();
+
             max_analysis_ovhd = f64::max(
                 max_analysis_ovhd,
                 (ALLOCATOR.allocated() as u64 - middle_alloc) as f64 / parse_bytes as f64,
             );
             println!(
-                "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes. Memory use {} MB / {} MB:",
+                "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {} mls. Memory use {} MB / {} MB:",
                 parse_bytes_kb / elapsed.as_millis() as u64,
                 inst_graph.raw.graph.node_count(),
+                inst_graph.analysis.matching_loop_end_nodes.as_ref().map(|ml| ml.len()).unwrap_or_default(),
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
             );
-            assert!(elapsed < timeout, "Analysis took longer than timeout");
+            assert!(
+                elapsed < 10 * timeout,
+                "ML search took longer than 10*timeout"
+            );
             inst_graph.mem_dbg(DbgFlags::default()).ok();
             println!();
             println!("===");

@@ -107,6 +107,7 @@ fn parse_all_logs() {
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
             );
+            assert!(elapsed < timeout, "Analysis took longer than timeout");
             inst_graph.mem_dbg(DbgFlags::default()).ok();
             println!();
             println!("===");

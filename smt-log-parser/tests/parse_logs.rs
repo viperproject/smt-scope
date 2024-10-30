@@ -117,8 +117,8 @@ fn parse_all_logs() {
                 ALLOCATOR.limit() / mb as usize,
             );
             assert!(
-                elapsed < 10 * timeout,
-                "ML search took longer than 10*timeout"
+                elapsed < 4 * timeout,
+                "ML search took longer than 4*timeout"
             );
             inst_graph.mem_dbg(DbgFlags::default()).ok();
             println!();

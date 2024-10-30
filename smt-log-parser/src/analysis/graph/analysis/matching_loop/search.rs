@@ -1,22 +1,14 @@
-#[cfg(feature = "mem_dbg")]
-use mem_dbg::{MemDbg, MemSize};
-
-use fxhash::FxHashSet;
 use petgraph::visit::{Dfs, Reversed};
 
 use crate::{
     analysis::{
-        raw::{IndexesInstGraph, NodeKind},
-        visible::VisibleEdge,
-        InstGraph, LogInfo, RawNodeIndex,
+        analysis::MlEndNodes, raw::NodeKind, visible::VisibleEdge, InstGraph, RawNodeIndex,
     },
-    display_with::{DisplayCtxt, DisplayWithCtxt},
-    formatter::TermDisplayContext,
-    items::{ENodeIdx, InstIdx, Instantiation, Match, QuantIdx, TermIdx, TimeRange},
-    FxHashMap, Z3Parser,
+    items::{InstIdx, TermIdx, TimeRange},
+    Z3Parser,
 };
 
-use super::{MLGraphNode, MlSignature, MIN_MATCHING_LOOP_LENGTH};
+use super::{MLGraphNode, MIN_MATCHING_LOOP_LENGTH};
 
 impl InstGraph {
     pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> usize {
@@ -90,13 +82,7 @@ impl InstGraph {
     /// Per each quantifier, finds the nodes that are part paths of length at
     /// least `MIN_MATCHING_LOOP_LENGTH`. Additionally, returns a list of the
     /// endpoints of these paths.
-    fn find_long_paths_per_quant(
-        &mut self,
-        parser: &Z3Parser,
-    ) -> (
-        Vec<(MlSignature, Vec<(usize, RawNodeIndex)>)>,
-        Vec<RawNodeIndex>,
-    ) {
+    fn find_long_paths_per_quant(&mut self, parser: &Z3Parser) -> (MlEndNodes, Vec<RawNodeIndex>) {
         let signatures = Self::collect_ml_signatures(parser);
         // Collect all signatures instantiated at least `MIN_MATCHING_LOOP_LENGTH` times
         let mut signatures: Vec<_> = signatures

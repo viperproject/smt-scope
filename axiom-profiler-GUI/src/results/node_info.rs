@@ -190,7 +190,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         {
             extra_info.push(("z3 gen", z3gen.to_string()));
         }
-        if let Some(frame) = self.node.frame(&self.ctxt.parser) {
+        if let Some(frame) = self.node.frame(self.ctxt.parser) {
             let frame = &self.ctxt.parser[frame];
             extra_info.push(("Frame", frame.active.to_string()));
         }

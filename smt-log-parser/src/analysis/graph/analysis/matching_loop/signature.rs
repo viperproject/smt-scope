@@ -2,21 +2,14 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use fxhash::FxHashSet;
-use petgraph::visit::{Dfs, Reversed};
 
 use crate::{
-    analysis::{
-        raw::{IndexesInstGraph, NodeKind},
-        visible::VisibleEdge,
-        InstGraph, LogInfo, RawNodeIndex,
-    },
+    analysis::InstGraph,
     display_with::{DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
-    items::{ENodeIdx, InstIdx, Instantiation, Match, QuantIdx, TermIdx},
+    items::{ENodeIdx, InstIdx, Instantiation, QuantIdx, TermIdx},
     FxHashMap, Z3Parser,
 };
-
-use super::{MLGraphNode, MIN_MATCHING_LOOP_LENGTH};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

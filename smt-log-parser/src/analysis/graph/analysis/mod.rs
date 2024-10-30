@@ -21,6 +21,8 @@ use self::{
 
 use super::{raw::Node, InstGraph, RawNodeIndex};
 
+pub type MlEndNodes = Vec<(MlSignature, Vec<(usize, RawNodeIndex)>)>;
+
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
 pub struct Analysis {
@@ -32,7 +34,7 @@ pub struct Analysis {
     pub fwd_depth_min: Vec<RawNodeIndex>,
     // // Most to least
     // pub(super) max_depth: Vec<RawNodeIndex>,
-    pub matching_loop_end_nodes: Option<Vec<(MlSignature, Vec<(usize, RawNodeIndex)>)>>,
+    pub matching_loop_end_nodes: Option<MlEndNodes>,
     pub matching_loop_graphs: Vec<Graph<MLGraphNode, ()>>,
 }
 

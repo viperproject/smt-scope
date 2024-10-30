@@ -10,7 +10,7 @@ use super::terms::Terms;
 
 /// Taken from `ast_smt_pp.cpp` of z3. These are not user defined and cannot be
 /// used as triggers.
-pub const M_PREDEF_NAMES: &'static [&'static str] = &[
+pub const M_PREDEF_NAMES: &[&str] = &[
     "=", ">=", "<=", "+", "-", "*", ">", "<", "!=", "or", "and", "implies", "not", "iff", "xor",
     "true", "false", "forall", "exists", "let", "flet", // Extended with the following.
     "pi", "euler", "pattern", "to_int", "to_real",

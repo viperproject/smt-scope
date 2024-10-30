@@ -3,7 +3,7 @@ use fxhash::FxHashSet;
 use crate::{
     items::{QuantIdx, TermIdx},
     parsers::z3::synthetic::MaybeSynthIdx,
-    FxHashMap, Z3Parser,
+    Z3Parser,
 };
 
 pub(super) struct MlEquality {

@@ -24,12 +24,6 @@ impl<T, U> Either<T, U> {
             Self::Right(u) => Err(u),
         }
     }
-    pub fn as_result(&self) -> std::result::Result<&T, &U> {
-        match self {
-            Self::Left(t) => Ok(t),
-            Self::Right(u) => Err(u),
-        }
-    }
 }
 
 #[derive(Debug)]

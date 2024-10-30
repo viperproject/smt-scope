@@ -125,8 +125,10 @@ impl<K, V> FromIterator<V> for TiVec<K, V> {
         Self(typed_index_collections::TiVec::from_iter(iter))
     }
 }
-impl<K, V> TiVec<K, V> {
-    pub fn into_iter(self) -> std::vec::IntoIter<V> {
+impl<K, V> std::iter::IntoIterator for TiVec<K, V> {
+    type Item = <Self::IntoIter as std::iter::IntoIterator>::Item;
+    type IntoIter = std::vec::IntoIter<V>;
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
 }
@@ -144,8 +146,10 @@ impl<K: Eq + std::hash::Hash, V> FromIterator<(K, V)> for FxHashMap<K, V> {
         Self(fxhash::FxHashMap::from_iter(iter))
     }
 }
-impl<K, V> FxHashMap<K, V> {
-    pub fn into_iter(self) -> std::collections::hash_map::IntoIter<K, V> {
+impl<K, V> std::iter::IntoIterator for FxHashMap<K, V> {
+    type Item = <Self::IntoIter as std::iter::IntoIterator>::Item;
+    type IntoIter = std::collections::hash_map::IntoIter<K, V>;
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
 }

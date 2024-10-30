@@ -3,8 +3,6 @@ use mem_dbg::{MemDbg, MemSize};
 use typed_index_collections::TiSlice;
 
 use crate::{
-    display_with::{DisplayCtxt, DisplayWithCtxt},
-    formatter::TermDisplayContext,
     items::*,
     parsers::z3::{VersionInfo, Z3LogParser},
     Error, IString, Result, StringTable, TiVec,
@@ -15,7 +13,7 @@ use super::{
     inst::Insts,
     stack::Stack,
     stm2::EventLog,
-    synthetic::{MaybeSynthIdx, MaybeSynthTerm, SynthTerm, SynthTerms},
+    synthetic::{SynthTerm, SynthTerms},
     terms::Terms,
 };
 

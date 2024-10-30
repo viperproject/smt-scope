@@ -1,7 +1,7 @@
 use petgraph::graph::NodeIndex;
 
 use crate::{
-    analysis::{raw::NodeKind, visible::VisibleInstGraph, InstGraph, VisibleNodeIndex},
+    analysis::{raw::NodeKind, InstGraph},
     items::{ENodeIdx, EqTransIdx, QuantIdx, TermIdx},
     FxHashMap, Graph, Z3Parser,
 };

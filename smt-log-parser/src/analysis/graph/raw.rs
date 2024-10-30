@@ -18,7 +18,6 @@ use crate::{
         ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, StackIdx,
         TransitiveExplSegmentKind,
     },
-    parsers::z3::synthetic::MaybeSynthIdx,
     DiGraph, FxHashMap, NonMaxU32, Result, Z3Parser,
 };
 

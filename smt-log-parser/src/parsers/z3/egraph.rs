@@ -10,8 +10,8 @@ use petgraph::{
 
 use crate::{
     items::{
-        ENode, ENodeIdx, EqGivenIdx, EqTransIdx, Equality, EqualityExpl, InstIdx, StackIdx,
-        TermIdx, TransitiveExpl, TransitiveExplSegment, TransitiveExplSegmentKind,
+        ENode, ENodeIdx, EqGivenIdx, EqTransIdx, Equality, EqualityExpl, InstIdx, TermIdx,
+        TransitiveExpl, TransitiveExplSegment, TransitiveExplSegmentKind,
     },
     BoxSlice, Error, FxHashMap, NonMaxU32, Result, TiVec,
 };

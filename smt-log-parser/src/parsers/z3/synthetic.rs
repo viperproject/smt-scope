@@ -1,14 +1,12 @@
-use std::{collections::hash_map::Entry, mem::ManuallyDrop, ops::Index};
+use std::{collections::hash_map::Entry, ops::Index};
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    items::{QuantIdx, Quantifier, SynthTermIdx, Term, TermIdx, TermKind},
+    items::{SynthTermIdx, Term, TermIdx, TermKind},
     FxHashMap, IString, Result, TiVec,
 };
-
-use super::terms::Terms;
 
 // #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 // #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

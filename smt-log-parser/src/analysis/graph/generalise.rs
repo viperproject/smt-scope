@@ -1,10 +1,10 @@
 use crate::{
-    items::{Meaning, SynthTermIdx, Term, TermIdx, TermKind},
+    items::{TermIdx, TermKind},
     parsers::z3::{
         synthetic::{MaybeSynthIdx, MaybeSynthTerm, SynthTermKind, SynthTerms},
         terms::Terms,
     },
-    IString, Result, StringTable,
+    Result,
 };
 
 impl SynthTerms {

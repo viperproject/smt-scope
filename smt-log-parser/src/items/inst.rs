@@ -1,7 +1,6 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::error::Either;
 use crate::{Error, Result};
 use std::fmt;
 use std::ops::Index;

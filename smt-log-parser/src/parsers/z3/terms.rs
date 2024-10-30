@@ -6,7 +6,7 @@ use crate::{
     error::Either,
     items::{
         InstProofLink, Instantiation, Meaning, ProofIdx, ProofStep, ProofStepKind, QuantIdx, Term,
-        TermId, TermIdToIdxMap, TermIdx, TermKind,
+        TermId, TermIdToIdxMap, TermIdx,
     },
     Error, FxHashMap, Result, StringTable, TiVec,
 };

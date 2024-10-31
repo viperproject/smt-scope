@@ -3,14 +3,14 @@ use std::ops::{Index, IndexMut};
 use fxhash::{FxHashMap, FxHashSet};
 use petgraph::{
     graph::{DiGraph, EdgeIndex, NodeIndex},
-    visit::{Dfs, EdgeRef, IntoEdgeReferences, Reversed, Topo, Walker},
+    visit::{EdgeRef, IntoEdgeReferences},
     Direction::{self, Incoming, Outgoing},
 };
 
 use crate::{
     graph_idx,
     items::{ENodeIdx, EqGivenIdx},
-    NonMaxU32, TiVec, Z3Parser,
+    NonMaxU32,
 };
 
 use super::{
@@ -30,8 +30,8 @@ pub struct VisibleInstGraph {
 
 impl InstGraph {
     pub fn to_visible_opt(&self) -> VisibleInstGraph {
-        let bwd_vis_reachable = self.topo_analysis(BwdReachableVisAnalysis);
-        let mut reconnect = self.topo_analysis(ReconnectAnalysis(bwd_vis_reachable));
+        let bwd_vis_reachable = self.topo_analysis(&mut BwdReachableVisAnalysis);
+        let mut reconnect = self.topo_analysis(&mut ReconnectAnalysis(bwd_vis_reachable));
         let (mut nodes, mut edges) = (0, 0);
         for (idx, data) in reconnect.iter_mut_enumerated() {
             let node = &self.raw[idx];
@@ -361,74 +361,6 @@ impl VisibleInstGraph {
                 );
             }
         }
-    }
-
-    /// Collect all nodes that are part of a path of at least `min_length`
-    /// nodes. Additionally, returns a list of all of the leaves of these long
-    /// paths along with their max depth.
-    pub(crate) fn collect_nodes_in_long_paths<'a>(
-        &'a mut self,
-        max_depths: &'a TiVec<VisibleNodeIndex, u32>,
-        min_length: u32,
-    ) -> (
-        impl Iterator<Item = (u32, RawNodeIndex)> + 'a,
-        impl Iterator<Item = RawNodeIndex> + 'a,
-    ) {
-        // traverse this subtree in topological order to compute longest distances from root nodes
-        let long_path_leaves: Vec<_> = self
-            .graph
-            .node_indices()
-            // only want to keep end nodes of longest paths, i.e., nodes without any children
-            .filter(|nx| self.graph.neighbors(*nx).next().is_none())
-            // only want to show matching loops of length at least 3, hence only keep nodes with depth at least 2
-            .filter(|nx| max_depths[VisibleNodeIndex(*nx)] >= min_length - 1)
-            .collect();
-        // Walk backwards from leaves to collect all nodes
-        let rev_graph = Reversed(&self.graph);
-        let mut dfs = Dfs::empty(rev_graph);
-        dfs.stack = long_path_leaves.clone();
-
-        let long_path_leaves = long_path_leaves
-            .into_iter()
-            .map(|nx| (max_depths[VisibleNodeIndex(nx)], self.graph[nx].idx));
-        let long_path_nodes = dfs.iter(rev_graph).map(|nx| self.graph[nx].idx);
-        (long_path_leaves, long_path_nodes)
-    }
-
-    pub fn compute_longest_distances_from_roots(
-        &self,
-        graph: &InstGraph,
-        parser: &Z3Parser,
-    ) -> TiVec<VisibleNodeIndex, u32> {
-        let mut ast_sizes: TiVec<VisibleNodeIndex, u32> =
-            self.graph.node_indices().map(|_| u32::MAX).collect();
-        let mut max_depths: TiVec<VisibleNodeIndex, u32> =
-            self.graph.node_indices().map(|_| 0).collect();
-        let mut topo = Topo::new(&self.graph);
-        while let Some(nx) = topo.next(&self.graph) {
-            let ast_size = graph.raw[self.graph[nx].idx]
-                .kind()
-                .inst()
-                .map(|inst| {
-                    let bound_terms = parser[parser[inst].match_]
-                        .kind
-                        .bound_terms(|e| parser[e].owner, |t| t);
-                    bound_terms
-                        .iter()
-                        .map(|&tidx| parser.ast_size(tidx).unwrap())
-                        .sum()
-                })
-                .unwrap_or_default();
-            ast_sizes[VisibleNodeIndex(nx)] = ast_size;
-
-            let parents = self.graph.neighbors_directed(nx, Incoming);
-            let max_parent_depth = parents
-                .map(VisibleNodeIndex)
-                .filter_map(|nx| (ast_size >= ast_sizes[nx]).then_some(max_depths[nx] + 1))
-                .max();
-            max_depths[VisibleNodeIndex(nx)] = max_parent_depth.unwrap_or_default();
-        }
-        max_depths
     }
 }
 

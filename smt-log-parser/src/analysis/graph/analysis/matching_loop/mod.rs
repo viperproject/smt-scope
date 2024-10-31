@@ -1,8 +1,10 @@
+mod analysis;
 mod generalise;
 mod node;
 mod search;
 mod signature;
 
+pub use analysis::*;
 pub use node::*;
 pub use signature::*;
 

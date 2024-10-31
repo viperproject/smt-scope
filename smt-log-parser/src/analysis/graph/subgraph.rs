@@ -23,6 +23,15 @@ pub struct Subgraphs {
     pub singletons: Vec<RawNodeIndex>,
 }
 
+impl Subgraphs {
+    pub fn in_subgraphs(&self) -> impl Iterator<Item = RawNodeIndex> + '_ {
+        self.subgraphs.iter().flat_map(|s| s.nodes.iter().copied())
+    }
+    pub fn singletons(&self) -> impl Iterator<Item = RawNodeIndex> + '_ {
+        self.singletons.iter().copied()
+    }
+}
+
 impl Deref for Subgraphs {
     type Target = TiVec<GraphIdx, Subgraph>;
     fn deref(&self) -> &Self::Target {

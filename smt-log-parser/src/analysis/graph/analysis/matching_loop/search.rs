@@ -1,8 +1,12 @@
+use fxhash::FxHashSet;
 use petgraph::visit::{Dfs, Reversed};
 
 use crate::{
     analysis::{
-        analysis::MlEndNodes, raw::NodeKind, visible::VisibleEdge, InstGraph, RawNodeIndex,
+        analysis::{matching_loop::MlAnalysis, MlEndNodes},
+        raw::{IndexesInstGraph, NodeKind},
+        visible::VisibleEdge,
+        InstGraph,
     },
     items::{GraphIdx, InstIdx, TermIdx, TimeRange},
     Z3Parser,
@@ -29,7 +33,11 @@ impl InstGraph {
 
         let long_path_leaves_sub_idx: Vec<_> = long_path_leaves
             .iter()
-            .map(|(_, leaves)| long_paths_subgraph.reverse(leaves[0].1).unwrap())
+            .map(|(_, leaves)| {
+                long_paths_subgraph
+                    .reverse(leaves[0].1.index(&self.raw))
+                    .unwrap()
+            })
             .collect();
 
         // assign to each node in a matching loop which matching loops it belongs to, i.e., if a node is part of the
@@ -93,8 +101,8 @@ impl InstGraph {
     /// Per each quantifier, finds the nodes that are part paths of length at
     /// least `MIN_MATCHING_LOOP_LENGTH`. Additionally, returns a list of the
     /// endpoints of these paths.
-    fn find_long_paths_per_quant(&mut self, parser: &Z3Parser) -> (MlEndNodes, Vec<RawNodeIndex>) {
-        let signatures = Self::collect_ml_signatures(parser);
+    fn find_long_paths_per_quant(&mut self, parser: &Z3Parser) -> (MlEndNodes, FxHashSet<InstIdx>) {
+        let signatures = self.collect_ml_signatures(parser);
         // Collect all signatures instantiated at least `MIN_MATCHING_LOOP_LENGTH` times
         let mut signatures: Vec<_> = signatures
             .into_iter()
@@ -107,32 +115,12 @@ impl InstGraph {
                 .then_some((sig, insts))
             })
             .collect();
-        signatures.sort_unstable_by(|a, b| a.0.cmp(&b.0));
         // eprintln!("Found {} signatures", signatures.len());
+        signatures.sort_unstable_by(|a, b| a.0.cmp(&b.0));
 
-        let mut long_path_leaves = Vec::new();
-        let mut long_path_nodes = Vec::new();
-        for (sig, insts) in signatures {
-            // eprintln!("Checking signature: {}", sig.to_string(parser));
-            self.raw.reset_visibility_to(true);
-            let to_raw = self.raw.inst_to_raw_idx();
-            self.raw
-                .set_visibility_many(false, insts.iter().copied().map(to_raw));
-            let mut single_quant_subgraph = self.to_visible_opt();
-
-            let max_depths =
-                single_quant_subgraph.compute_longest_distances_from_roots(self, parser);
-            let (leaves, nodes) = single_quant_subgraph
-                .collect_nodes_in_long_paths(&max_depths, MIN_MATCHING_LOOP_LENGTH);
-            let mut leaves: Vec<_> = leaves.collect();
-            if leaves.is_empty() {
-                continue;
-            }
-            leaves.sort_unstable_by_key(|(len, idx)| (u32::MAX - *len, *idx));
-            long_path_leaves.push((sig, leaves));
-            long_path_nodes.extend(nodes);
-        }
-        (long_path_leaves, long_path_nodes)
+        let mut analysis = MlAnalysis::new(parser, signatures);
+        self.topo_analysis(&mut analysis);
+        analysis.finalise(MIN_MATCHING_LOOP_LENGTH)
     }
 
     pub fn found_matching_loops(&self) -> Option<usize> {

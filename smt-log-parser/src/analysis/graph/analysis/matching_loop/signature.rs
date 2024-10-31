@@ -7,7 +7,7 @@ use crate::{
     analysis::InstGraph,
     display_with::{DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
-    items::{ENodeIdx, InstIdx, Instantiation, QuantIdx, TermIdx},
+    items::{ENodeIdx, GraphIdx, InstIdx, QuantIdx, TermIdx},
     FxHashMap, Z3Parser,
 };
 
@@ -17,6 +17,7 @@ pub struct MlSignature {
     pub quantifier: QuantIdx,
     pub pattern: TermIdx,
     pub parents: Box<[InstParent]>,
+    pub subgraph: GraphIdx,
 }
 
 /// For each pattern in the matched pattern, where did the blamed term come
@@ -33,8 +34,10 @@ pub enum InstParent {
 }
 
 impl MlSignature {
-    pub fn new(parser: &Z3Parser, inst: &Instantiation) -> Option<Self> {
-        let match_ = &parser[inst.match_];
+    pub fn new(graph: &InstGraph, parser: &Z3Parser, inst: InstIdx) -> Option<Self> {
+        let subgraph = graph.raw[inst].subgraph?.0;
+
+        let match_ = &parser[parser[inst].match_];
         let pattern = match_.kind.pattern()?;
         // If it has a pattern then definitely also has a quant_idx
         let quant_idx = match_.kind.quant_idx().unwrap();
@@ -56,6 +59,7 @@ impl MlSignature {
             quantifier: quant_idx,
             pattern,
             parents,
+            subgraph,
         })
     }
 
@@ -76,20 +80,22 @@ impl MlSignature {
             .collect::<Vec<_>>()
             .join(", ");
         format!(
-            "{} {} {parents:?}",
+            "{} {} {parents:?} {:?}",
             self.quantifier.with(&ctxt),
             self.pattern,
+            self.subgraph,
         )
     }
 }
 
 impl InstGraph {
     pub(super) fn collect_ml_signatures(
+        &self,
         parser: &Z3Parser,
     ) -> FxHashMap<MlSignature, FxHashSet<InstIdx>> {
         let mut signatures = FxHashMap::<_, FxHashSet<_>>::default();
-        for (iidx, inst) in parser.instantiations().iter_enumerated() {
-            let Some(ml_sig) = MlSignature::new(parser, inst) else {
+        for (iidx, _) in parser.instantiations().iter_enumerated() {
+            let Some(ml_sig) = MlSignature::new(self, parser, iidx) else {
                 continue;
             };
             signatures.entry(ml_sig).or_default().insert(iidx);

@@ -847,6 +847,16 @@ impl Z3Parser {
         };
         Some(children_size? + 1)
     }
+
+    pub fn inst_ast_size(&self, iidx: InstIdx) -> u32 {
+        let bound_terms = self[self[iidx].match_]
+            .kind
+            .bound_terms(|e| self[e].owner, |t| t);
+        bound_terms
+            .iter()
+            .map(|&tidx| self.ast_size(tidx).unwrap())
+            .sum()
+    }
 }
 
 impl std::ops::Index<TermIdx> for Z3Parser {

@@ -10,7 +10,7 @@ use std::mem::MaybeUninit;
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::Direction;
 
-use crate::{Graph, Result, TiVec, Z3Parser};
+use crate::{items::InstIdx, Graph, Result, TiVec, Z3Parser};
 
 use self::{
     cost::DefaultCost,
@@ -21,7 +21,7 @@ use self::{
 
 use super::{raw::Node, InstGraph, RawNodeIndex};
 
-pub type MlEndNodes = Vec<(MlSignature, Vec<(u32, RawNodeIndex)>)>;
+pub type MlEndNodes = Vec<(MlSignature, Vec<(u32, InstIdx)>)>;
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
@@ -39,19 +39,21 @@ pub struct Analysis {
 }
 
 impl Analysis {
-    pub fn new(nodes: impl ExactSizeIterator<Item = RawNodeIndex> + Clone) -> Result<Self> {
+    pub fn new(nodes: impl Iterator<Item = RawNodeIndex>) -> Result<Self> {
         // Alloc `children` vector
         let mut cost = Vec::new();
-        cost.try_reserve_exact(nodes.len())?;
-        cost.extend(nodes.clone());
+        for node in nodes {
+            cost.try_reserve(1)?;
+            cost.push(node);
+        }
         // Alloc `children` vector
         let mut children = Vec::new();
-        children.try_reserve_exact(nodes.len())?;
-        children.extend(nodes.clone());
+        children.try_reserve_exact(cost.len())?;
+        children.extend(cost.iter().copied());
         // Alloc `fwd_depth_min` vector
         let mut fwd_depth_min = Vec::new();
-        fwd_depth_min.try_reserve_exact(nodes.len())?;
-        fwd_depth_min.extend(nodes.clone());
+        fwd_depth_min.try_reserve_exact(cost.len())?;
+        fwd_depth_min.extend(cost.iter().copied());
         Ok(Self {
             cost,
             children,
@@ -69,7 +71,7 @@ impl InstGraph {
         const SKIP_DISABLED: bool,
     >(
         &self,
-        mut initialiser: I,
+        analysis: &mut I,
     ) -> TiVec<RawNodeIndex, I::Value> {
         let mut data =
             typed_index_collections::TiVec::<RawNodeIndex, MaybeUninit<I::Value>>::with_capacity(
@@ -83,7 +85,7 @@ impl InstGraph {
         let mut data = TiVec::from(data);
 
         for subgraph in self.subgraphs.iter() {
-            initialiser.reset();
+            analysis.reset();
 
             let dir = if FORWARD {
                 Direction::Incoming
@@ -93,7 +95,7 @@ impl InstGraph {
             let for_each = |curr: RawNodeIndex| {
                 let node = &self.raw[curr];
                 let value = if node.disabled() && SKIP_DISABLED {
-                    initialiser.collect(self, curr, node, core::iter::empty)
+                    analysis.collect(self, curr, node, core::iter::empty)
                 } else {
                     let from_all = || {
                         let ix_map = |i: RawNodeIndex| {
@@ -115,7 +117,7 @@ impl InstGraph {
                         };
                         iter.map(ix_map)
                     };
-                    initialiser.collect(self, curr, node, from_all)
+                    analysis.collect(self, curr, node, from_all)
                 };
                 data[curr] = MaybeUninit::new(value);
             };
@@ -129,7 +131,7 @@ impl InstGraph {
 
         for &singleton in &self.subgraphs.singletons {
             let node = &self.raw[singleton];
-            let value = initialiser.collect(self, singleton, node, core::iter::empty);
+            let value = analysis.collect(self, singleton, node, core::iter::empty);
             data[singleton] = MaybeUninit::new(value);
         }
 

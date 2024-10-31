@@ -4,7 +4,7 @@ use petgraph::{
 };
 
 use super::{
-    raw::{EdgeKind, Node, NodeState, RawInstGraph, RawIx},
+    raw::{EdgeKind, IndexesInstGraph, Node, NodeState, RawInstGraph, RawIx},
     InstGraph, RawNodeIndex,
 };
 
@@ -61,8 +61,13 @@ impl RawInstGraph {
             }
         }
     }
-    pub fn set_visibility_many(&mut self, hidden: bool, nodes: impl Iterator<Item = RawNodeIndex>) {
+    pub fn set_visibility_many<I: IndexesInstGraph>(
+        &mut self,
+        hidden: bool,
+        nodes: impl Iterator<Item = I>,
+    ) {
         for node in nodes {
+            let node = node.index(self);
             self.set_visibility(hidden, node);
         }
     }
@@ -145,15 +150,19 @@ impl RawInstGraph {
 
 impl InstGraph {
     pub fn keep_first_n_cost(&mut self, n: usize) {
-        self.raw.keep_first_n(self.analysis.cost.iter().copied(), n)
+        let cost = self.analysis.cost.iter().copied();
+        let cost = cost.chain(self.subgraphs.singletons());
+        self.raw.keep_first_n(cost, n)
     }
     pub fn keep_first_n_children(&mut self, n: usize) {
-        self.raw
-            .keep_first_n(self.analysis.children.iter().copied(), n)
+        let children = self.analysis.children.iter().copied();
+        let children = children.chain(self.subgraphs.singletons());
+        self.raw.keep_first_n(children, n)
     }
     pub fn keep_first_n_fwd_depth_min(&mut self, n: usize) {
-        self.raw
-            .keep_first_n(self.analysis.fwd_depth_min.iter().copied(), n)
+        let fwd_depth_min = self.analysis.fwd_depth_min.iter().copied();
+        let fwd_depth_min = fwd_depth_min.chain(self.subgraphs.singletons());
+        self.raw.keep_first_n(fwd_depth_min, n)
     }
     // pub fn keep_first_n_max_depth(&mut self, n: usize) {
     //     self.raw.keep_first_n(self.analysis.max_depth.iter().copied(), n)

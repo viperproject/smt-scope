@@ -31,7 +31,7 @@ impl InstGraph {
     pub fn new(parser: &Z3Parser) -> Result<Self> {
         let mut raw = RawInstGraph::new(parser)?;
         let subgraphs = raw.partition()?;
-        let analysis = Analysis::new(raw.graph.node_indices().map(RawNodeIndex))?;
+        let analysis = Analysis::new(subgraphs.in_subgraphs())?;
         let mut self_ = InstGraph {
             raw,
             subgraphs,

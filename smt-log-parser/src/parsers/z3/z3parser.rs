@@ -834,18 +834,23 @@ impl Z3Parser {
     /// reduces terms such as `1 + 1` to `2` meaning that a matching loop can be
     /// constant in this size metric!
     pub fn ast_size(&self, tidx: TermIdx) -> Option<u32> {
-        let term = &self[tidx];
-        let children_size = match term.kind {
-            TermKind::Var(_) => None,
-            TermKind::App(_) => term
-                .child_ids
-                .iter()
-                .map(|&idx| self.ast_size(idx))
-                .sum::<Option<u32>>(),
-            // TODO: decide if we want to return a size for quantifiers
-            TermKind::Quant(_) => self.ast_size(*term.child_ids.last().unwrap()),
-        };
-        Some(children_size? + 1)
+        let mut size = 0;
+        let mut todo = vec![tidx];
+        while let Some(next) = todo.pop() {
+            size += 1;
+            let term = &self[next];
+            match term.kind {
+                TermKind::Var(_) => return None,
+                TermKind::App(_) => {
+                    todo.extend_from_slice(&term.child_ids);
+                }
+                // TODO: decide if we want to return a size for quantifiers
+                TermKind::Quant(_) => {
+                    todo.push(*term.child_ids.last().unwrap());
+                }
+            }
+        }
+        Some(size)
     }
 
     pub fn inst_ast_size(&self, iidx: InstIdx) -> u32 {

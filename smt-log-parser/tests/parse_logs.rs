@@ -105,7 +105,7 @@ fn parse_all_logs() {
             let now = Instant::now();
             inst_graph.search_matching_loops(&mut parser);
             let elapsed_ml = now.elapsed();
-            let elapsed= elapsed_ig + elapsed_ml;
+            let elapsed = elapsed_ig + elapsed_ml;
 
             max_analysis_ovhd = f64::max(
                 max_analysis_ovhd,
@@ -119,10 +119,7 @@ fn parse_all_logs() {
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
             );
-            assert!(
-                elapsed_ml < timeout,
-                "ML search took longer than timeout"
-            );
+            assert!(elapsed_ml < timeout, "ML search took longer than timeout");
             inst_graph.mem_dbg(DbgFlags::default()).ok();
             println!();
             println!("===");

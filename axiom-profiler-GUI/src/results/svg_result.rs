@@ -24,8 +24,10 @@ use petgraph::{
 };
 use smt_log_parser::{
     analysis::{
-        analysis::matching_loop::MLGraphNode, raw::NodeKind, visible::VisibleInstGraph, InstGraph,
-        RawNodeIndex, VisibleEdgeIndex,
+        analysis::matching_loop::{MLGraphEdge, MLGraphNode},
+        raw::NodeKind,
+        visible::VisibleInstGraph,
+        InstGraph, RawNodeIndex, VisibleEdgeIndex,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
     items::QuantIdx,
@@ -67,7 +69,7 @@ pub enum Msg {
     ResetGraph,
     UserPermission(WarningChoice),
     WorkerOutput(super::worker::WorkerOutput),
-    RenderMLGraph(Graph<MLGraphNode, ()>),
+    RenderMLGraph(Graph<MLGraphNode, MLGraphEdge>),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -508,11 +510,13 @@ impl Component for SVGResult {
             Msg::RenderMLGraph(graph) => {
                 let _filtered_graph = &graph;
                 let cfg = ctx.link().get_configuration().unwrap();
-                let ctxt = &DisplayCtxt {
+                let mut ctxt = DisplayCtxt {
                     parser: &parser.borrow(),
                     term_display: &data.state.term_display,
                     config: cfg.config.display.clone(),
                 };
+                ctxt.config.html = false;
+                let ctxt = &ctxt;
 
                 // Performance observations (default value is in [])
                 //  - splines=false -> 38s | [splines=true] -> ??
@@ -523,7 +527,7 @@ impl Component for SVGResult {
                 // per node out of all nodes with at least one child.
                 let settings = [
                     "ranksep=1.0;",
-                    "splines=false;",
+                    "splines=true;",
                     "nslimit=6;",
                     "mclimit=0.6;",
                 ];
@@ -537,38 +541,42 @@ impl Component for SVGResult {
                             Config::NodeNoLabel,
                             Config::GraphContentOnly
                         ],
-                        &|_, _| "".to_string(),
+                        &|_, edge| format!("label=\"{:?}\"", edge.weight()),
                         &|_, (_, node_data)| {
                             format!(
                                 "label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
                                 match &node_data {
-                                    MLGraphNode::QI(quant, pattern) => format!(
+                                    MLGraphNode::QI(sig, gen_pat) => format!(
                                         "{}: {}",
-                                        rc_parser.parser.borrow()[*quant].kind.with(ctxt),
-                                        pattern.with(ctxt)
+                                        rc_parser.parser.borrow()[sig.quantifier].kind.with(ctxt),
+                                        gen_pat.with(ctxt)
                                     ),
                                     MLGraphNode::ENode(matched_term) =>
                                         format!("{}", matched_term.with(ctxt)),
                                     MLGraphNode::Equality(from, to) =>
                                         format!("{} = {}", from.with(ctxt), to.with(ctxt)),
+                                    MLGraphNode::FixedEquality(tidx) =>
+                                        format!("{}", tidx.with(ctxt)),
                                 },
                                 "box",
                                 match &node_data {
-                                    MLGraphNode::QI(quant, _) => {
-                                        let hue = rc_parser
-                                            .colour_map
-                                            .get_graphviz_hue_for_quant_idx(quant);
+                                    MLGraphNode::QI(sig, _) => {
+                                        let hue =
+                                            rc_parser.colour_map.get_rbg_hue(Some(sig.quantifier))
+                                                / 360.0;
                                         format!(
                                             "{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}"
                                         )
                                     }
                                     MLGraphNode::ENode(_) => "lightgrey".to_string(),
-                                    MLGraphNode::Equality(_, _) => "white".to_string(),
+                                    MLGraphNode::Equality(_, _) | MLGraphNode::FixedEquality(_) =>
+                                        "white".to_string(),
                                 }
                             )
                         },
                     )
                 );
+                log::info!("GRAPH SVG:\n{}", dot_output);
                 ctx.props()
                     .progress
                     .emit(GraphState::Rendering(RenderingState::RenderingGraph));
@@ -685,23 +693,23 @@ impl QuantIdxToColourMap {
         let colour = Hsv::<Srgb, f64>::from_color(colour);
         colour.hue.into_positive_degrees()
     }
-    pub fn get_for_quant_idx(&self, mkind: QuantIdx) -> LuvHue<f64> {
-        let qidx = Some(mkind);
-        debug_assert!(self.non_quant_insts || qidx.is_some());
-        let idx = qidx
-            .map(usize::from)
-            .map(|q| q + self.non_quant_insts as usize)
-            .unwrap_or_default();
-        // debug_assert!(idx < idx);
-        let idx_perm = (idx * self.coprime.get() + self.shift) % self.total_count;
-        LuvHue::new(360. * idx_perm as f64 / self.total_count as f64)
-    }
-    pub fn get_graphviz_hue_for_quant_idx(&self, mkind: &QuantIdx) -> f64 {
-        let hue = self.get_for_quant_idx(*mkind);
-        let colour = Hsluv::<D65, f64>::new(hue, 100.0, 50.0);
-        let colour = Hsv::<Srgb, f64>::from_color(colour);
-        colour.hue.into_positive_degrees() / 360.0
-    }
+    // pub fn get_for_quant_idx(&self, mkind: QuantIdx) -> LuvHue<f64> {
+    //     let qidx = Some(mkind);
+    //     debug_assert!(self.non_quant_insts || qidx.is_some());
+    //     let idx = qidx
+    //         .map(usize::from)
+    //         .map(|q| q + self.non_quant_insts as usize)
+    //         .unwrap_or_default();
+    //     // debug_assert!(idx < idx);
+    //     let idx_perm = (idx * self.coprime.get() + self.shift) % self.total_count;
+    //     LuvHue::new(360. * idx_perm as f64 / self.total_count as f64)
+    // }
+    // pub fn get_graphviz_hue_for_quant_idx(&self, mkind: QuantIdx) -> f64 {
+    //     let hue = self.get_for_quant_idx(mkind);
+    //     let colour = Hsluv::<D65, f64>::new(hue, 100.0, 50.0);
+    //     let colour = Hsv::<Srgb, f64>::from_color(colour);
+    //     colour.hue.into_positive_degrees() / 360.0
+    // }
 
     #[allow(clippy::out_of_bounds_indexing)]
     fn find_coprime(n: usize) -> NonZeroUsize {

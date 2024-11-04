@@ -1,5 +1,4 @@
 mod analysis;
-mod generalise;
 mod node;
 mod search;
 mod signature;

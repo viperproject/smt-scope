@@ -4,7 +4,7 @@ use petgraph::{
 };
 use smt_log_parser::{
     analysis::{
-        analysis::matching_loop::MLGraphNode,
+        analysis::matching_loop::{MLGraphEdge, MLGraphNode},
         raw::{IndexesInstGraph, Node, NodeKind, RawInstGraph},
         InstGraph, RawNodeIndex,
     },
@@ -222,7 +222,7 @@ impl Filter {
 pub enum FilterOutput {
     LongestPath(Vec<RawNodeIndex>),
     MatchingLoopGeneralizedTerms(Vec<String>),
-    MatchingLoopGraph(Graph<MLGraphNode, ()>),
+    MatchingLoopGraph(Graph<MLGraphNode, MLGraphEdge>),
     None,
 }
 

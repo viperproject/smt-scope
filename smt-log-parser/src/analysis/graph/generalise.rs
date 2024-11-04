@@ -1,25 +1,16 @@
 use crate::{
     items::{TermIdx, TermKind},
     parsers::z3::{
-        synthetic::{MaybeSynthIdx, MaybeSynthTerm, SynthTermKind, SynthTerms},
+        synthetic::{SynthIdx, SynthTerm, SynthTerms},
         terms::Terms,
     },
     Result,
 };
 
 impl SynthTerms {
-    fn index_synth<'a>(&'a self, table: &'a Terms, idx: MaybeSynthIdx) -> MaybeSynthTerm<'a> {
-        match idx {
-            MaybeSynthIdx::Parsed(idx) => MaybeSynthTerm::Parsed(&table[idx]),
-            MaybeSynthIdx::Synth(idx) => MaybeSynthTerm::Synth(&self[idx]),
-        }
-    }
+    pub fn generalise(&mut self, table: &Terms, terms_vec: Vec<SynthIdx>) -> Result<SynthIdx> {
+        assert!(!terms_vec.is_empty(), "generalise called with empty terms");
 
-    pub fn generalise(
-        &mut self,
-        table: &Terms,
-        terms_vec: Vec<MaybeSynthIdx>,
-    ) -> Result<MaybeSynthIdx> {
         fn check<T: Copy>(
             mut terms: impl Iterator<Item = T>,
             mut predicate: impl FnMut(T, T) -> bool,
@@ -35,64 +26,63 @@ impl SynthTerms {
             }
             true
         }
-        let terms = || terms_vec.iter().copied();
+        let tidxs = || terms_vec.iter().copied();
+        let terms = || tidxs().map(|t| self.index(table, t));
 
-        let deref: Vec<MaybeSynthTerm<'static>>;
-        if check(terms(), |t1, t2| t1 == t2) {
+        if check(tidxs(), |t1, t2| t1 == t2) {
             // if terms are equal, no need to generalize
-            let term = terms().next().expect("generalise called with empty terms");
-            Ok(term)
+            Ok(terms_vec[0])
+        } else if let Some(generalised) = terms().position(|t| t.kind().non_generalised().is_none())
+        {
+            // if one of the terms is already generalised, no need to generalize
+            Ok(terms_vec[generalised])
         } else if check(
-            terms().map(|t| t.parsed().and_then(|t| table.meaning(t))),
+            tidxs().map(|t| self.as_tidx(t).and_then(|t| table.meaning(t))),
             |m1, m2| m1 == m2,
-        ) && {
-            let d = terms().map(|t| self.index_synth(table, t)).collect();
-            deref = unsafe {
-                std::mem::transmute::<Vec<MaybeSynthTerm>, Vec<MaybeSynthTerm<'static>>>(d)
-            };
-            check(deref.iter(), |t1, t2| {
-                t1.kind().either_eq(t2.kind()) && t1.child_ids().len() == t2.child_ids().len()
-            })
-        } {
-            let first = deref.first().expect("generalise called with empty terms");
-            let children = (0..first.child_ids().len().join()).map(|i| {
-                let terms_vec = deref.iter().map(|t| t.child_ids().get(i)).collect();
+        ) && check(terms(), |t1, t2| {
+            t1.kind()
+                .non_generalised()
+                .zip(t2.kind().non_generalised())
+                .is_some_and(|(t1, t2)| t1 == t2)
+                && t1.child_ids().len() == t2.child_ids().len()
+        }) {
+            let d = terms().collect();
+            let deref =
+                unsafe { std::mem::transmute::<Vec<&SynthTerm>, Vec<&'static SynthTerm>>(d) };
+
+            let first = deref[0];
+            let child_ids = (0..first.child_ids().len()).map(|i| {
+                let terms_vec = deref.iter().map(|t| t.child_ids()[i]).collect();
                 self.generalise(table, terms_vec)
             });
-            let children = children.collect::<Result<_>>()?;
-            let kind = first.kind().map(SynthTermKind::new, |id| id).join();
-            let term = self.new_synthetic_term(kind, children)?;
-            Ok(MaybeSynthIdx::Synth(term))
+            let child_ids = child_ids.collect::<Result<_>>()?;
+            match first.kind().non_generalised() {
+                None => self.new_generalised(child_ids),
+                Some(TermKind::App(app_name)) => self.new_synthetic(app_name, child_ids),
+                _ => unreachable!(),
+            }
         } else {
-            let term =
-                self.new_synthetic_term(SynthTermKind::Generalised, terms_vec.into_boxed_slice())?;
-            Ok(MaybeSynthIdx::Synth(term))
+            self.new_generalised(terms_vec.into_boxed_slice())
         }
     }
 
-    pub fn generalise_pattern(&mut self, table: &Terms, pattern: TermIdx) -> Result<MaybeSynthIdx> {
+    pub fn generalise_pattern(&mut self, table: &Terms, pattern: TermIdx) -> Result<SynthIdx> {
         let pterm = &table[pattern];
         match pterm.kind {
-            TermKind::Var(_) => self
-                .new_synthetic_term(SynthTermKind::Generalised, Default::default())
-                .map(MaybeSynthIdx::Synth),
-            _ => {
+            TermKind::Var(_) => self.new_generalised(Default::default()),
+            TermKind::App(app_name) => {
                 let child_ids: Box<[_]> = pterm
                     .child_ids
                     .iter()
                     .map(|c| self.generalise_pattern(table, *c))
                     .collect::<Result<_>>()?;
-                if child_ids
-                    .iter()
-                    .all(|c| matches!(c, MaybeSynthIdx::Parsed(_)))
-                {
-                    Ok(MaybeSynthIdx::Parsed(pattern))
+                if child_ids.iter().all(|&c| self.as_tidx(c).is_some()) {
+                    Ok(pattern.into())
                 } else {
-                    let kind = SynthTermKind::new(pterm.kind);
-                    self.new_synthetic_term(kind, child_ids)
-                        .map(MaybeSynthIdx::Synth)
+                    self.new_synthetic(app_name, child_ids)
                 }
             }
+            TermKind::Quant(_) => unreachable!(),
         }
     }
 }

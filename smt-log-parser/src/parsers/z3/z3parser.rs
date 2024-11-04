@@ -13,7 +13,7 @@ use super::{
     inst::Insts,
     stack::Stack,
     stm2::EventLog,
-    synthetic::{SynthTerm, SynthTerms},
+    synthetic::{SynthIdx, SynthTerm, SynthTerms},
     terms::Terms,
 };
 
@@ -763,6 +763,7 @@ impl Z3LogParser for Z3Parser {
     }
 
     fn eof(&mut self) {
+        self.synth_terms.eof(self.terms().next_key());
         self.events.new_eof();
     }
 
@@ -830,6 +831,10 @@ impl Z3Parser {
         self.terms.get_instantiation_body(&self[inst])
     }
 
+    pub fn as_tidx(&self, sidx: SynthIdx) -> Option<TermIdx> {
+        self.synth_terms.as_tidx(sidx)
+    }
+
     /// Returns the size in AST nodes of the term `tidx`. Note that z3 eagerly
     /// reduces terms such as `1 + 1` to `2` meaning that a matching loop can be
     /// constant in this size metric!
@@ -870,10 +875,10 @@ impl std::ops::Index<TermIdx> for Z3Parser {
         &self.terms[idx]
     }
 }
-impl std::ops::Index<SynthTermIdx> for Z3Parser {
+impl std::ops::Index<SynthIdx> for Z3Parser {
     type Output = SynthTerm;
-    fn index(&self, idx: SynthTermIdx) -> &Self::Output {
-        &self.synth_terms[idx]
+    fn index(&self, idx: SynthIdx) -> &Self::Output {
+        self.synth_terms.index(&self.terms, idx)
     }
 }
 impl std::ops::Index<ProofIdx> for Z3Parser {

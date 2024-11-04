@@ -132,6 +132,11 @@ impl<K, V> std::iter::IntoIterator for TiVec<K, V> {
         self.0.into_iter()
     }
 }
+impl<K: From<usize>, V> TiVec<K, V> {
+    pub fn into_iter_enumerated(self) -> impl Iterator<Item = (K, V)> {
+        self.0.into_iter_enumerated()
+    }
+}
 
 // FxHashMap
 

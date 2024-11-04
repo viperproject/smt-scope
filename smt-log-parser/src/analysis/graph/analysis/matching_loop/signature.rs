@@ -16,7 +16,7 @@ use crate::{
 pub struct MlSignature {
     pub quantifier: QuantIdx,
     pub pattern: TermIdx,
-    pub parents: Box<[InstParent]>,
+    pub parents: Box<[(InstParent, usize)]>,
     pub subgraph: GraphIdx,
 }
 
@@ -44,14 +44,18 @@ impl MlSignature {
         let parents: Box<[_]> = match_
             .trigger_matches()
             .map(|blame| {
+                let eq_len = blame
+                    .equalities()
+                    .filter(|&eq| parser[eq].given_len != 0)
+                    .count();
                 let blame = blame.enode();
                 let eblame = &parser[blame];
                 let Some(created_by) = eblame.created_by else {
-                    return InstParent::Const(blame);
+                    return (InstParent::Const(blame), eq_len);
                 };
                 match parser[parser[created_by].match_].kind.quant_idx() {
-                    Some(qidx) => InstParent::Quant(qidx),
-                    None => InstParent::NonQuantAxiom,
+                    Some(qidx) => (InstParent::Quant(qidx), eq_len),
+                    None => (InstParent::NonQuantAxiom, eq_len),
                 }
             })
             .collect();
@@ -73,9 +77,9 @@ impl MlSignature {
             .parents
             .iter()
             .map(|p| match p {
-                InstParent::Quant(q) => format!("{}", q.with(&ctxt)),
-                InstParent::Const(c) => format!("{}", c.with(&ctxt)),
-                InstParent::NonQuantAxiom => "NQA".to_string(),
+                (InstParent::Quant(q), eq_len) => format!("{}={eq_len}", q.with(&ctxt)),
+                (InstParent::Const(c), eq_len) => format!("{}={eq_len}", c.with(&ctxt)),
+                (InstParent::NonQuantAxiom, eq_len) => format!("NQA={eq_len}"),
             })
             .collect::<Vec<_>>()
             .join(", ");

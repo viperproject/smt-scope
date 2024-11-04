@@ -1,4 +1,3 @@
-use core::fmt;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
@@ -19,20 +18,19 @@ macro_rules! idx {
                 value.0.get()
             }
         }
-        impl fmt::Debug for $struct {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        impl core::fmt::Debug for $struct {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 write!(f, $prefix, self.0)
             }
         }
-        impl fmt::Display for $struct {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        impl core::fmt::Display for $struct {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 write!(f, "{}", self.0)
             }
         }
     };
 }
 idx!(TermIdx, "t{}");
-idx!(SynthTermIdx, "y{}");
 idx!(QuantIdx, "q{}");
 idx!(InstIdx, "i{}");
 idx!(StackIdx, "s{}");

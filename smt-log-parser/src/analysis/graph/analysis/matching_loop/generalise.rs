@@ -1,7 +1,7 @@
 use petgraph::graph::NodeIndex;
 
 use crate::{
-    analysis::{raw::NodeKind, InstGraph},
+    analysis::{raw::NodeKind, InstGraph, RawNodeIndex},
     items::{ENodeIdx, EqTransIdx, QuantIdx, TermIdx},
     FxHashMap, Graph, Z3Parser,
 };
@@ -28,19 +28,14 @@ use super::{MLGraphNode, MlEquality, MlMatchedTerm};
 impl InstGraph {
     pub fn compute_nth_matching_loop_graph(
         &self,
-        n: usize,
+        nodes: Vec<RawNodeIndex>,
         parser: &mut Z3Parser,
     ) -> Graph<MLGraphNode, ()> {
-        let nodes_of_nth_matching_loop = self
-            .raw
-            .node_indices()
-            .filter(|nx| self.raw[*nx].part_of_ml.contains(&n))
-            .collect::<Vec<_>>();
         // here we "fold" a potential matching loop into an abstract instantiation graph that represents the repeating pattern of the potential matching loop
         // an abstract instantiation is defined by the quantifier and the pattern used for the pattern match
         let mut abstract_insts: FxHashMap<(QuantIdx, TermIdx), AbstractInst> = FxHashMap::default();
         // for each abstract instantiation, we identify the matched terms and the blamed equalities
-        for nx in nodes_of_nth_matching_loop {
+        for nx in nodes {
             let node_kind = self.raw[nx].kind();
             if let NodeKind::Instantiation(inst) = node_kind {
                 let match_ = &parser[parser[*inst].match_];

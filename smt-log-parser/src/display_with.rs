@@ -5,12 +5,13 @@ use std::{
 
 use crate::{
     formatter::{
-        BindPowerPair, ChildIndex, MatchResult, SubFormatter, TermDisplayContext, QUANT_BIND,
+        BindPowerPair, ChildIndex, MatchResult, SubFormatter, TermDisplayContext,
+        DEFAULT_BIND_POWER, QUANT_BIND,
     },
     items::*,
     parsers::z3::{
         stm2::Event,
-        synthetic::{MaybeSynthChildren, MaybeSynthIdx, SynthTerm, SynthTermKind},
+        synthetic::{SynthIdx, SynthTerm, SynthTermKind},
         z3parser::Z3Parser,
     },
     NonMaxU32, StringTable,
@@ -142,23 +143,21 @@ impl DisplayConfiguration {
 }
 
 mod private {
-    use crate::{formatter::DEFAULT_BIND_POWER, parsers::z3::synthetic::MaybeSynthChildren};
-
     use super::*;
 
     #[derive(Debug, Clone)]
     pub(super) struct DisplayData<'a> {
-        pub(super) term: MaybeSynthIdx,
-        children: MaybeSynthChildren<'a>,
+        pub(super) term: SynthIdx,
+        children: &'a [SynthIdx],
         quant: Vec<&'a Quantifier>,
         bind_power: BindPowerPair,
         ast_depth: u32,
     }
     impl<'a> DisplayData<'a> {
-        pub(super) fn new(term: MaybeSynthIdx) -> Self {
+        pub(super) fn new(term: SynthIdx) -> Self {
             Self {
                 term,
-                children: term.map::<&'a [_], &'a [_]>(|_| &[], |_| &[]),
+                children: &[],
                 quant: Vec::new(),
                 bind_power: BindPowerPair::symmetric(DEFAULT_BIND_POWER),
                 ast_depth: 0,
@@ -166,7 +165,7 @@ mod private {
         }
         pub(super) fn with_children<T>(
             &mut self,
-            children: MaybeSynthChildren<'a>,
+            children: &'a [SynthIdx],
             f: impl FnOnce(&mut Self) -> T,
         ) -> T {
             let old = std::mem::replace(&mut self.children, children);
@@ -211,18 +210,14 @@ mod private {
             self.bind_power = old;
             result
         }
-        pub(super) fn with_term<T>(
-            &mut self,
-            term: MaybeSynthIdx,
-            f: impl FnOnce(&mut Self) -> T,
-        ) -> T {
+        pub(super) fn with_term<T>(&mut self, term: SynthIdx, f: impl FnOnce(&mut Self) -> T) -> T {
             let term = std::mem::replace(&mut self.term, term);
             let result = f(self);
             self.term = term;
             result
         }
 
-        pub(super) fn children(&self) -> MaybeSynthChildren<'a> {
+        pub(super) fn children(&self) -> &'a [SynthIdx] {
             self.children
         }
         pub(super) fn find_quant(&self, idx: &mut usize) -> Option<&Quantifier> {
@@ -266,39 +261,31 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, Option<QuantIdx>> for TermIdx {
         ctxt: &DisplayCtxt<'_>,
         quant: &mut Option<QuantIdx>,
     ) -> fmt::Result {
-        let mut data = DisplayData::new(self.into());
-        if let Some(quant) = quant {
-            data.with_quant(&ctxt.parser[*quant], |data| {
-                write!(f, "{}", ctxt.parser[self].with_data(ctxt, data))
-            })
-        } else {
-            write!(f, "{}", ctxt.parser[self].with_data(ctxt, &mut data))
-        }
+        SynthIdx::from(self).fmt_with(f, ctxt, quant)
     }
 }
 
-impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for SynthTermIdx {
+impl DisplayWithCtxt<DisplayCtxt<'_>, Option<QuantIdx>> for SynthIdx {
     fn fmt_with(
         self,
         f: &mut fmt::Formatter<'_>,
         ctxt: &DisplayCtxt<'_>,
-        _data: &mut (),
+        quant: &mut Option<QuantIdx>,
     ) -> fmt::Result {
-        let mut data = DisplayData::new(MaybeSynthIdx::Synth(self));
-        write!(f, "{}", ctxt.parser[self].with_data(ctxt, &mut data))
-    }
-}
-
-impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for MaybeSynthIdx {
-    fn fmt_with(
-        self,
-        f: &mut fmt::Formatter<'_>,
-        ctxt: &DisplayCtxt<'_>,
-        data: &mut (),
-    ) -> fmt::Result {
-        match self {
-            MaybeSynthIdx::Parsed(term) => term.fmt_with(f, ctxt, &mut None),
-            MaybeSynthIdx::Synth(synth) => synth.fmt_with(f, ctxt, data),
+        let mut data = DisplayData::new(self);
+        match ctxt.parser.as_tidx(self) {
+            Some(tidx) => {
+                if let Some(quant) = quant {
+                    data.with_quant(&ctxt.parser[*quant], |data| {
+                        write!(f, "{}", ctxt.parser[tidx].with_data(ctxt, data))
+                    })
+                } else {
+                    write!(f, "{}", ctxt.parser[tidx].with_data(ctxt, &mut data))
+                }
+            }
+            None => {
+                write!(f, "{}", ctxt.parser[self].with_data(ctxt, &mut data))
+            }
         }
     }
 }
@@ -429,41 +416,6 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &QuantKind {
 // Item defs
 ////////////
 
-impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTerm {
-    fn fmt_with(
-        self,
-        f: &mut fmt::Formatter<'_>,
-        ctxt: &DisplayCtxt<'b>,
-        data: &mut DisplayData<'b>,
-    ) -> fmt::Result {
-        data.with_children(MaybeSynthChildren::Synth(&self.child_ids), |data| {
-            if ctxt.config.display_term_ids {
-                write!(f, "[synth]")?
-            }
-            write!(f, "{}", self.kind.with_data(ctxt, data))?;
-            Ok(())
-        })
-    }
-}
-impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTermKind {
-    fn fmt_with(
-        self,
-        f: &mut fmt::Formatter<'_>,
-        ctxt: &DisplayCtxt<'b>,
-        data: &mut DisplayData<'b>,
-    ) -> fmt::Result {
-        match *self {
-            SynthTermKind::App(name) => {
-                let name = &ctxt.parser[name];
-                let children = NonMaxU32::new(data.children().len().join() as u32).unwrap();
-                let match_ = ctxt.term_display.match_str(name, children);
-                match_.fmt_with(f, ctxt, data)
-            }
-            SynthTermKind::Generalised => write!(f, "_"),
-        }
-    }
-}
-
 impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a Term {
     fn fmt_with(
         self,
@@ -471,11 +423,29 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a Term 
         ctxt: &DisplayCtxt<'b>,
         data: &mut DisplayData<'b>,
     ) -> fmt::Result {
-        data.with_children((&*self.child_ids).into(), |data| {
+        let sterm: &SynthTerm = self.into();
+        sterm.fmt_with(f, ctxt, data)
+    }
+}
+impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTerm {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'b>,
+        data: &mut DisplayData<'b>,
+    ) -> fmt::Result {
+        data.with_children(self.child_ids(), |data| {
             if ctxt.config.display_term_ids {
-                write!(f, "[{}]", self.id.with(ctxt))?
+                match self.id() {
+                    Some(id) => write!(f, "[{}]", id.with(ctxt))?,
+                    None => write!(f, "[synth]")?,
+                }
             }
-            if let Some(meaning) = ctxt.parser.meaning(data.term.parsed().unwrap()) {
+            let meaning = ctxt
+                .parser
+                .as_tidx(data.term)
+                .and_then(|tidx| ctxt.parser.meaning(tidx));
+            if let Some(meaning) = meaning {
                 if ctxt.config.html() {
                     write!(f, "<i style=\"color:#666\">")?;
                 }
@@ -484,10 +454,24 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a Term 
                     write!(f, "</i>")?;
                 }
             } else {
-                write!(f, "{}", self.kind.with_data(ctxt, data))?;
+                write!(f, "{}", self.kind().with_data(ctxt, data))?;
             }
             Ok(())
         })
+    }
+}
+
+impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTermKind {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'b>,
+        data: &mut DisplayData<'b>,
+    ) -> fmt::Result {
+        match self.non_generalised() {
+            None => write!(f, "_"),
+            Some(kind) => kind.fmt_with(f, ctxt, data),
+        }
     }
 }
 
@@ -535,6 +519,7 @@ impl VarNames {
         }
     }
 }
+
 impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind {
     fn fmt_with(
         self,
@@ -550,7 +535,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind 
             }
             TermKind::App(name) => {
                 let name = &ctxt.parser[name];
-                let children = NonMaxU32::new(data.children().len().join() as u32).unwrap();
+                let children = NonMaxU32::new(data.children().len() as u32).unwrap();
                 let match_ = ctxt.term_display.match_str(name, children);
                 match_.fmt_with(f, ctxt, data)
             }
@@ -561,18 +546,13 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind 
 
 fn display_child<'b>(
     f: &mut fmt::Formatter<'_>,
-    child: MaybeSynthIdx,
+    child: SynthIdx,
     ctxt: &DisplayCtxt<'b>,
     data: &mut DisplayData<'b>,
 ) -> fmt::Result {
     data.incr_ast_depth_with_limit(ctxt.config.ast_depth_limit, |data| {
-        data.with_term(child, |data| match child {
-            MaybeSynthIdx::Parsed(child) => {
-                write!(f, "{}", ctxt.parser[child].with_data(ctxt, data))
-            }
-            MaybeSynthIdx::Synth(child) => {
-                write!(f, "{}", ctxt.parser[child].with_data(ctxt, data))
-            }
+        data.with_term(child, |data| {
+            write!(f, "{}", ctxt.parser[child].with_data(ctxt, data))
         })
     })
     .unwrap_or_else(|| write!(f, "..."))
@@ -599,11 +579,10 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResu
                 if index.0.is_negative() {
                     data.children()
                         .len()
-                        .join()
                         .checked_sub(index.0.wrapping_abs() as u32 as usize)
                 } else {
                     let index = index.0 as usize;
-                    (index < data.children().len().join()).then_some(index)
+                    (index < data.children().len()).then_some(index)
                 }
             }
             fn write_formatter<'b, 's>(
@@ -648,7 +627,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResu
                             let Some(child) = get_child(*index, data) else {
                                 continue;
                             };
-                            let child = data.children().get(child);
+                            let child = data.children()[child];
                             data.with_inner_bind_power(*bind_power, |data| {
                                 display_child(f, child, ctxt, data)
                             })?;
@@ -691,7 +670,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResu
                                 if is_final {
                                     bind_power.right = r.right;
                                 }
-                                let child = data.children().get(child);
+                                let child = data.children()[child];
                                 data.with_inner_bind_power(bind_power, |data| {
                                     display_child(f, child, ctxt, data)
                                 })?;
@@ -766,8 +745,8 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                         write!(f, "({name} {})", ty.unwrap_or("?"))?;
                     }
                     write!(f, ") (!\n  ")?;
-                    display_child(f, body, ctxt, data)?;
-                    for pattern in patterns.iter() {
+                    display_child(f, *body, ctxt, data)?;
+                    for &pattern in patterns.iter() {
                         write!(f, "\n  ")?;
                         display_child(f, pattern, ctxt, data)?;
                     }
@@ -796,12 +775,12 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                         }
                     }
                     write!(f, "{sep} ")?;
-                    for pattern in patterns.iter() {
+                    for &pattern in patterns.iter() {
                         display_child(f, pattern, ctxt, data)?;
                         write!(f, " ")?;
                     }
                     // TODO: binding power!
-                    display_child(f, body, ctxt, data)?;
+                    display_child(f, *body, ctxt, data)?;
                 }
                 Ok(())
             })

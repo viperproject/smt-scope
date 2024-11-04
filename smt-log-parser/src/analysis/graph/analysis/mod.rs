@@ -6,6 +6,7 @@ pub mod reconnect;
 
 use std::mem::MaybeUninit;
 
+use matching_loop::MLGraphEdge;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::Direction;
@@ -35,7 +36,7 @@ pub struct Analysis {
     // // Most to least
     // pub(super) max_depth: Vec<RawNodeIndex>,
     pub matching_loop_end_nodes: Option<MlEndNodes>,
-    pub matching_loop_graphs: Vec<Graph<MLGraphNode, ()>>,
+    pub matching_loop_graphs: Vec<Graph<MLGraphNode, MLGraphEdge>>,
 }
 
 impl Analysis {

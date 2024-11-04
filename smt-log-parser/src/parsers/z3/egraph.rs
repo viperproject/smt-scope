@@ -27,6 +27,19 @@ pub struct EGraph {
 }
 
 impl EGraph {
+    pub fn walk_trans(&self, eq: EqTransIdx, mut f: impl FnMut(EqGivenIdx, bool)) {
+        #[derive(Debug)]
+        enum Never {}
+        self.equalities
+            .walk_trans::<Never>(true, eq, &mut |eq, fwd| {
+                f(eq, fwd);
+                Ok(())
+            })
+            .unwrap();
+    }
+}
+
+impl EGraph {
     pub fn new_enode(
         &mut self,
         created_by: Option<InstIdx>,

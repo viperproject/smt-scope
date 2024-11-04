@@ -53,7 +53,7 @@ macro_rules! graph_idx {
             #[cfg(feature = "mem_dbg")]
             use mem_dbg::*;
             use petgraph::graph::IndexType;
-            use std::fmt;
+
             use $crate::idx;
 
             idx!($inner, "ix{}");

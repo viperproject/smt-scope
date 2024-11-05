@@ -3,7 +3,8 @@
 
 (set-option :print-success false)
 (set-info :smt-lib-version 2.0)
-(set-option :smt.MBQI false)
+(set-option :auto_config false)
+(set-option :smt.mbqi false)
 (set-option :smt.QI.EAGER_THRESHOLD 100)
 (set-option :smt.refine_inj_axioms false)
 
@@ -12,6 +13,7 @@
 (declare-fun Seq_take (MySeq Int) MySeq)
 (declare-fun Seq_append (MySeq MySeq) MySeq)
 
+; A fix would be to add `(> (Seq_length (Seq_append s t)) n)` to the lhs of the implication
 (assert (forall ((s MySeq) (t MySeq) (n Int))
     (! (=> (and (> n 0) (< (Seq_length s) n))
         (= (Seq_take (Seq_append s t) n) (Seq_append s (Seq_take t (- n (Seq_length s))))))

@@ -178,6 +178,10 @@ impl SynthTerms {
         }
     }
     fn dstidx_to_tidx(dstidx: DefStIdx, start_idx: TermIdx) -> SynthIdx {
+        assert!(
+            usize::from(dstidx) + usize::from(start_idx) < usize::MAX,
+            "SynthIdx overflow {dstidx} + {start_idx}"
+        );
         Synth(TermIdx::from(usize::from(dstidx) + usize::from(start_idx)))
     }
 

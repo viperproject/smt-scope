@@ -129,7 +129,11 @@ impl MlOutput {
                 }
             }
 
-            for (i, eq) in tm.equalities().enumerate() {
+            for (i, eq) in tm
+                .equalities()
+                .filter(|&eq| parser[eq].given_len > 0)
+                .enumerate()
+            {
                 parser.egraph.walk_trans(eq, |given, _| {
                     let EqualityExpl::Literal { eq, .. } = &parser[given] else {
                         return;

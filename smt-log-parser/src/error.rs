@@ -77,6 +77,7 @@ pub enum Error {
 
     // Stack
     StackFrameNotPushed,
+    PopConflictMismatch,
     InvalidFrameInteger(ParseIntError),
 
     // File IO

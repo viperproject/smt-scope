@@ -5,6 +5,7 @@ use crate::{Error, FResult, Result};
 
 pub mod egraph;
 pub mod inst;
+pub mod inter_line;
 pub mod stack;
 pub mod stm2;
 pub mod synthetic;
@@ -26,6 +27,7 @@ impl<T: Z3LogParser + Default> LogParser for T {
         let Some(first) = split.next() else {
             return Ok(true);
         };
+        self.newline();
         let parse = match first {
             // match the line case
             "[tool-version]" => self.version_info(split),
@@ -78,6 +80,8 @@ impl<T: Z3LogParser + Default> LogParser for T {
 
 const DEFAULT: Result<()> = Ok(());
 pub trait Z3LogParser {
+    fn newline(&mut self) {}
+
     /* Methods to handle each line case of Z3 logs.
      `l` is a line split with spaces as delimiters,
      and `l0` is the raw line (used only when )

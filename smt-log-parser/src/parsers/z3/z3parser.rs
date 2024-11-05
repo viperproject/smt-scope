@@ -11,6 +11,7 @@ use crate::{
 use super::{
     egraph::EGraph,
     inst::Insts,
+    inter_line::{InterLine, LineKind},
     stack::Stack,
     stm2::EventLog,
     synthetic::{SynthIdx, SynthTerm, SynthTerms},
@@ -36,6 +37,7 @@ pub struct Z3Parser {
 
     pub strings: StringTable,
     pub events: EventLog,
+    comm: InterLine,
 }
 
 impl Default for Z3Parser {
@@ -51,6 +53,7 @@ impl Default for Z3Parser {
             egraph: Default::default(),
             stack: Default::default(),
             events: EventLog::new(&mut strings),
+            comm: Default::default(),
             strings,
         }
     }
@@ -71,6 +74,7 @@ impl Z3Parser {
             // Very rarely in version 4.12.2, an `[attach-enode]` is not emitted. Create it here.
             // TODO: log somewhere when this happens.
             self.egraph.new_enode(None, idx, None, &self.stack)?;
+            self.events.new_enode();
             return self.egraph.get_enode(idx, &self.stack);
         }
         enode
@@ -296,6 +300,10 @@ impl Z3Parser {
 }
 
 impl Z3LogParser for Z3Parser {
+    fn newline(&mut self) {
+        self.comm.newline();
+    }
+
     fn version_info<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let solver = l.next().ok_or(Error::UnexpectedNewline)?.to_string();
         let version = l.next().ok_or(Error::UnexpectedNewline)?;
@@ -476,6 +484,7 @@ impl Z3LogParser for Z3Parser {
         let enode = self
             .egraph
             .new_enode(iidx, idx, z3_generation, &self.stack)?;
+        self.events.new_enode();
         if let Some((_, yields_terms)) = created_by {
             // If `None` then this is a ground term not created by an instantiation.
             yields_terms.try_reserve(1)?;
@@ -751,6 +760,7 @@ impl Z3LogParser for Z3Parser {
         // in the future.
         let can_duplicate = self.version_info.is_version_minor(4, 12);
         let iidx = self.insts.new_inst(fingerprint, inst, can_duplicate)?;
+        self.events.new_inst();
         self.inst_stack.try_reserve(1)?;
         self.inst_stack.push((iidx, Vec::new()));
         Ok(())
@@ -767,12 +777,23 @@ impl Z3LogParser for Z3Parser {
         self.events.new_eof();
     }
 
+    fn decide_and_or<'a>(&mut self, _l: impl Iterator<Item = &'a str>) -> Result<()> {
+        self.comm.curr().last_line_kind = LineKind::DecideAndOr;
+        Ok(())
+    }
+
+    fn conflict<'a>(&mut self, _l: impl Iterator<Item = &'a str>) -> Result<()> {
+        self.comm.curr().last_line_kind = LineKind::Conflict;
+        Ok(())
+    }
+
     fn push<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let scope = l.next().ok_or(Error::UnexpectedNewline)?;
         let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
-        self.stack.new_frame(scope)?;
+        let from_cdcl = matches!(self.comm.prev().last_line_kind, LineKind::DecideAndOr);
+        self.stack.new_frame(scope, from_cdcl)?;
         self.events.new_push()?;
         Ok(())
     }
@@ -786,15 +807,16 @@ impl Z3LogParser for Z3Parser {
         let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
-        self.stack.pop_frames(num, scope)?;
-        self.events.new_pop(num)?;
+        let from_cdcl = matches!(self.comm.prev().last_line_kind, LineKind::Conflict);
+        let from_cdcl = self.stack.pop_frames(num, scope, from_cdcl)?;
+        self.events.new_pop(num, from_cdcl)?;
         Ok(())
     }
 
     fn begin_check<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let scope = l.next().ok_or(Error::UnexpectedNewline)?;
         let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
-        self.stack.ensure_height(scope)?;
+        self.stack.ensure_height(scope, false)?;
         self.events.new_begin_check()?;
         Ok(())
     }

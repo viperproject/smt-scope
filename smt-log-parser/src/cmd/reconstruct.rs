@@ -22,7 +22,12 @@ pub fn run(logfile: PathBuf) -> Result<(), String> {
         term_display: &term_display,
     };
     for event in parser.events.events() {
-        println!("{}", event.with(&ctxt));
+        println!(
+            "{} ; {} enodes | {} insts",
+            event.kind.with(&ctxt),
+            event.enodes,
+            event.insts
+        );
     }
 
     Ok(())

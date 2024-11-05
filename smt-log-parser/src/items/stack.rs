@@ -6,12 +6,16 @@ use mem_dbg::{MemDbg, MemSize};
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Copy)]
 pub struct StackFrame {
+    /// Is this frame definitely from CDCL? If this is false then it may still
+    /// be from CDCL.
+    pub from_cdcl: bool,
     pub active: TimeRange,
 }
 
 impl StackFrame {
-    pub fn new(start: u32) -> Self {
+    pub fn new(start: u32, from_cdcl: bool) -> Self {
         Self {
+            from_cdcl,
             active: TimeRange {
                 start,
                 end: u32::MAX,

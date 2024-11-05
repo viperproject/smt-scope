@@ -3,7 +3,7 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
     items::{Meaning, ProofIdx, ProofStep, ProofStepKind, Term, TermIdx},
-    FxHashMap, IString, Result, StringTable,
+    Error, FxHashMap, IString, Result, StringTable,
 };
 
 use super::terms::Terms;
@@ -40,6 +40,27 @@ impl EventLog {
         }
     }
 
+    fn push(&mut self, kind: EventKind) -> Result<()> {
+        self.events.try_reserve(1)?;
+        self.events.push(Event {
+            enodes: 0,
+            insts: 0,
+            kind,
+        });
+        Ok(())
+    }
+
+    fn pop(&mut self) {
+        let Some(last) = self.events.pop() else {
+            return;
+        };
+        let Some(other) = self.events.last_mut() else {
+            return;
+        };
+        other.enodes += last.enodes;
+        other.insts += last.insts;
+    }
+
     pub(super) fn new_term(
         &mut self,
         term_idx: TermIdx,
@@ -63,9 +84,7 @@ impl EventLog {
             return Ok(());
         }
         *declared |= children_mask;
-        self.events.try_reserve(1)?;
-        self.events.push(Event::NewConst(term_idx));
-        Ok(())
+        self.push(EventKind::NewConst(term_idx))
     }
 
     pub(super) fn new_proof_step(
@@ -78,9 +97,7 @@ impl EventLog {
         if !matches!(proof_step.kind, ProofStepKind::PR_ASSERTED) {
             return Ok(());
         }
-        self.events.try_reserve(1)?;
-        self.events.push(Event::Assert(proof_idx));
-        Ok(())
+        self.push(EventKind::Assert(proof_idx))
     }
 
     pub(super) fn new_meaning(
@@ -90,8 +107,11 @@ impl EventLog {
         _strings: &StringTable,
     ) -> Result<()> {
         match self.events.last() {
-            Some(Event::NewConst(idx)) if term_idx == *idx => {
-                self.events.pop();
+            Some(Event {
+                kind: EventKind::NewConst(idx),
+                ..
+            }) if term_idx == *idx => {
+                self.pop();
             }
             _ => (),
         }
@@ -99,22 +119,52 @@ impl EventLog {
     }
 
     pub(super) fn new_push(&mut self) -> Result<()> {
-        self.events.try_reserve(1)?;
-        self.events.push(Event::Push);
-        Ok(())
+        self.push(EventKind::Push)
     }
 
-    pub(super) fn new_pop(&mut self, num: core::num::NonZeroUsize) -> Result<()> {
-        self.events.try_reserve(1)?;
-        self.events
-            .push(Event::Pop((num.get() != 1).then_some(num)));
-        Ok(())
+    pub(super) fn new_pop(&mut self, num: core::num::NonZeroUsize, from_cdcl: bool) -> Result<()> {
+        if from_cdcl {
+            let mut consts_to_return = Vec::new();
+            let mut to_pop = num.get();
+            while to_pop > 0 {
+                match self.events.last() {
+                    Some(Event {
+                        kind: EventKind::Push,
+                        ..
+                    }) => (),
+                    Some(Event {
+                        kind: EventKind::NewConst(_) | EventKind::BeginCheck,
+                        ..
+                    }) => {
+                        consts_to_return.push(self.events.pop().unwrap());
+                        continue;
+                    }
+                    _ => return Err(Error::PopConflictMismatch),
+                }
+                to_pop -= 1;
+                self.pop();
+            }
+            self.events.extend(consts_to_return.into_iter().rev());
+            Ok(())
+        } else {
+            self.push(EventKind::Pop((num.get() != 1).then_some(num)))
+        }
     }
 
     pub(super) fn new_begin_check(&mut self) -> Result<()> {
-        self.events.try_reserve(1)?;
-        self.events.push(Event::BeginCheck);
-        Ok(())
+        self.push(EventKind::BeginCheck)
+    }
+
+    pub(super) fn new_enode(&mut self) {
+        if let Some(last) = self.events.last_mut() {
+            last.enodes += 1;
+        }
+    }
+
+    pub(super) fn new_inst(&mut self) {
+        if let Some(last) = self.events.last_mut() {
+            last.insts += 1;
+        }
     }
 
     pub(super) fn new_eof(&mut self) {
@@ -122,16 +172,26 @@ impl EventLog {
         while self
             .events
             .last()
-            .is_some_and(|last| !matches!(last, Event::BeginCheck))
+            .is_some_and(|last| !matches!(last.kind, EventKind::BeginCheck))
         {
-            self.events.pop();
+            self.pop();
         }
     }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug)]
-pub enum Event {
+#[derive(Debug, Clone, Copy)]
+pub struct Event {
+    /// The number of enodes created after this event
+    pub enodes: u64,
+    /// The number of instantiations after this event
+    pub insts: u64,
+    pub kind: EventKind,
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug, Clone, Copy)]
+pub enum EventKind {
     NewConst(TermIdx),
     Assert(ProofIdx),
     Push,

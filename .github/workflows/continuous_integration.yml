@@ -44,7 +44,7 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         shared-key: "shared"
-    - uses: actions/cache/restore@v3
+    - uses: actions/cache/restore@v4
       with:
         path: logs
         key: use-restore-key-instead
@@ -56,7 +56,7 @@ jobs:
     # Failure
     - run: tar -czf failing_logs.tar.bz2 logs/
       if: failure()
-    - uses: actions/upload-artifact@v3.1.2
+    - uses: actions/upload-artifact@v4.4.3
       if: failure()
       with:
         name: "logs_z3_v${{ matrix.z3version }}"
@@ -109,7 +109,7 @@ jobs:
 
       - name: Cache log files
         id: cache-log
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: logs
           key: logs-${{ steps.configure-z3-id.outputs.z3_v_clean }}-${{ hashFiles('smt-problems/**/*.smt2') }}

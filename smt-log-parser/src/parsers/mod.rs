@@ -201,7 +201,11 @@ mod wrapper {
             &self.parser
         }
         /// Get the current parser state.
-        pub fn take_parser(self) -> Parser {
+        pub fn take_parser(mut self) -> Parser {
+            if let Some(reader) = self.reader.take() {
+                drop(reader);
+                self.parser.end_of_file();
+            }
             self.parser
         }
         /// Get the current reader progress.
@@ -391,7 +395,7 @@ mod wrapper {
             enum Never {}
             match add_await([self.process_until(|_, _| None::<Never>)]) {
                 ParseState::Paused(n, _) => match n {},
-                ParseState::Completed { .. } => Ok(self.parser),
+                ParseState::Completed { .. } => Ok(self.take_parser()),
                 ParseState::Error(err) => Err(err),
             }
         }
@@ -405,7 +409,7 @@ mod wrapper {
         /// [`process_until`] instead.
         pub async fn process_all_timeout(mut self, timeout: Duration) -> (ParseState<()>, Parser) {
             let result = add_await([self.process_check_every(timeout, |_, _| Some(()))]);
-            (result, self.parser)
+            (result, self.take_parser())
         }
         /// Try to parse everything, but stop after parsing `limit` bytes. The
         /// result tuple contains `ParseState::Paused(read_info)` if the limit
@@ -417,7 +421,7 @@ mod wrapper {
         pub async fn process_all_byte_limit(mut self, limit: usize) -> (ParseState<()>, Parser) {
             let result =
                 add_await([self.process_until(|_, s| (s.bytes_read < limit).then_some(()))]);
-            (result, self.parser)
+            (result, self.take_parser())
         }
     }
 }

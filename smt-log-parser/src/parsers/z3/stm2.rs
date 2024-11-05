@@ -133,7 +133,9 @@ impl EventLog {
                         ..
                     }) => (),
                     Some(Event {
-                        kind: EventKind::NewConst(_) | EventKind::BeginCheck,
+                        // TODO: Figure out how an `BeginCheck` or even `Assert`
+                        // can end up within a hypothetical CDCL stack.
+                        kind: EventKind::NewConst(_) | EventKind::BeginCheck | EventKind::Assert(_),
                         ..
                     }) => {
                         consts_to_return.push(self.events.pop().unwrap());

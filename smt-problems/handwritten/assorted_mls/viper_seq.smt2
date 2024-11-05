@@ -1,11 +1,11 @@
+; This is a simplified version of the matching loop found at:
+; https://github.com/viperproject/silicon/blob/v.24.08-release/src/main/resources/dafny_axioms/sequences.vpr#L123-L127
+
 (set-option :print-success false)
 (set-info :smt-lib-version 2.0)
 (set-option :smt.MBQI false)
 (set-option :smt.QI.EAGER_THRESHOLD 100)
 (set-option :smt.refine_inj_axioms false)
-
-; forall s: MySeq, t: MySeq, n: Int. 0 < n && Seq_length(s) < n ==> Seq_take(Seq_append(s, t), n) == Seq_append(s, Seq_take(t, n - Seq_length(s))))
-; forall q: MySeq, n: Int. Seq_length(q) <= n ==> Seq_take(q, n) == q
 
 (declare-sort MySeq)
 (declare-fun Seq_length (MySeq) Int)

@@ -4,7 +4,7 @@ use std::{str::FromStr, sync::OnceLock};
 use mem_dbg::{MemDbg, MemSize};
 use strum::{EnumIter, IntoEnumIterator};
 
-use crate::{FxHashMap, IString};
+use crate::{BoxSlice, FxHashMap, IString};
 
 use super::{ProofIdx, TermId, TermIdx};
 
@@ -16,7 +16,7 @@ pub struct ProofStep {
     pub id: TermId,
     pub kind: ProofStepKind,
     pub result: TermIdx,
-    pub prerequisites: Box<[ProofIdx]>,
+    pub prerequisites: BoxSlice<ProofIdx>,
 }
 
 #[allow(non_camel_case_types)]

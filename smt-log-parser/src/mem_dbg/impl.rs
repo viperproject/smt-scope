@@ -112,37 +112,6 @@ impl MemSize for StringTable {
     }
 }
 
-// BoxSlice
-
-impl<T> MemDbgImpl for BoxSlice<T>
-where
-    [T]: MemDbgImpl,
-{
-    fn _mem_dbg_rec_on(
-        &self,
-        writer: &mut impl core::fmt::Write,
-        total_size: usize,
-        max_depth: usize,
-        prefix: &mut String,
-        is_last: bool,
-        flags: mem_dbg::DbgFlags,
-    ) -> core::fmt::Result {
-        self.0
-            ._mem_dbg_rec_on(writer, total_size, max_depth, prefix, is_last, flags)
-    }
-}
-impl<T> MemSize for BoxSlice<T>
-where
-    [T]: MemSize,
-{
-    fn mem_size(&self, flags: mem_dbg::SizeFlags) -> usize {
-        self.0.mem_size(flags)
-    }
-}
-impl<T> CopyType for BoxSlice<T> {
-    type Copy = False;
-}
-
 // TransitiveClosure
 
 #[cfg(feature = "analysis")]
@@ -192,4 +161,36 @@ impl MemSize for VersionInfo {
 }
 impl CopyType for VersionInfo {
     type Copy = False;
+}
+
+// BoxSlice
+
+impl<T> MemDbgImpl for BoxSlice<T>
+where
+    [T]: MemDbgImpl,
+{
+    fn _mem_dbg_rec_on(
+        &self,
+        writer: &mut impl core::fmt::Write,
+        total_size: usize,
+        max_depth: usize,
+        prefix: &mut String,
+        is_last: bool,
+        flags: mem_dbg::DbgFlags,
+    ) -> core::fmt::Result {
+        let self_: &[T] = self;
+        self_._mem_dbg_rec_on(writer, total_size, max_depth, prefix, is_last, flags)
+    }
+}
+impl<T> MemSize for BoxSlice<T>
+where
+    [T]: MemSize,
+{
+    fn mem_size(&self, flags: mem_dbg::SizeFlags) -> usize {
+        let self_: &[T] = self;
+        core::mem::size_of::<usize>() + self_.mem_size(flags)
+    }
+}
+impl<T: CopyType> CopyType for BoxSlice<T> {
+    type Copy = T::Copy;
 }

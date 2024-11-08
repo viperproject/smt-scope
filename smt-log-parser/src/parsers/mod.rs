@@ -13,9 +13,19 @@ use wasm_timer::Instant;
 
 pub mod z3;
 
+#[cfg(not(feature = "mem_dbg"))]
+pub trait LogParserHelper: Default {}
+#[cfg(not(feature = "mem_dbg"))]
+impl<T: Default> LogParserHelper for T {}
+
+#[cfg(feature = "mem_dbg")]
+pub trait LogParserHelper: Default + mem_dbg::MemDbg + mem_dbg::MemSize {}
+#[cfg(feature = "mem_dbg")]
+impl<T: Default + mem_dbg::MemDbg + mem_dbg::MemSize> LogParserHelper for T {}
+
 /// Trait for a generic SMT solver trace parser. Intended to support different
 /// solvers or log formats.
-pub trait LogParser: Default {
+pub trait LogParser: LogParserHelper {
     /// Can be used to allow for parsing entries across multiple lines.
     fn is_line_start(&mut self, _first_byte: u8) -> bool {
         true

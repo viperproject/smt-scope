@@ -5,7 +5,7 @@ use typed_index_collections::TiSlice;
 use crate::{
     items::*,
     parsers::z3::{VersionInfo, Z3LogParser},
-    Error, IString, Result, StringTable, TiVec,
+    BoxSlice, Error, IString, NonMaxU32, Result, StringTable, TiVec,
 };
 
 use super::{
@@ -72,12 +72,12 @@ impl Z3Parser {
         }
         enode
     }
-    pub fn parse_z3_generation<'a>(l: &mut impl Iterator<Item = &'a str>) -> Result<Option<u32>> {
+    pub fn parse_z3_generation<'a>(
+        l: &mut impl Iterator<Item = &'a str>,
+    ) -> Result<Option<NonMaxU32>> {
         if let Some(gen) = l.next() {
-            Ok(gen
-                .parse::<u32>()
-                .map(Some)
-                .map_err(Error::InvalidGeneration)?)
+            let gen = gen.parse::<u32>().map_err(Error::InvalidGeneration)?;
+            Ok(Some(NonMaxU32::new(gen).unwrap()))
         } else {
             Ok(None)
         }
@@ -86,7 +86,7 @@ impl Z3Parser {
     fn gobble_proof_children<'a>(
         &mut self,
         l: impl Iterator<Item = &'a str>,
-    ) -> Result<Box<[ProofIdx]>> {
+    ) -> Result<BoxSlice<ProofIdx>> {
         l.map(|id| {
             self.terms
                 .proof_terms
@@ -97,7 +97,7 @@ impl Z3Parser {
     fn gobble_term_children<'a>(
         &mut self,
         l: impl Iterator<Item = &'a str>,
-    ) -> Result<Box<[TermIdx]>> {
+    ) -> Result<BoxSlice<TermIdx>> {
         l.map(|id| {
             self.terms
                 .app_terms
@@ -268,8 +268,8 @@ impl Z3Parser {
     fn quant_or_lamda(
         &mut self,
         full_id: TermId,
-        child_ids: Box<[TermIdx]>,
-        num_vars: usize,
+        child_ids: BoxSlice<TermIdx>,
+        num_vars: u32,
         kind: QuantKind,
     ) -> Result<()> {
         let qidx = self.quantifiers.next_key();
@@ -308,12 +308,12 @@ impl Z3LogParser for Z3Parser {
         let full_id = self.parse_new_full_id(l.next())?;
         let mut quant_name = std::borrow::Cow::Borrowed(l.next().ok_or(Error::UnexpectedNewline)?);
         let mut num_vars_str = l.next().ok_or(Error::UnexpectedNewline)?;
-        let mut num_vars = num_vars_str.parse::<usize>();
+        let mut num_vars = num_vars_str.parse::<u32>();
         // The name may contain spaces... TODO: PR to add quotes around name when logging in z3
         while num_vars.is_err() {
             quant_name = std::borrow::Cow::Owned(format!("{quant_name} {num_vars_str}"));
             num_vars_str = l.next().ok_or(Error::UnexpectedNewline)?;
-            num_vars = num_vars_str.parse::<usize>();
+            num_vars = num_vars_str.parse::<u32>();
         }
         let quant_name = QuantKind::parse(&mut self.strings, &quant_name);
         let num_vars = num_vars.unwrap();
@@ -329,12 +329,10 @@ impl Z3LogParser for Z3Parser {
             return Err(Error::NonNullLambdaName(lambda_name.to_string()));
         }
         let num_vars = l.next().ok_or(Error::UnexpectedNewline)?;
-        let num_vars = num_vars
-            .parse::<usize>()
-            .map_err(Error::InvalidQVarInteger)?;
+        let num_vars = num_vars.parse::<u32>().map_err(Error::InvalidQVarInteger)?;
         let child_ids = self.gobble_proof_children(l)?;
         let kind = QuantKind::Lambda(child_ids);
-        self.quant_or_lamda(full_id, Vec::new().into_boxed_slice(), num_vars, kind)
+        self.quant_or_lamda(full_id, Default::default(), num_vars, kind)
     }
 
     fn mk_var<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
@@ -399,7 +397,7 @@ impl Z3LogParser for Z3Parser {
             id: full_id,
             kind,
             result,
-            prerequisites: prerequisites.into_boxed_slice(),
+            prerequisites: prerequisites.into(),
         };
         let proof_idx = self.terms.proof_terms.new_term(proof_step)?;
         self.events.new_proof_step(
@@ -604,7 +602,7 @@ impl Z3LogParser for Z3Parser {
 
         let match_ = Match {
             kind,
-            blamed: blamed.into_boxed_slice(),
+            blamed: blamed.into(),
         };
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
@@ -678,7 +676,7 @@ impl Z3LogParser for Z3Parser {
         };
         let match_ = Match {
             kind,
-            blamed: blamed.into_boxed_slice(),
+            blamed: blamed.into(),
         };
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
@@ -720,7 +718,7 @@ impl Z3LogParser for Z3Parser {
 
     fn end_of_instance<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()> {
         let (iidx, yield_terms) = self.inst_stack.pop().ok_or(Error::UnmatchedEndOfInstance)?;
-        self.insts[iidx].yields_terms = yield_terms.into_boxed_slice();
+        self.insts[iidx].yields_terms = yield_terms.into();
         Self::expect_completed(l)
     }
 

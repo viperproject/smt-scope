@@ -1,7 +1,7 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::{Error, FxHashMap, IString, NonMaxU32, Result, StringTable};
+use crate::{BoxSlice, Error, FxHashMap, IString, NonMaxU32, Result, StringTable};
 
 use super::{ProofIdx, QuantIdx, TermIdx};
 
@@ -12,15 +12,17 @@ use super::{ProofIdx, QuantIdx, TermIdx};
 pub struct Term {
     pub id: Option<TermId>,
     pub kind: TermKind,
-    // Reduces memory usage compared to a Vec
-    pub child_ids: Box<[TermIdx]>,
+    /// Takes up `2 * size_of::<usize>()` space and avoids heap allocation for
+    /// lens <= 1.
+    pub child_ids: BoxSlice<TermIdx>,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
 pub enum TermKind {
-    Var(usize),
+    Var(u32),
     App(IString),
     Quant(QuantIdx),
     Generalised,
@@ -29,7 +31,7 @@ pub enum TermKind {
 impl TermKind {
     pub(crate) fn parse_var(value: &str) -> Result<TermKind> {
         value
-            .parse::<usize>()
+            .parse::<u32>()
             .map(TermKind::Var)
             .map_err(Error::InvalidVar)
     }
@@ -71,7 +73,7 @@ pub struct TermAndMeaning<'a> {
 #[derive(Debug)]
 pub struct Quantifier {
     pub kind: QuantKind,
-    pub num_vars: usize,
+    pub num_vars: u32,
     pub term: TermIdx,
     pub vars: Option<VarNames>,
 }
@@ -81,7 +83,7 @@ pub struct Quantifier {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub enum QuantKind {
-    Lambda(Box<[ProofIdx]>),
+    Lambda(BoxSlice<ProofIdx>),
     NamedQuant(IString),
     /// Represents a name string of the form `name!id`
     UnnamedQuant {
@@ -118,7 +120,7 @@ impl QuantKind {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug)]
 pub enum VarNames {
-    TypeOnly(Box<[IString]>),
+    TypeOnly(BoxSlice<IString>),
     NameAndType(Box<[(IString, IString)]>),
 }
 impl VarNames {

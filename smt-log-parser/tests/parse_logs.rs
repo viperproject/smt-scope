@@ -115,7 +115,7 @@ fn parse_all_logs() {
             let mem_size = inst_graph.mem_size(SizeFlags::default());
             println!(
                 "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes. Memory use {} MB / {} MB:",
-                parse_bytes_kb / elapsed.as_millis() as u64,
+                (parse_bytes_kb as u128 * 1000) / elapsed.as_micros(),
                 inst_graph.raw.graph.node_count(),
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,

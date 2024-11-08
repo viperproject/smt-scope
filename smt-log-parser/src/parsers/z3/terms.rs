@@ -8,7 +8,7 @@ use crate::{
         Meaning, ProofIdx, ProofStep, QuantIdx, Term, TermAndMeaning, TermId, TermIdToIdxMap,
         TermIdx, TermKind,
     },
-    Error, FxHashMap, Result, StringTable, TiVec,
+    BoxSlice, Error, FxHashMap, Result, StringTable, TiVec,
 };
 
 pub trait HasTermId {
@@ -136,7 +136,7 @@ impl Terms {
     pub(crate) fn new_synthetic_term(
         &mut self,
         kind: TermKind,
-        child_ids: Box<[TermIdx]>,
+        child_ids: BoxSlice<TermIdx>,
         meaning: Option<Meaning>,
     ) -> TermIdx {
         let term = Term {

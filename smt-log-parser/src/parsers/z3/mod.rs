@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use super::LogParser;
+use super::{LogParser, LogParserHelper};
 use crate::{Error, FResult, Result};
 
 pub mod egraph;
@@ -13,7 +13,7 @@ pub mod terms;
 /// Compare with the log files in the `logs/` folder to see if this is the case.
 pub mod z3parser;
 
-impl<T: Z3LogParser + Default> LogParser for T {
+impl<T: Z3LogParser + LogParserHelper> LogParser for T {
     fn is_line_start(&mut self, first_byte: u8) -> bool {
         first_byte == b'['
     }

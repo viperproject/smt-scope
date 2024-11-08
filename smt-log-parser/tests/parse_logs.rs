@@ -66,7 +66,7 @@ fn parse_all_logs() {
                 (parse_limit <= s.bytes_read as u64).then_some(())
             });
             let elapsed = now.elapsed();
-            let mut parser = parser.take_parser();
+            let parser = parser.take_parser();
 
             max_parse_ovhd = f64::max(
                 max_parse_ovhd,
@@ -98,8 +98,15 @@ fn parse_all_logs() {
                 mem_limit / mb,
             );
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
-            let inst_graph = InstGraph::new(parser.parser()).unwrap();
+
+            let now = Instant::now();
+            let inst_graph = InstGraph::new(&parser).unwrap();
             let elapsed = now.elapsed();
+            assert!(
+                elapsed < timeout,
+                "Constructing inst graph took longer than timeout"
+            );
+
             max_analysis_ovhd = f64::max(
                 max_analysis_ovhd,
                 (ALLOCATOR.allocated() as u64 - middle_alloc) as f64 / parse_bytes as f64,
@@ -116,7 +123,6 @@ fn parse_all_logs() {
             println!();
             println!("===");
 
-            assert!(elapsed_ml < timeout, "ML search took longer than timeout");
             assert!(
                 mem_size as u64 <= parse_bytes * 2 / 3,
                 "Analysis takes up more memory than 2/3 * file size!"

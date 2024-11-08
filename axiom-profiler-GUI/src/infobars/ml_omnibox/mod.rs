@@ -3,15 +3,14 @@ use std::{cmp::Ordering, rc::Rc};
 use web_sys::HtmlElement;
 use yew::{
     html, prelude::Context, AttrValue, Callback, Component, ContextHandle, Html, KeyboardEvent,
-    MouseEvent, NodeRef, Properties,
+    NodeRef, Properties,
 };
 
 use crate::{
     commands::{Command, CommandId, CommandRef, Commands, CommandsContext},
     infobars::topbar::OmnibarMessage,
-    results::svg_result::RenderingState,
     utils::lookup::StringLookupCommands,
-    CallbackRef, GlobalCallbacksContext, LoadingState, SIZE_NAMES,
+    CallbackRef, GlobalCallbacksContext,
 };
 
 use self::input::{MlOmniboxInput, PickedSuggestion};
@@ -20,7 +19,6 @@ pub mod input;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct MlOmniboxProps {
-    pub progress: LoadingState,
     pub message: Option<OmnibarMessage>,
     pub omnibox: NodeRef,
     pub found_mls: usize,
@@ -135,66 +133,18 @@ impl Component for MlOmnibox {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let mut omnibox_info = ctx
+        let omnibox_info = ctx
             .props()
             .message
             .as_ref()
             .map(|m| AttrValue::from(m.message.clone()));
-        let mut icon = ctx
+        let icon = ctx
             .props()
             .message
             .as_ref()
             .is_some_and(|m| m.is_error)
             .then_some("error");
-        let mut callback = None;
 
-        match &ctx.props().progress {
-            LoadingState::NoFileSelected => (),
-            LoadingState::ReadingToString => {
-                omnibox_info = Some(AttrValue::from("Loading trace"));
-            }
-            LoadingState::StartParsing => {
-                omnibox_info = Some(AttrValue::from("Parsing trace"));
-            }
-            LoadingState::Parsing(parsing, cancel) => {
-                icon = Some("stop_circle");
-                callback = Some(cancel);
-                let progress = parsing.reader.bytes_read as f64 / parsing.file_size as f64;
-                let info = if let Some(mut speed) = &parsing.speed {
-                    let mut idx = 0;
-                    while speed >= 10_000.0 && idx + 1 < SIZE_NAMES.len() {
-                        speed /= 1024.0;
-                        idx += 1;
-                    }
-                    format!(
-                        "Parsing trace {:.0}% - {:.0} {}/s",
-                        progress * 100.0,
-                        speed,
-                        SIZE_NAMES[idx]
-                    )
-                } else {
-                    format!("Parsing trace {:.0}%", progress * 100.0)
-                };
-                omnibox_info = Some(AttrValue::from(info));
-            }
-            LoadingState::DoneParsing(..) => (),
-            LoadingState::Rendering(RenderingState::ConstructingGraph, timeout, _)
-            | LoadingState::Rendering(RenderingState::ConstructedGraph, timeout, _) => {
-                if *timeout {
-                    omnibox_info = Some(AttrValue::from("Analysing partial trace"));
-                } else {
-                    omnibox_info = Some(AttrValue::from("Analysing trace"));
-                }
-            }
-            LoadingState::Rendering(
-                RenderingState::GraphToDot | RenderingState::RenderingGraph,
-                _,
-                _,
-            ) => {
-                omnibox_info = Some(AttrValue::from("Rendering trace"));
-            }
-            LoadingState::FileDisplayed => (),
-        };
         let omnibox_disabled = omnibox_info.is_some();
         let icon = icon.unwrap_or({
             if omnibox_disabled {
@@ -205,16 +155,7 @@ impl Component for MlOmnibox {
                 "loop"
             }
         });
-        let icon = if let Some(callback) = callback {
-            let callback = callback.clone();
-            let onclick = Callback::from(move |click: MouseEvent| {
-                click.prevent_default();
-                callback.emit(());
-            });
-            html! { <a href="#" onclick={onclick}>{icon}</a> }
-        } else {
-            html! { {icon} }
-        };
+        let icon = html! { {icon} };
         let placeholder = omnibox_info.unwrap_or_else(|| {
             if self.command_mode {
                 AttrValue::from("Filter commands...")

@@ -103,9 +103,10 @@ pub struct ParseProgress {
     bytes_delta: Option<usize>,
     time_delta: Option<std::time::Duration>,
     speed: Option<f64>,
+    memory_use: usize,
 }
 impl ParseProgress {
-    pub fn new(reader: ReaderState, file_size: u64) -> Self {
+    pub fn new(reader: ReaderState, file_size: u64, memory_use: usize) -> Self {
         Self {
             reader,
             file_size,
@@ -113,6 +114,7 @@ impl ParseProgress {
             bytes_delta: None,
             time_delta: None,
             speed: None,
+            memory_use,
         }
     }
     pub fn delta(&mut self, old: &Self) {

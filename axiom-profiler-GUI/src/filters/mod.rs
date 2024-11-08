@@ -243,13 +243,16 @@ impl Component for FiltersState {
         let data = ctx.link().get_state().unwrap();
         let info = data.state.file_info.as_ref().unwrap();
         let file = &ctx.props().file;
-        let (size, unit) = file_size_display(info.size);
+        let (size, unit) = byte_size_display(info.size as f64);
         let details = match &file.parser_state {
             ParseState::Paused(_, state) => {
-                let (parse_size, parse_unit) = file_size_display(state.bytes_read as u64);
-                format!("{} ({parse_size} {parse_unit}/{size} {unit})", info.name)
+                let (parse_size, parse_unit) = byte_size_display(state.bytes_read as f64);
+                format!(
+                    "{} ({parse_size:.0} {parse_unit}/{size:.0} {unit})",
+                    info.name
+                )
             }
-            ParseState::Completed { .. } => format!("{} ({size} {unit})", info.name),
+            ParseState::Completed { .. } => format!("{} ({size:.0} {unit})", info.name),
             ParseState::Error(err) => format!("{} (error {err:?})", info.name),
         };
         // Existing ops
@@ -395,10 +398,10 @@ impl Component for FiltersState {
     }
 }
 
-fn file_size_display(mut size: u64) -> (u64, &'static str) {
+pub fn byte_size_display(mut size: f64) -> (f64, &'static str) {
     let mut idx = 0;
-    while size >= 10_000 && idx + 1 < SIZE_NAMES.len() {
-        size /= 1024;
+    while size >= 10_000.0 && idx + 1 < SIZE_NAMES.len() {
+        size /= 1024.0;
         idx += 1;
     }
     (size, SIZE_NAMES[idx])

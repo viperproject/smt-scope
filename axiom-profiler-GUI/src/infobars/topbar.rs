@@ -65,7 +65,7 @@ pub fn Topbar(props: &TopbarProps) -> Html {
     let omnibox = if ml_viewer_mode {
         let found_mls = state.state.parser.as_ref().unwrap().found_mls.unwrap();
         html! {
-            <MlOmnibox progress={props.progress.clone()} message={props.message.clone()} omnibox={props.omnibox.clone()} {found_mls} pick_nth_ml={props.pick_nth_ml.clone()} />
+            <MlOmnibox message={props.message.clone()} omnibox={props.omnibox.clone()} {found_mls} pick_nth_ml={props.pick_nth_ml.clone()} />
         }
     } else {
         html! {

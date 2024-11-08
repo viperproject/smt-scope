@@ -172,7 +172,7 @@ impl<N, E, Ty: petgraph::EdgeType, Ix: petgraph::graph::IndexType> Graph<N, E, T
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BoxSlice<T> {
-    Large(Box<[T]>),
+    Large(BoxSliceU32<T>),
     Small(T),
 }
 impl<T> Default for BoxSlice<T> {
@@ -207,7 +207,11 @@ impl<T> FromIterator<T> for BoxSlice<T> {
         match iter.next() {
             None => Self::Small(first),
             Some(second) => {
-                let large = [first, second].into_iter().chain(iter).collect();
+                let large = [first, second]
+                    .into_iter()
+                    .chain(iter)
+                    .collect::<Box<[_]>>()
+                    .into();
                 Self::Large(large)
             }
         }
@@ -218,7 +222,7 @@ impl<T> From<Vec<T>> for BoxSlice<T> {
         assert!(Self::CHECK_T_SMALL);
         match vec.len() {
             1 => Self::Small(vec.into_iter().next().unwrap()),
-            _ => Self::Large(vec.into_boxed_slice()),
+            _ => Self::Large(vec.into_boxed_slice().into()),
         }
     }
 }
@@ -238,4 +242,75 @@ impl<T> BoxSlice<T> {
         [(); 1][!is_no_ovhd as usize]; // `size_of::<BoxSlice<T>>() == size_of::<Box<[T]>>()`!
         true
     };
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BoxSliceU32<T> {
+    ptr: core::ptr::NonNull<T>,
+    len: u32,
+}
+
+impl<T> Default for BoxSliceU32<T> {
+    fn default() -> Self {
+        let self_ = Box::<[T]>::default();
+        self_.into()
+    }
+}
+
+impl<T> From<Box<[T]>> for BoxSliceU32<T> {
+    fn from(slice: Box<[T]>) -> Self {
+        let slice = Box::leak(slice);
+        let ptr = core::ptr::NonNull::new(slice.as_mut_ptr()).unwrap();
+        assert!(slice.len() <= u32::MAX as usize);
+        let len = slice.len() as u32;
+        Self { ptr, len }
+    }
+}
+
+impl<T> From<BoxSliceU32<T>> for Box<[T]> {
+    fn from(slice: BoxSliceU32<T>) -> Self {
+        let slice = core::ptr::slice_from_raw_parts_mut(slice.ptr.as_ptr(), slice.len as usize);
+        unsafe { Box::from_raw(slice) }
+    }
+}
+
+impl<T> Deref for BoxSliceU32<T> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        unsafe { core::slice::from_raw_parts(self.ptr.as_ptr(), self.len as usize) }
+    }
+}
+
+impl<T> DerefMut for BoxSliceU32<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len as usize) }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<T> serde::Serialize for BoxSliceU32<T>
+where
+    T: serde::Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let self_: &[T] = self;
+        self_.serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, T> serde::Deserialize<'de> for BoxSliceU32<T>
+where
+    T: serde::Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let self_ = Box::<[T]>::deserialize(deserializer)?;
+        Ok(self_.into())
+    }
 }

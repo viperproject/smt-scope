@@ -51,18 +51,13 @@ impl Terms {
                 // if meanings or kinds don't match up, need to generalize
                 let (_, _, children) = stack.last_mut()?;
                 let meaning = self.try_find_meaning(strings, &next);
-                let tidx = self.new_synthetic_term(
-                    TermKind::Generalised,
-                    next.into_boxed_slice(),
-                    meaning,
-                );
+                let tidx = self.new_synthetic_term(TermKind::Generalised, next.into(), meaning);
                 children.push(tidx);
             }
 
             let (mut deref, mut meaning, mut children) = stack.pop().unwrap();
             while deref[0].child_ids.len() == children.len() {
-                let tidx =
-                    self.new_synthetic_term(deref[0].kind, children.into_boxed_slice(), meaning);
+                let tidx = self.new_synthetic_term(deref[0].kind, children.into(), meaning);
                 let Some((new_deref, new_meaning, new_children)) = stack.pop() else {
                     return Some(tidx);
                 };
@@ -81,9 +76,11 @@ impl Terms {
             }
             TermKind::Generalised => pattern,
             _ => {
-                let children = Vec::from(self[pattern].child_ids.clone())
-                    .into_iter()
-                    .map(|c| self.generalise_pattern(_strings, c))
+                let children = self[pattern]
+                    .child_ids
+                    .clone()
+                    .iter()
+                    .map(|&c| self.generalise_pattern(_strings, c))
                     .collect();
                 self.new_synthetic_term(
                     self[pattern].kind,

@@ -69,7 +69,7 @@ macro_rules! graph_idx {
                     usize::from(*self)
                 }
                 fn max() -> Self {
-                    Self::from(usize::MAX - 1)
+                    Self::MAX
                 }
             }
             #[derive(Debug, Copy, Clone, Default, PartialEq, PartialOrd, Eq, Ord, Hash)]

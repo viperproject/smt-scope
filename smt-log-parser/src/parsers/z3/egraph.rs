@@ -10,8 +10,8 @@ use petgraph::{
 
 use crate::{
     items::{
-        ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, InstIdx, StackIdx, TermIdx, TransitiveExpl,
-        TransitiveExplSegment, TransitiveExplSegmentKind,
+        ENode, ENodeIdx, EqGivenIdx, EqTransIdx, Equality, EqualityExpl, InstIdx, TermIdx,
+        TransitiveExpl, TransitiveExplSegment, TransitiveExplSegmentKind,
     },
     BoxSlice, Error, FxHashMap, NonMaxU32, Result, TiVec,
 };
@@ -372,36 +372,12 @@ impl std::ops::Index<ENodeIdx> for EGraph {
     }
 }
 
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug)]
-pub struct ENode {
-    frame: Option<StackIdx>,
-    pub created_by: Option<InstIdx>,
-    pub owner: TermIdx,
-    pub z3_generation: Option<u32>,
-
-    equalities: Vec<Equality>,
-    /// This will never contain a `TransitiveExpl::to` pointing to itself. It
-    /// may contain `TransitiveExpl::given_len` of 0, but only when
-    /// `get_simple_path` fails but `can_mismatch` is true.
-    transitive: FxHashMap<ENodeIdx, EqTransIdx>,
-    self_transitive: Option<EqTransIdx>,
-}
-
 impl ENode {
     pub fn get_equality(&self, _stack: &Stack) -> Option<&Equality> {
         // TODO: why are we allowed to use equalities from popped stack frames?
         // self.equalities.iter().rev().find(|eq| eq.frame.map(|f| stack.stack_frames[f].active).unwrap_or(true))
         self.equalities.last()
     }
-}
-
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug)]
-pub struct Equality {
-    _frame: Option<StackIdx>,
-    pub to: ENodeIdx,
-    pub expl: EqGivenIdx,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]

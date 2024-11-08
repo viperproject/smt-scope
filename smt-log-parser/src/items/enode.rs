@@ -8,7 +8,7 @@ use super::{ENodeIdx, EqGivenIdx, EqTransIdx, InstIdx, StackIdx, TermIdx};
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
 pub struct ENode {
-    pub frame: StackIdx,
+    pub frame: Option<StackIdx>,
     pub created_by: Option<InstIdx>,
     pub owner: TermIdx,
     pub z3_generation: Option<NonMaxU32>,
@@ -24,7 +24,7 @@ pub struct ENode {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
 pub struct Equality {
-    pub(crate) _frame: StackIdx,
+    pub(crate) _frame: Option<StackIdx>,
     pub to: ENodeIdx,
     pub expl: EqGivenIdx,
 }

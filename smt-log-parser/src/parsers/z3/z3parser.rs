@@ -8,13 +8,7 @@ use crate::{
     BoxSlice, Error, IString, NonMaxU32, Result, StringTable, TiVec,
 };
 
-use super::{
-    egraph::{EGraph, ENode},
-    inst::Insts,
-    stack::Stack,
-    stm2::EventLog,
-    terms::Terms,
-};
+use super::{egraph::EGraph, inst::Insts, stack::Stack, stm2::EventLog, terms::Terms};
 
 /// A parser for Z3 log files. Use one of the various `Z3Parser::from_*` methods
 /// to construct this parser.
@@ -699,6 +693,7 @@ impl Z3LogParser for Z3Parser {
             .get_match(fingerprint)
             .ok_or(Error::UnknownFingerprint(fingerprint))?;
         let inst = Instantiation {
+            frame: self.stack.active_frame(),
             match_,
             fingerprint,
             proof_id,

@@ -11,7 +11,7 @@ use crate::{
     Z3Parser,
 };
 
-use super::{MLGraphEdge, MLGraphNode, MIN_MATCHING_LOOP_LENGTH};
+use super::{MlExplanation, MIN_MATCHING_LOOP_LENGTH};
 
 impl InstGraph {
     pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> usize {
@@ -133,15 +133,8 @@ impl InstGraph {
             .map(|mlen| mlen.len())
     }
 
-    pub fn nth_matching_loop_graph(
-        &mut self,
-        n: usize,
-    ) -> petgraph::Graph<MLGraphNode, MLGraphEdge> {
-        if let Some(ml_graph) = self.analysis.matching_loop_graphs.get(n) {
-            (**ml_graph).clone()
-        } else {
-            petgraph::Graph::default().clone()
-        }
+    pub fn nth_matching_loop_graph(&mut self, n: usize) -> Option<MlExplanation> {
+        self.analysis.matching_loop_graphs.get(n).cloned()
     }
 
     fn _get_blame_term(&self, edge: &VisibleEdge, parser: &Z3Parser) -> Option<TermIdx> {

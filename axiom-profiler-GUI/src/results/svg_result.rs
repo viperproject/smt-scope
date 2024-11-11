@@ -20,11 +20,10 @@ use palette::{encoding::Srgb, white_point::D65, FromColor, Hsluv, Hsv, LuvHue};
 use petgraph::{
     dot::{Config, Dot},
     visit::EdgeRef,
-    Graph,
 };
 use smt_log_parser::{
     analysis::{
-        analysis::matching_loop::{MLGraphEdge, MLGraphNode},
+        analysis::matching_loop::{MLGraphNode, MlExplanation},
         raw::NodeKind,
         visible::VisibleInstGraph,
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
@@ -69,7 +68,7 @@ pub enum Msg {
     ResetGraph,
     UserPermission(WarningChoice),
     WorkerOutput(super::worker::WorkerOutput),
-    RenderMLGraph(Graph<MLGraphNode, MLGraphEdge>),
+    RenderMLGraph(Option<MlExplanation>),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -508,7 +507,9 @@ impl Component for SVGResult {
                 true
             }
             Msg::RenderMLGraph(graph) => {
-                let _filtered_graph = &graph;
+                let Some(graph) = graph else {
+                    return false;
+                };
                 let cfg = ctx.link().get_configuration().unwrap();
                 let mut ctxt = DisplayCtxt {
                     parser: &parser.borrow(),
@@ -535,7 +536,7 @@ impl Component for SVGResult {
                     "digraph {{\n{}\n{:?}\n}}",
                     settings.join("\n"),
                     Dot::with_attr_getters(
-                        &graph,
+                        &*graph.graph,
                         &[
                             Config::EdgeNoLabel,
                             Config::NodeNoLabel,

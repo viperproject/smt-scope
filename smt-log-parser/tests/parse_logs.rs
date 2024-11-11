@@ -126,12 +126,12 @@ fn parse_all_logs() {
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
             );
-            assert!(elapsed_ml < timeout, "ML search took longer than timeout");
             inst_graph.mem_dbg(DbgFlags::default()).ok();
             println!();
             println!("===");
 
             // TODO: decrease this
+            assert!(elapsed_ml < timeout, "ML search took longer than timeout");
             assert!(
                 mem_size as u64 <= parse_bytes * 5 / 2,
                 "Analysis takes up more memory than 5/2 * file size!"

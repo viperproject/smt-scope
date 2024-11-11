@@ -6,7 +6,7 @@ use mem_dbg::{MemDbg, MemSize};
 use crate::{
     idx,
     items::{Term, TermId, TermIdx, TermKind},
-    BoxSlice, FxHashMap, IString, Result, TiVec,
+    BoxSlice, FxHashMap, Result, TiVec,
 };
 
 use super::terms::Terms;
@@ -160,7 +160,7 @@ pub struct SynthTerms {
 impl Default for SynthTerms {
     fn default() -> Self {
         Self {
-            start_idx: TermIdx::from(usize::MAX - 1),
+            start_idx: TermIdx::MAX,
             synth_terms: TiVec::default(),
             interned: FxHashMap::default(),
         }
@@ -209,14 +209,14 @@ impl SynthTerms {
 
     pub(crate) fn new_synthetic(
         &mut self,
-        app_name: IString,
+        kind: TermKind,
         child_ids: BoxSlice<SynthIdx>,
     ) -> Result<SynthIdx> {
         assert!(
             child_ids.iter().any(|c| self.start_idx <= c.0),
             "Synthetic term must have at least one synthetic child"
         );
-        self.insert(TermKind::App(app_name), child_ids)
+        self.insert(kind, child_ids)
     }
 
     fn insert(&mut self, kind: TermKind, child_ids: BoxSlice<SynthIdx>) -> Result<SynthIdx> {

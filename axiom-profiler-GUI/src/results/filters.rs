@@ -1,10 +1,10 @@
 use petgraph::{
     visit::{Dfs, Walker},
-    Direction, Graph,
+    Direction,
 };
 use smt_log_parser::{
     analysis::{
-        analysis::matching_loop::{MLGraphEdge, MLGraphNode},
+        analysis::matching_loop::MlExplanation,
         raw::{IndexesInstGraph, Node, NodeKind, RawInstGraph},
         InstGraph, RawNodeIndex,
     },
@@ -222,7 +222,7 @@ impl Filter {
 pub enum FilterOutput {
     LongestPath(Vec<RawNodeIndex>),
     MatchingLoopGeneralizedTerms(Vec<String>),
-    MatchingLoopGraph(Graph<MLGraphNode, MLGraphEdge>),
+    MatchingLoopGraph(Option<MlExplanation>),
     None,
 }
 

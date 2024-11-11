@@ -6,17 +6,16 @@ pub mod reconnect;
 
 use std::mem::MaybeUninit;
 
-use matching_loop::MLGraphEdge;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
+
+use matching_loop::MlExplanation;
 use petgraph::Direction;
 
-use crate::{items::InstIdx, Graph, Result, TiVec, Z3Parser};
+use crate::{items::InstIdx, Result, TiVec, Z3Parser};
 
 use self::{
-    cost::DefaultCost,
-    depth::DefaultDepth,
-    matching_loop::{MLGraphNode, MlSignature},
+    cost::DefaultCost, depth::DefaultDepth, matching_loop::MlSignature,
     next_insts::DefaultNextInsts,
 };
 
@@ -36,7 +35,7 @@ pub struct Analysis {
     // // Most to least
     // pub(super) max_depth: Vec<RawNodeIndex>,
     pub matching_loop_end_nodes: Option<MlEndNodes>,
-    pub matching_loop_graphs: Vec<Graph<MLGraphNode, MLGraphEdge>>,
+    pub matching_loop_graphs: Vec<MlExplanation>,
 }
 
 impl Analysis {

@@ -14,7 +14,7 @@ use super::{
     inter_line::{InterLine, LineKind},
     stack::Stack,
     stm2::EventLog,
-    synthetic::{SynthIdx, SynthTerm, SynthTerms},
+    synthetic::{AnyTerm, SynthIdx, SynthTerms},
     terms::Terms,
 };
 
@@ -892,7 +892,7 @@ impl std::ops::Index<TermIdx> for Z3Parser {
     }
 }
 impl std::ops::Index<SynthIdx> for Z3Parser {
-    type Output = SynthTerm;
+    type Output = AnyTerm;
     fn index(&self, idx: SynthIdx) -> &Self::Output {
         self.synth_terms.index(&self.terms, idx)
     }

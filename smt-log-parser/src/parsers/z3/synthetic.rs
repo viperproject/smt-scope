@@ -13,139 +13,86 @@ use super::terms::Terms;
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum AnyTerm {
+    Parsed(Term),
+    Synth(SynthTerm),
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct SynthTerm {
+    pub kind: SynthTermKind,
+    pub child_ids: BoxSlice<SynthIdx>,
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 #[repr(transparent)]
-pub struct Synth<T>(T);
+pub struct SynthIdx(TermIdx);
 
-// #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-// #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-// #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-// pub enum MaybeSynth<T, S> {
-//     Parsed(T),
-//     Synth(S),
-// }
-
-pub type SynthIdx = Synth<TermIdx>;
-pub type SynthTerm = Synth<Term>;
-pub type SynthTermKind = Synth<TermKind>;
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum SynthTermKind {
+    Parsed(TermKind),
+    Generalised,
+}
 
 impl From<TermIdx> for SynthIdx {
     fn from(tidx: TermIdx) -> Self {
-        Synth(tidx)
+        Self(tidx)
     }
 }
 
-impl SynthTerm {
+impl AnyTerm {
     pub fn id(&self) -> Option<TermId> {
-        if self.0.id == TermId::default() {
-            None
-        } else {
-            Some(self.0.id)
+        match self {
+            AnyTerm::Parsed(term) => Some(term.id),
+            AnyTerm::Synth(_) => None,
         }
     }
-    pub fn kind<'a>(&'a self) -> &'a SynthTermKind {
-        let kind = &self.0.kind;
-        unsafe { std::mem::transmute::<&'a TermKind, &'a Synth<TermKind>>(kind) }
+    pub fn kind(&self) -> SynthTermKind {
+        match self {
+            AnyTerm::Parsed(term) => SynthTermKind::Parsed(term.kind),
+            AnyTerm::Synth(synth_term) => synth_term.kind,
+        }
     }
     pub fn child_ids<'a>(&'a self) -> &'a [SynthIdx] {
-        let child_ids = &*self.0.child_ids;
-        unsafe { std::mem::transmute::<&'a [TermIdx], &'a [Synth<TermIdx>]>(child_ids) }
-    }
-}
-
-impl<'a> From<&'a Term> for &'a SynthTerm {
-    fn from(term: &'a Term) -> Self {
-        unsafe { std::mem::transmute::<&'a Term, &'a Synth<Term>>(term) }
+        match self {
+            AnyTerm::Parsed(term) => {
+                let child_ids = &*term.child_ids;
+                unsafe { std::mem::transmute::<&'a [TermIdx], &'a [SynthIdx]>(child_ids) }
+            }
+            AnyTerm::Synth(synth_term) => &synth_term.child_ids,
+        }
     }
 }
 
 impl SynthTermKind {
-    pub fn non_generalised(&self) -> Option<TermKind> {
-        match self.0 {
-            TermKind::Var(u32::MAX) => None,
-            other => Some(other),
+    pub fn parsed(self) -> Option<TermKind> {
+        match self {
+            SynthTermKind::Parsed(p) => Some(p),
+            _ => None,
         }
     }
 }
 
-// impl MaybeSynthKind {
-//     pub fn either_eq(self, other: Self) -> bool {
-//         match (self, other) {
-//             (Self::Parsed(TermKind::App(a)), Self::Synth(SynthTermKind::App(b)))
-//             | (Self::Synth(SynthTermKind::App(a)), Self::Parsed(TermKind::App(b))) => a == b,
-//             _ => self == other,
-//         }
-//     }
-// }
-
-// impl<'a> MaybeSynthChildren<'a> {
-//     pub fn len(self) -> MaybeSynth<usize, usize> {
-//         self.map(|t| t.len(), |t| t.len())
-//     }
-//     pub fn get(self, idx: usize) -> MaybeSynthIdx {
-//         self.map(|t| t[idx].into(), |t| t[idx]).join()
-//     }
-
-//     pub fn split_last(self) -> Option<(MaybeSynthIdx, MaybeSynthChildren<'a>)> {
-//         self.map(
-//             |t| {
-//                 let (last, rest) = t.split_last()?;
-//                 Some((
-//                     MaybeSynthIdx::Parsed(*last),
-//                     MaybeSynthChildren::Parsed(rest),
-//                 ))
-//             },
-//             |t| {
-//                 let (last, rest) = t.split_last()?;
-//                 Some((*last, MaybeSynthChildren::Synth(rest)))
-//             },
-//         )
-//         .join()
-//     }
-
-//     pub fn iter(
-//         self,
-//     ) -> MaybeSynth<impl Iterator<Item = TermIdx> + 'a, impl Iterator<Item = MaybeSynthIdx> + 'a>
-//     {
-//         self.map(|t| t.iter().copied(), |t| t.iter().copied())
-//     }
-// }
-// impl<'a, T: Iterator<Item = TermIdx> + 'a, S: Iterator<Item = MaybeSynthIdx> + 'a> Iterator
-//     for MaybeSynth<T, S>
-// {
-//     type Item = MaybeSynthIdx;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         match self {
-//             Self::Parsed(t) => t.next().map(MaybeSynthIdx::Parsed),
-//             Self::Synth(s) => s.next(),
-//         }
-//     }
-// }
-
-// #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-// #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-// #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-// pub struct SynthTerm {
-//     pub kind: SynthTermKind,
-//     pub child_ids: Box<[MaybeSynthIdx]>,
-// }
-
-// #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-// #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-// pub enum SynthTermKind {
-//     App(IString),
-//     Generalised,
-// }
-
-// impl SynthTermKind {
-//     pub fn new(kind: TermKind) -> Self {
-//         match kind {
-//             TermKind::App(name) => Self::App(name),
-//             other => panic!("Unexpected term kind: {:?}", other),
-//         }
-//     }
-// }
+impl Term {
+    const CHECK_REPR_EQ: bool = {
+        let sizeof_eq = core::mem::size_of::<Term>() == core::mem::size_of::<AnyTerm>();
+        [(); 1][!sizeof_eq as usize];
+        true
+    };
+    pub fn as_any(&self) -> &AnyTerm {
+        assert!(Self::CHECK_REPR_EQ);
+        // SAFETY: `AnyTerm` and `Term` have the same memory layout since they
+        // have the same `size_of`.
+        unsafe { std::mem::transmute::<&Term, &AnyTerm>(self) }
+    }
+}
 
 idx!(DefStIdx, "y{}");
 
@@ -153,7 +100,7 @@ idx!(DefStIdx, "y{}");
 #[derive(Debug)]
 pub struct SynthTerms {
     start_idx: TermIdx,
-    synth_terms: TiVec<DefStIdx, SynthTerm>,
+    synth_terms: TiVec<DefStIdx, AnyTerm>,
     interned: FxHashMap<SynthTerm, SynthIdx>,
 }
 
@@ -182,7 +129,7 @@ impl SynthTerms {
             usize::from(dstidx) + usize::from(start_idx) < usize::MAX,
             "SynthIdx overflow {dstidx} + {start_idx}"
         );
-        Synth(TermIdx::from(usize::from(dstidx) + usize::from(start_idx)))
+        SynthIdx(TermIdx::from(usize::from(dstidx) + usize::from(start_idx)))
     }
 
     pub fn eof(&mut self, start_idx: TermIdx) {
@@ -193,18 +140,18 @@ impl SynthTerms {
         self.tidx_to_dstidx(sidx).err()
     }
 
-    pub(crate) fn index<'a>(&'a self, terms: &'a Terms, idx: SynthIdx) -> &SynthTerm {
+    pub(crate) fn index<'a>(&'a self, terms: &'a Terms, idx: SynthIdx) -> &AnyTerm {
         match self.tidx_to_dstidx(idx) {
             Ok(idx) => &self.synth_terms[idx],
             Err(tidx) => {
                 let term = &terms[tidx];
-                unsafe { std::mem::transmute::<&'a Term, &'a Synth<Term>>(term) }
+                term.as_any()
             }
         }
     }
 
     pub(crate) fn new_generalised(&mut self, child_ids: BoxSlice<SynthIdx>) -> Result<SynthIdx> {
-        self.insert(TermKind::Var(u32::MAX), child_ids)
+        self.insert(SynthTermKind::Generalised, child_ids)
     }
 
     pub(crate) fn new_synthetic(
@@ -216,23 +163,20 @@ impl SynthTerms {
             child_ids.iter().any(|c| self.start_idx <= c.0),
             "Synthetic term must have at least one synthetic child"
         );
-        self.insert(kind, child_ids)
+        self.insert(SynthTermKind::Parsed(kind), child_ids)
     }
 
-    fn insert(&mut self, kind: TermKind, child_ids: BoxSlice<SynthIdx>) -> Result<SynthIdx> {
-        let child_ids =
-            unsafe { std::mem::transmute::<BoxSlice<SynthIdx>, BoxSlice<TermIdx>>(child_ids) };
-        let term = Synth(Term {
+    fn insert(&mut self, kind: SynthTermKind, child_ids: BoxSlice<SynthIdx>) -> Result<SynthIdx> {
+        let term = SynthTerm {
             kind,
             child_ids,
-            id: TermId::default(),
-        });
+        };
         self.interned.try_reserve(1)?;
         match self.interned.entry(term) {
             Entry::Occupied(entry) => Ok(*entry.get()),
             Entry::Vacant(entry) => {
                 self.synth_terms.raw.try_reserve(1)?;
-                let idx = self.synth_terms.push_and_get_key(entry.key().clone());
+                let idx = self.synth_terms.push_and_get_key(AnyTerm::Synth(entry.key().clone()));
                 let idx = Self::dstidx_to_tidx(idx, self.start_idx);
                 Ok(*entry.insert(idx))
             }

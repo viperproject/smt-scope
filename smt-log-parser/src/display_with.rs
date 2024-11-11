@@ -11,7 +11,7 @@ use crate::{
     items::*,
     parsers::z3::{
         stm2::EventKind,
-        synthetic::{SynthIdx, SynthTerm, SynthTermKind},
+        synthetic::{AnyTerm, SynthIdx, SynthTermKind},
         z3parser::Z3Parser,
     },
     NonMaxU32, StringTable,
@@ -423,11 +423,10 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a Term 
         ctxt: &DisplayCtxt<'b>,
         data: &mut DisplayData<'b>,
     ) -> fmt::Result {
-        let sterm: &SynthTerm = self.into();
-        sterm.fmt_with(f, ctxt, data)
+        self.as_any().fmt_with(f, ctxt, data)
     }
 }
-impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTerm {
+impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a AnyTerm {
     fn fmt_with(
         self,
         f: &mut fmt::Formatter<'_>,
@@ -468,7 +467,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTerm
         ctxt: &DisplayCtxt<'b>,
         data: &mut DisplayData<'b>,
     ) -> fmt::Result {
-        match self.non_generalised() {
+        match self.parsed() {
             None => write!(f, "_"),
             Some(kind) => kind.fmt_with(f, ctxt, data),
         }

@@ -21,7 +21,7 @@ impl SynthTerms {
 
         let general_term = self.index(table, general);
 
-        let Some(general_kind) = general_term.kind().non_generalised() else {
+        let Some(general_kind) = general_term.kind().parsed() else {
             // if one of the terms is already generalised, no need to continue
             return self.new_generalised([general, larger.into()].into());
         };

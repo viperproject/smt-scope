@@ -10,7 +10,6 @@ use self::{analysis::Analysis, raw::RawInstGraph, visible::VisibleInstGraph};
 // pub mod inst_graph;
 pub mod analysis;
 pub mod disable;
-pub mod generalise;
 pub mod hide;
 pub mod raw;
 pub mod subgraph;

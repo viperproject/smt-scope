@@ -725,10 +725,6 @@ impl Z3LogParser for Z3Parser {
                     .parse_existing_id(&mut self.strings, proof)?;
                 InstProofLink::HasProof(proof)
             }
-            // let proof = self.terms.parse_id(&mut self.strings, proof, is_app)?;
-            // assert!(proof.as_result().is_ok(), "{}",
-            //     proof.as_result().unwrap_err().with(&DisplayCtxt {parser: self, term_display: &TermDisplayContext::basic(), config: Default::default() }));
-            // Some(proof)
         } else {
             assert!(
                 !fingerprint.is_zero(),

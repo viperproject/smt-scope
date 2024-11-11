@@ -6,7 +6,7 @@ use mem_dbg::{MemDbg, MemSize};
 use crate::{
     idx,
     items::{Term, TermId, TermIdx, TermKind},
-    FxHashMap, IString, Result, TiVec,
+    BoxSlice, FxHashMap, IString, Result, TiVec,
 };
 
 use super::terms::Terms;
@@ -62,7 +62,7 @@ impl<'a> From<&'a Term> for &'a SynthTerm {
 impl SynthTermKind {
     pub fn non_generalised(&self) -> Option<TermKind> {
         match self.0 {
-            TermKind::Var(usize::MAX) => None,
+            TermKind::Var(u32::MAX) => None,
             other => Some(other),
         }
     }
@@ -203,14 +203,14 @@ impl SynthTerms {
         }
     }
 
-    pub(crate) fn new_generalised(&mut self, child_ids: Box<[SynthIdx]>) -> Result<SynthIdx> {
-        self.insert(TermKind::Var(usize::MAX), child_ids)
+    pub(crate) fn new_generalised(&mut self, child_ids: BoxSlice<SynthIdx>) -> Result<SynthIdx> {
+        self.insert(TermKind::Var(u32::MAX), child_ids)
     }
 
     pub(crate) fn new_synthetic(
         &mut self,
         app_name: IString,
-        child_ids: Box<[SynthIdx]>,
+        child_ids: BoxSlice<SynthIdx>,
     ) -> Result<SynthIdx> {
         assert!(
             child_ids.iter().any(|c| self.start_idx <= c.0),
@@ -219,9 +219,9 @@ impl SynthTerms {
         self.insert(TermKind::App(app_name), child_ids)
     }
 
-    fn insert(&mut self, kind: TermKind, child_ids: Box<[SynthIdx]>) -> Result<SynthIdx> {
+    fn insert(&mut self, kind: TermKind, child_ids: BoxSlice<SynthIdx>) -> Result<SynthIdx> {
         let child_ids =
-            unsafe { std::mem::transmute::<Box<[SynthIdx]>, Box<[TermIdx]>>(child_ids) };
+            unsafe { std::mem::transmute::<BoxSlice<SynthIdx>, BoxSlice<TermIdx>>(child_ids) };
         let term = Synth(Term {
             kind,
             child_ids,

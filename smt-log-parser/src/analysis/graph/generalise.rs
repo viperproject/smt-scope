@@ -4,7 +4,7 @@ use crate::{
         synthetic::{SynthIdx, SynthTerm, SynthTerms},
         terms::Terms,
     },
-    Result,
+    BoxSlice, Result,
 };
 
 impl SynthTerms {
@@ -62,7 +62,7 @@ impl SynthTerms {
                 _ => unreachable!(),
             }
         } else {
-            self.new_generalised(terms_vec.into_boxed_slice())
+            self.new_generalised(terms_vec.into())
         }
     }
 
@@ -71,7 +71,7 @@ impl SynthTerms {
         match pterm.kind {
             TermKind::Var(_) => self.new_generalised(Default::default()),
             TermKind::App(app_name) => {
-                let child_ids: Box<[_]> = pterm
+                let child_ids: BoxSlice<_> = pterm
                     .child_ids
                     .iter()
                     .map(|c| self.generalise_pattern(table, *c))

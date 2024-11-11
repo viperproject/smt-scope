@@ -1,7 +1,7 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::FxHashMap;
+use crate::{FxHashMap, NonMaxU32};
 
 use super::{ENodeIdx, EqGivenIdx, EqTransIdx, InstIdx, StackIdx, TermIdx};
 
@@ -11,7 +11,7 @@ pub struct ENode {
     pub frame: StackIdx,
     pub created_by: Option<InstIdx>,
     pub owner: TermIdx,
-    pub z3_generation: Option<u32>,
+    pub z3_generation: Option<NonMaxU32>,
 
     pub(crate) equalities: Vec<Equality>,
     /// This will never contain a `TransitiveExpl::to` pointing to itself. It

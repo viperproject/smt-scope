@@ -7,15 +7,18 @@ macro_rules! idx {
         #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
-        pub struct $struct($crate::NonMaxUsize);
+        // Note: we use `u32` since this the file would need to be > ~100GB to
+        // overflow this with the number of terms constructed
+        pub struct $struct($crate::NonMaxU32);
         impl From<usize> for $struct {
             fn from(value: usize) -> Self {
-                Self($crate::NonMaxUsize::new(value).unwrap())
+                assert!(value < u32::MAX as usize);
+                Self($crate::NonMaxU32::new(value as u32).unwrap())
             }
         }
         impl From<$struct> for usize {
             fn from(value: $struct) -> Self {
-                value.0.get()
+                value.0.get() as usize
             }
         }
         impl core::fmt::Debug for $struct {
@@ -27,6 +30,9 @@ macro_rules! idx {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 write!(f, "{}", self.0)
             }
+        }
+        impl $struct {
+            pub const MAX: Self = Self($crate::NonMaxU32::MAX);
         }
     };
 }

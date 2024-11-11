@@ -220,7 +220,7 @@ mod private {
         pub(super) fn children(&self) -> &'a [SynthIdx] {
             self.children
         }
-        pub(super) fn find_quant(&self, idx: &mut usize) -> Option<&Quantifier> {
+        pub(super) fn find_quant(&self, idx: &mut u32) -> Option<&Quantifier> {
             self.quant
                 .iter()
                 .find(|q| {
@@ -530,7 +530,8 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind 
         match *self {
             TermKind::Var(mut idx) => {
                 let vars = data.find_quant(&mut idx).and_then(|q| q.vars.as_ref());
-                let name = VarNames::get_name(&ctxt.parser.strings, vars, idx, &ctxt.config);
+                let name =
+                    VarNames::get_name(&ctxt.parser.strings, vars, idx as usize, &ctxt.config);
                 write!(f, "{name}")
             }
             TermKind::App(name) => {
@@ -729,10 +730,11 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                     let name = VarNames::get_name(
                         &ctxt.parser.strings,
                         self.vars.as_ref(),
-                        idx,
+                        idx as usize,
                         &ctxt.config,
                     );
-                    let ty = VarNames::get_type(&ctxt.parser.strings, self.vars.as_ref(), idx);
+                    let ty =
+                        VarNames::get_type(&ctxt.parser.strings, self.vars.as_ref(), idx as usize);
                     (idx != 0, name, ty)
                 });
                 let (body, patterns) = data.children().split_last().unwrap();

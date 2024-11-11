@@ -10,8 +10,6 @@ static ALLOCATOR: Cap<std::alloc::System> = Cap::new(std::alloc::System, usize::
 
 #[test]
 fn parse_all_logs() {
-    std::env::set_var("SLP_TEST_MODE", "true");
-
     let mem = std::env::var("SLP_MEMORY_LIMIT_GB")
         .ok()
         .and_then(|mem| mem.parse().ok());
@@ -68,19 +66,27 @@ fn parse_all_logs() {
                 (parse_limit <= s.bytes_read as u64).then_some(())
             });
             let elapsed = now.elapsed();
+            let mut parser = parser.take_parser();
+
             max_parse_ovhd = f64::max(
                 max_parse_ovhd,
                 (ALLOCATOR.allocated() as u64 - start_alloc) as f64 / parse_bytes as f64,
             );
             let parse_bytes_kb = parse_bytes / 1024;
+            let mem_size = parser.mem_size(SizeFlags::default());
             println!(
-                "Finished parsing in {elapsed:?} ({} kB/ms). Memory use {} MB / {} MB:",
+                "Finished parsing in {elapsed:?} ({} kB/ms). Memory use {} MB / {} MB (real {} MB):",
                 parse_bytes_kb / elapsed.as_millis() as u64,
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
+                mem_size / mb as usize,
             );
-            let mut parser = parser.take_parser();
             parser.mem_dbg(DbgFlags::default()).ok();
+            // TODO: decrease this
+            assert!(
+                mem_size as u64 <= parse_bytes * 3 / 2,
+                "Parser takes up more memory than 3/2 * file size!"
+            );
 
             let middle_alloc = ALLOCATOR.allocated() as u64;
             // Limit memory usage to `ANALYSIS_OVERHEAD`x the parse amount + 64MiB. Reduce this if
@@ -111,6 +117,7 @@ fn parse_all_logs() {
                 max_analysis_ovhd,
                 (ALLOCATOR.allocated() as u64 - middle_alloc) as f64 / parse_bytes as f64,
             );
+            let mem_size = inst_graph.mem_size(SizeFlags::default());
             println!(
                 "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {} mls. Memory use {} MB / {} MB:",
                 parse_bytes_kb / elapsed.as_millis() as u64,
@@ -123,6 +130,13 @@ fn parse_all_logs() {
             inst_graph.mem_dbg(DbgFlags::default()).ok();
             println!();
             println!("===");
+
+            // TODO: decrease this
+            assert!(
+                mem_size as u64 <= parse_bytes * 5 / 2,
+                "Analysis takes up more memory than 5/2 * file size!"
+            );
+
             drop(inst_graph);
             drop(parser);
             (max_parse_ovhd, max_analysis_ovhd)

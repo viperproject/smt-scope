@@ -11,6 +11,7 @@ pub fn run(logfile: PathBuf) -> Result<(), String> {
         display_term_ids: false,
         display_quantifier_name: false,
         replace_symbols: SymbolReplacement::None,
+        #[cfg(feature = "display_html")]
         html: false,
         enode_char_limit: None,
         ast_depth_limit: None,

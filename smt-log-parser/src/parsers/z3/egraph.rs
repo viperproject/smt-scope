@@ -44,7 +44,7 @@ impl EGraph {
         &mut self,
         created_by: Option<InstIdx>,
         term: TermIdx,
-        z3_generation: Option<u32>,
+        z3_generation: Option<NonMaxU32>,
         stack: &Stack,
     ) -> Result<ENodeIdx> {
         // TODO: why does this happen sometimes?
@@ -365,8 +365,8 @@ impl EGraph {
                 let EqualityExpl::Congruence { uses, .. } = &mut self.equalities.given[*cg] else {
                     unreachable!()
                 };
-                let real_idx = uses.iter().position(|u| ***u == use_).unwrap_or_else(|| {
-                    uses.push(BoxSlice(use_.into_boxed_slice()));
+                let real_idx = uses.iter().position(|u| **u == use_).unwrap_or_else(|| {
+                    uses.push(BoxSlice::from(use_));
                     uses.len() - 1
                 });
                 *idx = Some(NonMaxU32::new(real_idx as u32).unwrap());

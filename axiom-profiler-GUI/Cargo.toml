@@ -20,7 +20,7 @@ wasm-bindgen-futures = "0.4.38"
 yew-router = "0.17.0"
 scraper = "0.17.1"
 getrandom = { version = "0.2", features = ["js"] }
-smt-log-parser = { path = "../smt-log-parser", features = ["display_html", "never_panic", "serde"] }
+smt-log-parser = { path = "../smt-log-parser", features = ["display_html", "never_panic", "serde", "mem_dbg"] }
 petgraph = "0.6.4"
 viz-js = "3.1.0"
 wasm-streams = "0.4.0"
@@ -39,6 +39,8 @@ wasm-timer = "0.2"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
 semver = "1.0"
 nucleo-matcher = "0.3.1"
+mem_dbg = { version = "0.1.8", features = ["std", "derive"], default-features = false }
+duplicate = "1.0"
 
 # For random colour generation
 gcd = "2.3.0"

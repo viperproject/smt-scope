@@ -41,7 +41,7 @@ pub enum EqualityExpl {
     Unknown {
         kind: IString,
         from: ENodeIdx,
-        args: Box<[IString]>,
+        args: BoxSlice<IString>,
         to: ENodeIdx,
     },
 }

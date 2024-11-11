@@ -10,10 +10,11 @@ use yew::{
 
 use crate::{
     commands::{Command, CommandId, CommandRef, Commands, CommandsContext},
+    filters::byte_size_display,
     infobars::topbar::OmnibarMessage,
     results::svg_result::RenderingState,
     utils::lookup::{CommandsWithName, Entry, Kind, Matches, StringLookupCommands},
-    CallbackRef, GlobalCallbacksContext, LoadingState, RcParser, SIZE_NAMES,
+    CallbackRef, GlobalCallbacksContext, LoadingState, RcParser,
 };
 
 use self::input::{HighlightedString, OmniboxInput, PickedSuggestion, SuggestionResult};
@@ -364,21 +365,16 @@ impl Component for Omnibox {
                 icon = Some("stop_circle");
                 callback = Some(cancel);
                 let progress = parsing.reader.bytes_read as f64 / parsing.file_size as f64;
-                let info = if let Some(mut speed) = &parsing.speed {
-                    let mut idx = 0;
-                    while speed >= 10_000.0 && idx + 1 < SIZE_NAMES.len() {
-                        speed /= 1024.0;
-                        idx += 1;
-                    }
-                    format!(
-                        "Parsing trace {:.0}% - {:.0} {}/s",
-                        progress * 100.0,
-                        speed,
-                        SIZE_NAMES[idx]
-                    )
-                } else {
-                    format!("Parsing trace {:.0}%", progress * 100.0)
-                };
+                let speed = parsing
+                    .speed
+                    .map(byte_size_display)
+                    .map(|(speed, unit)| format!(" - {speed:.0} {unit}/s",));
+                let (memory_use, unit) = byte_size_display(parsing.memory_use as f64);
+                let info = format!(
+                    "Parsing trace {:.0}%{} | Use {memory_use:.0}{unit}",
+                    progress * 100.0,
+                    speed.unwrap_or_default()
+                );
                 omnibox_info = Some(AttrValue::from(info));
             }
             LoadingState::DoneParsing(..) => (),

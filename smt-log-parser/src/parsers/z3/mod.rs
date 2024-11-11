@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use super::LogParser;
+use super::{LogParser, LogParserHelper};
 use crate::{Error, FResult, Result};
 
 pub mod egraph;
@@ -15,7 +15,7 @@ pub mod terms;
 /// Compare with the log files in the `logs/` folder to see if this is the case.
 pub mod z3parser;
 
-impl<T: Z3LogParser + Default> LogParser for T {
+impl<T: Z3LogParser + LogParserHelper> LogParser for T {
     fn is_line_start(&mut self, first_byte: u8) -> bool {
         first_byte == b'['
     }
@@ -61,11 +61,9 @@ impl<T: Z3LogParser + Default> LogParser for T {
             Ok(()) => Ok(true),
             Err(err) => {
                 eprintln!("Error parsing line {line_no} ({err:?}): {line:?}");
-                let fatal = err.as_fatal();
-                if std::env::var("SLP_TEST_MODE").is_ok() {
-                    panic!();
-                }
-                match fatal {
+                // Fail in debug mode, we should never get here
+                debug_assert!(false);
+                match err.as_fatal() {
                     Some(err) => Err(err),
                     None => Ok(true),
                 }

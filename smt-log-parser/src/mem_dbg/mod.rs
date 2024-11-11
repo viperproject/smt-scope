@@ -178,18 +178,6 @@ derive_wrapper!(
     struct IString(pub lasso::Spur);
 );
 
-// BoxSlice
-
-derive_wrapper!(
-    #[derive(PartialEq)]
-    struct BoxSlice<T>(pub Box<[T]>);
-);
-impl<T> BoxSlice<T> {
-    pub fn as_slice(&self) -> &[T] {
-        &self.0
-    }
-}
-
 // Graph
 
 derive_wrapper!(petgraph::graph::Graph<N, E, Ty = petgraph::Directed, Ix = petgraph::graph::DefaultIx>);
@@ -201,4 +189,77 @@ impl<N, E, Ty: petgraph::EdgeType, Ix: petgraph::graph::IndexType> Graph<N, E, T
             nodes, edges,
         ))
     }
+}
+
+// BoxSlice
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BoxSlice<T> {
+    Large(Box<[T]>),
+    Small(T),
+}
+impl<T> Default for BoxSlice<T> {
+    fn default() -> Self {
+        Self::Large(Default::default())
+    }
+}
+impl<T> Deref for BoxSlice<T> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Large(slice) => slice,
+            Self::Small(slice) => core::slice::from_ref(slice),
+        }
+    }
+}
+impl<T> DerefMut for BoxSlice<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Large(slice) => slice,
+            Self::Small(slice) => core::slice::from_mut(slice),
+        }
+    }
+}
+impl<T> FromIterator<T> for BoxSlice<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        assert!(Self::CHECK_T_SMALL);
+        let mut iter = iter.into_iter();
+        let Some(first) = iter.next() else {
+            return Self::default();
+        };
+        match iter.next() {
+            None => Self::Small(first),
+            Some(second) => {
+                let large = [first, second].into_iter().chain(iter).collect();
+                Self::Large(large)
+            }
+        }
+    }
+}
+impl<T> From<Vec<T>> for BoxSlice<T> {
+    fn from(vec: Vec<T>) -> Self {
+        assert!(Self::CHECK_T_SMALL);
+        match vec.len() {
+            1 => Self::Small(vec.into_iter().next().unwrap()),
+            _ => Self::Large(vec.into_boxed_slice()),
+        }
+    }
+}
+impl<T, const N: usize> From<[T; N]> for BoxSlice<T> {
+    fn from(array: [T; N]) -> Self {
+        assert!(Self::CHECK_T_SMALL);
+        array.into_iter().collect()
+    }
+}
+
+impl<T> BoxSlice<T> {
+    #[allow(clippy::no_effect)]
+    const CHECK_T_SMALL: bool = {
+        let is_t_small = core::mem::size_of::<T>() <= core::mem::size_of::<usize>();
+        [(); 1][!is_t_small as usize]; // `size_of::<T>() > size_of::<usize>()`!
+        let is_no_ovhd = core::mem::size_of::<BoxSlice<T>>() == core::mem::size_of::<Box<[T]>>();
+        [(); 1][!is_no_ovhd as usize]; // `size_of::<BoxSlice<T>>() == size_of::<Box<[T]>>()`!
+        true
+    };
 }

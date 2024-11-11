@@ -1,7 +1,7 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::{Error, Result};
+use crate::{BoxSlice, Error, NonMaxU32, Result};
 use std::fmt;
 use std::ops::Index;
 
@@ -43,22 +43,22 @@ impl Match {
 pub enum MatchKind {
     MBQI {
         quant: QuantIdx,
-        bound_terms: Box<[ENodeIdx]>,
+        bound_terms: BoxSlice<ENodeIdx>,
     },
     TheorySolving {
         axiom_id: TermId,
-        bound_terms: Box<[TermIdx]>,
+        bound_terms: BoxSlice<TermIdx>,
         rewrite_of: Option<TermIdx>,
     },
     Axiom {
         axiom: QuantIdx,
         pattern: TermIdx,
-        bound_terms: Box<[TermIdx]>,
+        bound_terms: BoxSlice<TermIdx>,
     },
     Quantifier {
         quant: QuantIdx,
         pattern: TermIdx,
-        bound_terms: Box<[ENodeIdx]>,
+        bound_terms: BoxSlice<ENodeIdx>,
     },
 }
 impl MatchKind {
@@ -203,12 +203,12 @@ pub struct Instantiation {
     pub match_: MatchIdx,
     pub fingerprint: Fingerprint,
     pub proof_id: InstProofLink,
-    pub z3_generation: Option<u32>,
+    pub z3_generation: Option<NonMaxU32>,
     pub frame: StackIdx,
     /// The enodes that were yielded by the instantiation along with the
     /// generalised terms for them (`MaybeSynthIdx::Parsed` if the yielded term
     /// doesn't contain any quantified variables)
-    pub yields_terms: Box<[ENodeIdx]>,
+    pub yields_terms: BoxSlice<ENodeIdx>,
 }
 
 /// A Z3 instantiation.

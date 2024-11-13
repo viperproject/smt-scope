@@ -51,16 +51,6 @@ impl TermKind {
     }
 }
 
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct Meaning {
-    /// The theory in which the value should be interpreted (e.g. `bv`)
-    pub theory: IString,
-    /// The value of the term (e.g. `#x0000000000000001` or `#b1`)
-    pub value: IString,
-}
-
 /// A Z3 quantifier and associated data.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

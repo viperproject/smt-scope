@@ -18,8 +18,8 @@ mod mem_dbg;
 
 pub use error::{Error, FResult, FatalError, Result};
 pub use mem_dbg::{
-    BoxSlice, DiGraph, FxHashMap, Graph, IString, NonMaxU32, NonMaxUsize, StringTable, TiVec,
-    UnGraph,
+    BigRational, BoxSlice, DiGraph, FxHashMap, Graph, IString, NonMaxU32, NonMaxUsize, StringTable,
+    TiVec, UnGraph,
 };
 pub use parsers::z3::z3parser::Z3Parser;
 pub use parsers::LogParser;

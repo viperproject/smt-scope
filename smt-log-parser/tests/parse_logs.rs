@@ -122,7 +122,7 @@ fn parse_all_logs() {
                 "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {} mls. Memory use {} MB / {} MB:",
                 (parse_bytes_kb as u128 * 1000) / elapsed.as_micros(),
                 inst_graph.raw.graph.node_count(),
-                inst_graph.analysis.matching_loop_end_nodes.as_ref().map(|ml| ml.len()).unwrap_or_default(),
+                inst_graph.found_matching_loops().unwrap(),
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
             );

@@ -49,6 +49,23 @@ pub trait DisplayWithCtxt<Ctxt, Data>: Sized {
             data_marker: std::marker::PhantomData,
         }
     }
+
+    /// Only use for quickly displaying things when debugging.
+    fn debug<'a>(self, parser: &'a Z3Parser) -> String
+    where
+        Self: DisplayWithCtxt<DisplayCtxt<'a>, Data> + Copy,
+        Data: Default,
+    {
+        static TERM_DISPLAY: std::sync::OnceLock<TermDisplayContext> = std::sync::OnceLock::new();
+        let term_display = TERM_DISPLAY.get_or_init(TermDisplayContext::basic);
+        let config = DisplayConfiguration::default();
+        let ctxt = DisplayCtxt {
+            parser,
+            term_display,
+            config,
+        };
+        self.with(&ctxt).to_string()
+    }
 }
 
 pub struct DisplayWrapperEmpty<'a, Ctxt, Data: Default, T: DisplayWithCtxt<Ctxt, Data> + Copy> {
@@ -86,6 +103,7 @@ impl<'a, 'b, Ctxt, Data, T: DisplayWithCtxt<Ctxt, Data> + Copy> fmt::Display
 // Items
 ////////////
 
+#[derive(Clone, Copy)]
 pub struct DisplayCtxt<'a> {
     pub parser: &'a Z3Parser,
     pub term_display: &'a TermDisplayContext,
@@ -118,11 +136,14 @@ impl SymbolReplacement {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DisplayConfiguration {
     pub display_term_ids: bool,
     pub display_quantifier_name: bool,
     pub replace_symbols: SymbolReplacement,
+    /// Print `SynthTermKind::Generalised` terms as either `_` if true or
+    /// `...(_)` if false.
+    pub input: Option<bool>,
     /// Use tags for formatting
     #[cfg(feature = "display_html")]
     pub html: bool,
@@ -444,6 +465,10 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a AnyTe
                 .parser
                 .as_tidx(data.term)
                 .and_then(|tidx| ctxt.parser.meaning(tidx));
+            let meaning = meaning.or(match self {
+                AnyTerm::Constant(meaning) => Some(meaning),
+                _ => None,
+            });
             if let Some(meaning) = meaning {
                 if ctxt.config.html() {
                     write!(f, "<i style=\"color:#666\">")?;
@@ -467,9 +492,19 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTerm
         ctxt: &DisplayCtxt<'b>,
         data: &mut DisplayData<'b>,
     ) -> fmt::Result {
-        match self.parsed() {
-            None => write!(f, "_"),
-            Some(kind) => kind.fmt_with(f, ctxt, data),
+        match self {
+            SynthTermKind::Parsed(kind) => kind.fmt_with(f, ctxt, data),
+            SynthTermKind::Generalised(synth_idx) => match ctxt.config.input {
+                Some(true) => write!(f, "_"),
+                Some(false) => write!(f, "{}", synth_idx.with(ctxt)),
+                None => write!(f, "[_ → {}]", synth_idx.with(ctxt)),
+            },
+            SynthTermKind::Variable(var) => write!(f, "${var}"),
+            SynthTermKind::Input(offset) => match offset {
+                Some(offset) => write!(f, "_ + {}", offset.with(ctxt)),
+                None => write!(f, "_"),
+            },
+            SynthTermKind::Constant => write!(f, "CONST"),
         }
     }
 }
@@ -704,11 +739,11 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Meaning {
         ctxt: &DisplayCtxt<'a>,
         _data: &mut DisplayData<'a>,
     ) -> fmt::Result {
-        let theory = &ctxt.parser[self.theory];
-        let value = &ctxt.parser[self.value];
-        match theory {
-            "arith" | "bv" => write!(f, "{value}"),
-            theory => write!(f, "/{theory} {value}\\"),
+        match self {
+            Meaning::Arith(value) => write!(f, "{value}"),
+            &Meaning::Unknown { theory, value } => {
+                write!(f, "/{} {}\\", &ctxt.parser[theory], &ctxt.parser[value])
+            }
         }
     }
 }

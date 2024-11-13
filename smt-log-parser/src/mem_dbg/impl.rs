@@ -8,7 +8,9 @@ use petgraph::{
 use crate::analysis::subgraph::TransitiveClosure;
 use crate::parsers::z3::VersionInfo;
 
-use super::{BoxSlice, FxHashMap, Graph, IString, NonMaxU32, NonMaxUsize, StringTable, TiVec};
+use super::{
+    BigRational, BoxSlice, FxHashMap, Graph, IString, NonMaxU32, NonMaxUsize, StringTable, TiVec,
+};
 
 macro_rules! copy_impl {
     ($t:ty) => {
@@ -27,6 +29,24 @@ macro_rules! copy_impl {
 copy_impl!(NonMaxU32);
 copy_impl!(NonMaxUsize);
 copy_impl!(IString);
+
+// BigInt
+
+impl MemDbgImpl for BigRational {}
+
+impl MemSize for BigRational {
+    fn mem_size(&self, flags: mem_dbg::SizeFlags) -> usize {
+        if flags.contains(mem_dbg::SizeFlags::FOLLOW_REFS) {
+            let numer = self.numer();
+            let denom = self.denom();
+            core::mem::size_of::<Self>()
+                + numer.iter_u64_digits().len() * core::mem::size_of::<u64>()
+                + denom.iter_u64_digits().len() * core::mem::size_of::<u64>()
+        } else {
+            core::mem::size_of::<Self>()
+        }
+    }
+}
 
 // TiVec
 

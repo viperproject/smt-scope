@@ -4,7 +4,7 @@ use petgraph::{
 };
 use smt_log_parser::{
     analysis::{
-        analysis::matching_loop::MlExplanation,
+        analysis::matching_loop::MatchingLoop,
         raw::{IndexesInstGraph, Node, NodeKind, RawInstGraph},
         InstGraph, RawNodeIndex,
     },
@@ -131,13 +131,7 @@ impl Filter {
             // TODO: implement
             Filter::SelectNthMatchingLoop(n) => {
                 graph.raw.reset_visibility_to(true);
-                let nth_ml_endnode = graph
-                    .analysis
-                    .matching_loop_end_nodes
-                    .as_ref()
-                    .unwrap()
-                    .get(n)
-                    .unwrap();
+                let ml_graph = graph.nth_matching_loop_graph(n).unwrap();
                 let nodes_of_nth_matching_loop = graph
                     .raw
                     .node_indices()
@@ -151,7 +145,7 @@ impl Filter {
                         }
                     })
                     .collect::<fxhash::FxHashSet<_>>();
-                let start = nth_ml_endnode.1[0].1.index(&graph.raw).0;
+                let start = ml_graph.leaves.0[0].1.index(&graph.raw).0;
                 let relevant_non_qi_nodes: Vec<_> = Dfs::new(&*graph.raw.graph, start)
                     .iter(graph.raw.rev())
                     .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
@@ -184,8 +178,7 @@ impl Filter {
                     .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
                         node.kind().inst().is_some() && !node.part_of_ml.contains(&n)
                     });
-                let dot_graph = graph.nth_matching_loop_graph(n);
-                return FilterOutput::MatchingLoopGraph(dot_graph);
+                return FilterOutput::MatchingLoopGraph(ml_graph);
             }
             Filter::ShowMatchingLoopSubgraph => {
                 // graph.raw.reset_visibility_to(true);
@@ -222,7 +215,7 @@ impl Filter {
 pub enum FilterOutput {
     LongestPath(Vec<RawNodeIndex>),
     MatchingLoopGeneralizedTerms(Vec<String>),
-    MatchingLoopGraph(Option<MlExplanation>),
+    MatchingLoopGraph(MatchingLoop),
     None,
 }
 

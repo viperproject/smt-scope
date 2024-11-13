@@ -73,7 +73,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         let mut ctxt = DisplayCtxt {
             parser: self.ctxt.parser,
             term_display: self.ctxt.term_display,
-            config: self.ctxt.config.clone(),
+            config: self.ctxt.config,
         };
         ctxt.config.html = html;
         ctxt.config.enode_char_limit = char_limit;
@@ -224,7 +224,7 @@ pub fn SelectedNodesInfo(
     let ctxt = &DisplayCtxt {
         parser: &parser.borrow(),
         term_display: &data.state.term_display,
-        config: cfg.config.display.clone(),
+        config: cfg.config.display,
     };
 
     let infos = selected_nodes
@@ -418,7 +418,7 @@ pub fn SelectedEdgesInfo(
     let ctxt = &DisplayCtxt {
         parser: &parser.borrow(),
         term_display: &data.state.term_display,
-        config: cfg.config.display.clone(),
+        config: cfg.config.display,
     };
 
     let infos = selected_edges.iter().map(|&(edge, open)| {

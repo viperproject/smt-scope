@@ -5,7 +5,7 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
     idx,
-    items::{Term, TermId, TermIdx, TermKind},
+    items::{Meaning, Term, TermId, TermIdx, TermKind},
     BoxSlice, FxHashMap, Result, TiVec,
 };
 
@@ -17,6 +17,7 @@ use super::terms::Terms;
 pub enum AnyTerm {
     Parsed(Term),
     Synth(SynthTerm),
+    Constant(Meaning),
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -36,9 +37,22 @@ pub struct SynthIdx(TermIdx);
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+// Note that we must preserve `size_of::<SynthTermKind>() == size_of::<TermKind>()`!
 pub enum SynthTermKind {
     Parsed(TermKind),
-    Generalised,
+    /// When generalising e.g. `f(x)` and `f(g(x))` we get back a `f(_)` term
+    /// where the `_` term is of kind `Generalised` and points to a `SynthIdx`
+    /// term of `g($0)` where the `$0` term is of kind `Input`.
+    Generalised(SynthIdx),
+    Variable(u32),
+    /// When generalising e.g. `f(x)` and `f(g(x))` we get back a `f(_)` term
+    /// where the `_` term is of kind `Generalised` and points to a `SynthIdx`
+    /// term of `g($0)` where the `$0` term is of kind `Input`. The `Input` may
+    /// additionally contain a constant offset.
+    Input(Option<SynthIdx>),
+    /// Never actually stored in `SynthTerm.kind` byt created as a kind for
+    /// `AnyTerm::Constant`.
+    Constant,
 }
 
 impl From<TermIdx> for SynthIdx {
@@ -52,12 +66,14 @@ impl AnyTerm {
         match self {
             AnyTerm::Parsed(term) => Some(term.id),
             AnyTerm::Synth(_) => None,
+            AnyTerm::Constant(_) => None,
         }
     }
     pub fn kind(&self) -> SynthTermKind {
         match self {
             AnyTerm::Parsed(term) => SynthTermKind::Parsed(term.kind),
             AnyTerm::Synth(synth_term) => synth_term.kind,
+            AnyTerm::Constant(_) => SynthTermKind::Constant,
         }
     }
     pub fn child_ids<'a>(&'a self) -> &'a [SynthIdx] {
@@ -67,6 +83,7 @@ impl AnyTerm {
                 unsafe { std::mem::transmute::<&'a [TermIdx], &'a [SynthIdx]>(child_ids) }
             }
             AnyTerm::Synth(synth_term) => &synth_term.child_ids,
+            AnyTerm::Constant(_) => &[],
         }
     }
 }
@@ -81,13 +98,14 @@ impl SynthTermKind {
 }
 
 impl Term {
+    #[allow(clippy::no_effect)]
     const CHECK_REPR_EQ: bool = {
         let sizeof_eq = core::mem::size_of::<Term>() == core::mem::size_of::<AnyTerm>();
         [(); 1][!sizeof_eq as usize];
         true
     };
     pub fn as_any(&self) -> &AnyTerm {
-        assert!(Self::CHECK_REPR_EQ);
+        let _ = Self::CHECK_REPR_EQ;
         // SAFETY: `AnyTerm` and `Term` have the same memory layout since they
         // have the same `size_of`.
         unsafe { std::mem::transmute::<&Term, &AnyTerm>(self) }
@@ -101,7 +119,7 @@ idx!(DefStIdx, "y{}");
 pub struct SynthTerms {
     start_idx: TermIdx,
     synth_terms: TiVec<DefStIdx, AnyTerm>,
-    interned: FxHashMap<SynthTerm, SynthIdx>,
+    interned: FxHashMap<AnyTerm, SynthIdx>,
 }
 
 impl Default for SynthTerms {
@@ -150,8 +168,33 @@ impl SynthTerms {
         }
     }
 
-    pub(crate) fn new_generalised(&mut self, child_ids: BoxSlice<SynthIdx>) -> Result<SynthIdx> {
-        self.insert(SynthTermKind::Generalised, child_ids)
+    pub(crate) fn new_constant(&mut self, meaning: Meaning) -> Result<SynthIdx> {
+        self.insert(AnyTerm::Constant(meaning))
+    }
+
+    pub(crate) fn new_input(&mut self, offset: Option<Meaning>) -> Result<SynthIdx> {
+        let offset = offset.map(|o| self.new_constant(o)).transpose()?;
+        let term = SynthTerm {
+            kind: SynthTermKind::Input(offset),
+            child_ids: Default::default(),
+        };
+        self.insert(AnyTerm::Synth(term))
+    }
+
+    pub(crate) fn _new_variable(&mut self, id: u32) -> Result<SynthIdx> {
+        let term = SynthTerm {
+            kind: SynthTermKind::Variable(id),
+            child_ids: Default::default(),
+        };
+        self.insert(AnyTerm::Synth(term))
+    }
+
+    pub(crate) fn new_generalised(&mut self, gen: SynthIdx) -> Result<SynthIdx> {
+        let term = SynthTerm {
+            kind: SynthTermKind::Generalised(gen),
+            child_ids: Default::default(),
+        };
+        self.insert(AnyTerm::Synth(term))
     }
 
     pub(crate) fn new_synthetic(
@@ -163,20 +206,20 @@ impl SynthTerms {
             child_ids.iter().any(|c| self.start_idx <= c.0),
             "Synthetic term must have at least one synthetic child"
         );
-        self.insert(SynthTermKind::Parsed(kind), child_ids)
-    }
-
-    fn insert(&mut self, kind: SynthTermKind, child_ids: BoxSlice<SynthIdx>) -> Result<SynthIdx> {
         let term = SynthTerm {
-            kind,
+            kind: SynthTermKind::Parsed(kind),
             child_ids,
         };
+        self.insert(AnyTerm::Synth(term))
+    }
+
+    fn insert(&mut self, term: AnyTerm) -> Result<SynthIdx> {
         self.interned.try_reserve(1)?;
         match self.interned.entry(term) {
             Entry::Occupied(entry) => Ok(*entry.get()),
             Entry::Vacant(entry) => {
                 self.synth_terms.raw.try_reserve(1)?;
-                let idx = self.synth_terms.push_and_get_key(AnyTerm::Synth(entry.key().clone()));
+                let idx = self.synth_terms.push_and_get_key(entry.key().clone());
                 let idx = Self::dstidx_to_tidx(idx, self.start_idx);
                 Ok(*entry.insert(idx))
             }

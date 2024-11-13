@@ -9,19 +9,14 @@ use std::mem::MaybeUninit;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use matching_loop::MlExplanation;
+use matching_loop::MlData;
 use petgraph::Direction;
 
-use crate::{items::InstIdx, Result, TiVec, Z3Parser};
+use crate::{Result, TiVec, Z3Parser};
 
-use self::{
-    cost::DefaultCost, depth::DefaultDepth, matching_loop::MlSignature,
-    next_insts::DefaultNextInsts,
-};
+use self::{cost::DefaultCost, depth::DefaultDepth, next_insts::DefaultNextInsts};
 
 use super::{raw::Node, InstGraph, RawNodeIndex};
-
-pub type MlEndNodes = Vec<(MlSignature, Vec<(u32, InstIdx)>)>;
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
@@ -34,8 +29,7 @@ pub struct Analysis {
     pub fwd_depth_min: Vec<RawNodeIndex>,
     // // Most to least
     // pub(super) max_depth: Vec<RawNodeIndex>,
-    pub matching_loop_end_nodes: Option<MlEndNodes>,
-    pub matching_loop_graphs: Vec<MlExplanation>,
+    pub ml_data: Option<MlData>,
 }
 
 impl Analysis {
@@ -58,8 +52,7 @@ impl Analysis {
             cost,
             children,
             fwd_depth_min,
-            matching_loop_end_nodes: None,
-            matching_loop_graphs: vec![],
+            ml_data: None,
         })
     }
 }

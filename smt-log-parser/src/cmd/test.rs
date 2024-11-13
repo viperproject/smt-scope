@@ -42,8 +42,9 @@ pub fn run(logfiles: Vec<PathBuf>, timeout: f32) -> Result<(), String> {
             let _displayed = inst_graph.to_visible();
             let process_time = time.elapsed();
             println!(
-                "Finished analysing after {} seconds",
-                (process_time - elapsed_time).as_secs_f32()
+                "Finished analysing after {} seconds ({} mls)",
+                (process_time - elapsed_time).as_secs_f32(),
+                inst_graph.found_matching_loops().unwrap(),
             );
         }
 

@@ -23,7 +23,7 @@ use petgraph::{
 };
 use smt_log_parser::{
     analysis::{
-        analysis::matching_loop::{MLGraphNode, MlExplanation},
+        analysis::matching_loop::{MLGraphNode, MatchingLoop},
         raw::NodeKind,
         visible::VisibleInstGraph,
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
@@ -68,7 +68,7 @@ pub enum Msg {
     ResetGraph,
     UserPermission(WarningChoice),
     WorkerOutput(super::worker::WorkerOutput),
-    RenderMLGraph(Option<MlExplanation>),
+    RenderMLGraph(MatchingLoop),
     // UpdateSelectedNodes(Vec<RawNodeIndex>),
     // SearchMatchingLoops,
     // SelectNthMatchingLoop(usize),
@@ -222,7 +222,7 @@ impl Component for SVGResult {
                     DisplayCtxt {
                         parser,
                         term_display: &data.state.term_display,
-                        config: cfg.config.display.clone(),
+                        config: cfg.config.display,
                     }
                 };
                 match filter.apply(inst_graph, &parser.borrow(), config) {
@@ -321,7 +321,7 @@ impl Component for SVGResult {
                     let ctxt = &DisplayCtxt {
                         parser: &parser.borrow(),
                         term_display: &data.state.term_display,
-                        config: cfg.config.display.clone(),
+                        config: cfg.config.display,
                     };
 
                     // Performance observations (default value is in [])
@@ -507,17 +507,16 @@ impl Component for SVGResult {
                 true
             }
             Msg::RenderMLGraph(graph) => {
-                let Some(graph) = graph else {
+                let Some((_, Some(graph))) = graph.graph else {
                     return false;
                 };
                 let cfg = ctx.link().get_configuration().unwrap();
                 let mut ctxt = DisplayCtxt {
                     parser: &parser.borrow(),
                     term_display: &data.state.term_display,
-                    config: cfg.config.display.clone(),
+                    config: cfg.config.display,
                 };
                 ctxt.config.html = false;
-                let ctxt = &ctxt;
 
                 // Performance observations (default value is in [])
                 //  - splines=false -> 38s | [splines=true] -> ??
@@ -536,7 +535,7 @@ impl Component for SVGResult {
                     "digraph {{\n{}\n{:?}\n}}",
                     settings.join("\n"),
                     Dot::with_attr_getters(
-                        &*graph.graph,
+                        &*graph,
                         &[
                             Config::EdgeNoLabel,
                             Config::NodeNoLabel,
@@ -546,22 +545,34 @@ impl Component for SVGResult {
                         &|_, (_, node_data)| {
                             format!(
                                 "label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
-                                match &node_data {
-                                    MLGraphNode::QI(sig, gen_pat) => format!(
+                                match *node_data {
+                                    MLGraphNode::QI(ref sig) => format!(
                                         "{}: {}",
-                                        rc_parser.parser.borrow()[sig.quantifier].kind.with(ctxt),
-                                        gen_pat.with(ctxt)
+                                        rc_parser.parser.borrow()[sig.quantifier].kind.with(&ctxt),
+                                        sig.pattern.with(&ctxt)
                                     ),
-                                    MLGraphNode::ENode(matched_term) =>
-                                        format!("{}", matched_term.with(ctxt)),
-                                    MLGraphNode::Equality(from, to) =>
-                                        format!("{} = {}", from.with(ctxt), to.with(ctxt)),
-                                    MLGraphNode::FixedEquality(tidx) =>
-                                        format!("{}", tidx.with(ctxt)),
+                                    MLGraphNode::FixedENode(matched_term) =>
+                                        format!("{}", matched_term.with(&ctxt)),
+                                    MLGraphNode::RecurringENode(matched_term, input) => {
+                                        let mut ctxt = ctxt;
+                                        ctxt.config.input = Some(input);
+                                        format!("{} ({input})", matched_term.with(&ctxt))
+                                    }
+                                    MLGraphNode::FixedEquality(from, to) =>
+                                        format!("{} = {}", from.with(&ctxt), to.with(&ctxt)),
+                                    MLGraphNode::RecurringEquality(from, to, input) => {
+                                        let mut ctxt = ctxt;
+                                        ctxt.config.input = Some(input);
+                                        format!(
+                                            "{} = {} ({input})",
+                                            from.with(&ctxt),
+                                            to.with(&ctxt)
+                                        )
+                                    }
                                 },
                                 "box",
                                 match &node_data {
-                                    MLGraphNode::QI(sig, _) => {
+                                    MLGraphNode::QI(sig) => {
                                         let hue =
                                             rc_parser.colour_map.get_rbg_hue(Some(sig.quantifier))
                                                 / 360.0;
@@ -569,9 +580,10 @@ impl Component for SVGResult {
                                             "{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}"
                                         )
                                     }
-                                    MLGraphNode::ENode(_) => "lightgrey".to_string(),
-                                    MLGraphNode::Equality(_, _) | MLGraphNode::FixedEquality(_) =>
-                                        "white".to_string(),
+                                    MLGraphNode::FixedENode(..)
+                                    | MLGraphNode::RecurringENode(..) => "lightgrey".to_string(),
+                                    MLGraphNode::FixedEquality(..)
+                                    | MLGraphNode::RecurringEquality(..) => "white".to_string(),
                                 }
                             )
                         },

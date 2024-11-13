@@ -5,7 +5,7 @@ use typed_index_collections::TiSlice;
 use crate::{
     items::*,
     parsers::z3::{VersionInfo, Z3LogParser},
-    BoxSlice, Error, IString, NonMaxU32, Result, StringTable, TiVec,
+    BigRational, BoxSlice, Error, IString, NonMaxU32, Result, StringTable, TiVec,
 };
 
 use super::{
@@ -297,6 +297,51 @@ impl Z3Parser {
         debug_assert_eq!(qidx, qidx2);
         Ok(())
     }
+
+    fn parse_arith(meaning: &str) -> Result<BigRational> {
+        let (rest, num) = Self::parse_arith_inner(meaning)?;
+        assert!(rest.is_empty());
+        Ok(num.into())
+    }
+    fn parse_arith_inner(meaning: &str) -> Result<(&str, num::BigRational)> {
+        let Some(meaning) = meaning.strip_prefix('(') else {
+            // Find position of not a digit
+            let end = meaning
+                .bytes()
+                .position(|b| !b.is_ascii_digit())
+                .unwrap_or(meaning.len());
+            assert_ne!(end, 0);
+            let value = meaning[..end]
+                .parse::<num::BigUint>()
+                .map_err(Error::ParseBigUintError)?;
+            let value = num::BigRational::from(num::BigInt::from(value));
+            return Ok((&meaning[end..], value));
+        };
+        let error = || Error::ParseError(meaning.to_owned());
+        let space = meaning.bytes().position(|b| b == b' ').ok_or_else(error)?;
+        let (op, mut rest) = (&meaning[..space], &meaning[space..]);
+        let mut arguments = Vec::new();
+        while let Some(r) = rest.strip_prefix(' ') {
+            let (r, num) = Self::parse_arith_inner(r)?;
+            arguments.push(num);
+            rest = r;
+        }
+        rest = rest.strip_prefix(')').ok_or_else(error)?;
+        match op {
+            "+" => Ok((rest, arguments.into_iter().sum())),
+            "-" if arguments.len() == 1 => Ok((rest, -arguments.into_iter().next().unwrap())),
+            "-" if arguments.len() == 2 => {
+                let mut args = arguments.into_iter();
+                Ok((rest, args.next().unwrap() - args.next().unwrap()))
+            }
+            "*" => Ok((rest, arguments.into_iter().product())),
+            "/" if arguments.len() == 2 => {
+                let mut args = arguments.into_iter();
+                Ok((rest, args.next().unwrap() / args.next().unwrap()))
+            }
+            _ => Err(error()),
+        }
+    }
 }
 
 impl Z3LogParser for Z3Parser {
@@ -433,14 +478,23 @@ impl Z3LogParser for Z3Parser {
     fn attach_meaning<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let id = l.next().ok_or(Error::UnexpectedNewline)?;
         let theory = l.next().ok_or(Error::UnexpectedNewline)?;
-        let theory = self.mk_string(theory)?;
-        let value = self.mk_string(&l.collect::<Vec<_>>().join(" "))?;
-        let meaning = Meaning { theory, value };
+        let value = l.collect::<Vec<_>>().join(" ");
+        let meaning = match theory {
+            "arith" => {
+                let num = Self::parse_arith(&value)?;
+                Meaning::Arith(Box::new(num))
+            }
+            theory => {
+                let theory = self.mk_string(theory)?;
+                let value = self.mk_string(&value)?;
+                Meaning::Unknown { theory, value }
+            }
+        };
         let idx = self
             .terms
             .app_terms
             .parse_existing_id(&mut self.strings, id)?;
-        self.terms.new_meaning(idx, meaning)?;
+        let meaning = self.terms.new_meaning(idx, meaning)?;
         self.events.new_meaning(idx, meaning, &self.strings)?;
         Ok(())
     }

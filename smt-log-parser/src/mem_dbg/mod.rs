@@ -2,7 +2,7 @@
 mod r#impl;
 
 use core::fmt;
-use std::ops::{Deref, DerefMut};
+use core::ops::{Deref, DerefMut};
 
 macro_rules! derive_wrapper {
     ($head:ident $(:: $tail:ident)+ $(<$($rest1:tt)*)? $(: $($rest2:tt)*)?) => {
@@ -11,7 +11,7 @@ macro_rules! derive_wrapper {
     ($($module:ident ::)+ ; $head:ident , $($tail:ident,)+ $($rest:tt)*) => {
         derive_wrapper!( $($module ::)* $head :: ; $($tail,)* $($rest)* );
     };
-    ($($module:ident ::)+ ; $struct:ident, $(<$($t:ident$(= $default:ty)?),*>)? $(: $trait:ident $(+ $other:ident)*)?) => {
+    ($($module:ident ::)* ; $struct:ident, $(<$($t:ident$(= $default:ty)?),*>)? $(: $trait:ident $(+ $other:ident)*)?) => {
         derive_wrapper!(
             $(#[derive($trait$(,$other)*)])?
             struct $struct$(<$($t$(= $default)?),*>)?($($module::)+$struct$(<$($t),*>)?);
@@ -111,6 +111,16 @@ macro_rules! derive_non_max {
 
 derive_non_max!(NonMaxU32, u32);
 derive_non_max!(NonMaxUsize, usize);
+
+// BigRational
+
+derive_wrapper!(num::BigRational: PartialEq + Eq + PartialOrd + Ord + Hash);
+
+impl fmt::Display for BigRational {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 // TiVec
 

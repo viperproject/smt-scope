@@ -4,17 +4,18 @@ use super::MlSignature;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum MLGraphNode {
-    QI(MlSignature, SynthIdx),
-    ENode(SynthIdx),
-    Equality(SynthIdx, SynthIdx),
-    FixedEquality(TermIdx),
+    QI(MlSignature),
+    FixedENode(TermIdx),
+    RecurringENode(SynthIdx, bool),
+    FixedEquality(TermIdx, TermIdx),
+    RecurringEquality(SynthIdx, SynthIdx, bool),
 }
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum MLGraphEdge {
-    Blame,
-    BlameRewrite,
-    Yield(bool),
-    YieldEq(bool),
-    FixedEquality,
+    Blame(usize),
+    BlameEq(usize),
+    Yield,
+    YieldEq,
+    CombineEq,
 }

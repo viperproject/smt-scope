@@ -53,6 +53,7 @@ impl Configuration {
             display_term_ids: false,
             display_quantifier_name: false,
             replace_symbols: SymbolReplacement::Code,
+            input: None,
             html: true,
             // Set manually elsewhere
             enode_char_limit: None,

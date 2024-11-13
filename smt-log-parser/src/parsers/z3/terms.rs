@@ -122,7 +122,7 @@ impl Terms {
             .ok_or_else(|| Error::UnknownQuantifierIdx(quant))
     }
 
-    pub(super) fn new_meaning(&mut self, term: TermIdx, meaning: Meaning) -> Result<()> {
+    pub(super) fn new_meaning(&mut self, term: TermIdx, meaning: Meaning) -> Result<&Meaning> {
         self.meanings.try_reserve(1)?;
         use std::collections::hash_map::Entry;
         match self.meanings.entry(term) {
@@ -131,7 +131,7 @@ impl Terms {
                 empty.insert(meaning);
             }
         };
-        Ok(())
+        Ok(&self.meanings[&term])
     }
 
     /// Heuristic to get body of instantiated quantifier. See documentation of

@@ -13,6 +13,7 @@ fxhash = "0.2"
 lasso = "0.7"
 nonmax = "0.5"
 either = "1.13"
+num = "0.4"
 # Parsing and instrumenting
 futures = "0.3"
 semver = "1.0"
@@ -45,4 +46,4 @@ analysis = []
 # when a crate doesn't support `try_reserve`. Currently some panics may still happen.
 never_panic = []
 mem_dbg = ["dep:mem_dbg"]
-serde = ["dep:serde", "lasso/serialize", "nonmax/serde", "typed-index-collections/serde-std", "petgraph/serde-1"]
+serde = ["dep:serde", "lasso/serialize", "nonmax/serde", "typed-index-collections/serde-std", "num/serde", "petgraph/serde-1"]

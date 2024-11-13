@@ -44,6 +44,10 @@ pub enum Error {
     // Var parsing
     InvalidVar(ParseIntError),
 
+    // Meaning parsing
+    ParseBigUintError(num::bigint::ParseBigIntError),
+    ParseError(String),
+
     // Quantifier
     VarNamesListInconsistent, // attach var names
     VarNamesNoBar,

@@ -103,7 +103,7 @@ impl EventLog {
     pub(super) fn new_meaning(
         &mut self,
         term_idx: TermIdx,
-        _meaning: Meaning,
+        _meaning: &Meaning,
         _strings: &StringTable,
     ) -> Result<()> {
         match self.events.last() {

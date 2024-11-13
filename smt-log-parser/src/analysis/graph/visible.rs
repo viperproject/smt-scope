@@ -211,7 +211,7 @@ impl VisibleInstGraph {
         self.reverse.contains_key(&i_idx)
     }
 
-    pub(super) fn reverse(&self, i_idx: RawNodeIndex) -> Option<VisibleNodeIndex> {
+    pub(super) fn _reverse(&self, i_idx: RawNodeIndex) -> Option<VisibleNodeIndex> {
         self.reverse.get(&i_idx).copied()
     }
 

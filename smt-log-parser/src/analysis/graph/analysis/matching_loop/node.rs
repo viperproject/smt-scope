@@ -6,9 +6,9 @@ use super::MlSignature;
 pub enum MLGraphNode {
     QI(MlSignature),
     FixedENode(TermIdx),
-    RecurringENode(SynthIdx, bool),
+    RecurringENode(SynthIdx, Option<bool>),
     FixedEquality(TermIdx, TermIdx),
-    RecurringEquality(SynthIdx, SynthIdx, bool),
+    RecurringEquality(SynthIdx, SynthIdx, Option<bool>),
 }
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]

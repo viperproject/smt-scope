@@ -60,7 +60,7 @@ pub enum Msg {
     DeselectAll,
     SelectAll,
     ShowGeneralizedTerms(Vec<String>),
-    ShowMatchingLoopGraph(AttrValue),
+    ShowMatchingLoopGraph(Option<AttrValue>),
     ContextUpdated(Rc<StateProvider>),
 }
 
@@ -207,7 +207,7 @@ impl Component for GraphInfo {
                 true
             }
             Msg::ShowMatchingLoopGraph(graph) => {
-                self.displayed_matching_loop_graph = Some(graph);
+                self.displayed_matching_loop_graph = graph;
                 true
             }
             Msg::ScrollZoomSelection => {

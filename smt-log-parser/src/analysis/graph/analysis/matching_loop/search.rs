@@ -6,7 +6,7 @@ use crate::{
     Z3Parser,
 };
 
-use super::{MatchingLoop, MIN_MATCHING_LOOP_LENGTH};
+use super::{MatchingLoop, MlOutput, MIN_MATCHING_LOOP_LENGTH};
 
 impl InstGraph {
     pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> usize {
@@ -35,12 +35,18 @@ impl InstGraph {
             .into_iter_enumerated()
             .filter_map(|(i, v)| self.raw[i].kind().inst().map(|i| (i, v)))
             .collect();
-        let analysis = analysis.finalise(topo, MIN_MATCHING_LOOP_LENGTH);
+        let analysis = analysis.finalise(&topo, MIN_MATCHING_LOOP_LENGTH);
         let ml_data = analysis.ml_graphs(parser);
         let mls = ml_data.matching_loops.len();
         for (i, ml) in ml_data.matching_loops.iter().enumerate() {
+            let mut last = None;
             for &member in &ml.members {
                 self.raw[member].part_of_ml.insert(i);
+                if let Some(last) = last.replace(member) {
+                    for between in MlOutput::others_between(&topo, member, last) {
+                        self.raw[between].part_of_ml.insert(i);
+                    }
+                }
             }
         }
         self.analysis.ml_data = Some(ml_data);

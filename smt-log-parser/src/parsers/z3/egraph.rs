@@ -10,8 +10,8 @@ use petgraph::{
 
 use crate::{
     items::{
-        ENode, ENodeIdx, EqGivenIdx, EqTransIdx, Equality, EqualityExpl, InstIdx, TermIdx,
-        TransitiveExpl, TransitiveExplSegment, TransitiveExplSegmentKind,
+        ENode, ENodeIdx, EqGivenIdx, EqGivenUse, EqTransIdx, Equality, EqualityExpl, InstIdx,
+        TermIdx, TransitiveExpl, TransitiveExplSegment, TransitiveExplSegmentKind,
     },
     BoxSlice, Error, FxHashMap, NonMaxU32, Result, TiVec,
 };
@@ -27,15 +27,14 @@ pub struct EGraph {
 }
 
 impl EGraph {
-    pub fn walk_trans(&self, eq: EqTransIdx, mut f: impl FnMut(EqGivenIdx, bool)) {
-        #[derive(Debug)]
-        enum Never {}
-        self.equalities
-            .walk_trans::<Never>(true, eq, &mut |eq, fwd| {
+    pub fn walk_trans(&self, eq: EqTransIdx, mut f: impl FnMut(&EqualityExpl, bool)) {
+        let mut walker = TransEqSimpleWalker {
+            equalities: &self.equalities,
+            simple: |eq, fwd| {
                 f(eq, fwd);
-                Ok(())
-            })
-            .unwrap();
+            },
+        };
+        walker.walk_trans(eq, true).unwrap();
     }
 }
 
@@ -347,7 +346,7 @@ impl EGraph {
     ) -> Result<EqTransIdx> {
         // Find the current congruence uses
         for seg in trans.path.iter_mut() {
-            if let TransitiveExplSegmentKind::Given(cg, idx) = &mut seg.kind {
+            if let TransitiveExplSegmentKind::Given((cg, idx)) = &mut seg.kind {
                 debug_assert_eq!(*idx, None);
                 let EqualityExpl::Congruence { arg_eqs, .. } = &self.equalities.given[*cg] else {
                     continue;
@@ -401,14 +400,86 @@ pub struct Equalities {
     pub(crate) transitive: TiVec<EqTransIdx, TransitiveExpl>,
 }
 
+pub trait EqualityWalker<'a> {
+    type Error;
+
+    fn equalities(&self) -> &'a Equalities;
+
+    /// Override this method to get all the given equalities from a transitive
+    /// equality. If you wish to recurse into congruences then use the
+    /// following structure:
+    ///
+    /// ```
+    /// let (eq, use_) = eq_use;
+    /// match &self.equalities().given[eq] {
+    ///     EqualityExpl::Congruence { uses, .. } => self.walk_congruence(uses, use_.unwrap(), forward),
+    ///     _ => Ok(()),
+    /// }
+    /// ```
+    fn walk_given(
+        &mut self,
+        eq_use: EqGivenUse,
+        forward: bool,
+    ) -> core::result::Result<(), Self::Error>;
+
+    /// Does nothing if `CONGR` is false. Otherwise recursively walks into the
+    /// congruence uses.
+    fn walk_congruence(
+        &mut self,
+        uses: &[BoxSlice<EqTransIdx>],
+        use_: NonMaxU32,
+        forward: bool,
+    ) -> core::result::Result<(), Self::Error> {
+        let use_ = &uses[use_.get() as usize];
+        for &eq in use_.iter() {
+            self.walk_trans(eq, forward)?;
+        }
+        Ok(())
+    }
+
+    /// Return `Err` if the walk should abort, `Ok` to stop recursing, and
+    /// otherwise call `self.super_walk_trans` to recurse.
+    fn walk_trans(
+        &mut self,
+        eq: EqTransIdx,
+        forward: bool,
+    ) -> core::result::Result<(), Self::Error> {
+        self.super_walk_trans(eq, forward)
+    }
+
+    /// This method defines the walking of transitive equalities, override
+    /// `walk_trans` to intercept before walking a transitive equality.
+    fn super_walk_trans(
+        &mut self,
+        eq: EqTransIdx,
+        forward: bool,
+    ) -> core::result::Result<(), Self::Error> {
+        let all = self.equalities().transitive[eq].all(forward);
+        for next in all {
+            match next {
+                TransitiveExplSegment {
+                    forward,
+                    kind: TransitiveExplSegmentKind::Given(eq_use),
+                } => self.walk_given(eq_use, forward)?,
+                TransitiveExplSegment {
+                    forward,
+                    kind: TransitiveExplSegmentKind::Transitive(eq),
+                } => self.walk_trans(eq, forward)?,
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Equalities {
-    pub fn from(&self, eq: EqTransIdx) -> ENodeIdx {
+    pub fn from_to(&self, eq: EqTransIdx) -> (ENodeIdx, ENodeIdx) {
         let eq = &self.transitive[eq];
-        eq.path
+        let from = eq
+            .path
             .first()
             .map(|seg| match seg {
                 TransitiveExplSegment {
-                    kind: TransitiveExplSegmentKind::Given(eq, _),
+                    kind: TransitiveExplSegmentKind::Given((eq, _)),
                     forward,
                 } => {
                     if *forward {
@@ -422,72 +493,102 @@ impl Equalities {
                     forward,
                 } => {
                     if *forward {
-                        self.from(*eq)
+                        self.from_to(*eq).0
                     } else {
                         self.transitive[*eq].to
                     }
                 }
             })
-            .unwrap_or(eq.to)
+            .unwrap_or(eq.to);
+        (from, eq.to)
     }
+}
 
-    pub fn walk_trans<E>(
-        &self,
-        fwd: bool,
-        eq: EqTransIdx,
-        f: &mut impl FnMut(EqGivenIdx, bool) -> std::result::Result<(), E>,
-    ) -> std::result::Result<(), E> {
-        let all = self.transitive[eq].all(fwd);
-        for next in all {
-            match next {
-                TransitiveExplSegment {
-                    forward,
-                    kind: TransitiveExplSegmentKind::Given(eq, _),
-                } => f(eq, forward)?,
-                TransitiveExplSegment {
-                    forward,
-                    kind: TransitiveExplSegmentKind::Transitive(eq),
-                } => self.walk_trans(forward, eq, f)?,
-            }
-        }
-        Ok(())
+struct TransEqChecker<'a, I: Iterator<Item = (EqGivenUse, bool)>> {
+    equalities: &'a Equalities,
+    simple: I,
+}
+
+impl<'a, I: Iterator<Item = (EqGivenUse, bool)>> EqualityWalker<'a> for TransEqChecker<'a, I> {
+    type Error = bool;
+    fn equalities(&self) -> &'a Equalities {
+        self.equalities
     }
+    fn walk_given(
+        &mut self,
+        (eq, _use_): EqGivenUse,
+        eq_fwd: bool,
+    ) -> core::result::Result<(), Self::Error> {
+        // Return `Err(false)` if we're out of simple, this should never
+        // happen.
+        let ((simple, _simple_use), fwd) = self.simple.next().ok_or(false)?;
+        // Return `Ok` if equal, else `Err(true)`.
+        // We do not compare `simple_use == use_` here because `simple_use`
+        // hasn't been set yet (I think?).
+        (simple == eq && fwd == eq_fwd).then_some(()).ok_or(true)
+    }
+}
+
+impl Equalities {
     pub fn is_equal(
         &self,
         eq: EqTransIdx,
-        simple: &mut impl Iterator<Item = (EqGivenIdx, bool)>,
+        simple: &mut impl Iterator<Item = (EqGivenUse, bool)>,
     ) -> Option<bool> {
-        let res = self.walk_trans(true, eq, &mut |eq, eq_fwd| {
-            // Return `Err(false)` if we're out of simple, this should never
-            // happen.
-            let (simple, fwd) = simple.next().ok_or(false)?;
-            // Return `Ok` if equal, else `Err(true)`.
-            (simple == eq && fwd == eq_fwd).then_some(()).ok_or(true)
-        });
+        let mut checker = TransEqChecker {
+            equalities: self,
+            simple,
+        };
+        let res = checker.walk_trans(eq, true);
         // Map `Ok` -> `Ok(true)`, `Err(true)` -> `Ok(false)`, `Err(false)` -> `Err`.
         res.map_or_else(|e| e.then_some(false), |_| Some(true))
     }
+}
+
+pub struct TransEqSimpleWalker<'a, F: FnMut(&'a EqualityExpl, bool)> {
+    equalities: &'a Equalities,
+    simple: F,
+}
+
+#[derive(Debug)]
+pub enum Never {}
+
+impl<'a, F: FnMut(&'a EqualityExpl, bool)> EqualityWalker<'a> for TransEqSimpleWalker<'a, F> {
+    type Error = Never;
+    fn equalities(&self) -> &'a Equalities {
+        self.equalities
+    }
+    fn walk_given(
+        &mut self,
+        (eq, _): EqGivenUse,
+        forward: bool,
+    ) -> core::result::Result<(), Self::Error> {
+        (self.simple)(&self.equalities.given[eq], forward);
+        Ok(())
+    }
+}
+
+impl Equalities {
     pub fn walk_to(&self, mut from: ENodeIdx, eq: EqTransIdx) -> ENodeIdx {
-        #[derive(Debug)]
-        enum Never {}
-        self.walk_trans::<Never>(true, eq, &mut |eq, fwd| {
-            from = self.given[eq].walk(from, fwd).unwrap();
-            Ok(())
-        })
-        .unwrap();
+        let mut walker = TransEqSimpleWalker {
+            equalities: self,
+            simple: |eq, fwd| {
+                from = eq.walk(from, fwd).unwrap();
+            },
+        };
+        walker.walk_trans(eq, true).unwrap();
         from
     }
     pub fn path(&self, eq: EqTransIdx) -> Vec<ENodeIdx> {
         let mut path = Vec::new();
-        #[derive(Debug)]
-        enum Never {}
-        self.walk_trans::<Never>(true, eq, &mut |eq, fwd| {
-            let eq = &self.given[eq];
-            let from = if fwd { eq.from() } else { eq.to() };
-            path.push(from);
-            Ok(())
-        })
-        .unwrap();
+        let mut walker = TransEqSimpleWalker {
+            equalities: self,
+            simple: |eq, fwd| {
+                let from = if fwd { eq.from() } else { eq.to() };
+                path.push(from);
+            },
+        };
+        walker.walk_trans(eq, true).unwrap();
         path.push(self.transitive[eq].to);
         path
     }
@@ -563,7 +664,7 @@ impl SimplePath {
         for (idx, (_, eq, forward)) in g.simple_path.all_simple_edges(egraph, stack).enumerate() {
             let cost = (edges_len - idx - 1) as u32;
             let next = g.graph.add_node((cost, None));
-            let kind = TransitiveExplSegmentKind::Given(eq, None);
+            let kind = TransitiveExplSegmentKind::Given((eq, None));
             g.graph
                 .add_edge(last, next, TransitiveExplSegment { forward, kind });
             last = next;

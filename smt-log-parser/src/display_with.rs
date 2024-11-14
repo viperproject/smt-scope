@@ -147,6 +147,11 @@ pub struct DisplayConfiguration {
     /// Use tags for formatting
     #[cfg(feature = "display_html")]
     pub html: bool,
+    /// Use the HTML4 `<font>` tag for setting the colour of text. This isn't
+    /// supported in HTML5 and may be used for graphviz HTML-like label
+    /// compatibility.
+    #[cfg(feature = "display_html")]
+    pub font_tag: bool,
 
     // If `enode_char_limit` is Some, then any term longer than
     // the limit will be truncated.
@@ -160,6 +165,48 @@ impl DisplayConfiguration {
         return self.html;
         #[cfg(not(feature = "display_html"))]
         return false;
+    }
+
+    pub fn with_html_italic(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        rest: impl FnMut(&mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> fmt::Result {
+        self.with_html_tag(f, "i", None, rest)
+    }
+    pub fn with_html_colour(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        colour: &str,
+        rest: impl FnMut(&mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> fmt::Result {
+        let (tag, attribute) = if self.font_tag {
+            ("font", format!("color=\"{colour}\""))
+        } else {
+            ("span", format!("style=\"color:{colour}\""))
+        };
+        self.with_html_tag(f, tag, Some(&attribute), rest)
+    }
+
+    pub fn with_html_tag(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        tag: &str,
+        attributes: Option<&str>,
+        mut rest: impl FnMut(&mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> fmt::Result {
+        if self.html() {
+            write!(f, "<{tag}")?;
+            if let Some(attributes) = attributes {
+                write!(f, " {}", attributes)?;
+            }
+            write!(f, ">")?;
+        }
+        rest(f)?;
+        if self.html() {
+            write!(f, "</{tag}>")?;
+        }
+        Ok(())
     }
 }
 
@@ -470,17 +517,13 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a AnyTe
                 _ => None,
             });
             if let Some(meaning) = meaning {
-                if ctxt.config.html() {
-                    write!(f, "<i style=\"color:#666\">")?;
-                }
-                write!(f, "{}", meaning.with_data(ctxt, data))?;
-                if ctxt.config.html() {
-                    write!(f, "</i>")?;
-                }
+                ctxt.config.with_html_colour(f, "#666666", |f| {
+                    ctxt.config
+                        .with_html_italic(f, |f| write!(f, "{}", meaning.with_data(ctxt, data)))
+                })
             } else {
-                write!(f, "{}", self.kind().with_data(ctxt, data))?;
+                write!(f, "{}", self.kind().with_data(ctxt, data))
             }
-            Ok(())
         })
     }
 }
@@ -495,14 +538,17 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTerm
         match self {
             SynthTermKind::Parsed(kind) => kind.fmt_with(f, ctxt, data),
             SynthTermKind::Generalised(synth_idx) => match ctxt.config.input {
-                Some(true) => write!(f, "_"),
-                Some(false) => write!(f, "{}", synth_idx.with(ctxt)),
-                None => write!(f, "[_ → {}]", synth_idx.with(ctxt)),
+                Some(true) => write!(f, "⭐"),
+                // Colour the generalised term in blue
+                Some(false) => ctxt
+                    .config
+                    .with_html_colour(f, "#4285f4", |f| write!(f, "{}", synth_idx.with(ctxt))),
+                None => write!(f, "[⭐ → {}]", synth_idx.with(ctxt)),
             },
             SynthTermKind::Variable(var) => write!(f, "${var}"),
             SynthTermKind::Input(offset) => match offset {
-                Some(offset) => write!(f, "_ + {}", offset.with(ctxt)),
-                None => write!(f, "_"),
+                Some(offset) => write!(f, "⭐ + {}", offset.with(ctxt)),
+                None => write!(f, "⭐"),
             },
             SynthTermKind::Constant => write!(f, "CONST"),
         }
@@ -546,7 +592,7 @@ impl VarNames {
             let color = COLORS[idx % COLORS.len()];
             #[cfg(feature = "display_html")]
             let name = ammonia::clean_text(name.borrow());
-            let name = format!("<span style=\"color:{color}\">{name}</span>");
+            let name = format!("<font style=\"color:{color}\">{name}</font>");
             Cow::Owned(name)
         } else {
             name

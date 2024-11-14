@@ -179,17 +179,19 @@ impl TransitiveExplSegment {
     }
 }
 
+pub type EqGivenUse = (EqGivenIdx, Option<NonMaxU32>);
+
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy)]
 pub enum TransitiveExplSegmentKind {
-    Given(EqGivenIdx, Option<NonMaxU32>),
+    Given(EqGivenUse),
     Transitive(EqTransIdx),
 }
 impl TransitiveExplSegmentKind {
-    pub fn given(self) -> Option<EqGivenIdx> {
+    pub fn given(self) -> Option<EqGivenUse> {
         match self {
-            Self::Given(given, _) => Some(given),
+            Self::Given(eq_use) => Some(eq_use),
             _ => None,
         }
     }

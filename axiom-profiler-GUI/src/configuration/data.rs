@@ -55,6 +55,7 @@ impl Configuration {
             replace_symbols: SymbolReplacement::Code,
             input: None,
             html: true,
+            font_tag: false,
             // Set manually elsewhere
             enode_char_limit: None,
             ast_depth_limit: None,

@@ -508,6 +508,10 @@ impl Component for SVGResult {
             }
             Msg::RenderMLGraph(graph) => {
                 let Some((_, Some(graph))) = graph.graph else {
+                    let link = ctx.props().insts_info_link.borrow();
+                    link.as_ref()
+                        .unwrap()
+                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(None));
                     return false;
                 };
                 let cfg = ctx.link().get_configuration().unwrap();
@@ -516,7 +520,7 @@ impl Component for SVGResult {
                     term_display: &data.state.term_display,
                     config: cfg.config.display,
                 };
-                ctxt.config.html = false;
+                ctxt.config.font_tag = true;
 
                 // Performance observations (default value is in [])
                 //  - splines=false -> 38s | [splines=true] -> ??
@@ -543,33 +547,31 @@ impl Component for SVGResult {
                         ],
                         &|_, edge| format!("label=\"{:?}\"", edge.weight()),
                         &|_, (_, node_data)| {
+                            let label = match *node_data {
+                                MLGraphNode::QI(ref sig) => format!(
+                                    "{}: {}",
+                                    rc_parser.parser.borrow()[sig.quantifier].kind.with(&ctxt),
+                                    sig.pattern.with(&ctxt)
+                                ),
+                                MLGraphNode::FixedENode(matched_term) => {
+                                    format!("{}", matched_term.with(&ctxt))
+                                }
+                                MLGraphNode::RecurringENode(matched_term, input) => {
+                                    let mut ctxt = ctxt;
+                                    ctxt.config.input = input;
+                                    format!("{} ({input:?})", matched_term.with(&ctxt))
+                                }
+                                MLGraphNode::FixedEquality(from, to) => {
+                                    format!("{} = {}", from.with(&ctxt), to.with(&ctxt))
+                                }
+                                MLGraphNode::RecurringEquality(from, to, input) => {
+                                    let mut ctxt = ctxt;
+                                    ctxt.config.input = input;
+                                    format!("{} = {} ({input:?})", from.with(&ctxt), to.with(&ctxt))
+                                }
+                            };
                             format!(
-                                "label=\"{}\" shape=\"{}\" style=filled fillcolor=\"{}\"",
-                                match *node_data {
-                                    MLGraphNode::QI(ref sig) => format!(
-                                        "{}: {}",
-                                        rc_parser.parser.borrow()[sig.quantifier].kind.with(&ctxt),
-                                        sig.pattern.with(&ctxt)
-                                    ),
-                                    MLGraphNode::FixedENode(matched_term) =>
-                                        format!("{}", matched_term.with(&ctxt)),
-                                    MLGraphNode::RecurringENode(matched_term, input) => {
-                                        let mut ctxt = ctxt;
-                                        ctxt.config.input = Some(input);
-                                        format!("{} ({input})", matched_term.with(&ctxt))
-                                    }
-                                    MLGraphNode::FixedEquality(from, to) =>
-                                        format!("{} = {}", from.with(&ctxt), to.with(&ctxt)),
-                                    MLGraphNode::RecurringEquality(from, to, input) => {
-                                        let mut ctxt = ctxt;
-                                        ctxt.config.input = Some(input);
-                                        format!(
-                                            "{} = {} ({input})",
-                                            from.with(&ctxt),
-                                            to.with(&ctxt)
-                                        )
-                                    }
-                                },
+                                "label=<{label}> shape=\"{}\" style=filled fillcolor=\"{}\"",
                                 "box",
                                 match &node_data {
                                     MLGraphNode::QI(sig) => {
@@ -615,9 +617,9 @@ impl Component for SVGResult {
                     );
                     let svg_text = svg.outer_html();
                     link.unwrap()
-                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(AttrValue::from(
+                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(Some(AttrValue::from(
                             svg_text,
-                        )));
+                        ))));
                 });
                 // only need to re-render once the new SVG has been set
                 true

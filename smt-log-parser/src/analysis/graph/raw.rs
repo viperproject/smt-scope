@@ -138,7 +138,7 @@ impl RawInstGraph {
             let all = eq.all(true);
             for parent in all {
                 match parent.kind {
-                    TransitiveExplSegmentKind::Given(eq, use_) => self_.add_edge(
+                    TransitiveExplSegmentKind::Given((eq, use_)) => self_.add_edge(
                         (eq, use_),
                         idx,
                         EdgeKind::TEqualitySimple {

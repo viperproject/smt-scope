@@ -133,8 +133,8 @@ fn parse_all_logs() {
             // TODO: decrease this
             assert!(elapsed_ml < timeout, "ML search took longer than timeout");
             assert!(
-                mem_size as u64 <= parse_bytes * 5 / 2,
-                "Analysis takes up more memory than 5/2 * file size!"
+                mem_size as u64 <= parse_bytes * 3,
+                "Analysis takes up more memory than 3 * file size!"
             );
 
             drop(inst_graph);

@@ -71,6 +71,10 @@ impl MlOutput<'_> {
                 });
             }
         }
+        matching_loops.sort_unstable_by_key(|ml| {
+            let (len, leaf) = ml.leaves.0[0];
+            (ml.graph.is_some(), u32::MAX - len, leaf)
+        });
         MlData {
             signatures: self.signatures,
             matching_loops,
@@ -443,7 +447,8 @@ impl MlNodeInfo {
                 .find(|above| above.max_depth == 0);
             debug_assert!(
                 above.max_ungen_depth == 0
-                    || next.is_some_and(|next| above.max_ungen_depth == next.max_ungen_depth + 1)
+                    || next.is_some_and(|next| above.max_ungen_depth == next.max_ungen_depth + 1),
+                "above: {above:?}, next: {next:?}",
             );
             Some(above)
         })
@@ -469,7 +474,7 @@ impl MlNodeInfo {
             debug_assert!(
                 above.max_depth == 0
                     || next.is_some_and(|next| above.max_depth == next.max_depth + 1),
-                "above: {above:?}, next: {next:?}"
+                "above: {above:?}, next: {next:?}",
             );
             Some(above)
         })
@@ -545,7 +550,9 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
                 let mut max_ungen_depth = 0;
                 let mut max_depth = 0;
                 for above in &mut prev_info.tree_above {
-                    max_ungen_depth = max_ungen_depth.max(above.max_ungen_depth + 1);
+                    if above.max_depth == 0 {
+                        max_ungen_depth = max_ungen_depth.max(above.max_ungen_depth + 1);
+                    }
                     if matches!(above.is_leaf, MlLinkLeaf::FullLeaf) {
                         above.is_leaf = MlLinkLeaf::UnGenLeaf;
                     }
@@ -570,6 +577,7 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
                     debug_assert!(max_depth > 0);
                     max_ungen_depth = 0;
                 } else {
+                    debug_assert!(max_depth == 0);
                     gen = self.inner.generalise(&prev_info.blames, &curr_info.blames);
                 }
 

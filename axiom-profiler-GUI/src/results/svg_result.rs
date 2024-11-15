@@ -63,7 +63,7 @@ pub enum Msg {
     UpdateSvgText(AttrValue, VisibleInstGraph),
     SetPermission(GraphDimensions),
     SetDisabled(Vec<Disabler>),
-    RenderGraph,
+    RenderGraph(bool),
     ApplyFilter(Filter),
     ResetGraph,
     UserPermission(WarningChoice),
@@ -284,7 +284,7 @@ impl Component for SVGResult {
                 Disabler::apply(disablers.iter().copied(), inst_graph, &parser.borrow());
                 false
             }
-            Msg::RenderGraph => {
+            Msg::RenderGraph(first) => {
                 if self
                     .rendered
                     .as_ref()
@@ -472,7 +472,16 @@ impl Component for SVGResult {
                     false
                 } else {
                     self.calculated = Some(calculated);
-                    self.graph_warning.show();
+                    if first {
+                        // We can run into an issue where `graph_warning` hasn't
+                        // been initialised if this case is triggered during the
+                        // first render. In this case we delay the warning.
+                        // TODO: improve this asap
+                        let warning = self.graph_warning.clone();
+                        gloo_timers::callback::Timeout::new(1, move || warning.show()).forget();
+                    } else {
+                        self.graph_warning.show();
+                    }
                     true
                 }
             }
@@ -493,7 +502,7 @@ impl Component for SVGResult {
                 }
                 WarningChoice::Render => {
                     ctx.link().send_message(Msg::SetPermission(self.graph_dim));
-                    ctx.link().send_message(Msg::RenderGraph);
+                    ctx.link().send_message(Msg::RenderGraph(false));
                     false
                 }
             },

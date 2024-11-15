@@ -63,11 +63,11 @@ pub struct FiltersState {
 }
 
 impl FiltersState {
-    fn rerender_msgs(&self) -> impl Iterator<Item = SVGMsg> + '_ {
+    fn rerender_msgs(&self, first: bool) -> impl Iterator<Item = SVGMsg> + '_ {
         [SVGMsg::ResetGraph]
             .into_iter()
             .chain(self.filter_chain.iter().cloned().map(SVGMsg::ApplyFilter))
-            .chain([SVGMsg::RenderGraph])
+            .chain([SVGMsg::RenderGraph(first)])
     }
     pub fn send_updates(&mut self, file: &OpenedFileInfo, history: bool) -> bool {
         if self.applied_filter_chain == self.filter_chain {
@@ -78,10 +78,10 @@ impl FiltersState {
                 .clone_from(&self.applied_filter_chain);
         }
         self.applied_filter_chain.clone_from(&self.filter_chain);
-        file.send_updates(self.rerender_msgs());
+        file.send_updates(self.rerender_msgs(false));
         true
     }
-    pub fn reset_disabled(&mut self, file: &OpenedFileInfo) {
+    pub fn reset_disabled(&mut self, file: &OpenedFileInfo, first: bool) {
         let msg = SVGMsg::SetDisabled(
             self.disabler_chain
                 .iter()
@@ -89,7 +89,7 @@ impl FiltersState {
                 .map(|(d, _b)| *d)
                 .collect(),
         );
-        let msgs = self.rerender_msgs();
+        let msgs = self.rerender_msgs(first);
         file.send_updates(std::iter::once(msg).chain(msgs));
     }
 }
@@ -120,7 +120,7 @@ impl Component for FiltersState {
             edit_filter: None,
             global_section: NodeRef::default(),
         };
-        self_.reset_disabled(&ctx.props().file);
+        self_.reset_disabled(&ctx.props().file, true);
         self_
     }
 
@@ -224,7 +224,7 @@ impl Component for FiltersState {
             }
             Msg::ToggleDisabler(idx) => {
                 self.disabler_chain[idx].1 = !self.disabler_chain[idx].1;
-                self.reset_disabled(&ctx.props().file);
+                self.reset_disabled(&ctx.props().file, false);
                 false
             }
             Msg::ToggleMlViewerMode => {

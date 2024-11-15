@@ -5,6 +5,7 @@ use mem_dbg::{MemDbg, MemSize};
 macro_rules! idx {
     ($struct:ident, $prefix:tt) => {
         #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+        #[cfg_attr(feature = "mem_dbg", copy_type)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
         // Note: we use `u32` since this the file would need to be > ~100GB to

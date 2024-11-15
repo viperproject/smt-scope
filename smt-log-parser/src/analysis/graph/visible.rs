@@ -180,7 +180,7 @@ impl InstGraph {
             if from == NodeIndex::end() {
                 continue;
             }
-            for &next_inst in &node.inst_children.nodes {
+            for &next_inst in node.inst_children.nodes.iter() {
                 let next_inst = next_inst.index(&self.raw);
                 let to = node_index_map[next_inst.0.index()];
                 if to == NodeIndex::end() {

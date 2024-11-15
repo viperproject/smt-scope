@@ -4,6 +4,7 @@ use core::fmt;
 use mem_dbg::{MemDbg, MemSize};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[derive(Debug, Clone, Copy)]
 pub struct StackFrame {
     /// Is this frame definitely from CDCL? If this is false then it may still
@@ -26,6 +27,7 @@ impl StackFrame {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimeRange {
     start: u32,

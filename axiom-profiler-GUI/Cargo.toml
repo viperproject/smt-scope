@@ -39,7 +39,7 @@ wasm-timer = "0.2"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
 semver = "1.0"
 nucleo-matcher = "0.3.1"
-mem_dbg = { version = "0.1.8", features = ["std", "derive"], default-features = false }
+mem_dbg = { version = "0.2.4", features = ["std", "derive"], default-features = false }
 duplicate = "1.0"
 
 # For random colour generation

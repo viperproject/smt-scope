@@ -1,9 +1,13 @@
+#[cfg(feature = "mem_dbg")]
+use mem_dbg::{MemDbg, MemSize};
+
 use core::ops::{Deref, DerefMut};
 
 use super::{FxHashMap, TiVec};
 
 // BoxSlice
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BoxSlice<T> {

@@ -120,8 +120,9 @@ impl MatchKind {
 /// - Term: one instantiation produced a term that the other triggered on
 /// - Equality: dependency based on an equality.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum BlameKind {
     Term { term: ENodeIdx },
     Equality { eq: EqTransIdx },
@@ -170,6 +171,7 @@ impl Index<usize> for Blame<'_> {
 /// An identifier for a Z3 quantifier instantiation (called "fingerprint" in the original Axiom Profiler).
 /// Represented as a 16-digit hexadecimal number in log files.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Fingerprint(pub u64);
@@ -213,6 +215,7 @@ pub struct Instantiation {
 
 /// A Z3 instantiation.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy)]
 pub enum InstProofLink {

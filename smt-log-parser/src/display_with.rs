@@ -166,6 +166,12 @@ impl DisplayConfiguration {
         #[cfg(not(feature = "display_html"))]
         return false;
     }
+    pub fn font_tag(&self) -> bool {
+        #[cfg(feature = "display_html")]
+        return self.font_tag;
+        #[cfg(not(feature = "display_html"))]
+        return false;
+    }
 
     pub fn with_html_italic(
         &self,
@@ -180,7 +186,7 @@ impl DisplayConfiguration {
         colour: &str,
         rest: impl FnMut(&mut fmt::Formatter<'_>) -> fmt::Result,
     ) -> fmt::Result {
-        let (tag, attribute) = if self.font_tag {
+        let (tag, attribute) = if self.font_tag() {
             ("font", format!("color=\"{colour}\""))
         } else {
             ("span", format!("style=\"color:{colour}\""))

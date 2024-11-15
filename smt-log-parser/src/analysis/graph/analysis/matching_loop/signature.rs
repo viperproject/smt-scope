@@ -26,7 +26,8 @@ pub struct MlSignature {
 /// Instantiation chains which all depend on a single term will have the same
 /// `InstParent`.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum InstParent {
     Quant(QuantIdx),
     Const(ENodeIdx),

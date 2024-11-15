@@ -22,7 +22,8 @@ pub struct ENode {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug)]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
+#[derive(Debug, Clone, Copy)]
 pub struct Equality {
     pub(crate) _frame: StackIdx,
     pub to: ENodeIdx,

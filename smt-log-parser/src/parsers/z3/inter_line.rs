@@ -2,6 +2,7 @@
 use mem_dbg::{MemDbg, MemSize};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[derive(Debug, Default, Clone, Copy)]
 pub(super) struct InterLine {
     prev: Data,
@@ -22,12 +23,14 @@ impl InterLine {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[derive(Debug, Default, Clone, Copy)]
 pub(super) struct Data {
     pub(super) last_line_kind: LineKind,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[derive(Debug, Default, Clone, Copy)]
 pub(super) enum LineKind {
     DecideAndOr,

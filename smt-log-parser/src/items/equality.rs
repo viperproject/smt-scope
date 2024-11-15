@@ -159,6 +159,7 @@ impl TransitiveExpl {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy)]
 pub struct TransitiveExplSegment {
@@ -182,6 +183,7 @@ impl TransitiveExplSegment {
 pub type EqGivenUse = (EqGivenIdx, Option<NonMaxU32>);
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy)]
 pub enum TransitiveExplSegmentKind {

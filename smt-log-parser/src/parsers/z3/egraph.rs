@@ -409,7 +409,7 @@ pub trait EqualityWalker<'a> {
     /// equality. If you wish to recurse into congruences then use the
     /// following structure:
     ///
-    /// ```
+    /// ```ignore
     /// let (eq, use_) = eq_use;
     /// match &self.equalities().given[eq] {
     ///     EqualityExpl::Congruence { uses, .. } => self.walk_congruence(uses, use_.unwrap(), forward),

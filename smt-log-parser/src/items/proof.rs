@@ -21,6 +21,7 @@ pub struct ProofStep {
 
 #[allow(non_camel_case_types)]
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, EnumIter)]
 /// Taken from

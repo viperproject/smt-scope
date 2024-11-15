@@ -18,7 +18,7 @@ num = "0.4"
 futures = "0.3"
 semver = "1.0"
 wasm-timer = "0.2"
-mem_dbg = { version = "0.1.8", features = ["std", "derive"], default-features = false, optional = true }
+mem_dbg = { version = "0.2.4", features = ["std", "derive"], default-features = false, optional = true }
 # Analysis
 petgraph = "0.6.4"
 roaring = "0.10"

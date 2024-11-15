@@ -3,7 +3,6 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use fxhash::FxHashSet;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::{
@@ -18,7 +17,7 @@ use crate::{
         ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, StackIdx,
         TransitiveExplSegmentKind,
     },
-    DiGraph, FxHashMap, NonMaxU32, Result, Z3Parser,
+    DiGraph, FxHashMap, FxHashSet, NonMaxU32, Result, Z3Parser,
 };
 
 graph_idx!(raw_idx, RawNodeIndex, RawEdgeIndex, RawIx);
@@ -250,6 +249,7 @@ impl GraphStats {
     }
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone)]
 pub struct Node {
     state: NodeState,
@@ -260,9 +260,10 @@ pub struct Node {
     kind: NodeKind,
     pub inst_parents: NextInsts,
     pub inst_children: NextInsts,
-    pub part_of_ml: fxhash::FxHashSet<usize>,
+    pub part_of_ml: FxHashSet<usize>,
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeState {
     Disabled,
@@ -270,6 +271,7 @@ pub enum NodeState {
     Visible,
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Depth {
     /// What is the shortest path to a root/leaf
@@ -278,6 +280,7 @@ pub struct Depth {
     pub max: u32,
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Default)]
 pub struct NextInsts {
     /// What are the immediate next instantiation nodes
@@ -327,6 +330,7 @@ impl Node {
     }
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Copy)]
 pub enum NodeKind {
     /// Corresponds to `ENodeIdx`.
@@ -401,6 +405,7 @@ impl NodeKind {
     }
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Copy)]
 pub enum EdgeKind {
     /// Instantiation -> ENode

@@ -11,7 +11,7 @@ pub use signature::*;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::{idx, items::InstIdx, Graph, TiVec};
+use crate::{idx, items::InstIdx, BoxSlice, Graph, TiVec};
 
 pub const MIN_MATCHING_LOOP_LENGTH: u32 = 6;
 
@@ -29,7 +29,7 @@ pub struct MlData {
 pub struct MatchingLoop {
     pub sig: MlSigIdx,
     pub leaves: MlLeaves,
-    pub members: Box<[InstIdx]>,
+    pub members: BoxSlice<InstIdx>,
     pub graph: Option<(GenIdx, Option<MlExplanation>)>,
 }
 pub type MlExplanation = Graph<MLGraphNode, MLGraphEdge>;

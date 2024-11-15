@@ -40,7 +40,7 @@ impl InstGraph {
         let mls = ml_data.matching_loops.len();
         for (i, ml) in ml_data.matching_loops.iter().enumerate() {
             let mut last = None;
-            for &member in &ml.members {
+            for &member in ml.members.iter() {
                 self.raw[member].part_of_ml.insert(i);
                 if let Some(last) = last.replace(member) {
                     for between in MlOutput::others_between(&topo, member, last) {

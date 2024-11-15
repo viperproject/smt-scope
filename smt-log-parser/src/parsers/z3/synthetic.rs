@@ -29,12 +29,14 @@ pub struct SynthTerm {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 #[repr(transparent)]
 pub struct SynthIdx(TermIdx);
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 // Note that we must preserve `size_of::<SynthTermKind>() == size_of::<TermKind>()`!

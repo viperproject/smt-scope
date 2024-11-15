@@ -172,6 +172,27 @@ impl<K, V> std::iter::IntoIterator for FxHashMap<K, V> {
     }
 }
 
+// FxHashSet
+
+derive_wrapper!(fxhash::FxHashSet<K>);
+impl<K> Default for FxHashSet<K> {
+    fn default() -> Self {
+        Self(fxhash::FxHashSet::default())
+    }
+}
+impl<K: Eq + std::hash::Hash> FromIterator<K> for FxHashSet<K> {
+    fn from_iter<T: IntoIterator<Item = K>>(iter: T) -> Self {
+        Self(fxhash::FxHashSet::from_iter(iter))
+    }
+}
+impl<K> std::iter::IntoIterator for FxHashSet<K> {
+    type Item = <Self::IntoIter as std::iter::IntoIterator>::Item;
+    type IntoIter = std::collections::hash_set::IntoIter<K>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 // StringTable
 
 derive_wrapper!(

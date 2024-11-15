@@ -45,7 +45,7 @@ impl QuantifierAnalysis {
             let qinfo = &mut self_.0[qidx];
             let ginst = &inst_graph.raw[iidx];
             qinfo.costs += ginst.cost;
-            for &parent_iidx in &ginst.inst_parents.nodes {
+            for &parent_iidx in ginst.inst_parents.nodes.iter() {
                 let parent_inst = &parser.insts[parent_iidx];
                 let parent_match_ = &parser.insts[parent_inst.match_];
                 let Some(parent_qidx) = parent_match_.kind.quant_idx() else {

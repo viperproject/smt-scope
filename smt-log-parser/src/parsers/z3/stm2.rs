@@ -182,6 +182,7 @@ impl EventLog {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[derive(Debug, Clone, Copy)]
 pub struct Event {
     /// The number of enodes created after this event
@@ -192,6 +193,7 @@ pub struct Event {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[derive(Debug, Clone, Copy)]
 pub enum EventKind {
     NewConst(TermIdx),

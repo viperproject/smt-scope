@@ -238,6 +238,22 @@ impl Z3Parser {
         l.next()
             .map_or(Ok(()), |more| Err(Error::ExpectedNewline(more.to_string())))
     }
+
+    fn parse_assignment<'a>(&mut self, l: &mut impl Iterator<Item = &'a str>) -> Result<Option<(TermIdx, bool)>> {
+        let Some(lit) = l.next() else {
+            return Ok(None);
+        };
+        let (result, assignment) = if lit == "(not" {
+            let lit = l.next().ok_or(Error::UnexpectedNewline)?;
+            let term_id = lit.strip_suffix(')').ok_or(Error::TupleMissingParens)?;
+            let term_id = self.terms.parse_existing_id(&mut self.strings, term_id)?;
+            (term_id, false)
+        } else {
+            let term_id = self.terms.parse_existing_id(&mut self.strings, lit)?;
+            (term_id, true)
+        };
+        Ok(Some((result, assignment)))
+    }
 }
 
 impl Z3LogParser for Z3Parser {
@@ -674,7 +690,9 @@ impl Z3LogParser for Z3Parser {
         Self::expect_completed(l)?;
         self.stack.pop_frames(num, scope)
     }
-    fn assign<'a>(&mut self, mut _l: impl Iterator<Item = &'a str>) -> Result<()> {
+
+    fn assign<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
+        let detected_conflict = self.detected_conflict;
         if self.detected_conflict {
             let mut dec = self.current_decision.unwrap();
             let backtracked_from = dec;
@@ -696,24 +714,16 @@ impl Z3LogParser for Z3Parser {
             }
             self.detected_conflict = false;
         }
-        let lit = _l.next().ok_or(Error::UnexpectedNewline)?;
-        let (result, assignment) = if lit.starts_with("(not") {
-            let lit = _l.next().ok_or(Error::UnexpectedNewline)?;
-            let term_id = lit.strip_suffix(')').ok_or(Error::TupleMissingParens)?;
-            let term_id = self.terms.parse_existing_id(&mut self.strings, term_id)?;
-            (term_id, false)
-        } else {
-            let term_id = self.terms.parse_existing_id(&mut self.strings, lit)?;
-            (term_id, true)
-        };
-        let assign_type = _l.next().ok_or(Error::UnexpectedNewline)?;
-        match assign_type {
-            "decision" => {
+        let assignment = self.parse_assignment(&mut l)?;
+        let (result, assignment) = assignment.ok_or(Error::UnexpectedNewline)?;
+        let assign_type = l.next().ok_or(Error::UnexpectedNewline)?;
+        match (assign_type, detected_conflict) {
+            ("decision", false) | (_, true) => {
                 let dec = Decision {
                     result,
                     assignment,
                     lvl: self.current_cdcl_lvl,
-                    results_in_conflict: false,
+                    results_in_conflict: None,
                     clause_propagations: Default::default(),
                     prev_decision: self.current_decision,
                     backtracked_from: Default::default(),
@@ -723,7 +733,7 @@ impl Z3LogParser for Z3Parser {
                 let dec_idx = self.decision_assigns.push_and_get_key(dec.clone());
                 self.current_decision = Some(dec_idx);
             }
-            "clause" => {
+            ("clause", false) => {
                 // let current_dec = self.decision_assigns.get_mut(self.current_decision.unwrap()).unwrap();
                 if let Some(current_dec_idx) = self.current_decision {
                     let current_dec = self.decision_assigns.get_mut(current_dec_idx).unwrap();
@@ -739,7 +749,7 @@ impl Z3LogParser for Z3Parser {
                 //         result,
                 //         assignment,
                 //         lvl: self.current_cdcl_lvl,
-                //         results_in_conflict: false,
+                //         results_in_conflict: None,
                 //         clause_propagations: vec![(result, assignment)],
                 //         prev_decision: None,
                 //         backtracked_from: Default::default(),
@@ -750,24 +760,30 @@ impl Z3LogParser for Z3Parser {
                 //     self.current_decision = Some(dec_idx);
                 // }
             }
-            _ => (),
+            (_, false) => (),
         }
         Ok(())
     }
 
-    fn conflict<'a>(&mut self, mut _l: impl Iterator<Item = &'a str>) -> Result<()> {
+    fn conflict<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
+        let mut cut = Vec::new();
+        while let Some(assignment) = self.parse_assignment(&mut l)? {
+            cut.try_reserve(1)?;
+            cut.push(assignment);
+        }
+
         self.detected_conflict = true;
         self.search_path += 1;
         if let Some(dec) = self.current_decision {
             self.decision_assigns
                 .get_mut(dec)
                 .unwrap()
-                .results_in_conflict = true;
+                .results_in_conflict = Some(cut);
         }
         // let mut terms: Vec<String> = Vec::new();
-        // while let Some(lit) = _l.next() {
+        // while let Some(lit) = l.next() {
         //     if lit.starts_with("(not") {
-        //         let lit = _l.next().ok_or(Error::UnexpectedNewline)?;
+        //         let lit = l.next().ok_or(Error::UnexpectedNewline)?;
         //         let term_id = lit.strip_suffix(")").ok_or(Error::TupleMissingParens)?;
         //         let term_id = self.terms.parse_existing_id(&mut self.strings, term_id)?;
         //         // let default_config = DisplayConfiguration {

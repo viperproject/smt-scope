@@ -720,7 +720,7 @@ pub struct Decision {
     pub result: TermIdx,
     pub assignment: bool,
     pub lvl: usize,
-    pub results_in_conflict: bool,
+    pub results_in_conflict: Option<Vec<(TermIdx, bool)>>,
     // pub clause_propagations: Vec<(TermIdx, bool)>,
     pub clause_propagations: Vec<Propagation>,
     pub prev_decision: Option<DecisionIdx>,

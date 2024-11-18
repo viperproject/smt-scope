@@ -436,7 +436,7 @@ impl Component for SVGResult {
                                         fillcolor = Some("lightgrey".to_string());
                                     }
                                     NodeKind::Decision(dec_idx) => {
-                                        if rc_parser.parser.borrow()[*dec_idx].results_in_conflict {
+                                        if rc_parser.parser.borrow()[*dec_idx].results_in_conflict.is_some() {
                                             fillcolor = Some("red".to_string());
                                         }
                                     }

@@ -7,7 +7,7 @@ use smt_log_parser::{
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::{MatchKind, VarNames},
+    items::{MatchKind, TermIdx, VarNames},
     NonMaxU32,
 };
 use yew::{
@@ -227,11 +227,11 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 .collect(),
         )
     }
-    pub fn results_in_conflict(&self) -> Option<bool> {
+    pub fn results_in_conflict(&self) -> Option<&Option<Vec<(TermIdx, bool)>>> {
         let NodeKind::Decision(dec) = *self.node.kind() else {
             return None;
         };
-        Some(self.ctxt.parser[dec].results_in_conflict)
+        Some(&self.ctxt.parser[dec].results_in_conflict)
     }
 }
 
@@ -329,8 +329,12 @@ pub fn SelectedNodesInfo(
                 html! { <>{propagates}</> }
             });
             let results_in_conflict = info.results_in_conflict().map(|conflict| {
-                if conflict {
-                    html!{<InfoLine header="Results in conflict!" text={""} code=true />}
+                if let Some(conflict) = conflict {
+                    let text = conflict.iter().map(|(term, value)| {
+                        let value = if *value { "true" } else { "false" };
+                        format!("{} → {}", term.with(ctxt).to_string(), value)
+                    }).collect::<Vec<_>>().join(", ");
+                    html!{<InfoLine header="CONFLICT! One must hold" {text} code=true />}
                 } else {
                     html!{}
                 }

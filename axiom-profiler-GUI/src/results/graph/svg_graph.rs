@@ -13,6 +13,7 @@ use crate::{mouse_position, PrecisePosition};
 #[derive(Properties, PartialEq, Default)]
 pub struct GraphProps {
     pub rendered: Option<RenderedGraph>,
+    pub on_rerender: Callback<()>,
     pub update_selected_nodes: Callback<RawNodeIndex>,
     pub update_selected_edges: Callback<VisibleEdgeIndex>,
     pub zoom_factor: f64,
@@ -197,10 +198,12 @@ pub fn Graph(props: &GraphProps) -> Html {
     {
         let nodes_callback = props.update_selected_nodes.clone();
         let edges_callback = props.update_selected_edges.clone();
+        let on_rerender = props.on_rerender.clone();
 
         let div_ref = div_ref.clone();
         use_effect_with_deps(
             move |generation| {
+                on_rerender.emit(());
                 let (nodes, edges) = if generation.is_some() {
                     let div = div_ref
                         .cast::<Element>()
@@ -239,6 +242,7 @@ pub fn Graph(props: &GraphProps) -> Html {
                             let callback = nodes_callback.clone();
                             let mousedown: Closure<dyn Fn(Event)> =
                                 Closure::new(move |e: Event| {
+                                    e.prevent_default();
                                     e.cancel_bubble();
                                     e.stop_propagation();
                                     callback.emit(idx);
@@ -294,6 +298,7 @@ pub fn Graph(props: &GraphProps) -> Html {
                             let callback = edges_callback.clone();
                             let mousedown: Closure<dyn Fn(Event)> =
                                 Closure::new(move |e: Event| {
+                                    e.prevent_default();
                                     e.cancel_bubble();
                                     e.stop_propagation();
                                     callback.emit(idx);

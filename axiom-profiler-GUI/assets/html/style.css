@@ -33,7 +33,7 @@ div.page .overlay.hidden {
 div.page .overlay .close-button {
     position: absolute;
     top: 0;
-    right: 0;
+    left: 0;
     padding: 4px;
     color: rgba(0, 0, 0, 0.9);
     cursor: pointer;
@@ -140,6 +140,7 @@ mwc-dialog {
 .omnibox-dropdown .omnibox-options-container li {
     list-style-type: none;
     display: flex;
+    white-space: nowrap;
     gap: 4px;
     user-select: none;
     font-family: "Roboto Condensed", sans-serif;
@@ -173,6 +174,9 @@ mwc-dialog {
 
 .omnibox-dropdown .omnibox-options-container li .option-title {
     flex-grow: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+    white-space: normal;
 }
 .omnibox-dropdown .omnibox-options-container li .option-arguments {
     color: #ccc;

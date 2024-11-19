@@ -50,7 +50,7 @@ pub struct Configuration {
 impl Configuration {
     pub const fn default_display() -> DisplayConfiguration {
         DisplayConfiguration {
-            display_term_ids: false,
+            debug: false,
             display_quantifier_name: false,
             replace_symbols: SymbolReplacement::Code,
             input: None,

@@ -1,4 +1,4 @@
-use crate::{items::TermIdx, parsers::z3::synthetic::SynthIdx};
+use crate::parsers::z3::synthetic::SynthIdx;
 
 use super::MlSignature;
 
@@ -8,10 +8,10 @@ use mem_dbg::{MemDbg, MemSize};
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum MLGraphNode {
-    QI(MlSignature),
-    FixedENode(TermIdx),
+    QI(MlSignature, SynthIdx),
+    FixedENode(SynthIdx),
     RecurringENode(SynthIdx, Option<bool>),
-    FixedEquality(TermIdx, TermIdx),
+    FixedEquality(SynthIdx, SynthIdx),
     RecurringEquality(SynthIdx, SynthIdx, Option<bool>),
 }
 

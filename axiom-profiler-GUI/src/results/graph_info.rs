@@ -256,10 +256,14 @@ impl Component for GraphInfo {
             .props()
             .outdated
             .then(|| html! {<div class="outdated"></div>});
-        let hide_right_bar = self.selected_nodes.is_empty()
-            && self.selected_edges.is_empty()
-            && !(self.in_ml_viewer_mode && self.displayed_matching_loop_graph.is_some());
-        let left_bound = if hide_right_bar { 1.0 } else { 0.3 };
+        let hide_right_bar = self.selected_nodes.is_empty() && self.selected_edges.is_empty();
+        let left_bound = if self.in_ml_viewer_mode && self.displayed_matching_loop_graph.is_some() {
+            0.15
+        } else if !hide_right_bar {
+            0.25
+        } else {
+            1.0
+        };
         html! {
             <>
             <SplitDiv initial_position={0.7} {left_bound} right_bound={1.0} snap_positions={vec![0.3, 0.7, 1.0]}>

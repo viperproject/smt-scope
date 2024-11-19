@@ -284,6 +284,7 @@ impl Component for GraphContainer {
                 false
             }
             Msg::MouseDown(ev) => {
+                ev.prevent_default();
                 let pos = PagePosition::from(&ev);
                 self.drag_start = Some((pos, pos, false));
                 false
@@ -496,6 +497,7 @@ impl Component for GraphContainer {
             </div>
             <Graph
                 rendered={ctx.props().rendered.clone()}
+                on_rerender={ctx.link().callback(|_| Msg::Resize(Vec::new()))}
                 update_selected_nodes={&ctx.props().update_selected_nodes}
                 update_selected_edges={&ctx.props().update_selected_edges}
                 zoom_factor={self.zoom_factor}
@@ -504,7 +506,7 @@ impl Component for GraphContainer {
                 selected_nodes={ctx.props().selected_nodes.clone()}
                 selected_edges={ctx.props().selected_edges.clone()}
                 scroll_position={self.window.graph_position}
-                set_scroll={set_scroll}
+                {set_scroll}
                 scroll_window={self.window.scroll_window.clone()}
             ><Svg svg={self.graph.clone()}/></Graph>
         </div>

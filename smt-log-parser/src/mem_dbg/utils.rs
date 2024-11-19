@@ -78,6 +78,16 @@ impl<T> BoxSlice<T> {
         true
     };
 }
+impl<T> core::borrow::Borrow<[T]> for BoxSlice<T> {
+    fn borrow(&self) -> &[T] {
+        self
+    }
+}
+impl<T> core::borrow::BorrowMut<[T]> for BoxSlice<T> {
+    fn borrow_mut(&mut self) -> &mut [T] {
+        self
+    }
+}
 
 // InternMap
 

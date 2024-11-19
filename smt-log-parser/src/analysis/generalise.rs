@@ -1,32 +1,13 @@
 use crate::{
-    items::{Meaning, TermIdx, TermKind},
+    items::{Meaning, TermIdx},
     parsers::z3::{
         synthetic::{AnyTerm, SynthIdx, SynthTermKind, SynthTerms},
         terms::Terms,
     },
-    BoxSlice, Result,
+    Result,
 };
 
 impl SynthTerms {
-    pub fn generalise_pattern(&mut self, table: &Terms, pattern: TermIdx) -> Result<SynthIdx> {
-        let pterm = &table[pattern];
-        match pterm.kind {
-            TermKind::Var(_) => self.new_input(None),
-            kind => {
-                let child_ids: BoxSlice<_> = pterm
-                    .child_ids
-                    .iter()
-                    .map(|c| self.generalise_pattern(table, *c))
-                    .collect::<Result<_>>()?;
-                if child_ids.iter().all(|&c| self.as_tidx(c).is_some()) {
-                    Ok(pattern.into())
-                } else {
-                    self.new_synthetic(kind, child_ids)
-                }
-            }
-        }
-    }
-
     pub fn generalise_first(
         &mut self,
         table: &Terms,
@@ -170,10 +151,11 @@ impl SynthTerms {
                     }
                     true
                 }
-                &SynthTermKind::Generalised(input) => {
+                SynthTermKind::Generalised => {
                     if smaller == larger {
                         return false;
                     }
+                    let input = synth_term.child_ids[0];
                     let actual_input = self.input_replace(table, smaller, larger).ok().flatten();
                     actual_input == Some(input)
                 }

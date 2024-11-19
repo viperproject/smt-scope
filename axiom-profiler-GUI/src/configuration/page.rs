@@ -51,7 +51,7 @@ macro_rules! flag_widget {
                 <div class="flag-widget">
                     <label>{$title}</label>
                     <select {id} {onchange}>
-                        $(<option value={$to}>{if $to == default_to { concat!("Default (", $to, ")") } else { $to }}</option>)+
+                        $(<option value={$to}>{if $to == default_to { concat!($to, " (default)") } else { $to }}</option>)+
                     </select>
                     <div class="description">{$description}</div>
                 </div>
@@ -66,12 +66,12 @@ pub fn Flags(_props: &()) -> Html {
     let cfg_update = cfg.update.clone();
     let reset = Callback::from(move |_| cfg_update.reset());
     let default = Configuration::default();
-    let (display_term_ids, effect, deps) = flag_widget!(
+    let (debug, effect, deps) = flag_widget!(
         cfg,
         default,
-        display.display_term_ids,
-        "Display term IDs",
-        "Display the IDs (e.g. `#123`) of the terms as they appear in the log file in the UI.",
+        display.debug,
+        "Debug mode",
+        "Display extra information useful for developers of this tool. For example, shows the IDs (e.g. `#123`) of the terms as they appear in the log file.",
         true => "Enabled",
         false => "Disabled"
     );
@@ -93,7 +93,7 @@ pub fn Flags(_props: &()) -> Html {
         <div class="flags-page"><div class="flags-content">
             <h1>{"Configuration flags"}</h1>
             <button onclick={reset}>{"Reset configuration"}</button>
-            {display_term_ids}
+            {debug}
             {replace_symbols}
             <TermDisplayFlag cfg={cfg.clone()} />
         </div></div>

@@ -476,7 +476,15 @@ impl Component for Omnibox {
                 });
                 self.wrapper(commands)
             } else {
-                let onclick = |idx| ctx.link().callback(move |_| Msg::Picked(idx));
+                let onclick = |idx| {
+                    let link = ctx.link().clone();
+                    Callback::from(move |ev: MouseEvent| {
+                        if ev.button() != 0 || ev.ctrl_key() || ev.meta_key() || ev.alt_key() {
+                            return;
+                        }
+                        link.send_message(Msg::Picked(idx));
+                    })
+                };
                 self.wrapper(SuggestionResult::as_html(self.actions.as_ref(), self.highlighted, &self.scroll_into_view, onclick))
             };
             html! {

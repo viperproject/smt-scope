@@ -6,7 +6,7 @@ use mem_dbg::{MemDbg, MemSize};
 use crate::{
     idx,
     items::{Meaning, Term, TermId, TermIdx, TermKind},
-    BoxSlice, FxHashMap, Result, TiVec,
+    BoxSlice, FxHashMap, Result, TiVec, Z3Parser,
 };
 
 use super::terms::Terms;
@@ -18,6 +18,44 @@ pub enum AnyTerm {
     Parsed(Term),
     Synth(SynthTerm),
     Constant(Meaning),
+}
+
+impl AnyTerm {
+    pub fn check_valid(&self, is_tidx: impl Fn(SynthIdx) -> bool) {
+        if let AnyTerm::Parsed(_) = self {
+            debug_assert!(false, "Parsed term should not be inserted as synthetic!");
+        }
+        use SynthTermKind::*;
+        match self.kind() {
+            Parsed(TermKind::Var(_)) | Variable(_) | Input(_) | Constant => {
+                debug_assert_eq!(self.child_ids().len(), 0)
+            }
+            Generalised => debug_assert_eq!(self.child_ids().len(), 1),
+            Parsed(TermKind::Quant(_)) => debug_assert!(!self.child_ids().is_empty()),
+            Parsed(TermKind::App(_)) => debug_assert!(
+                self.child_ids().iter().any(|&c| !is_tidx(c)),
+                "Synthetic term must have at least one synthetic child"
+            ),
+        }
+    }
+
+    pub fn replace_child_ids(&self, child_ids: BoxSlice<SynthIdx>) -> Option<Self> {
+        assert_eq!(self.child_ids().len(), child_ids.len());
+        if self.child_ids() == &*child_ids {
+            return None;
+        }
+        match self {
+            AnyTerm::Parsed(term) => Some(AnyTerm::Synth(SynthTerm {
+                kind: SynthTermKind::Parsed(term.kind),
+                child_ids,
+            })),
+            AnyTerm::Synth(synth_term) => Some(AnyTerm::Synth(SynthTerm {
+                kind: synth_term.kind,
+                child_ids,
+            })),
+            AnyTerm::Constant(_) => unreachable!(),
+        }
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -45,7 +83,7 @@ pub enum SynthTermKind {
     /// When generalising e.g. `f(x)` and `f(g(x))` we get back a `f(_)` term
     /// where the `_` term is of kind `Generalised` and points to a `SynthIdx`
     /// term of `g($0)` where the `$0` term is of kind `Input`.
-    Generalised(SynthIdx),
+    Generalised,
     Variable(u32),
     /// When generalising e.g. `f(x)` and `f(g(x))` we get back a `f(_)` term
     /// where the `_` term is of kind `Generalised` and points to a `SynthIdx`
@@ -183,7 +221,7 @@ impl SynthTerms {
         self.insert(AnyTerm::Synth(term))
     }
 
-    pub(crate) fn _new_variable(&mut self, id: u32) -> Result<SynthIdx> {
+    pub(crate) fn new_variable(&mut self, id: u32) -> Result<SynthIdx> {
         let term = SynthTerm {
             kind: SynthTermKind::Variable(id),
             child_ids: Default::default(),
@@ -193,8 +231,8 @@ impl SynthTerms {
 
     pub(crate) fn new_generalised(&mut self, gen: SynthIdx) -> Result<SynthIdx> {
         let term = SynthTerm {
-            kind: SynthTermKind::Generalised(gen),
-            child_ids: Default::default(),
+            kind: SynthTermKind::Generalised,
+            child_ids: [gen].into_iter().collect(),
         };
         self.insert(AnyTerm::Synth(term))
     }
@@ -204,10 +242,6 @@ impl SynthTerms {
         kind: TermKind,
         child_ids: BoxSlice<SynthIdx>,
     ) -> Result<SynthIdx> {
-        assert!(
-            child_ids.iter().any(|c| self.start_idx <= c.0),
-            "Synthetic term must have at least one synthetic child"
-        );
         let term = SynthTerm {
             kind: SynthTermKind::Parsed(kind),
             child_ids,
@@ -215,7 +249,8 @@ impl SynthTerms {
         self.insert(AnyTerm::Synth(term))
     }
 
-    fn insert(&mut self, term: AnyTerm) -> Result<SynthIdx> {
+    pub(crate) fn insert(&mut self, term: AnyTerm) -> Result<SynthIdx> {
+        term.check_valid(|idx| self.as_tidx(idx).is_some());
         self.interned.try_reserve(1)?;
         match self.interned.entry(term) {
             Entry::Occupied(entry) => Ok(*entry.get()),
@@ -226,5 +261,32 @@ impl SynthTerms {
                 Ok(*entry.insert(idx))
             }
         }
+    }
+}
+
+pub trait TermWalker<'a> {
+    fn parser(&self) -> &'a Z3Parser;
+    fn walk_idx(&mut self, idx: SynthIdx) {
+        let term = self.parser().synth_terms.index(&self.parser().terms, idx);
+        if !self.walk_synth(term, idx) {
+            return;
+        }
+        if let AnyTerm::Parsed(term) = term {
+            let idx = self.parser().synth_terms.as_tidx(idx).unwrap();
+            if !self.walk_term(term, idx) {
+                return;
+            }
+        }
+        for &child in term.child_ids() {
+            self.walk_idx(child);
+        }
+    }
+    /// Return `false` to stop walking the children of this term.
+    fn walk_synth(&mut self, _term: &'a AnyTerm, _idx: SynthIdx) -> bool {
+        true
+    }
+    /// Return `false` to stop walking the children of this term.
+    fn walk_term(&mut self, _term: &'a Term, _idx: TermIdx) -> bool {
+        true
     }
 }

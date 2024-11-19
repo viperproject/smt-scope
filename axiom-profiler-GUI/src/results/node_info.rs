@@ -16,7 +16,7 @@ use yew::{
 
 use crate::{configuration::ConfigurationProvider, state::StateProvider};
 
-use super::svg_result::RenderedGraph;
+use super::{graphviz::DotNodeProperties, svg_result::RenderedGraph};
 
 #[derive(Properties, PartialEq)]
 pub struct InfoLineProps {
@@ -64,42 +64,9 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         }
     }
     pub fn description(&self, char_limit: Option<NonMaxU32>) -> Html {
-        let description = self.tooltip(true, char_limit);
+        let description = self.node.kind().tooltip((*self.ctxt, true, char_limit));
         let description = format!("<code>{description}</code>");
         Html::from_html_unchecked(AttrValue::from(description))
-    }
-    // TODO: rename
-    pub fn tooltip(&self, html: bool, char_limit: Option<NonMaxU32>) -> String {
-        let mut ctxt = DisplayCtxt {
-            parser: self.ctxt.parser,
-            term_display: self.ctxt.term_display,
-            config: self.ctxt.config,
-        };
-        ctxt.config.html = html;
-        ctxt.config.enode_char_limit = char_limit;
-        match *self.node.kind() {
-            NodeKind::ENode(enode) => {
-                ctxt.config.enode_char_limit = ctxt
-                    .config
-                    .enode_char_limit
-                    .and_then(|limit| NonMaxU32::new(limit.get() * 2));
-                enode.with(&ctxt).to_string()
-            }
-            NodeKind::GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
-            NodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
-            NodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
-                MatchKind::MBQI { quant, .. } => ctxt.parser[*quant].kind.with(&ctxt).to_string(),
-                MatchKind::TheorySolving { axiom_id, .. } => {
-                    let namespace = &ctxt.parser[axiom_id.namespace];
-                    let id = axiom_id.id.map(|id| id.to_string()).unwrap_or_default();
-                    format!("{namespace}[{id}]")
-                }
-                MatchKind::Axiom { axiom, .. } => ctxt.parser[*axiom].kind.with(&ctxt).to_string(),
-                MatchKind::Quantifier { quant, .. } => {
-                    ctxt.parser[*quant].kind.with(&ctxt).to_string()
-                }
-            },
-        }
     }
 
     pub fn quantifier_body(&self) -> Option<String> {
@@ -156,7 +123,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 .enumerate()
                 .map(|(idx, bound)| {
                     let name =
-                        VarNames::get_name(&self.ctxt.parser.strings, vars, idx, &self.ctxt.config);
+                        VarNames::get_name(&self.ctxt.parser.strings, vars, idx, self.ctxt.config);
                     format!("{name} ↦ {bound}")
                 })
                 .collect(),
@@ -442,11 +409,7 @@ pub fn SelectedEdgesInfo(
         let summary = format!("[{}] {}", info.index(), info.kind());
         // Get info about blamed node
         let blame = graph.raw.index(info.kind.blame(&graph));
-        let blame = NodeInfo {
-            node: &graph.raw[blame],
-            ctxt,
-        };
-        let blame = blame.tooltip(true, None);
+        let blame = graph.raw[blame].kind().tooltip((*ctxt, true, None));
         html! {
             <details {open} {onclick}>
                 <summary>{summary}</summary>

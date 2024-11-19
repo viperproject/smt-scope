@@ -50,6 +50,7 @@ impl MlOutput<'_> {
                 let members = [longest_leaf].into_iter().chain(members).collect();
                 let expl = MlExplainer::new();
                 let graph = expl.explain_leaf(&self, parser, longest_leaf, gen);
+                let graph = graph.and_then(|g| MlExplainer::simplify_terms(g, parser));
                 matching_loops.push(MatchingLoop {
                     sig,
                     leaves,
@@ -73,7 +74,8 @@ impl MlOutput<'_> {
         }
         matching_loops.sort_unstable_by_key(|ml| {
             let (len, leaf) = ml.leaves.0[0];
-            (ml.graph.is_some(), u32::MAX - len, leaf)
+            let has_graph = ml.graph.as_ref().is_some_and(|g| g.1.is_some());
+            (has_graph, ml.graph.is_some(), u32::MAX - len, leaf)
         });
         MlData {
             signatures: self.signatures,
@@ -298,7 +300,7 @@ impl MlAnalysisInner<'_> {
             .zip(larger.iter())
             .map(|(smaller, larger)| {
                 // println!(
-                //     "\nsmaller: {:?}\nlarger: {:?}",
+                //     "\nsmaller: {:?}\nlarger : {:?}",
                 //     smaller.owner.debug(self.parser),
                 //     larger.owner.debug(self.parser)
                 // );
@@ -307,7 +309,7 @@ impl MlAnalysisInner<'_> {
                     .synth_terms
                     .generalise_first(&self.parser.terms, smaller.owner, larger.owner)
                     .unwrap()?;
-                // println!("result: {:?}", enode.debug(self.parser));
+                // println!("result  : {:?}", enode.debug(self.parser));
                 assert_eq!(smaller.equalities.len(), larger.equalities.len());
                 let equalities = smaller
                     .equalities
@@ -315,7 +317,7 @@ impl MlAnalysisInner<'_> {
                     .zip(larger.equalities.iter())
                     .map(|(self_eq, other_eq)| {
                         // println!(
-                        //     "\nsmaller 1: {:?}\nlarger 1: {:?}",
+                        //     "\nsmaller 1: {:?}\nlarger 1 : {:?}",
                         //     self_eq.1.debug(self.parser),
                         //     other_eq.1.debug(self.parser)
                         // );
@@ -324,7 +326,7 @@ impl MlAnalysisInner<'_> {
                             .synth_terms
                             .generalise_first(&self.parser.terms, self_eq.1, other_eq.1)
                             .unwrap()?;
-                        // println!("result: {:?}", from.debug(self.parser));
+                        // println!("result   : {:?}", from.debug(self.parser));
                         // println!(
                         //     "\nsmaller 2: {:?}\nlarger 2 : {:?}",
                         //     self_eq.2.debug(self.parser),
@@ -576,9 +578,11 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
                 if gen.is_some() {
                     debug_assert!(max_depth > 0);
                     max_ungen_depth = 0;
+                    // println!("gen a: {:?} ({max_depth})", gen);
                 } else {
                     debug_assert!(max_depth == 0);
                     gen = self.inner.generalise(&prev_info.blames, &curr_info.blames);
+                    // println!("gen b: {:?} | {:?}\n", gen, prev_info.tree_above);
                 }
 
                 let link = MlLinkInfo {

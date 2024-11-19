@@ -3,11 +3,14 @@ use petgraph::graph::NodeIndex;
 
 use crate::{
     items::{
-        ENodeIdx, EqGivenUse, EqTransIdx, EqualityExpl, InstIdx, TransitiveExplSegment,
-        TransitiveExplSegmentKind,
+        ENodeIdx, EqGivenUse, EqTransIdx, EqualityExpl, InstIdx, Term, TermIdx, TermKind,
+        TransitiveExplSegment, TransitiveExplSegmentKind,
     },
-    parsers::z3::egraph::{Equalities, EqualityWalker},
-    FxHashMap, Graph, Z3Parser,
+    parsers::z3::{
+        egraph::{Equalities, EqualityWalker},
+        synthetic::{AnyTerm, SynthIdx},
+    },
+    BoxSlice, FxHashMap, Graph, IString, Result, Z3Parser,
 };
 
 use super::{GenIdx, MLGraphEdge, MLGraphNode, MlExplanation, MlOutput};
@@ -20,11 +23,6 @@ pub struct MlExplainer {
     fixed_equalities: FxHashMap<EqTransIdx, NodeIndex>,
     instantiations: FxHashMap<InstIdx, NodeIndex>,
 }
-
-// struct InstGraphNodes {
-//     inst: NodeIndex,
-//     blame: Box<[GeneralisedBlame<NodeIndex>]>,
-// }
 
 impl MlExplainer {
     pub fn new() -> Self {
@@ -41,10 +39,10 @@ impl MlExplainer {
     pub fn explain_leaf(
         mut self,
         ml_out: &MlOutput,
-        parser: &Z3Parser,
+        parser: &mut Z3Parser,
         leaf: InstIdx,
         gen: GenIdx,
-    ) -> Option<MlExplanation> {
+    ) -> Option<Self> {
         let leaf_info = &ml_out.node_to_ml[&leaf];
         let mut above = leaf_info.walk_gen(&ml_out.node_to_ml, gen);
 
@@ -60,6 +58,7 @@ impl MlExplainer {
         let mut others2 = MlOutput::others_between(ml_out.topo, above2, above1);
         assert!(others2.remove(&above1));
 
+        // println!("HAVE: {above2:?} -> {others2:?} -> {above1:?} -> {others1:?} -> {leaf:?}");
         // We now have `above2 -> {others2} -> above1 -> {others1} -> leaf`,
         // next we try to link all `others1` and `others2`.
 
@@ -67,16 +66,20 @@ impl MlExplainer {
             .into_iter()
             .map(|other1| {
                 let other1_info = &ml_out.node_to_ml[&other1];
-                let other2_link = other1_info.walk_gen(&ml_out.node_to_ml, gen).next()?;
-                let other2 = other2_link.prev;
-                if others2.remove(&other2) {
-                    Some((other1, other2, other2_link.gen.unwrap(), Vec::new()))
+                let other2_link = other1_info
+                    .tree_above
+                    .iter()
+                    .find(|&above| others2.remove(&above.prev))?;
+                if let Some(gen) = other2_link.gen {
+                    Some((other1, other2_link.prev, gen, Vec::new()))
                 } else {
+                    debug_assert!(false, "No gen for other2_link");
                     None
                 }
             })
             .collect::<Option<Box<[_]>>>()?;
         if !others2.is_empty() {
+            debug_assert!(false, "others2 is not empty");
             return None;
         }
         // `InstIdx` are a partial order, so due to this sort we will always add
@@ -94,20 +97,21 @@ impl MlExplainer {
             self.add_inst_deps(ml_out, parser, other1, gen, recurring)?;
         }
 
-        Some(self.graph)
+        Some(self)
     }
 
     fn add_inst(
         &mut self,
         ml_out: &MlOutput,
-        parser: &Z3Parser,
+        parser: &mut Z3Parser,
         prev: InstIdx,
         gen: GenIdx,
     ) -> Vec<(usize, Option<usize>)> {
         let prev_info = &ml_out.node_to_ml[&prev];
 
         let sig = ml_out.signatures[prev_info.ml_sig].clone();
-        let prev_inst = self.graph.add_node(MLGraphNode::QI(sig));
+        let pattern = sig.pattern.into();
+        let prev_inst = self.graph.add_node(MLGraphNode::QI(sig, pattern));
         let old = self.instantiations.insert(prev, prev_inst);
         assert!(old.is_none());
 
@@ -123,6 +127,7 @@ impl MlExplainer {
             let enode = *self.enodes.entry(blame.enode).or_insert_with(|| {
                 added = true;
                 let data = fixed_enode
+                    .map(SynthIdx::from)
                     .map(MLGraphNode::FixedENode)
                     .unwrap_or(MLGraphNode::RecurringENode(gen.enode, Some(true)));
                 self.graph.add_node(data)
@@ -155,7 +160,7 @@ impl MlExplainer {
                 let eq = *equalities.entry(eqidx).or_insert_with(|| {
                     added = true;
                     let data = from_to
-                        .map(|(from, to)| MLGraphNode::FixedEquality(from, to))
+                        .map(|(from, to)| MLGraphNode::FixedEquality(from.into(), to.into()))
                         .unwrap_or(MLGraphNode::RecurringEquality(from, to, Some(true)));
                     self.graph.add_node(data)
                 });
@@ -300,7 +305,7 @@ impl MlExplainer {
                 if self.add_mode {
                     let (from, to) = (eq_expl.from(), eq_expl.to());
                     let (from, to) = (self.parser[from].owner, self.parser[to].owner);
-                    let data = MLGraphNode::FixedEquality(from, to);
+                    let data = MLGraphNode::FixedEquality(from.into(), to.into());
                     let enode = self.explainer.graph.add_node(data);
                     self.explainer
                         .graph
@@ -354,7 +359,7 @@ impl MlExplainer {
                                     let (from, to) = self.parser.egraph.equalities.from_to(eq);
                                     let (from, to) =
                                         (self.parser[from].owner, self.parser[to].owner);
-                                    let data = MLGraphNode::FixedEquality(from, to);
+                                    let data = MLGraphNode::FixedEquality(from.into(), to.into());
                                     self.explainer.graph.add_node(data)
                                 });
                         self.explainer
@@ -396,112 +401,145 @@ impl MlExplainer {
         walker.ancestor_is_recurring
     }
 
-    // fn _add_inst(
-    //     &mut self,
-    //     ml_out: &MlOutput,
-    //     parser: &mut Z3Parser,
-    //     iidx: InstIdx,
-    //     gen: GenIdx,
-    // ) -> InstGraphNodes {
-    //     let gen = &ml_out.gens[gen];
+    pub fn simplify_terms(mut self, parser: &mut Z3Parser) -> Option<MlExplanation> {
+        let mut collector = QVarParentCollector::new(parser);
+        for &i in self.instantiations.values() {
+            let MLGraphNode::QI(_, pattern) = &self.graph[i] else {
+                unreachable!();
+            };
+            let pattern = parser.synth_terms.as_tidx(*pattern).unwrap();
+            let has_qvars = collector.collect_term(pattern);
+            debug_assert!(has_qvars);
+        }
+        let mut simplifier = TermSimplifier {
+            forbidden_apps: collector.forbidden_apps,
+            parser,
+            simplifications: FxHashMap::default(),
+            stack: Vec::new(),
+        };
+        for i in self.graph.node_indices() {
+            simplifier.simplify_node(&mut self.graph[i]).ok()?;
+        }
+        Some(self.graph)
+    }
+}
 
-    //     let inst = &ml_out.node_to_ml[&iidx];
-    //     let sig = ml_out.ml_leaves[inst.ml_sig].sig.clone();
-    //     let gen_pat = parser
-    //         .synth_terms
-    //         .generalise_pattern(&parser.terms, sig.pattern)
-    //         .unwrap();
-    //     let node = MLGraphNode::QI(sig, gen_pat);
-    //     let inst = self.graph.add_node(node);
+struct QVarParentCollector<'a> {
+    parser: &'a Z3Parser,
+    stack: Vec<IString>,
+    forbidden_apps: FxHashSet<BoxSlice<IString>>,
+}
 
-    //     let blame = gen
-    //         .iter()
-    //         .enumerate()
-    //         .map(|(idx, gen)| {
-    //             let enode = match gen.enode.and_then(|enode| parser.as_tidx(enode)) {
-    //                 Some(enode) => {
-    //                     NodeIndex::new(*self.fixed_enodes.entry(enode).or_insert_with(|| {
-    //                         self.graph.add_node(MLGraphNode::FixedENode(enode)).index()
-    //                     }))
-    //                 }
-    //                 None => self.graph.add_node(MLGraphNode::RecurringENode(gen.enode)),
-    //             };
-    //             self.graph.add_edge(enode, inst, MLGraphEdge::Blame(idx));
+impl<'a> QVarParentCollector<'a> {
+    fn new(parser: &'a Z3Parser) -> Self {
+        Self {
+            parser,
+            stack: Default::default(),
+            forbidden_apps: Default::default(),
+        }
+    }
+    fn collect_term(&mut self, tidx: TermIdx) -> bool {
+        let term = &self.parser[tidx];
+        match term.kind {
+            TermKind::Var(_) => true,
+            TermKind::App(app) => {
+                self.stack.push(app);
 
-    //             let equalities: Box<[_]> = gen
-    //                 .equalities
-    //                 .iter()
-    //                 .map(|&(from, to)| {
-    //                     let from_to = from
-    //                         .zip(to)
-    //                         .and_then(|(from, to)| parser.as_tidx(from).zip(parser.as_tidx(to)));
-    //                     let eq = match from_to {
-    //                         Some((from, to)) => NodeIndex::new(
-    //                             *self.fixed_equalities.entry((from, to)).or_insert_with(|| {
-    //                                 self.graph
-    //                                     .add_node(MLGraphNode::FixedEquality(from, to))
-    //                                     .index()
-    //                             }),
-    //                         ),
-    //                         None => self
-    //                             .graph
-    //                             .add_node(MLGraphNode::RecurringEquality(from, to)),
-    //                     };
-    //                     self.graph.add_edge(eq, inst, MLGraphEdge::BlameEq(idx));
-    //                     (eq, eq)
-    //                 })
-    //                 .collect();
-    //             GeneralisedBlame { enode, equalities }
-    //         })
-    //         .collect();
-    //     InstGraphNodes { inst, blame }
-    // }
+                let mut has_qvar = false;
+                for &child in term.child_ids.iter() {
+                    has_qvar |= self.collect_term(child);
+                }
 
-    // fn _add_dependencies(
-    //     &mut self,
-    //     parser: &Z3Parser,
-    //     iidx: InstIdx,
-    //     idata: &InstGraphNodes,
-    //     insts_map: impl Fn(InstIdx) -> Option<(NodeIndex, bool)>,
-    // ) {
-    //     let inst = &parser[iidx];
-    //     let match_ = &parser[inst.match_];
-    //     for (i, tm) in match_.trigger_matches().enumerate() {
-    //         let curr_idata = &idata.blame[i];
+                if has_qvar {
+                    // I have qvars so prevent sequences of terms like me being
+                    // replaced.
+                    for i in 0..self.stack.len() {
+                        let forbidden_app = self.stack[i..].iter().copied().collect();
+                        self.forbidden_apps.insert(forbidden_app);
+                    }
+                }
 
-    //         let tm_enode = tm.enode();
-    //         let blame = &parser[tm_enode];
-    //         if let Some(created_by) = blame.created_by {
-    //             if let Some((created_by, rec)) = insts_map(created_by) {
-    //                 self.graph
-    //                     .add_edge(created_by, curr_idata.enode, MLGraphEdge::Yield(rec));
-    //             }
-    //         }
+                self.stack.pop();
+                has_qvar
+            }
+            TermKind::Quant(..) => unreachable!(),
+        }
+    }
+}
 
-    //         for (i, eq) in tm
-    //             .equalities()
-    //             .filter(|&eq| parser[eq].given_len > 0)
-    //             .enumerate()
-    //         {
-    //             parser.egraph.walk_trans(eq, |given, _| {
-    //                 let EqualityExpl::Literal { eq, .. } = &parser[given] else {
-    //                     return;
-    //                 };
-    //                 let eq = &parser[*eq];
-    //                 if let Some((created_by, rec)) = eq.created_by.and_then(&insts_map) {
-    //                     self.graph.add_edge(
-    //                         created_by,
-    //                         curr_idata.equalities[i].0,
-    //                         MLGraphEdge::YieldEq(rec),
-    //                     );
-    //                 }
-    //                 // else {
-    //                 //     let fixed = self.graph.add_node(MLGraphNode::FixedEquality(eq.owner));
-    //                 //     self.graph
-    //                 //         .add_edge(fixed, curr_idata.1[i], MLGraphEdge::FixedEquality);
-    //                 // }
-    //             });
-    //         }
-    //     }
-    // }
+struct TermSimplifier<'a> {
+    parser: &'a mut Z3Parser,
+    simplifications: FxHashMap<TermIdx, SynthIdx>,
+
+    stack: Vec<IString>,
+    forbidden_apps: FxHashSet<BoxSlice<IString>>,
+}
+
+impl TermSimplifier<'_> {
+    fn simplify_node(&mut self, node: &mut MLGraphNode) -> Result<()> {
+        match node {
+            MLGraphNode::QI(_, idx)
+            | MLGraphNode::FixedENode(idx)
+            | MLGraphNode::RecurringENode(idx, _) => {
+                *idx = self.simplify_term(*idx)?;
+            }
+            MLGraphNode::FixedEquality(lhs, rhs) | MLGraphNode::RecurringEquality(lhs, rhs, _) => {
+                *lhs = self.simplify_term(*lhs)?;
+                *rhs = self.simplify_term(*rhs)?;
+            }
+        };
+        Ok(())
+    }
+
+    fn simplify_term(&mut self, idx: SynthIdx) -> Result<SynthIdx> {
+        let tidx = self.parser.synth_terms.as_tidx(idx);
+        if let Some(tidx) = tidx.and_then(|tidx| self.simplifications.get(&tidx)) {
+            return Ok(*tidx);
+        }
+        let term = &self.parser[idx];
+
+        // Do not simplify terms with no children.
+        if term.child_ids().is_empty() {
+            return Ok(idx);
+        }
+
+        let must_pop = &mut false;
+        match term {
+            AnyTerm::Parsed(Term {
+                kind: TermKind::App(name),
+                ..
+            }) if {
+                self.stack.push(*name);
+                *must_pop = true;
+                !self.forbidden_apps.contains(self.stack.as_slice())
+            } =>
+            {
+                self.stack.pop();
+
+                let next = self.simplifications.len();
+                let new = self.parser.synth_terms.new_variable(next as u32)?;
+                let old = self.simplifications.insert(tidx.unwrap(), new);
+                // Should have returned early above if it was already contained.
+                assert!(old.is_none());
+                Ok(new)
+            }
+            _ => {
+                let mut child_ids = Vec::<SynthIdx>::new();
+                child_ids.try_reserve_exact(term.child_ids().len())?;
+                for i in 0..term.child_ids().len() {
+                    let child = self.parser[idx].child_ids()[i];
+                    let new = self.simplify_term(child)?;
+                    child_ids.push(new);
+                }
+                if *must_pop {
+                    self.stack.pop();
+                }
+                let term = self.parser[idx].replace_child_ids(child_ids.into());
+                let term = term
+                    .map(|term| self.parser.synth_terms.insert(term))
+                    .transpose()?;
+                Ok(term.unwrap_or(idx))
+            }
+        }
+    }
 }

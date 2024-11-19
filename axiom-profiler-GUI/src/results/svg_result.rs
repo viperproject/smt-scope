@@ -4,7 +4,8 @@ use crate::{
     results::{
         filters::FilterOutput,
         graph_info::{GraphInfo, Msg as GraphInfoMsg},
-        node_info::{EdgeInfo, NodeInfo},
+        graphviz::DotNodeProperties,
+        node_info::EdgeInfo,
     },
     state::StateContext,
     OpenedFileInfo,
@@ -23,12 +24,10 @@ use petgraph::{
 };
 use smt_log_parser::{
     analysis::{
-        analysis::matching_loop::{MLGraphNode, MatchingLoop},
-        raw::NodeKind,
-        visible::VisibleInstGraph,
-        InstGraph, RawNodeIndex, VisibleEdgeIndex,
+        analysis::matching_loop::MatchingLoop, raw::NodeKind, visible::VisibleInstGraph, InstGraph,
+        RawNodeIndex, VisibleEdgeIndex,
     },
-    display_with::{DisplayCtxt, DisplayWithCtxt},
+    display_with::DisplayCtxt,
     items::QuantIdx,
     NonMaxU32,
 };
@@ -40,8 +39,6 @@ use yew::prelude::*;
 pub const EDGE_LIMIT: usize = 2000;
 pub const NODE_LIMIT: usize = 4000;
 pub const DEFAULT_NODE_COUNT: usize = 300;
-pub const NODE_COLOUR_SATURATION: f64 = 0.4;
-pub const NODE_COLOUR_VALUE: f64 = 0.95;
 pub const AST_DEPTH_LIMIT: NonMaxU32 = unsafe { NonMaxU32::new_unchecked(5) };
 
 #[derive(Clone)]
@@ -318,7 +315,7 @@ impl Component for SVGResult {
                         .emit(GraphState::Rendering(RenderingState::GraphToDot));
                     let filtered_graph = &calculated.graph;
                     let cfg = ctx.link().get_configuration().unwrap();
-                    let ctxt = &DisplayCtxt {
+                    let ctxt = DisplayCtxt {
                         parser: &parser.borrow(),
                         term_display: &data.state.term_display,
                         config: cfg.config.display,
@@ -362,7 +359,7 @@ impl Component for SVGResult {
                                     from,
                                     to,
                                     graph: &*inst_graph,
-                                    ctxt,
+                                    ctxt: &ctxt,
                                 };
                                 let tooltip = info.tooltip();
                                 let is_indirect = edge_data.weight().is_indirect(inst_graph);
@@ -387,55 +384,17 @@ impl Component for SVGResult {
                                 )
                             },
                             &|_, (_, data)| {
-                                let node_data = &inst_graph.raw[data.idx];
-                                let info = NodeInfo {
-                                    node: node_data,
-                                    ctxt,
-                                };
-                                let tooltip = info.tooltip(false, None);
-                                let mut style = Some("filled");
-                                let mut shape = None;
-                                let mut fillcolor = Some("white".to_string());
-                                let label = node_data.kind().to_string();
-                                match node_data.kind() {
-                                    NodeKind::Instantiation(inst) => {
-                                        let mkind = &(&*parser.borrow())
-                                            [(&*parser.borrow())[*inst].match_]
-                                            .kind;
-                                        style = Some(if mkind.is_mbqi() {
-                                            "filled,dashed"
-                                        } else {
-                                            "filled"
-                                        });
-                                        let s = match (data.hidden_children, data.hidden_parents) {
-                                            (0, 0) => "box",
-                                            (0, _) => "house",
-                                            (_, 0) => "invhouse",
-                                            (_, _) => "diamond",
-                                        };
-                                        shape = Some(s);
-                                        let hue =
-                                            rc_parser.colour_map.get_rbg_hue(mkind.quant_idx())
-                                                / 360.0;
-                                        fillcolor = Some(format!(
-                                            "{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}"
-                                        ));
-                                    }
-                                    NodeKind::ENode(..) => {
-                                        fillcolor = Some("lightgrey".to_string());
-                                    }
-                                    _ => (),
-                                };
                                 let idx = data.idx.0.index();
-                                let style =
-                                    style.map(|s| format!(" style=\"{s}\"")).unwrap_or_default();
-                                let shape =
-                                    shape.map(|s| format!(" shape={s}")).unwrap_or_default();
-                                let fillcolor = fillcolor
-                                    .map(|s| format!(" fillcolor=\"{s}\""))
-                                    .unwrap_or_default();
+                                let node_data = &inst_graph.raw[data.idx];
+                                let all = node_data.kind().all(
+                                    (),
+                                    (ctxt, false, None),
+                                    ctxt.parser,
+                                    (data.hidden_parents, data.hidden_children),
+                                    (ctxt.parser, rc_parser.colour_map),
+                                );
                                 // For nodes the `id` is the `RawNodeIndex` from the original graph!
-                                format!("id=node_{idx} tooltip=\"{tooltip}\" label=\"{label}\"{style}{shape}{fillcolor}")
+                                format!("id=node_{idx} {all}")
                             },
                         )
                     );
@@ -556,47 +515,7 @@ impl Component for SVGResult {
                         ],
                         &|_, edge| format!("label=\"{:?}\"", edge.weight()),
                         &|_, (_, node_data)| {
-                            let label = match *node_data {
-                                MLGraphNode::QI(ref sig) => format!(
-                                    "{}: {}",
-                                    rc_parser.parser.borrow()[sig.quantifier].kind.with(&ctxt),
-                                    sig.pattern.with(&ctxt)
-                                ),
-                                MLGraphNode::FixedENode(matched_term) => {
-                                    format!("{}", matched_term.with(&ctxt))
-                                }
-                                MLGraphNode::RecurringENode(matched_term, input) => {
-                                    let mut ctxt = ctxt;
-                                    ctxt.config.input = input;
-                                    format!("{} ({input:?})", matched_term.with(&ctxt))
-                                }
-                                MLGraphNode::FixedEquality(from, to) => {
-                                    format!("{} = {}", from.with(&ctxt), to.with(&ctxt))
-                                }
-                                MLGraphNode::RecurringEquality(from, to, input) => {
-                                    let mut ctxt = ctxt;
-                                    ctxt.config.input = input;
-                                    format!("{} = {} ({input:?})", from.with(&ctxt), to.with(&ctxt))
-                                }
-                            };
-                            format!(
-                                "label=<{label}> shape=\"{}\" style=filled fillcolor=\"{}\"",
-                                "box",
-                                match &node_data {
-                                    MLGraphNode::QI(sig) => {
-                                        let hue =
-                                            rc_parser.colour_map.get_rbg_hue(Some(sig.quantifier))
-                                                / 360.0;
-                                        format!(
-                                            "{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}"
-                                        )
-                                    }
-                                    MLGraphNode::FixedENode(..)
-                                    | MLGraphNode::RecurringENode(..) => "lightgrey".to_string(),
-                                    MLGraphNode::FixedEquality(..)
-                                    | MLGraphNode::RecurringEquality(..) => "white".to_string(),
-                                }
-                            )
+                            node_data.all(ctxt, (), (), (), rc_parser.colour_map)
                         },
                     )
                 );

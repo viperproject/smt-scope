@@ -1,10 +1,14 @@
 use std::rc::Rc;
 
-use crate::{state::StateProvider, utils::split_div::SplitDiv};
+use crate::{
+    state::{StateContext, StateProvider},
+    utils::split_div::SplitDiv,
+};
 use indexmap::map::{Entry, IndexMap};
 use material_yew::WeakComponentLink;
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
 use smt_log_parser::analysis::{RawNodeIndex, VisibleEdgeIndex};
+use wasm_bindgen::JsCast;
 use yew::prelude::*;
 
 use super::{
@@ -18,8 +22,9 @@ pub struct GraphInfo {
     selected_edges: IndexMap<VisibleEdgeIndex, bool>,
     generalized_terms: Vec<String>,
     graph_container: WeakComponentLink<graph_container::GraphContainer>,
-    displayed_matching_loop_graph: Option<AttrValue>,
+    displayed_matching_loop_graph: Option<(usize, AttrValue)>,
     in_ml_viewer_mode: bool,
+    ml_graph_div: NodeRef,
     _context_listener: ContextHandle<Rc<StateProvider>>,
 }
 
@@ -60,8 +65,9 @@ pub enum Msg {
     DeselectAll,
     SelectAll,
     ShowGeneralizedTerms(Vec<String>),
-    ShowMatchingLoopGraph(Option<AttrValue>),
+    ShowMatchingLoopGraph(Option<(usize, AttrValue)>),
     ContextUpdated(Rc<StateProvider>),
+    DownloadMatchingLoopGraph(MouseEvent, usize),
 }
 
 #[derive(Properties, PartialEq)]
@@ -111,6 +117,7 @@ impl Component for GraphInfo {
             graph_container: WeakComponentLink::default(),
             displayed_matching_loop_graph: None,
             in_ml_viewer_mode: state.state.ml_viewer_mode,
+            ml_graph_div: NodeRef::default(),
             _context_listener: context_listener,
         }
     }
@@ -229,6 +236,36 @@ impl Component for GraphInfo {
                     false
                 }
             }
+            Msg::DownloadMatchingLoopGraph(ev, ml_idx) => {
+                ev.prevent_default();
+                let Some(graph) = self.ml_graph_div.cast::<web_sys::Element>() else {
+                    return false;
+                };
+                let data = ctx.link().get_state().unwrap();
+                let info = data.state.file_info.as_ref().unwrap();
+                let filename = format!(
+                    "{}_ml_{}.svg",
+                    info.name.split('.').next().unwrap(),
+                    ml_idx + 1
+                );
+
+                let svg = graph.inner_html();
+                let blob = web_sys::Blob::new_with_str_sequence(&vec![svg].into())
+                    .expect("Failed to create blob");
+                let url = web_sys::Url::create_object_url_with_blob(&blob)
+                    .expect("Failed to create object URL");
+                let download = gloo::utils::document()
+                    .create_element("a")
+                    .expect("Failed to create element");
+                let download = download
+                    .dyn_into::<web_sys::HtmlAnchorElement>()
+                    .expect("Failed to cast element");
+                download.set_href(&url);
+                download.set_download(&filename);
+                download.click();
+                web_sys::Url::revoke_object_url(&url).expect("Failed to revoke object URL");
+                false
+            }
         }
     }
 
@@ -264,6 +301,24 @@ impl Component for GraphInfo {
         } else {
             1.0
         };
+        let ml_graph = if let Some((ml_idx, graph)) = &self.displayed_matching_loop_graph {
+            if self.in_ml_viewer_mode {
+                let ml_idx = *ml_idx;
+                let onclick = ctx
+                    .link()
+                    .callback(move |ev| Msg::DownloadMatchingLoopGraph(ev, ml_idx));
+                html! {
+                    <>
+                        <h2>{"Displayed Matching Loop "}<a href="#" class="download" title="Download" {onclick}>{"💾"}</a></h2>
+                        <div style="overflow-x: auto;" ref={&self.ml_graph_div}>{Html::from_html_unchecked(graph.clone())}</div>
+                    </>
+                }
+            } else {
+                html! {}
+            }
+        } else {
+            html! {}
+        };
         html! {
             <>
             <SplitDiv initial_position={0.7} {left_bound} right_bound={1.0} snap_positions={vec![0.3, 0.7, 1.0]}>
@@ -281,29 +336,30 @@ impl Component for GraphInfo {
                 <div style="width:100%; height:100%; overflow-wrap:anywhere; overflow:clip auto;">
                     <SelectedNodesInfo selected_nodes={self.selected_nodes.iter().map(|(k, v)| (*k, *v)).collect::<Vec<_>>()} on_click={on_node_click} />
                     <SelectedEdgesInfo selected_edges={self.selected_edges.iter().map(|(k, v)| (*k, *v)).collect::<Vec<_>>()} rendered={ctx.props().rendered.clone()} on_click={on_edge_click} />
-                    { if let Some(graph) = &self.displayed_matching_loop_graph {
-                        if self.in_ml_viewer_mode {
-                            html!{
-                                <>
-                                    <h2>{"Information on Displayed Matching Loop"}</h2>
-                                    <div style="overflow-x: auto;">{Html::from_html_unchecked(graph.clone())}</div>
-                                </>
-                            }
-                        } else {
-                            html!{}
-                        }
-                    } else {
-                        html!{}
-                    }}
-                    // TODO: re-add matching loops
-                    // <h2>{"Information about displayed matching loop:"}</h2>
-                    // <div>
-                    //     <ul>{for generalized_terms}</ul>
-                    // </div>
+                    {ml_graph}
                 </div>
             </SplitDiv>
             {outdated}
             </>
         }
     }
+
+    // fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+    //     use wasm_bindgen::JsCast;
+    //     use web_sys::{Element, SvgsvgElement};
+    //     let c = self.ml_graph_container.cast::<Element>();
+    //     let c = c.and_then(|c| c.get_elements_by_tag_name("svg").item(0));
+    //     if let Some(el) = c {
+    //         let svg_el = el.dyn_into::<SvgsvgElement>().ok().unwrap();
+    //         if !svg_el.class_list().contains("cropped") {
+    //             svg_el.class_list().add_1("cropped").ok();
+    //             let mut view_box = svg_el.get_view_box().unwrap();
+    //             view_box.y += 100.0;
+    //             view_box.height -= 200.0;
+    //             svg_el.set_view_box(view_box).unwrap();
+    //             let height = svg_el.get_height().unwrap();
+    //             svg_el.set_height(height - 200.0).unwrap();
+    //         }
+    //     }
+    // }
 }

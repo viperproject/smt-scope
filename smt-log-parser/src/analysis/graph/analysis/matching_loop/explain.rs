@@ -2,6 +2,7 @@ use fxhash::FxHashSet;
 use petgraph::graph::NodeIndex;
 
 use crate::{
+    analysis::analysis::matching_loop::{RecurrenceKind, SimpIdx},
     items::{
         ENodeIdx, EqGivenUse, EqTransIdx, EqualityExpl, InstIdx, Term, TermIdx, TermKind,
         TransitiveExplSegment, TransitiveExplSegmentKind,
@@ -18,21 +19,32 @@ use super::{GenIdx, MLGraphEdge, MLGraphNode, MlExplanation, MlOutput};
 pub struct MlExplainer {
     pub graph: MlExplanation,
 
+    in_node: NodeIndex,
+    out_node: NodeIndex,
+    fixed_node: Option<NodeIndex>,
     enodes: FxHashMap<ENodeIdx, NodeIndex>,
     recurring_equalities: FxHashMap<EqTransIdx, NodeIndex>,
     fixed_equalities: FxHashMap<EqTransIdx, NodeIndex>,
     instantiations: FxHashMap<InstIdx, NodeIndex>,
+    rec_count: u32,
 }
 
 impl MlExplainer {
     pub fn new() -> Self {
+        let mut graph = Graph::with_capacity(0, 0);
+        let in_node = graph.add_node(MLGraphNode::HiddenNode(Some(true)));
+        let out_node = graph.add_node(MLGraphNode::HiddenNode(Some(false)));
         Self {
-            graph: Graph::with_capacity(0, 0),
+            graph,
 
+            in_node,
+            out_node,
+            fixed_node: None,
             enodes: FxHashMap::default(),
             recurring_equalities: FxHashMap::default(),
             fixed_equalities: FxHashMap::default(),
             instantiations: FxHashMap::default(),
+            rec_count: 0,
         }
     }
 
@@ -106,7 +118,7 @@ impl MlExplainer {
         parser: &mut Z3Parser,
         prev: InstIdx,
         gen: GenIdx,
-    ) -> Vec<(usize, Option<usize>)> {
+    ) -> Vec<(usize, Option<usize>, u32)> {
         let prev_info = &ml_out.node_to_ml[&prev];
 
         let sig = ml_out.signatures[prev_info.ml_sig].clone();
@@ -122,27 +134,38 @@ impl MlExplainer {
         for (blame_idx, (blame, gen)) in prev_info.blames.iter().zip(gen.iter()).enumerate() {
             // If it wasn't generalised it means that it's fixed
             let fixed_enode = parser.as_tidx(gen.enode);
+            if fixed_enode.is_some() {
+                self.fixed_node
+                    .get_or_insert_with(|| self.graph.add_node(MLGraphNode::HiddenNode(None)));
+            }
 
-            let mut added = false;
+            let mut next_rec = None;
             let enode = *self.enodes.entry(blame.enode).or_insert_with(|| {
-                added = true;
                 let data = fixed_enode
-                    .map(SynthIdx::from)
+                    .map(SimpIdx::from)
                     .map(MLGraphNode::FixedENode)
-                    .unwrap_or(MLGraphNode::RecurringENode(gen.enode, Some(true)));
+                    .unwrap_or_else(|| {
+                        next_rec = Some(self.rec_count);
+                        MLGraphNode::RecurringENode(gen.enode.into(), RecurrenceKind::Intermediate)
+                    });
                 self.graph.add_node(data)
             });
             self.graph
                 .add_edge(enode, prev_inst, MLGraphEdge::Blame(blame_idx));
-            if added && fixed_enode.is_none() {
+            if let Some(next_rec) = next_rec {
                 let ancestor_is_recurring = self.add_enode(parser, blame.enode, enode);
-                if ancestor_is_recurring {
+                if !ancestor_is_recurring {
+                    self.graph.add_edge(
+                        self.in_node,
+                        enode,
+                        MLGraphEdge::HiddenEdge(true, next_rec),
+                    );
                     let MLGraphNode::RecurringENode(.., rec) = &mut self.graph[enode] else {
                         unreachable!();
                     };
-                    *rec = None;
-                } else {
-                    recurring.push((blame_idx, None));
+                    self.rec_count += 1;
+                    *rec = RecurrenceKind::Input(next_rec);
+                    recurring.push((blame_idx, None, next_rec));
                 }
             }
 
@@ -152,32 +175,45 @@ impl MlExplainer {
             for (eq_idx, ((eqidx, _, _), (from, to))) in blame_eqs.zip(gen_eqs).enumerate() {
                 let from_to = parser.as_tidx(from).zip(parser.as_tidx(to));
                 let equalities = if from_to.is_some() {
+                    self.fixed_node
+                        .get_or_insert_with(|| self.graph.add_node(MLGraphNode::HiddenNode(None)));
                     &mut self.fixed_equalities
                 } else {
                     &mut self.recurring_equalities
                 };
-                let mut added = false;
+                let mut next_rec = None;
                 let eq = *equalities.entry(eqidx).or_insert_with(|| {
-                    added = true;
                     let data = from_to
                         .map(|(from, to)| MLGraphNode::FixedEquality(from.into(), to.into()))
-                        .unwrap_or(MLGraphNode::RecurringEquality(from, to, Some(true)));
+                        .unwrap_or_else(|| {
+                            next_rec = Some(self.rec_count);
+                            MLGraphNode::RecurringEquality(
+                                from.into(),
+                                to.into(),
+                                RecurrenceKind::Intermediate,
+                            )
+                        });
                     self.graph.add_node(data)
                 });
                 self.graph
                     .add_edge(eq, prev_inst, MLGraphEdge::BlameEq(blame_idx));
-                if added && from_to.is_none() {
+                if let Some(next_rec) = next_rec {
                     // If the equality doesn't depend on any recurring nodes then
                     // nothing is added, otherwise the recurring node edges are
                     // added.
                     let ancestor_is_recurring = self.add_equalities(parser, eqidx, eq);
-                    if ancestor_is_recurring {
+                    if !ancestor_is_recurring {
+                        self.graph.add_edge(
+                            self.in_node,
+                            eq,
+                            MLGraphEdge::HiddenEdge(true, next_rec),
+                        );
                         let MLGraphNode::RecurringEquality(.., rec) = &mut self.graph[eq] else {
                             unreachable!();
                         };
-                        *rec = None;
-                    } else {
-                        recurring.push((blame_idx, Some(eq_idx)));
+                        self.rec_count += 1;
+                        *rec = RecurrenceKind::Input(next_rec);
+                        recurring.push((blame_idx, Some(eq_idx), next_rec));
                     }
                 }
             }
@@ -192,13 +228,15 @@ impl MlExplainer {
         parser: &Z3Parser,
         leaf: InstIdx,
         gen: GenIdx,
-        recurring: Vec<(usize, Option<usize>)>,
+        recurring: Vec<(usize, Option<usize>, u32)>,
     ) -> Option<()> {
         let leaf_info = &ml_out.node_to_ml[&leaf];
         let gen = &ml_out.gens[gen];
         assert_eq!(gen.len(), leaf_info.blames.len());
 
-        for (blame_idx, eq_idx) in recurring {
+        for (blame_idx, eq_idx, rec_idx) in recurring {
+            let rec_kind = RecurrenceKind::Output(rec_idx);
+
             let blame = &leaf_info.blames[blame_idx];
             let gen = &gen[blame_idx];
             if let Some(eq_idx) = eq_idx {
@@ -207,9 +245,11 @@ impl MlExplainer {
                 let mut added = false;
                 let eq = *self.recurring_equalities.entry(eqidx).or_insert_with(|| {
                     added = true;
-                    let data = MLGraphNode::RecurringEquality(from, to, Some(false));
+                    let data = MLGraphNode::RecurringEquality(from.into(), to.into(), rec_kind);
                     self.graph.add_node(data)
                 });
+                self.graph
+                    .add_edge(eq, self.in_node, MLGraphEdge::HiddenEdge(false, rec_idx));
                 if added {
                     let ancestor_is_recurring = self.add_equalities(parser, eqidx, eq);
                     if !ancestor_is_recurring {
@@ -221,17 +261,38 @@ impl MlExplainer {
                         // EQs between.
                         return None;
                     }
+                } else {
+                    // See same branch in enode case below.
+                    let MLGraphNode::RecurringEquality(.., rec) = &mut self.graph[eq] else {
+                        unreachable!();
+                    };
+                    debug_assert_eq!(*rec, RecurrenceKind::Intermediate);
+                    *rec = rec_kind;
                 }
             } else {
                 let mut added = false;
                 let enode = *self.enodes.entry(blame.enode).or_insert_with(|| {
                     added = true;
-                    let data = MLGraphNode::RecurringENode(gen.enode, Some(false));
+                    let data = MLGraphNode::RecurringENode(gen.enode.into(), rec_kind);
                     self.graph.add_node(data)
                 });
+                self.graph.add_edge(
+                    enode,
+                    self.out_node,
+                    MLGraphEdge::HiddenEdge(false, rec_idx),
+                );
                 if added {
                     let ancestor_is_recurring = self.add_enode(parser, blame.enode, enode);
                     assert!(ancestor_is_recurring);
+                } else {
+                    // We mark this node as output even though it's
+                    // already been added to the graph (meaning that it also has
+                    // other outputs).
+                    let MLGraphNode::RecurringENode(.., rec) = &mut self.graph[enode] else {
+                        unreachable!();
+                    };
+                    debug_assert_eq!(*rec, RecurrenceKind::Intermediate);
+                    *rec = rec_kind;
                 }
             }
         }
@@ -407,7 +468,7 @@ impl MlExplainer {
             let MLGraphNode::QI(_, pattern) = &self.graph[i] else {
                 unreachable!();
             };
-            let pattern = parser.synth_terms.as_tidx(*pattern).unwrap();
+            let pattern = parser.synth_terms.as_tidx(pattern.orig).unwrap();
             let has_qvars = collector.collect_term(pattern);
             debug_assert!(has_qvars);
         }
@@ -478,14 +539,15 @@ struct TermSimplifier<'a> {
 impl TermSimplifier<'_> {
     fn simplify_node(&mut self, node: &mut MLGraphNode) -> Result<()> {
         match node {
+            MLGraphNode::HiddenNode(..) => (),
             MLGraphNode::QI(_, idx)
             | MLGraphNode::FixedENode(idx)
             | MLGraphNode::RecurringENode(idx, _) => {
-                *idx = self.simplify_term(*idx)?;
+                idx.simp = self.simplify_term(idx.simp)?;
             }
             MLGraphNode::FixedEquality(lhs, rhs) | MLGraphNode::RecurringEquality(lhs, rhs, _) => {
-                *lhs = self.simplify_term(*lhs)?;
-                *rhs = self.simplify_term(*rhs)?;
+                lhs.simp = self.simplify_term(lhs.simp)?;
+                rhs.simp = self.simplify_term(rhs.simp)?;
             }
         };
         Ok(())

@@ -4,8 +4,7 @@ use crate::{
     results::{
         filters::FilterOutput,
         graph_info::{GraphInfo, Msg as GraphInfoMsg},
-        graphviz::DotNodeProperties,
-        node_info::EdgeInfo,
+        graphviz::{DotEdgeProperties, DotNodeProperties},
     },
     state::StateContext,
     OpenedFileInfo,
@@ -24,8 +23,8 @@ use petgraph::{
 };
 use smt_log_parser::{
     analysis::{
-        analysis::matching_loop::MatchingLoop, raw::NodeKind, visible::VisibleInstGraph, InstGraph,
-        RawNodeIndex, VisibleEdgeIndex,
+        analysis::matching_loop::MatchingLoop, visible::VisibleInstGraph, InstGraph, RawNodeIndex,
+        VisibleEdgeIndex,
     },
     display_with::DisplayCtxt,
     items::QuantIdx,
@@ -65,11 +64,7 @@ pub enum Msg {
     ResetGraph,
     UserPermission(WarningChoice),
     WorkerOutput(super::worker::WorkerOutput),
-    RenderMLGraph(MatchingLoop),
-    // UpdateSelectedNodes(Vec<RawNodeIndex>),
-    // SearchMatchingLoops,
-    // SelectNthMatchingLoop(usize),
-    // ShowMatchingLoopSubgraph,
+    RenderMLGraph(usize, MatchingLoop),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -241,34 +236,13 @@ impl Component for SVGResult {
                             .send_message(GraphInfoMsg::ShowGeneralizedTerms(gen_terms));
                         false
                     }
-                    FilterOutput::MatchingLoopGraph(graph) => {
-                        ctx.link().send_message(Msg::RenderMLGraph(graph));
+                    FilterOutput::MatchingLoopGraph(ml_idx, graph) => {
+                        ctx.link().send_message(Msg::RenderMLGraph(ml_idx, graph));
                         false
                     }
                     FilterOutput::None => false,
                 }
             }
-            // Msg::SearchMatchingLoops => {
-            //     inst_graph.search_matching_loops();
-            //     ctx.link().send_message(Msg::SelectNthMatchingLoop(0));
-            //     true
-            // }
-            // Msg::SelectNthMatchingLoop(n) => {
-            //     self.filter_chain_link
-            //         .borrow()
-            //         .clone()
-            //         .unwrap()
-            //         .send_message(FilterChainMsg::AddFilters(vec![Filter::SelectNthMatchingLoop(n)]));
-            //     false
-            // }
-            // Msg::ShowMatchingLoopSubgraph => {
-            //     self.filter_chain_link
-            //         .borrow()
-            //         .clone()
-            //         .unwrap()
-            //         .send_message(FilterChainMsg::AddFilters(vec![Filter::ShowMatchingLoopSubgraph]));
-            //     false
-            // }
             Msg::ResetGraph => {
                 inst_graph.raw.reset_visibility_to(false);
                 false
@@ -339,8 +313,8 @@ impl Component for SVGResult {
                         // "packMode=\"graph\";",
                     ];
                     let dot_output = format!(
-                        "digraph {{\n{}\n{:?}\n}}",
-                        settings.join("\n"),
+                        "digraph {{\n    {}\n{:?}}}",
+                        settings.join("\n    "),
                         Dot::with_attr_getters(
                             filtered_graph,
                             &[
@@ -352,36 +326,20 @@ impl Component for SVGResult {
                                 let (from, to) =
                                     (fg[edge_data.source()].idx, fg[edge_data.target()].idx);
                                 let edge = edge_data.weight();
-                                let kind = &edge.kind(inst_graph);
-                                let info = EdgeInfo {
-                                    edge,
-                                    kind,
-                                    from,
-                                    to,
-                                    graph: &*inst_graph,
-                                    ctxt: &ctxt,
-                                };
-                                let tooltip = info.tooltip();
-                                let is_indirect = edge_data.weight().is_indirect(inst_graph);
-                                let style = match is_indirect {
-                                    true => "dashed",
-                                    false => "solid",
-                                };
-                                let class = match is_indirect {
-                                    true => "indirect",
-                                    false => "direct",
-                                };
-                                let arrowhead = match kind.blame(inst_graph) {
-                                    NodeKind::GivenEquality(..) | NodeKind::TransEquality(_) => {
-                                        "empty"
-                                    }
-                                    _ => "normal",
-                                };
-                                format!(
-                                    "id=edge_{} tooltip=\"{tooltip}\" style={style} class={class} arrowhead={arrowhead}",
-                                    // For edges the `id` is the `VisibleEdgeIndex` from the VisibleGraph!
-                                    edge_data.id().index(),
-                                )
+                                let is_indirect = edge.is_indirect(inst_graph);
+                                let blame = edge.kind(inst_graph).blame(inst_graph);
+                                let (from, to) =
+                                    (inst_graph.raw[from].kind(), inst_graph.raw[to].kind());
+                                let all = edge.all(
+                                    (),
+                                    (is_indirect, *from, *to),
+                                    is_indirect,
+                                    is_indirect,
+                                    blame,
+                                    (),
+                                );
+                                // For edges the `id` is the `VisibleEdgeIndex` from the VisibleGraph!
+                                format!("id=edge_{} {all}", edge_data.id().index())
                             },
                             &|_, (_, data)| {
                                 let idx = data.idx.0.index();
@@ -392,6 +350,8 @@ impl Component for SVGResult {
                                     ctxt.parser,
                                     (data.hidden_parents, data.hidden_children),
                                     (ctxt.parser, rc_parser.colour_map),
+                                    (),
+                                    (),
                                 );
                                 // For nodes the `id` is the `RawNodeIndex` from the original graph!
                                 format!("id=node_{idx} {all}")
@@ -474,7 +434,7 @@ impl Component for SVGResult {
                 ctx.props().progress.emit(GraphState::Constructed(rendered));
                 true
             }
-            Msg::RenderMLGraph(graph) => {
+            Msg::RenderMLGraph(ml_idx, graph) => {
                 let Some((_, Some(graph))) = graph.graph else {
                     let link = ctx.props().insts_info_link.borrow();
                     link.as_ref()
@@ -490,22 +450,9 @@ impl Component for SVGResult {
                 };
                 ctxt.config.font_tag = true;
 
-                // Performance observations (default value is in [])
-                //  - splines=false -> 38s | [splines=true] -> ??
-                //  - nslimit=2 -> 7s | nslimit=4 -> 9s | nslimit=7 -> 11.5s | nslimit=10 -> 14s | [nslimit=INT_MAX] -> 38s
-                //  - [mclimit=1] -> 7s | mclimit=0.5 -> 4s (with nslimit=2)
-                // `ranksep` dictates the distance between ranks (rows) in the graph,
-                // it should be set dynamically based on the average number of children
-                // per node out of all nodes with at least one child.
-                let settings = [
-                    "ranksep=1.0;",
-                    "splines=true;",
-                    "nslimit=6;",
-                    "mclimit=0.6;",
-                ];
-                let dot_output = format!(
-                    "digraph {{\n{}\n{:?}\n}}",
-                    settings.join("\n"),
+                let settings = ["ranksep=0.5;", "splines=true;"];
+                let dot = format!(
+                    "{:?}",
                     Dot::with_attr_getters(
                         &*graph,
                         &[
@@ -513,11 +460,46 @@ impl Component for SVGResult {
                             Config::NodeNoLabel,
                             Config::GraphContentOnly
                         ],
-                        &|_, edge| format!("label=\"{:?}\"", edge.weight()),
+                        &|_, edge| edge.weight().all(ctxt.config.debug, (), (), (), (), ()),
                         &|_, (_, node_data)| {
-                            node_data.all(ctxt, (), (), (), rc_parser.colour_map)
+                            node_data.all(ctxt, ctxt, (), (), rc_parser.colour_map, (), ())
                         },
                     )
+                );
+                let mut inputs = Vec::new();
+                let mut fixeds = Vec::new();
+                let mut outputs = Vec::new();
+                let mut outside = Vec::new();
+                for line in dot.lines() {
+                    let idx = line.find("class=\"");
+                    let class = idx.and_then(|idx| line[idx + 7..].split('"').next());
+                    match class {
+                        Some("input") => inputs.push(line),
+                        Some("fixed") => fixeds.push(line),
+                        Some("output") => outputs.push(line),
+                        _ => outside.push(line),
+                    }
+                }
+                let join = "\n    ";
+                let sub_pre1 = "\n       style=filled\n       color=gray96\n    ";
+                let sub_pre2 = "\n       style=filled\n       color=aliceblue\n    ";
+
+                let cluster_in = format!(
+                    "subgraph cluster_in {{{sub_pre2}{}{join}}}",
+                    inputs.join(join)
+                );
+                let cluster_fixed = format!(
+                    "subgraph cluster_fixed {{{sub_pre1}{}{join}}}",
+                    fixeds.join(join)
+                );
+                let cluster_out = format!(
+                    "subgraph cluster_out {{{sub_pre2}{}{join}}}",
+                    outputs.join(join)
+                );
+                let dot_output = format!(
+                    "digraph {{{join}{}{join}{cluster_in}{join}{cluster_fixed}{join}{cluster_out}{}\n}}",
+                    settings.join(join),
+                    outside.join("\n"),
                 );
                 log::info!("GRAPH SVG:\n{}", dot_output);
                 ctx.props()
@@ -545,8 +527,9 @@ impl Component for SVGResult {
                     );
                     let svg_text = svg.outer_html();
                     link.unwrap()
-                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(Some(AttrValue::from(
-                            svg_text,
+                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(Some((
+                            ml_idx,
+                            AttrValue::from(svg_text),
                         ))));
                 });
                 // only need to re-render once the new SVG has been set

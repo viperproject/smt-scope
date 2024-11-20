@@ -75,7 +75,7 @@ impl MlOutput<'_> {
         matching_loops.sort_unstable_by_key(|ml| {
             let (len, leaf) = ml.leaves.0[0];
             let has_graph = ml.graph.as_ref().is_some_and(|g| g.1.is_some());
-            (has_graph, ml.graph.is_some(), u32::MAX - len, leaf)
+            (!has_graph, ml.graph.is_none(), u32::MAX - len, leaf)
         });
         MlData {
             signatures: self.signatures,

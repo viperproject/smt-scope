@@ -1,5 +1,11 @@
+use core::fmt;
+
 use smt_log_parser::{
-    analysis::{analysis::matching_loop::MLGraphNode, raw::NodeKind},
+    analysis::{
+        analysis::matching_loop::{MLGraphEdge, MLGraphNode, RecurrenceKind},
+        raw::NodeKind,
+        visible::VisibleEdge,
+    },
     display_with::{DisplayCtxt, DisplayWithCtxt},
     items::MatchKind,
     NonMaxU32, Z3Parser,
@@ -7,21 +13,59 @@ use smt_log_parser::{
 
 use super::svg_result::QuantIdxToColourMap;
 
+macro_rules! all_struct {
+    ($name:ident {
+        label: String,
+        $($field:ident: $ty:ty,)*
+    }) => {
+        struct $name {
+            label: String,
+            $($field: $ty,)*
+        }
+
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                if !self.label.is_empty() {
+                    write!(f, "label=<{}> ", self.label)?;
+                }
+                $(
+                    if !self.$field.is_empty() {
+                        write!(f, concat!(stringify!($field), "=\"{}\" "), self.$field)?;
+                    }
+                )*
+                Ok(())
+            }
+        }
+    }
+}
+
+// -------------
+// Graphviz node
+// -------------
+
 pub const INST_SHAPE: &str = "box";
 pub const OTHER_SHAPE: &str = "ellipse";
 pub const SPECIAL_SHAPE: &str = "egg";
 
+pub const ENODE_COLOUR: &str = "lightgray";
+pub const EQ_COLOUR: &str = "white";
+
 pub const NODE_COLOUR_SATURATION: f64 = 0.4;
 pub const NODE_COLOUR_VALUE: f64 = 0.95;
 
-pub trait DotNodeProperties<
-    LabelCtx = (),
-    TooltipCtx = (),
-    StyleCtx = (),
-    ShapeCtx = (),
-    ColCtx = (),
->
+all_struct!(AllNodeProperties {
+    label: String,
+    tooltip: String,
+    style: &'static str,
+    shape: &'static str,
+    fillcolor: String,
+    class: &'static str,
+    ordering: &'static str,
+});
+
+pub trait DotNodeProperties<LabelCtx, TooltipCtx, StyleCtx, ShapeCtx, ColCtx, ClassCtx, OrderingCtx>
 {
+    #[allow(clippy::too_many_arguments)]
     fn all(
         &self,
         label: LabelCtx,
@@ -29,13 +73,19 @@ pub trait DotNodeProperties<
         style: StyleCtx,
         shape: ShapeCtx,
         fillcolor: ColCtx,
+        class: ClassCtx,
+        ordering: OrderingCtx,
     ) -> String {
-        let label = self.label(label);
-        let tooltip = self.tooltip(tooltip);
-        let style = self.style(style);
-        let shape = self.shape(shape);
-        let fillcolor = self.fillcolor(fillcolor);
-        format!("label=<{label}> tooltip=\"{tooltip}\" style=\"{style}\" shape={shape} fillcolor=\"{fillcolor}\"")
+        AllNodeProperties {
+            label: self.label(label),
+            tooltip: self.tooltip(tooltip),
+            style: self.style(style),
+            shape: self.shape(shape),
+            fillcolor: self.fillcolor(fillcolor),
+            class: self.class(class),
+            ordering: self.ordering(ordering),
+        }
+        .to_string()
     }
 
     fn label(&self, _ctx: LabelCtx) -> String {
@@ -51,11 +101,19 @@ pub trait DotNodeProperties<
     }
 
     fn shape(&self, _ctx: ShapeCtx) -> &'static str {
-        "ellipse"
+        ""
     }
 
     fn fillcolor(&self, _ctx: ColCtx) -> String {
-        "white".to_owned()
+        Default::default()
+    }
+
+    fn class(&self, _ctx: ClassCtx) -> &'static str {
+        ""
+    }
+
+    fn ordering(&self, _ctx: OrderingCtx) -> &'static str {
+        ""
     }
 }
 
@@ -66,6 +124,8 @@ impl
         &'_ Z3Parser,
         (u32, u32),
         (&'_ Z3Parser, QuantIdxToColourMap),
+        (),
+        (),
     > for NodeKind
 {
     fn label(&self, (): ()) -> String {
@@ -78,17 +138,18 @@ impl
     ) -> String {
         ctxt.config.html = html;
         ctxt.config.enode_char_limit = char_limit;
+        use NodeKind::*;
         match *self {
-            NodeKind::ENode(enode) => {
+            ENode(enode) => {
                 ctxt.config.enode_char_limit = ctxt
                     .config
                     .enode_char_limit
                     .and_then(|limit| NonMaxU32::new(limit.get() * 2));
                 enode.with(&ctxt).to_string()
             }
-            NodeKind::GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
-            NodeKind::TransEquality(eq) => eq.with(&ctxt).to_string(),
-            NodeKind::Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
+            GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
+            TransEquality(eq) => eq.with(&ctxt).to_string(),
+            Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
                 MatchKind::TheorySolving { axiom_id, .. } => {
                     let namespace = &ctxt.parser[axiom_id.namespace];
                     let id = axiom_id.id.map(|id| id.to_string()).unwrap_or_default();
@@ -134,47 +195,78 @@ impl
                 let hue = colour_map.get_rbg_hue(match_.kind.quant_idx()) / 360.0;
                 format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
             }
-            ENode(..) => "lightgrey".to_owned(),
-            GivenEquality(..) | TransEquality(..) => "white".to_owned(),
+            ENode(..) => ENODE_COLOUR.to_owned(),
+            GivenEquality(..) | TransEquality(..) => EQ_COLOUR.to_owned(),
+        }
+    }
+
+    fn ordering(&self, (): ()) -> &'static str {
+        match self {
+            NodeKind::Instantiation(..) => "in",
+            _ => "",
         }
     }
 }
 
-impl DotNodeProperties<DisplayCtxt<'_>, (), (), (), QuantIdxToColourMap> for MLGraphNode {
+impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), QuantIdxToColourMap, (), ()>
+    for MLGraphNode
+{
     fn label(&self, mut ctxt: DisplayCtxt) -> String {
+        use MLGraphNode::*;
         match *self {
-            MLGraphNode::QI(ref sig, pattern) => {
-                if ctxt.config.debug {
-                    format!(
-                        "{}: {}",
-                        ctxt.parser[sig.quantifier].kind.with(&ctxt),
-                        pattern.with_data(&ctxt, &mut Some(sig.quantifier))
-                    )
-                } else {
-                    format!("{}", pattern.with_data(&ctxt, &mut Some(sig.quantifier)))
+            HiddenNode(input) => match input {
+                Some(true) => "input".to_owned(),
+                Some(false) => "output".to_owned(),
+                None => "const".to_owned(),
+            },
+            QI(ref sig, pattern) => pattern
+                .simp
+                .with_data(&ctxt, &mut Some(sig.quantifier))
+                .to_string(),
+            FixedENode(matched_term) => matched_term.simp.with(&ctxt).to_string(),
+            RecurringENode(matched_term, input) => {
+                ctxt.config.input = input.rec_input();
+                matched_term.simp.with(&ctxt).to_string()
+            }
+            FixedEquality(from, to) => {
+                format!("{} = {}", from.simp.with(&ctxt), to.simp.with(&ctxt))
+            }
+            RecurringEquality(from, to, input) => {
+                ctxt.config.input = input.rec_input();
+                format!("{} = {}", from.simp.with(&ctxt), to.simp.with(&ctxt))
+            }
+        }
+    }
+
+    fn tooltip(&self, mut ctxt: DisplayCtxt) -> String {
+        ctxt.config.html = false;
+        use MLGraphNode::*;
+        match self {
+            HiddenNode(input) => match input {
+                Some(true) => {
+                    "Recurring nodes coming into the generalised matching loop iteration."
+                        .to_owned()
                 }
-            }
-            MLGraphNode::FixedENode(matched_term) => {
-                format!("{}", matched_term.with(&ctxt))
-            }
-            MLGraphNode::RecurringENode(matched_term, input) => {
-                ctxt.config.input = input;
-                if ctxt.config.debug {
-                    format!("{} ({input:?})", matched_term.with(&ctxt))
-                } else {
-                    format!("{}", matched_term.with(&ctxt))
+                Some(false) => {
+                    "Recurring nodes produced by the generalised matching loop iteration."
+                        .to_owned()
                 }
-            }
-            MLGraphNode::FixedEquality(from, to) => {
-                format!("{} = {}", from.with(&ctxt), to.with(&ctxt))
-            }
-            MLGraphNode::RecurringEquality(from, to, input) => {
-                ctxt.config.input = input;
-                if ctxt.config.debug {
-                    format!("{} = {} ({input:?})", from.with(&ctxt), to.with(&ctxt))
-                } else {
-                    format!("{} = {}", from.with(&ctxt), to.with(&ctxt))
+                None => {
+                    "Fixed nodes which do not change but are used in each iteration.".to_owned()
                 }
+            },
+            QI(ref sig, _) => ctxt.parser[sig.quantifier].kind.with(&ctxt).to_string(),
+            FixedENode(matched_term) => matched_term.orig.with(&ctxt).to_string(),
+            RecurringENode(matched_term, input) => {
+                ctxt.config.input = input.rec_input();
+                matched_term.orig.with(&ctxt).to_string()
+            }
+            FixedEquality(from, to) => {
+                format!("{} = {}", from.orig.with(&ctxt), to.orig.with(&ctxt))
+            }
+            RecurringEquality(from, to, input) => {
+                ctxt.config.input = input.rec_input();
+                format!("{} = {}", from.orig.with(&ctxt), to.orig.with(&ctxt))
             }
         }
     }
@@ -182,24 +274,181 @@ impl DotNodeProperties<DisplayCtxt<'_>, (), (), (), QuantIdxToColourMap> for MLG
     fn style(&self, _ctx: ()) -> &'static str {
         use MLGraphNode::*;
         match self {
+            HiddenNode(..) => "",
             QI(..) | RecurringENode(..) | RecurringEquality(..) => "filled",
             FixedENode(..) | FixedEquality(..) => "filled,dashed",
         }
     }
 
     fn shape(&self, (): ()) -> &'static str {
-        "box"
+        match self {
+            Self::HiddenNode(..) => "plaintext",
+            _ => "box",
+        }
     }
 
     fn fillcolor(&self, ctx: QuantIdxToColourMap) -> String {
         use MLGraphNode::*;
         match self {
+            HiddenNode(..) => Default::default(),
             QI(sig, _) => {
                 let hue = ctx.get_rbg_hue(Some(sig.quantifier)) / 360.0;
                 format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
             }
-            FixedENode(..) | RecurringENode(..) => "lightgrey".to_owned(),
-            FixedEquality(..) | RecurringEquality(..) => "white".to_owned(),
+            FixedENode(..) | RecurringENode(..) => ENODE_COLOUR.to_owned(),
+            FixedEquality(..) | RecurringEquality(..) => EQ_COLOUR.to_owned(),
+        }
+    }
+
+    fn class(&self, (): ()) -> &'static str {
+        use MLGraphNode::*;
+        match *self {
+            FixedENode(..) | FixedEquality(..) => "fixed",
+            RecurringENode(.., rec_kind) | RecurringEquality(.., rec_kind) => match rec_kind {
+                RecurrenceKind::Input(..) => "input",
+                RecurrenceKind::Output(..) => "output",
+                RecurrenceKind::Intermediate => "middle",
+            },
+            HiddenNode(input) => match input {
+                Some(true) => "input",
+                Some(false) => "output",
+                None => "fixed",
+            },
+            QI(..) => "middle",
+        }
+    }
+
+    fn ordering(&self, (): ()) -> &'static str {
+        use MLGraphNode::*;
+        match *self {
+            HiddenNode(Some(true)) => "out",
+            HiddenNode(Some(false)) => "in",
+            QI(..) => "in",
+            _ => "",
+        }
+    }
+}
+
+// -------------
+// Graphviz edge
+// -------------
+
+all_struct!(AllEdgeProperties {
+    label: String,
+    tooltip: String,
+    style: &'static str,
+    class: &'static str,
+    arrowhead: &'static str,
+    minlen: &'static str,
+});
+
+pub trait DotEdgeProperties<LabelCtx, TooltipCtx, StyleCtx, ClassCtx, ArrowheadCtx, MinlenCtx> {
+    #[allow(clippy::too_many_arguments)]
+    fn all(
+        &self,
+        label: LabelCtx,
+        tooltip: TooltipCtx,
+        style: StyleCtx,
+        class: ClassCtx,
+        arrowhead: ArrowheadCtx,
+        minlen: MinlenCtx,
+    ) -> String {
+        AllEdgeProperties {
+            label: self.label(label),
+            tooltip: self.tooltip(tooltip),
+            style: self.style(style),
+            class: self.class(class),
+            arrowhead: self.arrowhead(arrowhead),
+            minlen: self.minlen(minlen),
+        }
+        .to_string()
+    }
+
+    fn label(&self, _ctx: LabelCtx) -> String {
+        Default::default()
+    }
+
+    fn tooltip(&self, _ctx: TooltipCtx) -> String {
+        Default::default()
+    }
+
+    fn style(&self, _ctx: StyleCtx) -> &'static str {
+        ""
+    }
+
+    fn class(&self, _ctx: ClassCtx) -> &'static str {
+        ""
+    }
+
+    fn arrowhead(&self, _ctx: ArrowheadCtx) -> &'static str {
+        ""
+    }
+
+    fn minlen(&self, _ctx: MinlenCtx) -> &'static str {
+        ""
+    }
+}
+
+impl DotEdgeProperties<(), (bool, NodeKind, NodeKind), bool, bool, NodeKind, ()> for VisibleEdge {
+    fn tooltip(&self, (is_indirect, from, to): (bool, NodeKind, NodeKind)) -> String {
+        let arrow = match is_indirect {
+            true => "↝",
+            false => "→",
+        };
+        format!("{} {arrow} {}", from.label(()), to.label(()))
+    }
+
+    fn style(&self, is_indirect: bool) -> &'static str {
+        match is_indirect {
+            true => "dashed",
+            false => "solid",
+        }
+    }
+
+    fn class(&self, is_indirect: bool) -> &'static str {
+        match is_indirect {
+            true => "indirect",
+            false => "direct",
+        }
+    }
+
+    fn arrowhead(&self, blame: NodeKind) -> &'static str {
+        match blame {
+            NodeKind::GivenEquality(..) | NodeKind::TransEquality(_) => "empty",
+            _ => "normal",
+        }
+    }
+}
+
+impl DotEdgeProperties<bool, (), (), (), (), ()> for MLGraphEdge {
+    fn label(&self, debug: bool) -> String {
+        if debug {
+            format!("{self:?}")
+        } else {
+            Default::default()
+        }
+    }
+
+    fn style(&self, (): ()) -> &'static str {
+        match self {
+            MLGraphEdge::HiddenEdge(..) => "invis",
+            _ => "solid",
+        }
+    }
+
+    fn arrowhead(&self, (): ()) -> &'static str {
+        use MLGraphEdge::*;
+        match self {
+            HiddenEdge(..) => "none",
+            Blame(..) | Yield => "normal",
+            BlameEq(..) | YieldEq | CombineEq => "empty",
+        }
+    }
+
+    fn minlen(&self, (): ()) -> &'static str {
+        match self {
+            MLGraphEdge::HiddenEdge(..) => "0",
+            _ => "",
         }
     }
 }

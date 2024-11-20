@@ -16,7 +16,10 @@ use yew::{
 
 use crate::{configuration::ConfigurationProvider, state::StateProvider};
 
-use super::{graphviz::DotNodeProperties, svg_result::RenderedGraph};
+use super::{
+    graphviz::{DotEdgeProperties, DotNodeProperties},
+    svg_result::RenderedGraph,
+};
 
 #[derive(Properties, PartialEq)]
 pub struct InfoLineProps {
@@ -46,7 +49,7 @@ pub struct NodeInfo<'a, 'b> {
 
 impl<'a, 'b> NodeInfo<'a, 'b> {
     pub fn index(&self) -> String {
-        self.node.kind().to_string()
+        self.node.kind().label(())
     }
     pub fn kind(&self) -> &'static str {
         match *self.node.kind() {
@@ -290,20 +293,7 @@ pub struct EdgeInfo<'a, 'b> {
 
 impl<'a, 'b> EdgeInfo<'a, 'b> {
     pub fn index(&self) -> String {
-        let is_indirect = self.edge.is_indirect(self.graph);
-        let arrow = match is_indirect {
-            true => "↝",
-            false => "→",
-        };
-        let from = NodeInfo {
-            node: &self.graph.raw[self.from],
-            ctxt: self.ctxt,
-        };
-        let to = NodeInfo {
-            node: &self.graph.raw[self.to],
-            ctxt: self.ctxt,
-        };
-        format!("{} {arrow} {}", from.index(), to.index())
+        self.tooltip()
     }
     pub fn kind(&self) -> String {
         match self.kind {
@@ -350,7 +340,10 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
         }
     }
     pub fn tooltip(&self) -> String {
-        self.index()
+        let is_indirect = self.edge.is_indirect(self.graph);
+        let from = self.graph.raw[self.from].kind();
+        let to = self.graph.raw[self.to].kind();
+        self.edge.tooltip((is_indirect, *from, *to))
     }
 }
 

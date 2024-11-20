@@ -8,6 +8,7 @@ use yew::prelude::*;
 use yew::{function_component, html};
 
 use crate::results::svg_result::RenderedGraph;
+use crate::utils::svg::{SvgHelper, ViewBox};
 use crate::{mouse_position, PrecisePosition};
 
 #[derive(Properties, PartialEq, Default)]
@@ -56,15 +57,10 @@ pub fn Graph(props: &GraphProps) -> Html {
                 let svg_element = div.get_elements_by_tag_name("svg").item(0);
                 if let Some(el) = svg_element {
                     let svg_el = el.dyn_into::<SvgsvgElement>().ok().unwrap();
-                    let view_box: Vec<f64> = svg_el
-                        .get_attribute("viewBox")
-                        .unwrap()
-                        .split_ascii_whitespace()
-                        .map(|s| s.parse().unwrap())
-                        .collect();
+                    let view_box = svg_el.get_view_box().unwrap();
                     let (svg_width, svg_height) = (
-                        view_box[2] + 2.0 * view_box[0],
-                        view_box[3] + 2.0 * view_box[1],
+                        view_box.width + 2.0 * view_box.x,
+                        view_box.height + 2.0 * view_box.y,
                     );
 
                     let scroll_window = scroll_window.cast::<Element>().unwrap();
@@ -75,13 +71,13 @@ pub fn Graph(props: &GraphProps) -> Html {
                     const MARGIN: f64 = 128.0;
                     let (svg_width, svg_height) =
                         (svg_width + 2.0 * MARGIN, svg_height + 2.0 * MARGIN);
-                    svg_el
-                        .set_attribute(
-                            "viewBox",
-                            format!("{} {} {} {}", -MARGIN, -MARGIN, svg_width, svg_height)
-                                .as_str(),
-                        )
-                        .unwrap();
+                    let view_box = ViewBox {
+                        x: -MARGIN,
+                        y: -MARGIN,
+                        width: svg_width,
+                        height: svg_height,
+                    };
+                    svg_el.set_view_box(view_box).unwrap();
 
                     let new_scroll = {
                         let (x, y) = if zoom_with_mouse {

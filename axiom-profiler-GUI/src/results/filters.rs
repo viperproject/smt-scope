@@ -178,7 +178,7 @@ impl Filter {
                     .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
                         node.kind().inst().is_some() && !node.part_of_ml.contains(&n)
                     });
-                return FilterOutput::MatchingLoopGraph(ml_graph);
+                return FilterOutput::MatchingLoopGraph(n, ml_graph);
             }
             Filter::ShowMatchingLoopSubgraph => {
                 // graph.raw.reset_visibility_to(true);
@@ -215,7 +215,7 @@ impl Filter {
 pub enum FilterOutput {
     LongestPath(Vec<RawNodeIndex>),
     MatchingLoopGeneralizedTerms(Vec<String>),
-    MatchingLoopGraph(MatchingLoop),
+    MatchingLoopGraph(usize, MatchingLoop),
     None,
 }
 

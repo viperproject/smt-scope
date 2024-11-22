@@ -192,7 +192,7 @@ impl Component for FiltersState {
                         (**g)
                             .borrow()
                             .found_matching_loops()
-                            .is_some_and(|mls| mls > *n)
+                            .is_some_and(|(sure, maybe)| sure + maybe > *n)
                     }) {
                         return modified;
                     }
@@ -209,7 +209,7 @@ impl Component for FiltersState {
                         (**g)
                             .borrow()
                             .found_matching_loops()
-                            .is_some_and(|mls| mls > *n)
+                            .is_some_and(|(sure, maybe)| sure + maybe > *n)
                     }) {
                         return false;
                     }
@@ -229,8 +229,8 @@ impl Component for FiltersState {
             }
             Msg::ToggleMlViewerMode => {
                 let state = ctx.link().get_state().unwrap();
-                let found_mls = &state.state.parser.as_ref().unwrap().found_mls;
-                if found_mls.is_none() {
+                let ml_data = &state.state.parser.as_ref().unwrap().ml_data;
+                if ml_data.is_none() {
                     ctx.props().search_matching_loops.emit(());
                 }
                 state.set_ml_viewer_mode(!state.state.ml_viewer_mode);
@@ -270,7 +270,7 @@ impl Component for FiltersState {
         let will_delete = ctx.link().callback(Msg::WillDelete);
 
         let state = ctx.link().get_state().unwrap();
-        let found_mls = &state.state.parser.as_ref().unwrap().found_mls;
+        let ml_data = state.state.parser.as_ref().unwrap().ml_data;
         let toggle_ml_viewer_mode = ctx.link().callback(|ev: MouseEvent| {
             ev.prevent_default();
             Msg::ToggleMlViewerMode
@@ -339,8 +339,12 @@ impl Component for FiltersState {
         };
         let graph_details = file.rendered.as_ref().map(|g| {
             let class = if self.dragging { "hidden" } else { "" };
-            let mls = found_mls.map(|mls| format!(", {mls} mtch loops")).unwrap_or_default();
-            let details = format!("{} nodes, {} edges{mls}", g.graph.graph.node_count(), g.graph.graph.edge_count());
+            let mls = ml_data.map(|data| if data.maybe_mls == 0 {
+                format!(", {} mtch loop", data.sure_mls)
+            } else {
+                format!(", {}? mtch loop", data.sum())
+            }).unwrap_or_default();
+            let details = format!("{} node, {} edge{mls}", g.graph.graph.node_count(), g.graph.graph.edge_count());
             html! { <li class={class}><a draggable="false" class="trace-file-name">{details}</a></li> }
         });
         // Disablers
@@ -359,7 +363,7 @@ impl Component for FiltersState {
         } else {
             html! {
                 <>
-                <AddFilterSidebar new_filter={new_filter} found_mls={found_mls} nodes={Vec::new()} general_filters={true}/>
+                <AddFilterSidebar {new_filter} {ml_data} nodes={Vec::new()} general_filters={true}/>
                 <li><a draggable="false" href="#" onclick={reset}><div class="material-icons"><MatIcon>{"restore"}</MatIcon></div>{"Reset operations"}</a></li>
                 {undo}
                 </>

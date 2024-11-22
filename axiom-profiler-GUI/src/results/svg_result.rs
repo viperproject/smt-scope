@@ -3,7 +3,7 @@ use crate::{
     filters,
     results::{
         filters::FilterOutput,
-        graph_info::{GraphInfo, Msg as GraphInfoMsg},
+        graph_info::{GraphInfo, MatchingLoopGraphData, Msg as GraphInfoMsg},
         graphviz::{DotEdgeProperties, DotNodeProperties},
     },
     state::StateContext,
@@ -435,11 +435,13 @@ impl Component for SVGResult {
                 true
             }
             Msg::RenderMLGraph(ml_idx, graph) => {
-                let Some((_, Some(graph))) = graph.graph else {
+                let Some(graph) = graph.graph else {
                     let link = ctx.props().insts_info_link.borrow();
                     link.as_ref()
                         .unwrap()
-                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(None));
+                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(Some(
+                            MatchingLoopGraphData::ShowEmpty(ml_idx),
+                        )));
                     return false;
                 };
                 let cfg = ctx.link().get_configuration().unwrap();
@@ -454,7 +456,7 @@ impl Component for SVGResult {
                 let dot = format!(
                     "{:?}",
                     Dot::with_attr_getters(
-                        &*graph,
+                        &*graph.data,
                         &[
                             Config::EdgeNoLabel,
                             Config::NodeNoLabel,
@@ -527,10 +529,13 @@ impl Component for SVGResult {
                     );
                     let svg_text = svg.outer_html();
                     link.unwrap()
-                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(Some((
-                            ml_idx,
-                            AttrValue::from(svg_text),
-                        ))));
+                        .send_message(GraphInfoMsg::ShowMatchingLoopGraph(Some(
+                            MatchingLoopGraphData::Show {
+                                ml_idx,
+                                incomplete: graph.graph_incomplete,
+                                data: AttrValue::from(svg_text),
+                            },
+                        )));
                 });
                 // only need to re-render once the new SVG has been set
                 true

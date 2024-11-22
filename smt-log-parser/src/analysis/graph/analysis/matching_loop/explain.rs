@@ -49,12 +49,12 @@ impl MlExplainer {
     }
 
     pub fn explain_leaf(
-        mut self,
+        &mut self,
         ml_out: &MlOutput,
         parser: &mut Z3Parser,
         leaf: InstIdx,
         gen: GenIdx,
-    ) -> Option<Self> {
+    ) -> Option<()> {
         let leaf_info = &ml_out.node_to_ml[&leaf];
         let mut above = leaf_info.walk_gen(&ml_out.node_to_ml, gen);
 
@@ -64,12 +64,31 @@ impl MlExplainer {
         let above2 = above.next()?;
         let above2 = above2.prev;
 
+        // Add the leaf instantiation
+        let recurring = self.add_inst(ml_out, parser, above2, gen);
+
+        // Add others between as well as their deps
         let mut others1 = MlOutput::others_between(ml_out.topo, above1, leaf);
         assert!(others1.remove(&leaf));
 
         let mut others2 = MlOutput::others_between(ml_out.topo, above2, above1);
         assert!(others2.remove(&above1));
 
+        let others_res = self.add_others(ml_out, parser, others1, others2);
+
+        // Add the leaf deps
+        self.add_inst_deps(ml_out, parser, above1, gen, recurring)?;
+
+        others_res
+    }
+
+    fn add_others(
+        &mut self,
+        ml_out: &MlOutput,
+        parser: &mut Z3Parser,
+        others1: FxHashSet<InstIdx>,
+        mut others2: FxHashSet<InstIdx>,
+    ) -> Option<()> {
         // println!("HAVE: {above2:?} -> {others2:?} -> {above1:?} -> {others1:?} -> {leaf:?}");
         // We now have `above2 -> {others2} -> above1 -> {others1} -> leaf`,
         // next we try to link all `others1` and `others2`.
@@ -98,18 +117,17 @@ impl MlExplainer {
         // ancestors before descendants.
         others.sort_by_key(|(other1, ..)| *other1);
 
-        let recurring = self.add_inst(ml_out, parser, above2, gen);
         for (_, other2, gen, rec) in &mut others {
             let recurring = self.add_inst(ml_out, parser, *other2, *gen);
             *rec = recurring;
         }
 
-        self.add_inst_deps(ml_out, parser, above1, gen, recurring)?;
-        for (other1, _, gen, recurring) in others {
+        let others_rev = Vec::from(others).into_iter().rev();
+        for (other1, _, gen, recurring) in others_rev {
             self.add_inst_deps(ml_out, parser, other1, gen, recurring)?;
         }
 
-        Some(self)
+        Some(())
     }
 
     fn add_inst(
@@ -283,7 +301,7 @@ impl MlExplainer {
                 );
                 if added {
                     let ancestor_is_recurring = self.add_enode(parser, blame.enode, enode);
-                    assert!(ancestor_is_recurring);
+                    debug_assert!(ancestor_is_recurring);
                 } else {
                     // We mark this node as output even though it's
                     // already been added to the graph (meaning that it also has
@@ -462,7 +480,7 @@ impl MlExplainer {
         walker.ancestor_is_recurring
     }
 
-    pub fn simplify_terms(mut self, parser: &mut Z3Parser) -> Option<MlExplanation> {
+    pub fn simplify_terms(mut self, parser: &mut Z3Parser) -> Result<MlExplanation> {
         let mut collector = QVarParentCollector::new(parser);
         for &i in self.instantiations.values() {
             let MLGraphNode::QI(_, pattern) = &self.graph[i] else {
@@ -479,9 +497,9 @@ impl MlExplainer {
             stack: Vec::new(),
         };
         for i in self.graph.node_indices() {
-            simplifier.simplify_node(&mut self.graph[i]).ok()?;
+            simplifier.simplify_node(&mut self.graph[i])?;
         }
-        Some(self.graph)
+        Ok(self.graph)
     }
 }
 

@@ -514,12 +514,14 @@ impl Component for FileDataComponent {
                     let state = ctx.link().get_state().unwrap();
                     let parser = state.state.parser.as_ref().unwrap();
                     if let Some(g) = &parser.graph {
-                        let found_mls = Some(
-                            g.borrow_mut()
-                                .search_matching_loops(&mut parser.parser.borrow_mut()),
-                        );
+                        let mut g = g.borrow_mut();
+                        let ml_data = g.search_matching_loops(&mut parser.parser.borrow_mut());
+                        let ml_data = MlData {
+                            sure_mls: ml_data.sure_mls,
+                            maybe_mls: ml_data.maybe_mls,
+                        };
                         state.update_parser(move |p| {
-                            p.as_mut().unwrap().found_mls = found_mls;
+                            p.as_mut().unwrap().ml_data = Some(ml_data);
                             true
                         });
                         return true;
@@ -732,12 +734,25 @@ pub fn app() -> Html {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// See documentation of `MlData` in the parser crate.
+pub struct MlData {
+    pub sure_mls: usize,
+    pub maybe_mls: usize,
+}
+
+impl MlData {
+    pub fn sum(self) -> usize {
+        self.sure_mls + self.maybe_mls
+    }
+}
+
 pub struct RcParser {
     parser: Rc<RefCell<Z3Parser>>,
     lookup: Rc<StringLookupZ3>,
     colour_map: QuantIdxToColourMap,
     graph: Option<Rc<RefCell<InstGraph>>>,
-    found_mls: Option<usize>,
+    ml_data: Option<MlData>,
 }
 
 impl Clone for RcParser {
@@ -747,7 +762,7 @@ impl Clone for RcParser {
             lookup: self.lookup.clone(),
             colour_map: self.colour_map,
             graph: self.graph.clone(),
-            found_mls: self.found_mls,
+            ml_data: self.ml_data,
         }
     }
 }
@@ -756,7 +771,7 @@ impl PartialEq for RcParser {
     fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(&*self.parser, &*other.parser)
             && self.graph.is_some() == other.graph.is_some()
-            && self.found_mls == other.found_mls
+            && self.ml_data == other.ml_data
     }
 }
 impl Eq for RcParser {}
@@ -771,7 +786,7 @@ impl RcParser {
             lookup: Rc::new(lookup),
             colour_map,
             graph: None,
-            found_mls: None,
+            ml_data: None,
         }
     }
 }

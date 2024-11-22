@@ -118,11 +118,11 @@ fn parse_all_logs() {
                 (ALLOCATOR.allocated() as u64 - middle_alloc) as f64 / parse_bytes as f64,
             );
             let mem_size = inst_graph.mem_size(SizeFlags::default());
+            let (sure_mls, maybe_mls) = inst_graph.found_matching_loops().unwrap();
             println!(
-                "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {} mls. Memory use {} MB / {} MB:",
+                "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {sure_mls}+{maybe_mls} mls. Memory use {} MB / {} MB:",
                 (parse_bytes_kb as u128 * 1000) / elapsed.as_micros(),
                 inst_graph.raw.graph.node_count(),
-                inst_graph.found_matching_loops().unwrap(),
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
             );

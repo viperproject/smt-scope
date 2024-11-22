@@ -1,7 +1,7 @@
 #[cfg(feature = "analysis")]
 use smt_log_parser::analysis::InstGraph;
-use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::LogParser;
+use smt_log_parser::{display_with::DisplayWithCtxt, parsers::z3::z3parser::Z3Parser};
 use std::{path::PathBuf, time::Duration};
 use wasm_timer::Instant;
 
@@ -41,10 +41,15 @@ pub fn run(logfiles: Vec<PathBuf>, timeout: f32) -> Result<(), String> {
             inst_graph.search_matching_loops(&mut result);
             let _displayed = inst_graph.to_visible();
             let process_time = time.elapsed();
+            let (sure_mls, maybe_mls) = inst_graph.found_matching_loops().unwrap();
+            let quants_involved: Vec<_> = inst_graph
+                .quants_per_matching_loop()
+                .unwrap()
+                .map(|q| result[q].kind.debug(&result))
+                .collect();
             println!(
-                "Finished analysing after {} seconds ({} mls)",
+                "Finished analysing after {} seconds. Found {sure_mls} sure mls, {maybe_mls} maybe mls. Quants involved {quants_involved:?}",
                 (process_time - elapsed_time).as_secs_f32(),
-                inst_graph.found_matching_loops().unwrap(),
             );
         }
 

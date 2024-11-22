@@ -12,7 +12,9 @@ use crate::{
     FxHashMap, TiVec, Z3Parser,
 };
 
-use super::{explain::MlExplainer, MatchingLoop, MlData, MlSigCollection, MlSigIdx, MlSignature};
+use super::{
+    explain::MlExplainer, MatchingLoop, MlData, MlGraph, MlSigCollection, MlSigIdx, MlSignature,
+};
 
 idx!(GenIdx, "${}");
 
@@ -39,6 +41,7 @@ impl MlOutput<'_> {
     }
 
     pub fn ml_graphs(mut self, parser: &mut Z3Parser) -> MlData {
+        let (mut sure_mls, mut maybe_mls) = (0, 0);
         let mut matching_loops = Vec::new();
         let ml_leaves = core::mem::take(&mut self.ml_leaves);
         for (sig, sig_col) in ml_leaves.into_iter_enumerated() {
@@ -48,15 +51,21 @@ impl MlOutput<'_> {
                     .walk_gen(&self.node_to_ml, gen)
                     .map(|info| info.prev);
                 let members = [longest_leaf].into_iter().chain(members).collect();
-                let expl = MlExplainer::new();
-                let graph = expl.explain_leaf(&self, parser, longest_leaf, gen);
-                let graph = graph.and_then(|g| MlExplainer::simplify_terms(g, parser));
+                let mut expl = MlExplainer::new();
+                let is_ok = expl.explain_leaf(&self, parser, longest_leaf, gen);
+                let data = expl.simplify_terms(parser).unwrap();
+                let graph = MlGraph {
+                    gen,
+                    graph_incomplete: is_ok.is_none(),
+                    data,
+                };
                 matching_loops.push(MatchingLoop {
                     sig,
                     leaves,
                     members,
-                    graph: Some((gen, graph)),
+                    graph: Some(graph),
                 });
+                sure_mls += 1;
             }
             if !sig_col.ungens.0.is_empty() {
                 let (_, longest_leaf) = sig_col.ungens.0[0];
@@ -70,16 +79,24 @@ impl MlOutput<'_> {
                     members,
                     graph: None,
                 });
+                maybe_mls += 1;
             }
         }
         matching_loops.sort_unstable_by_key(|ml| {
             let (len, leaf) = ml.leaves.0[0];
-            let has_graph = ml.graph.as_ref().is_some_and(|g| g.1.is_some());
-            (!has_graph, ml.graph.is_none(), u32::MAX - len, leaf)
+            let has_complete_graph = ml.graph.as_ref().is_some_and(|g| !g.graph_incomplete);
+            (
+                !has_complete_graph,
+                ml.graph.is_none(),
+                u32::MAX - len,
+                leaf,
+            )
         });
         MlData {
             signatures: self.signatures,
             matching_loops,
+            sure_mls,
+            maybe_mls,
         }
     }
 }

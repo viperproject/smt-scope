@@ -10,7 +10,7 @@ use crate::{
     commands::{Command, CommandId, CommandRef, Commands, CommandsContext},
     infobars::topbar::OmnibarMessage,
     utils::lookup::StringLookupCommands,
-    CallbackRef, GlobalCallbacksContext,
+    CallbackRef, GlobalCallbacksContext, MlData,
 };
 
 use self::input::{MlOmniboxInput, PickedSuggestion};
@@ -21,7 +21,7 @@ pub mod input;
 pub struct MlOmniboxProps {
     pub message: Option<OmnibarMessage>,
     pub omnibox: NodeRef,
-    pub found_mls: usize,
+    pub ml_data: MlData,
     pub pick_nth_ml: Callback<usize>,
 }
 
@@ -79,7 +79,7 @@ impl Component for MlOmnibox {
             focused: false,
             command_mode: false,
             input: None,
-            picked: PickedSuggestion::default_simple(ctx.props().found_mls),
+            picked: PickedSuggestion::default_simple(ctx.props().ml_data),
             all_commands,
             scroll_container: NodeRef::default(),
             scroll_into_view: NodeRef::default(),
@@ -109,11 +109,11 @@ impl Component for MlOmnibox {
                     .map(|i| {
                         if left {
                             if i == 0 {
-                                ctx.props().found_mls - 1
+                                ctx.props().ml_data.sum() - 1
                             } else {
                                 i - 1
                             }
-                        } else if i + 1 == ctx.props().found_mls {
+                        } else if i + 1 == ctx.props().ml_data.sum() {
                             0
                         } else {
                             i + 1
@@ -158,27 +158,40 @@ impl Component for MlOmnibox {
         let icon = html! { {icon} };
         let placeholder = omnibox_info.unwrap_or_else(|| {
             if self.command_mode {
-                AttrValue::from("Filter commands...")
-            } else {
-                match ctx.props().found_mls {
-                    0 => AttrValue::from("No matching loops found".to_string()),
-                    1 => AttrValue::from("Found 1 potential matching loop".to_string()),
-                    n => AttrValue::from(format!("Found {} potential matching loops", n)),
-                }
-            }
+                return AttrValue::from("Filter commands...");
+            };
+            let text = match ctx.props().ml_data {
+                MlData {
+                    sure_mls: 0,
+                    maybe_mls: 0,
+                } => "No matching loops found".to_string(),
+                MlData {
+                    sure_mls,
+                    maybe_mls: 0,
+                } => format!("Found {sure_mls} matching loop(s)"),
+                MlData {
+                    sure_mls: 0,
+                    maybe_mls,
+                } => format!("Found {maybe_mls} repeating chain(s)"),
+                MlData {
+                    sure_mls,
+                    maybe_mls,
+                } => format!("Found {sure_mls} matching loop(s), {maybe_mls} repeating chain(s)"),
+            };
+            AttrValue::from(text)
         });
         let onkeyup = Callback::from(|ev: KeyboardEvent| {
             ev.stop_propagation();
             ev.cancel_bubble();
         });
-        let test = if ctx.props().found_mls > 0 {
+        let test = if ctx.props().ml_data.sum() > 0 {
             self.picked.as_ref().map(|picked| {
             let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
             let left = ctx.link().callback(|_| Msg::Select { left: true });
             let right = ctx.link().callback(|_| Msg::Select { left: false });
             html! {
             <>
-                <div class="current">{ml_idx}{" / "}{ctx.props().found_mls}</div>
+                <div class="current">{ml_idx}{" / "}{ctx.props().ml_data.sum()}</div>
                 <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
                 <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
             </>

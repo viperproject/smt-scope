@@ -284,7 +284,6 @@ impl Component for GraphContainer {
                 false
             }
             Msg::MouseDown(ev) => {
-                ev.prevent_default();
                 let pos = PagePosition::from(&ev);
                 self.drag_start = Some((pos, pos, false));
                 false

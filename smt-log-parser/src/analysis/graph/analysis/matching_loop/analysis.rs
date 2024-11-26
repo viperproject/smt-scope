@@ -52,11 +52,11 @@ impl MlOutput<'_> {
                     .map(|info| info.prev);
                 let members = [longest_leaf].into_iter().chain(members).collect();
                 let mut expl = MlExplainer::new();
-                let is_ok = expl.explain_leaf(&self, parser, longest_leaf, gen);
+                let error = expl.explain_leaf(&self, parser, longest_leaf, gen);
                 let data = expl.simplify_terms(parser).unwrap();
                 let graph = MlGraph {
                     gen,
-                    graph_incomplete: is_ok.is_none(),
+                    graph_incomplete: error,
                     data,
                 };
                 matching_loops.push(MatchingLoop {

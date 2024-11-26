@@ -644,14 +644,16 @@ impl Component for FileDataComponent {
         });
         let sidebar_ref = sidebar.clone();
         let open_files = self.file.is_some();
-        let hide_sidebar = Callback::from(move |_| {
-            if let Some(sidebar) = sidebar_ref.cast::<HtmlElement>() {
-                if ALLOW_HIDE_SIDEBAR_NO_FILE
-                    || sidebar.class_list().contains("hide-sidebar")
-                    || open_files
-                {
-                    sidebar.class_list().toggle("hide-sidebar").ok();
-                }
+        let toggle_sidebar = Callback::from(move |ev: MouseEvent| {
+            ev.prevent_default();
+            let Some(sidebar) = sidebar_ref.cast::<HtmlElement>() else {
+                return;
+            };
+            if ALLOW_HIDE_SIDEBAR_NO_FILE
+                || sidebar.class_list().contains("hide-sidebar")
+                || open_files
+            {
+                sidebar.class_list().toggle("hide-sidebar").ok();
             }
         });
         let help_dialog_clone = self.help_dialog.clone();
@@ -697,7 +699,7 @@ impl Component for FileDataComponent {
         html! {
         <>
             <nav class="sidebar" ref={sidebar}>
-                <header class={header_class}><img src="html/logo_side_small.png" class="brand"/><div ref={&self.sidebar_button} class="sidebar-button" onclick={hide_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
+                <header class={header_class}><img src="html/logo_side_small.png" class="brand"/><div ref={&self.sidebar_button} class="sidebar-button" onmousedown={toggle_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
                 <input type="file" ref={&self.file_select} class="trace_file" accept=".log" onchange={on_change} multiple=false/>
                 <div class="sidebar-scroll"><div class="sidebar-scroll-container">
                     <SidebarSectionHeader header_text="Navigation" collapsed_text="Open a new trace" section={self.navigation_section.clone()}><ul>

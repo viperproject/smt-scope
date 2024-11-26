@@ -4,7 +4,7 @@ use yew::{
     Properties,
 };
 
-use crate::utils::lookup::Kind;
+use crate::{utils::lookup::Kind, MlData};
 
 use super::SearchAction;
 
@@ -75,8 +75,8 @@ pub struct PickedSuggestion {
 }
 
 impl PickedSuggestion {
-    pub fn default_simple(ml_idx: usize) -> Option<Self> {
-        if ml_idx > 0 {
+    pub fn default_simple(ml_data: MlData) -> Option<Self> {
+        if ml_data.sum() > 0 {
             Some(Self {
                 // name: "".to_string(),
                 // suggestion_idx: 0,

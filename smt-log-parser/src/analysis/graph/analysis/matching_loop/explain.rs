@@ -27,6 +27,8 @@ pub struct MlExplainer {
     fixed_equalities: FxHashMap<EqTransIdx, NodeIndex>,
     instantiations: FxHashMap<InstIdx, NodeIndex>,
     rec_count: u32,
+
+    error: bool,
 }
 
 impl MlExplainer {
@@ -45,36 +47,62 @@ impl MlExplainer {
             fixed_equalities: FxHashMap::default(),
             instantiations: FxHashMap::default(),
             rec_count: 0,
+            error: false,
         }
     }
 
     pub fn explain_leaf(
-        mut self,
+        &mut self,
         ml_out: &MlOutput,
         parser: &mut Z3Parser,
         leaf: InstIdx,
         gen: GenIdx,
-    ) -> Option<Self> {
+    ) -> bool {
         let leaf_info = &ml_out.node_to_ml[&leaf];
         let mut above = leaf_info.walk_gen(&ml_out.node_to_ml, gen);
 
-        let above1 = above.next()?;
+        let Some(above1) = above.next() else {
+            self.error = true;
+            return self.error;
+        };
         let above1 = above1.prev;
 
-        let above2 = above.next()?;
+        let Some(above2) = above.next() else {
+            self.error = true;
+            return self.error;
+        };
         let above2 = above2.prev;
 
+        // Add the leaf instantiation
+        let recurring = self.add_inst(ml_out, parser, above2, gen);
+
+        // Add others between as well as their deps
         let mut others1 = MlOutput::others_between(ml_out.topo, above1, leaf);
         assert!(others1.remove(&leaf));
 
         let mut others2 = MlOutput::others_between(ml_out.topo, above2, above1);
         assert!(others2.remove(&above1));
 
+        self.add_others(ml_out, parser, others1, others2);
+
+        // Add the leaf deps
+        self.add_inst_deps(ml_out, parser, above1, gen, recurring);
+
+        self.error
+    }
+
+    fn add_others(
+        &mut self,
+        ml_out: &MlOutput,
+        parser: &mut Z3Parser,
+        others1: FxHashSet<InstIdx>,
+        mut others2: FxHashSet<InstIdx>,
+    ) {
         // println!("HAVE: {above2:?} -> {others2:?} -> {above1:?} -> {others1:?} -> {leaf:?}");
         // We now have `above2 -> {others2} -> above1 -> {others1} -> leaf`,
         // next we try to link all `others1` and `others2`.
 
-        let mut others = others1
+        let others = others1
             .into_iter()
             .map(|other1| {
                 let other1_info = &ml_out.node_to_ml[&other1];
@@ -89,27 +117,29 @@ impl MlExplainer {
                     None
                 }
             })
-            .collect::<Option<Box<[_]>>>()?;
+            .collect::<Option<Box<[_]>>>();
+        let Some(mut others) = others else {
+            self.error = true;
+            return;
+        };
         if !others2.is_empty() {
+            self.error = true;
             debug_assert!(false, "others2 is not empty");
-            return None;
+            return;
         }
         // `InstIdx` are a partial order, so due to this sort we will always add
         // ancestors before descendants.
         others.sort_by_key(|(other1, ..)| *other1);
 
-        let recurring = self.add_inst(ml_out, parser, above2, gen);
         for (_, other2, gen, rec) in &mut others {
             let recurring = self.add_inst(ml_out, parser, *other2, *gen);
             *rec = recurring;
         }
 
-        self.add_inst_deps(ml_out, parser, above1, gen, recurring)?;
-        for (other1, _, gen, recurring) in others {
-            self.add_inst_deps(ml_out, parser, other1, gen, recurring)?;
+        let others_rev = Vec::from(others).into_iter().rev();
+        for (other1, _, gen, recurring) in others_rev {
+            self.add_inst_deps(ml_out, parser, other1, gen, recurring);
         }
-
-        Some(self)
     }
 
     fn add_inst(
@@ -229,7 +259,7 @@ impl MlExplainer {
         leaf: InstIdx,
         gen: GenIdx,
         recurring: Vec<(usize, Option<usize>, u32)>,
-    ) -> Option<()> {
+    ) {
         let leaf_info = &ml_out.node_to_ml[&leaf];
         let gen = &ml_out.gens[gen];
         assert_eq!(gen.len(), leaf_info.blames.len());
@@ -249,18 +279,17 @@ impl MlExplainer {
                     self.graph.add_node(data)
                 });
                 self.graph
-                    .add_edge(eq, self.in_node, MLGraphEdge::HiddenEdge(false, rec_idx));
+                    .add_edge(eq, self.out_node, MLGraphEdge::HiddenEdge(false, rec_idx));
                 if added {
                     let ancestor_is_recurring = self.add_equalities(parser, eqidx, eq);
-                    if !ancestor_is_recurring {
-                        // TODO: Currently ML#6 in `problem.log` has a recurring
-                        // incoming equality from another ML but this other ML
-                        // is not in-between any instantiations of this ML, so
-                        // we do not figure out how the equality is recurring.
-                        // This should be fixed by using a better measure than
-                        // EQs between.
-                        return None;
-                    }
+                    // TODO: Currently ML#6 in `problem.log` has a recurring
+                    // incoming equality from another ML but this other ML
+                    // is not in-between any instantiations of this ML, so
+                    // we do not figure out how the equality is recurring.
+                    // This should be fixed by using a better measure than
+                    // QIs between.
+                    self.error |= !ancestor_is_recurring;
+                    // debug_assert!(ancestor_is_recurring);
                 } else {
                     // See same branch in enode case below.
                     let MLGraphNode::RecurringEquality(.., rec) = &mut self.graph[eq] else {
@@ -283,7 +312,9 @@ impl MlExplainer {
                 );
                 if added {
                     let ancestor_is_recurring = self.add_enode(parser, blame.enode, enode);
-                    assert!(ancestor_is_recurring);
+                    self.error |= !ancestor_is_recurring;
+                    // TODO: make this pass (i.e. no error)
+                    // debug_assert!(ancestor_is_recurring);
                 } else {
                     // We mark this node as output even though it's
                     // already been added to the graph (meaning that it also has
@@ -296,7 +327,6 @@ impl MlExplainer {
                 }
             }
         }
-        Some(())
     }
 
     fn add_enode(&mut self, parser: &Z3Parser, enode: ENodeIdx, result_enode: NodeIndex) -> bool {
@@ -462,7 +492,7 @@ impl MlExplainer {
         walker.ancestor_is_recurring
     }
 
-    pub fn simplify_terms(mut self, parser: &mut Z3Parser) -> Option<MlExplanation> {
+    pub fn simplify_terms(mut self, parser: &mut Z3Parser) -> Result<MlExplanation> {
         let mut collector = QVarParentCollector::new(parser);
         for &i in self.instantiations.values() {
             let MLGraphNode::QI(_, pattern) = &self.graph[i] else {
@@ -479,9 +509,9 @@ impl MlExplainer {
             stack: Vec::new(),
         };
         for i in self.graph.node_indices() {
-            simplifier.simplify_node(&mut self.graph[i]).ok()?;
+            simplifier.simplify_node(&mut self.graph[i])?;
         }
-        Some(self.graph)
+        Ok(self.graph)
     }
 }
 

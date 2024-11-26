@@ -19,6 +19,7 @@ impl<T: Component> GlobalCallbacksContext for Scope<T> {
 }
 
 pub struct GlobalCallbacks {
+    pub register_mouse_down: CallbackRegisterer<MouseEvent>,
     pub register_mouse_move: CallbackRegisterer<MouseEvent>,
     pub register_mouse_up: CallbackRegisterer<MouseEvent>,
     pub register_mouse_out: CallbackRegisterer<MouseEvent>,
@@ -52,6 +53,7 @@ impl Drop for CallbackRef {
 pub struct CallbackRef(Box<dyn Fn()>);
 
 pub struct GlobalCallbacksProvider {
+    mouse_down: CallbackHolder<MouseEvent>,
     mouse_move: CallbackHolder<MouseEvent>,
     mouse_up: CallbackHolder<MouseEvent>,
     mouse_out: CallbackHolder<MouseEvent>,
@@ -144,6 +146,7 @@ impl CallbackRegisterer<DragEvent> {
 impl GlobalCallbacksProvider {
     fn get_mouse_mut(&mut self, kind: MouseEventKind) -> &mut CallbackHolder<MouseEvent> {
         match kind {
+            MouseEventKind::Down => &mut self.mouse_down,
             MouseEventKind::Move => &mut self.mouse_move,
             MouseEventKind::Up => &mut self.mouse_up,
             MouseEventKind::Out => &mut self.mouse_out,
@@ -172,6 +175,7 @@ impl GlobalCallbacksProvider {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MouseEventKind {
+    Down,
     Move,
     Up,
     Out,
@@ -227,6 +231,10 @@ impl Component for GlobalCallbacksProvider {
 
     fn create(ctx: &Context<Self>) -> Self {
         let registerer = GlobalCallbacks {
+            register_mouse_down: CallbackRegisterer::new_mouse(
+                ctx.link().clone(),
+                MouseEventKind::Down,
+            ),
             register_mouse_move: CallbackRegisterer::new_mouse(
                 ctx.link().clone(),
                 MouseEventKind::Move,
@@ -263,6 +271,7 @@ impl Component for GlobalCallbacksProvider {
             register_resize: CallbackRegisterer::new(ctx.link().clone(), EventKind::Resize),
         };
         Self {
+            mouse_down: CallbackHolder::default(),
             mouse_move: CallbackHolder::default(),
             mouse_up: CallbackHolder::default(),
             mouse_out: CallbackHolder::default(),
@@ -332,6 +341,9 @@ impl Component for GlobalCallbacksProvider {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let onmousedown = ctx
+            .link()
+            .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::Down, ev));
         let onmousemove = ctx
             .link()
             .callback(|ev: MouseEvent| Msg::OnMouse(MouseEventKind::Move, ev));
@@ -354,7 +366,7 @@ impl Component for GlobalCallbacksProvider {
             .link()
             .callback(|ev: DragEvent| Msg::OnDrag(DragEventKind::Drop, ev));
         yew::html! {
-            <div id="body" style="position=absolute; top: 0; left: 0; width: 100%; height: 100%" {onmousemove} {onmouseup} {onmouseout} {ondragover} {ondragenter} {ondragleave} {ondrop}>
+            <div id="body" style="position=absolute; top: 0; left: 0; width: 100%; height: 100%" {onmousedown} {onmousemove} {onmouseup} {onmouseout} {ondragover} {ondragenter} {ondragleave} {ondrop}>
                 <ContextProvider<Rc<GlobalCallbacks>> context={self.registerer.clone()}>
                     {for ctx.props().children.iter()}
                 </ContextProvider<Rc<GlobalCallbacks>>>

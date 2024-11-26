@@ -5,7 +5,7 @@ use crate::{
     utils::split_div::SplitDiv,
 };
 use indexmap::map::{Entry, IndexMap};
-use material_yew::WeakComponentLink;
+use material_yew::{icon::MatIcon, WeakComponentLink};
 // use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
 use smt_log_parser::analysis::{RawNodeIndex, VisibleEdgeIndex};
 use wasm_bindgen::JsCast;
@@ -22,7 +22,7 @@ pub struct GraphInfo {
     selected_edges: IndexMap<VisibleEdgeIndex, bool>,
     generalized_terms: Vec<String>,
     graph_container: WeakComponentLink<graph_container::GraphContainer>,
-    displayed_matching_loop_graph: Option<(usize, AttrValue)>,
+    displayed_matching_loop_graph: Option<MatchingLoopGraphData>,
     in_ml_viewer_mode: bool,
     ml_graph_div: NodeRef,
     _context_listener: ContextHandle<Rc<StateProvider>>,
@@ -65,9 +65,23 @@ pub enum Msg {
     DeselectAll,
     SelectAll,
     ShowGeneralizedTerms(Vec<String>),
-    ShowMatchingLoopGraph(Option<(usize, AttrValue)>),
+    ShowMatchingLoopGraph(Option<MatchingLoopGraphData>),
     ContextUpdated(Rc<StateProvider>),
-    DownloadMatchingLoopGraph(MouseEvent, usize),
+    MatchingLoopGraphAction(MatchingLoopGraphAction, MouseEvent, usize),
+}
+
+pub enum MatchingLoopGraphData {
+    ShowEmpty(usize),
+    Show {
+        ml_idx: usize,
+        incomplete: bool,
+        data: AttrValue,
+    },
+}
+
+pub enum MatchingLoopGraphAction {
+    Download,
+    Share,
 }
 
 #[derive(Properties, PartialEq)]
@@ -236,7 +250,7 @@ impl Component for GraphInfo {
                     false
                 }
             }
-            Msg::DownloadMatchingLoopGraph(ev, ml_idx) => {
+            Msg::MatchingLoopGraphAction(action, ev, ml_idx) => {
                 ev.prevent_default();
                 let Some(graph) = self.ml_graph_div.cast::<web_sys::Element>() else {
                     return false;
@@ -252,19 +266,35 @@ impl Component for GraphInfo {
                 let svg = graph.inner_html();
                 let blob = web_sys::Blob::new_with_str_sequence(&vec![svg].into())
                     .expect("Failed to create blob");
-                let url = web_sys::Url::create_object_url_with_blob(&blob)
-                    .expect("Failed to create object URL");
-                let download = gloo::utils::document()
-                    .create_element("a")
-                    .expect("Failed to create element");
-                let download = download
-                    .dyn_into::<web_sys::HtmlAnchorElement>()
-                    .expect("Failed to cast element");
-                download.set_href(&url);
-                download.set_download(&filename);
-                download.click();
-                web_sys::Url::revoke_object_url(&url).expect("Failed to revoke object URL");
-                false
+                use MatchingLoopGraphAction::*;
+                match action {
+                    Download => {
+                        let url = web_sys::Url::create_object_url_with_blob(&blob)
+                            .expect("Failed to create object URL");
+                        let download = gloo::utils::document()
+                            .create_element("a")
+                            .expect("Failed to create element");
+                        let download = download
+                            .dyn_into::<web_sys::HtmlAnchorElement>()
+                            .expect("Failed to cast element");
+                        download.set_href(&url);
+                        download.set_download(&filename);
+                        download.click();
+                        web_sys::Url::revoke_object_url(&url).expect("Failed to revoke object URL");
+                        false
+                    }
+                    Share => {
+                        let navigator = web_sys::window().unwrap().navigator();
+                        let data = web_sys::ShareData::new();
+                        data.set_title(&filename);
+                        let file =
+                            web_sys::File::new_with_blob_sequence(&vec![blob].into(), &filename)
+                                .expect("Failed to create file");
+                        data.set_files(&js_sys::Array::of1(&file));
+                        let _share_promise = navigator.share_with_data(&data);
+                        false
+                    }
+                }
             }
         }
     }
@@ -301,23 +331,47 @@ impl Component for GraphInfo {
         } else {
             1.0
         };
-        let ml_graph = if let Some((ml_idx, graph)) = &self.displayed_matching_loop_graph {
-            if self.in_ml_viewer_mode {
-                let ml_idx = *ml_idx;
-                let onclick = ctx
+        let ml_graph = match (&self.displayed_matching_loop_graph, self.in_ml_viewer_mode) {
+            (Some(MatchingLoopGraphData::ShowEmpty(..)), true) => {
+                html! { <h2>{"Failed to generalise repeating chain, likely not a matching loop."}</h2> }
+            }
+            (
+                &Some(MatchingLoopGraphData::Show {
+                    ml_idx,
+                    incomplete,
+                    ref data,
+                }),
+                true,
+            ) => {
+                use MatchingLoopGraphAction::*;
+                let download = ctx
                     .link()
-                    .callback(move |ev| Msg::DownloadMatchingLoopGraph(ev, ml_idx));
+                    .callback(move |ev| Msg::MatchingLoopGraphAction(Download, ev, ml_idx));
+                let share = ctx
+                    .link()
+                    .callback(move |ev| Msg::MatchingLoopGraphAction(Share, ev, ml_idx));
+
+                let warning = if incomplete {
+                    html! { <span class="warning" title="Error during graph construction, the graph is incomplete!">{"⚠️ Incomplete ⚠️"}</span> }
+                } else {
+                    html! {}
+                };
+                let download_share = html! {
+                    <><a href="#" class="download" title="Download" onclick={download}>
+                        <div class="material-icons"><MatIcon>{"download"}</MatIcon></div>
+                    </a>
+                    <a href="#" class="share" title="Share" onclick={share}>
+                        <div class="material-icons"><MatIcon>{"share"}</MatIcon></div>
+                    </a></>
+                };
                 html! {
                     <>
-                        <h2>{"Displayed Matching Loop "}<a href="#" class="download" title="Download" {onclick}>{"💾"}</a></h2>
-                        <div style="overflow-x: auto;" ref={&self.ml_graph_div}>{Html::from_html_unchecked(graph.clone())}</div>
+                        <h2>{"Generalised Matching Loop "}{download_share}{warning}</h2>
+                        <div style="overflow-x: auto;" ref={&self.ml_graph_div}>{Html::from_html_unchecked(data.clone())}</div>
                     </>
                 }
-            } else {
-                html! {}
             }
-        } else {
-            html! {}
+            _ => html! {},
         };
         html! {
             <>

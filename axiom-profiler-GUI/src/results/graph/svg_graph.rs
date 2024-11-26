@@ -238,7 +238,6 @@ pub fn Graph(props: &GraphProps) -> Html {
                             let callback = nodes_callback.clone();
                             let mousedown: Closure<dyn Fn(Event)> =
                                 Closure::new(move |e: Event| {
-                                    e.prevent_default();
                                     e.cancel_bubble();
                                     e.stop_propagation();
                                     callback.emit(idx);
@@ -251,9 +250,10 @@ pub fn Graph(props: &GraphProps) -> Html {
                             let callback = nodes_callback.clone();
                             let mouseover: Closure<dyn Fn(Event)> =
                                 Closure::new(move |e: Event| {
-                                    if e.dyn_into::<web_sys::MouseEvent>()
-                                        .is_ok_and(|e| e.buttons() == 1 && e.shift_key())
-                                    {
+                                    let Ok(e) = e.dyn_into::<web_sys::MouseEvent>() else {
+                                        return;
+                                    };
+                                    if e.buttons() == 1 && e.shift_key() {
                                         callback.emit(idx)
                                     }
                                 });
@@ -294,7 +294,6 @@ pub fn Graph(props: &GraphProps) -> Html {
                             let callback = edges_callback.clone();
                             let mousedown: Closure<dyn Fn(Event)> =
                                 Closure::new(move |e: Event| {
-                                    e.prevent_default();
                                     e.cancel_bubble();
                                     e.stop_propagation();
                                     callback.emit(idx);
@@ -307,9 +306,10 @@ pub fn Graph(props: &GraphProps) -> Html {
                             let callback = edges_callback.clone();
                             let mouseover: Closure<dyn Fn(Event)> =
                                 Closure::new(move |e: Event| {
-                                    if e.dyn_into::<web_sys::MouseEvent>()
-                                        .is_ok_and(|e| e.buttons() == 1 && e.shift_key())
-                                    {
+                                    let Ok(e) = e.dyn_into::<web_sys::MouseEvent>() else {
+                                        return;
+                                    };
+                                    if e.buttons() == 1 && e.shift_key() {
                                         callback.emit(idx)
                                     }
                                 });
@@ -377,7 +377,7 @@ pub fn Graph(props: &GraphProps) -> Html {
     generation
         .map(|_| {
             html! {
-                    <div ref={div_ref}>
+                    <div class="no-select" ref={div_ref}>
                         {props.children.clone()}
                     </div>
             }

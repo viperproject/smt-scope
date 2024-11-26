@@ -65,9 +65,9 @@ pub fn Topbar(props: &TopbarProps) -> Html {
     let state = use_context::<std::rc::Rc<StateProvider>>().expect("no ctx found");
     let ml_viewer_mode = state.state.ml_viewer_mode;
     let omnibox = if ml_viewer_mode {
-        let found_mls = state.state.parser.as_ref().unwrap().found_mls.unwrap();
+        let ml_data = state.state.parser.as_ref().unwrap().ml_data.unwrap();
         html! {
-            <MlOmnibox message={props.message.clone()} omnibox={props.omnibox.clone()} {found_mls} pick_nth_ml={props.pick_nth_ml.clone()} />
+            <MlOmnibox message={props.message.clone()} omnibox={props.omnibox.clone()} {ml_data} pick_nth_ml={props.pick_nth_ml.clone()} />
         }
     } else {
         html! {

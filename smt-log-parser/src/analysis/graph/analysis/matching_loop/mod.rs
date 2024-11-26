@@ -22,6 +22,13 @@ idx!(MlSigIdx, "∞{}");
 pub struct MlData {
     pub signatures: TiVec<MlSigIdx, MlSignature>,
     pub matching_loops: Vec<MatchingLoop>,
+    /// How many MLs were found for which we managed to construct a generalised
+    /// graph? We are pretty confident that these are actual MLs.
+    pub sure_mls: usize,
+    /// How many long chains with the same signature were found, but which
+    /// couldn't be generalised? These are probably not MLs but we might still
+    /// want to show them to the user.
+    pub maybe_mls: usize,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -30,8 +37,19 @@ pub struct MatchingLoop {
     pub sig: MlSigIdx,
     pub leaves: MlLeaves,
     pub members: BoxSlice<InstIdx>,
-    pub graph: Option<(GenIdx, Option<MlExplanation>)>,
+    pub graph: Option<MlGraph>,
 }
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug, Clone)]
+pub struct MlGraph {
+    pub gen: GenIdx,
+    /// Set to `true` if we failed at some point during the graph construction.
+    /// The graph is likely incomplete in this case and we should warn the user.
+    pub graph_incomplete: bool,
+    pub data: MlExplanation,
+}
+
 pub type MlExplanation = Graph<MLGraphNode, MLGraphEdge>;
 
 pub type MlEndNodes = Vec<MlSigCollection>;

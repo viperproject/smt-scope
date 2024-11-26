@@ -11,12 +11,13 @@ use yew::{function_component, html, use_context, Callback, Html, MouseEvent, Pro
 use crate::{
     results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT},
     state::StateProvider,
+    MlData,
 };
 
 #[derive(PartialEq, Properties)]
 pub struct AddFilterSidebarProps {
     pub new_filter: Callback<Filter>,
-    pub found_mls: Option<usize>,
+    pub ml_data: Option<MlData>,
     pub nodes: Vec<RawNodeIndex>,
     pub general_filters: bool,
 }
@@ -32,7 +33,7 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
     let filters = if props.general_filters {
         let mut mls = Vec::new();
         let mut mls_all = Vec::new();
-        if props.found_mls.is_some_and(|mls| mls > 0) {
+        if props.ml_data.is_some_and(|mls| mls.sum() > 0) {
             mls = vec![Filter::SelectNthMatchingLoop(0)];
             mls_all = vec![Filter::ShowMatchingLoopSubgraph];
         };

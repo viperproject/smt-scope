@@ -19,6 +19,7 @@ pub struct State {
     /// Calculated automatically based on the set file_info.
     pub term_display: TermDisplayContext,
     pub parser: Option<RcParser>,
+    // TODO: rework mode system (put it under the same Option as file_info?)
     pub ml_viewer_mode: bool,
     pub overlay_visible: bool,
 }
@@ -34,43 +35,48 @@ pub struct FileInfo {
 #[derive(Clone, PartialEq)]
 pub struct StateProvider {
     pub state: State,
-    update: Updater<State, Option<StateUpdateKind>>,
+    update: Updater<State, StateUpdateKind>,
 }
 
 impl StateProvider {
     pub fn update_file_info(&self, f: impl FnOnce(&mut Option<FileInfo>) -> bool + 'static) {
         self.update
-            .update(|state| f(&mut state.file_info).then_some(StateUpdateKind::FileInfo));
+            .update(|state| StateUpdateKind::file_info(f(&mut state.file_info)));
     }
     pub fn update_parser(&self, f: impl FnOnce(&mut Option<RcParser>) -> bool + 'static) {
         self.update
-            .update(|state| f(&mut state.parser).then_some(StateUpdateKind::Parser));
+            .update(|state| StateUpdateKind::parser(f(&mut state.parser)));
     }
     pub fn update_graph(&self, f: impl FnOnce(&mut RcParser) -> bool + 'static) {
-        self.update.update(|state| {
-            state
-                .parser
-                .as_mut()
-                .map(f)
-                .unwrap_or_default()
-                .then_some(StateUpdateKind::Parser)
-        });
+        self.update_parser(move |parser| parser.as_mut().map(f).unwrap_or_default());
     }
 
     pub fn set_ml_viewer_mode(&self, ml_viewer_mode: bool) {
         self.update.update(move |state| {
-            (state.ml_viewer_mode != ml_viewer_mode).then(|| {
-                state.ml_viewer_mode = ml_viewer_mode;
-                StateUpdateKind::Other
-            })
+            let other = state.ml_viewer_mode != ml_viewer_mode;
+            state.ml_viewer_mode = ml_viewer_mode;
+            StateUpdateKind::other(other)
         });
     }
     pub fn set_overlay_visible(&self, overlay_visible: bool) {
         self.update.update(move |state| {
-            (state.overlay_visible != overlay_visible).then(|| {
-                state.overlay_visible = overlay_visible;
-                StateUpdateKind::Other
-            })
+            let other = state.overlay_visible != overlay_visible;
+            state.overlay_visible = overlay_visible;
+            StateUpdateKind::other(other)
+        });
+    }
+
+    pub fn close_file(&self) {
+        self.update.update(|state| {
+            let file_info = state.file_info.take().is_some();
+            let parser = state.parser.take().is_some();
+            let other = state.ml_viewer_mode;
+            state.ml_viewer_mode = false;
+            StateUpdateKind {
+                file_info,
+                parser,
+                other,
+            }
         });
     }
 }
@@ -101,10 +107,34 @@ impl State {
 }
 
 mod private {
-    pub enum StateUpdateKind {
-        FileInfo,
-        Parser,
-        Other,
+    #[derive(Default)]
+    pub struct StateUpdateKind {
+        pub file_info: bool,
+        pub parser: bool,
+        pub other: bool,
+    }
+    impl StateUpdateKind {
+        pub fn file_info(file_info: bool) -> Self {
+            Self {
+                file_info,
+                ..Default::default()
+            }
+        }
+        pub fn parser(parser: bool) -> Self {
+            Self {
+                parser,
+                ..Default::default()
+            }
+        }
+        pub fn other(other: bool) -> Self {
+            Self {
+                other,
+                ..Default::default()
+            }
+        }
+        pub fn any(&self) -> bool {
+            self.file_info || self.parser || self.other
+        }
     }
 }
 use private::StateUpdateKind;
@@ -120,7 +150,7 @@ pub struct StateProviderProps {
 }
 
 pub enum Msg {
-    Update(Update<State, Option<StateUpdateKind>>),
+    Update(Update<State, StateUpdateKind>),
     ConfigChanged(Rc<ConfigurationProvider>),
 }
 
@@ -148,13 +178,13 @@ impl Component for StateProviderContext {
         match msg {
             Msg::Update(update) => {
                 let update = update.apply(&mut self.state.state);
-                if let Some(StateUpdateKind::FileInfo) = update {
+                if update.file_info {
                     let cfg = ctx.link().get_configuration().unwrap();
                     self.state
                         .state
                         .recalculate_term_display(&cfg.config.term_display);
                 }
-                update.is_some()
+                update.any()
             }
             Msg::ConfigChanged(cfg) => {
                 self.state

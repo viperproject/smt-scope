@@ -29,7 +29,7 @@ pub fn Shortcuts(props: &ShortcutsProps) -> Html {
                     <tr><td>{"Click + Drag"}</td><td>{"Pan"}</td></tr>
                     <tr><td>{"Shift + Click + Drag"}</td><td>{"Select many"}</td></tr>
                 </table>
-                <h2>{"Running commands (not supported yet)"}</h2>
+                <h2>{"Running commands"}</h2>
                 <table>
                     <tr><td><div class="keycap">{">"}</div> {" in the (empty) search box"}</td><td>{"Switch to command mode"}</td></tr>
                     <tr><td><div class="keycap">{"Enter"}</div></td><td>{"Execute command"}</td></tr>

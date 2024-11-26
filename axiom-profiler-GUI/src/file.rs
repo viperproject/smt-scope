@@ -97,9 +97,7 @@ impl FileDataComponent {
     ) -> bool {
         // remove any old parser in the state
         let state = link.get_state().unwrap();
-        state.update_parser(|p| p.take().is_some());
-        state.set_ml_viewer_mode(false);
-
+        state.close_file();
         state.update_file_info(move |info| {
             *info = Some(FileInfo { name, size });
             true

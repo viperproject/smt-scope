@@ -1,6 +1,49 @@
 use chrono::{DateTime, Utc};
 use gloo::storage::Storage;
-use yew::{html, prelude::Context, Callback, Component, Html, NodeRef, Properties};
+use yew::{
+    function_component, html, prelude::Context, Callback, Component, Html, NodeRef, Properties,
+};
+
+fn new_features() -> Vec<Html> {
+    vec![
+        // html!{<li>{"New updated "}<a href="LINK_TO_DOCS" class="pf-anchor">{"tabs"}</a>{" are extensible and user friendly."}</li>},
+    ]
+}
+
+fn hints() -> Vec<Html> {
+    vec![
+        html! {<div>{"Drag a log file onto this window to open it."}</div>},
+        html! {<div>{"Press "}<div class="keycap">{"?"}</div>{" to toggle the help popup."}</div>},
+    ]
+}
+
+#[function_component]
+pub fn HomepageHints() -> Html {
+    let new_features = new_features();
+    let new_features = (!new_features.is_empty())
+        .then(|| {
+            html! {
+                <div class="home-page-hints">
+                    <div class="tagline">{"New!"}</div>
+                    <ul>{for new_features}</ul>
+                </div>
+            }
+        })
+        .unwrap_or_default();
+    let hints = hints();
+    let hints = (!hints.is_empty())
+        .then(|| {
+            let random = (js_sys::Math::random() * hints.len() as f64).floor() as usize;
+            html! {
+                <div class="home-page-hints">
+                    <div class="hintline">{"Hint"}</div>
+                    <div class="hint">{hints[random].clone()}</div>
+                </div>
+            }
+        })
+        .unwrap_or_default();
+    html! {<>{new_features}{hints}</>}
+}
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct HomepageProps {
@@ -161,12 +204,7 @@ impl Component for Homepage {
             <><div class="home-page-center">
                 <div class="home-page-title">
                     <img src="html/logo_small.png" class="logo" />{"Axiom Profiler"}</div>
-                <div class="home-page-hints">
-                    // <div class="tagline">{"New!"}</div>
-                    // <ul>
-                    //     <li>{"New updated "}<a href="LINK_TO_DOCS" class="pf-anchor">{"tabs"}</a>{" are extensible and user friendly."}</li>
-                    // </ul>
-                </div>
+                <HomepageHints />
                 <div class="channel-select">
                     <div>{switch_text}</div>
                     <fieldset>

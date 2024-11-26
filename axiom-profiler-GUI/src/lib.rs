@@ -78,6 +78,7 @@ pub enum Msg {
     LoadingState(LoadingState),
     RenderedGraph(RenderedGraph),
     FailedOpening(String),
+    CloseFile,
     ShowMessage(OmnibarMessage, u32),
     ClearMessage,
     SelectedNodes(Vec<RawNodeIndex>),
@@ -424,17 +425,19 @@ impl Component for FileDataComponent {
                 };
                 self.set_message(ctx.link(), message, 10000);
 
-                self.progress = LoadingState::NoFileSelected;
-                let file = self.file.take();
-                drop(file);
-                let state = ctx.link().get_state().unwrap();
-                state.update_file_info(|fi| fi.take().is_some());
-                state.update_parser(|p| p.take().is_some());
+                ctx.link().send_message(Msg::CloseFile);
 
                 if let Some(navigation_section) = self.navigation_section.cast::<web_sys::Element>()
                 {
                     let _ = navigation_section.class_list().add_1("expanded");
                 }
+                false
+            }
+            Msg::CloseFile => {
+                self.progress = LoadingState::NoFileSelected;
+                let file = self.file.take();
+                drop(file);
+                ctx.link().get_state().unwrap().close_file();
                 true
             }
             Msg::ShowMessage(message, millis) => {
@@ -684,6 +687,13 @@ impl Component for FileDataComponent {
             click.prevent_default();
             flags_visible.borrow().emit(None);
         });
+        let close_file = self.file.as_ref().map(|_file| {
+            let onclick = ctx.link().callback(|ev: MouseEvent| {
+                ev.prevent_default();
+                Msg::CloseFile
+            });
+            html!{<li><a href="#" draggable="false" {onclick}><div class="material-icons"><MatIcon>{"close"}</MatIcon></div>{"Close file"}</a></li>}
+        }).unwrap_or_default();
         html! {
         <>
             <nav class="sidebar" ref={sidebar}>
@@ -693,6 +703,7 @@ impl Component for FileDataComponent {
                     <SidebarSectionHeader header_text="Navigation" collapsed_text="Open a new trace" section={self.navigation_section.clone()}><ul>
                         <li><a href="#" draggable="false" id="open_trace_file"><div class="material-icons"><MatIcon>{"folder_open"}</MatIcon></div>{"Open trace file"}</a></li>
                         <ExampleRow example={Example::Array} link={ctx.link().callback(|m| m)} />
+                        {close_file}
                     </ul></SidebarSectionHeader>
                     {current_trace}
                     <SidebarSectionHeader header_text="Support" collapsed_text="Documentation & Bugs"><ul>

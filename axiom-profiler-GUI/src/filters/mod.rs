@@ -56,7 +56,7 @@ pub struct FiltersState {
     disabler_chain: Vec<(Disabler, bool)>,
     filter_chain: Vec<Filter>,
     applied_filter_chain: Vec<Filter>,
-    prev_filter_chain: Vec<Filter>,
+    filter_chain_history: Vec<Vec<Filter>>,
     selected_filter: Option<usize>,
     edit_filter: Option<usize>,
     global_section: NodeRef,
@@ -74,8 +74,8 @@ impl FiltersState {
             return false;
         }
         if history {
-            self.prev_filter_chain
-                .clone_from(&self.applied_filter_chain);
+            self.filter_chain_history
+                .push(self.applied_filter_chain.clone());
         }
         self.applied_filter_chain.clone_from(&self.filter_chain);
         file.send_updates(self.rerender_msgs(false));
@@ -106,12 +106,11 @@ impl Component for FiltersState {
         *ctx.props().file.filter.borrow_mut() = Some(ctx.link().clone());
         let disabler_chain = DEFAULT_DISABLER_CHAIN.to_vec();
         let filter_chain = DEFAULT_FILTER_CHAIN.to_vec();
-        let prev_filter_chain = filter_chain.clone();
         let applied_filter_chain = filter_chain.clone();
         let mut self_ = Self {
             disabler_chain,
             filter_chain,
-            prev_filter_chain,
+            filter_chain_history: Vec::new(),
             applied_filter_chain,
             dragging: false,
             delete_node: NodeRef::default(),
@@ -155,8 +154,12 @@ impl Component for FiltersState {
                 false
             }
             Msg::UndoOperation => {
-                self.filter_chain.clone_from(&self.prev_filter_chain);
-                self.send_updates(&ctx.props().file, true)
+                let Some(prev) = self.filter_chain_history.pop() else {
+                    debug_assert!(false, "Undoing when no history");
+                    return false;
+                };
+                self.filter_chain = prev;
+                self.send_updates(&ctx.props().file, false)
             }
             Msg::SelectFilter(idx) => {
                 self.edit_filter = None;
@@ -214,7 +217,6 @@ impl Component for FiltersState {
                         return false;
                     }
                 }
-                self.prev_filter_chain.clone_from(&self.filter_chain);
                 self.edit_filter = edit.then_some(self.filter_chain.len());
                 self.filter_chain.push(filter);
                 if !edit {
@@ -284,14 +286,14 @@ impl Component for FiltersState {
             }
         } else {
             html! {
-                <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"loop"}</MatIcon></div>{"View likely matching loops"}</a></li>
+                <li><a draggable="false" href="#" onclick={toggle_ml_viewer_mode}><div class="material-icons"><MatIcon>{"all_inclusive"}</MatIcon></div>{"View matching loops"}</a></li>
             }
         };
         let reset = ctx.link().callback(|e: MouseEvent| {
             e.prevent_default();
             Msg::ResetOperations
         });
-        let undo = self.prev_filter_chain != self.filter_chain;
+        let undo = !self.filter_chain_history.is_empty();
         let undo = undo.then(|| {
             let undo = ctx.link().callback(|e: MouseEvent| {
                 e.prevent_default();

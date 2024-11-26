@@ -30,6 +30,16 @@ impl TopoAnalysis<false, false> for BwdReachableVisAnalysis {
     }
 }
 
+/// Looks for tuples of 4 indices:
+///  - `from`: a visible node
+///  - `from_child`: a non-visible child of `from`
+///  - `to_parent`: a non-visible node reachable from `from_child` but not
+///    reachable by any visible node also reachable from `from_child`
+///    (note that it's possible for `from_child == to_parent`)
+///  - `to`: a visible child of `to_parent`
+///
+/// The `to` is implicit in the index which we used to reach the
+/// `TopoAnalysis::Value`.
 pub struct ReconnectAnalysis(pub TiVec<RawNodeIndex, bool>);
 
 impl TopoAnalysis<true, false> for ReconnectAnalysis {
@@ -50,21 +60,21 @@ impl TopoAnalysis<true, false> for ReconnectAnalysis {
             return data;
         }
 
-        let hidden = node.hidden();
+        let visible = node.visible();
         for (fidx, from_data) in from_all() {
             let from = &graph.raw[fidx];
-            match (from.hidden(), hidden) {
-                (true, true) => {
+            match (from.visible(), visible) {
+                (false, false) => {
                     data.extend(from_data.iter().copied());
                 }
-                (false, true) => {
+                (true, false) => {
                     data.insert((fidx, cidx, cidx));
                 }
-                (true, false) => {
+                (false, true) => {
                     let new = from_data.iter().map(|&(fv, fh, _)| (fv, fh, fidx));
                     data.extend(new)
                 }
-                (false, false) => {
+                (true, true) => {
                     data.insert((fidx, fidx, fidx));
                 }
             }

@@ -2,8 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use fxhash::{FxHashMap, FxHashSet};
 use petgraph::{
-    graph::{DiGraph, EdgeIndex, NodeIndex},
-    visit::{EdgeRef, IntoEdgeReferences},
+    graph::DiGraph,
     Direction::{self, Incoming, Outgoing},
 };
 
@@ -15,7 +14,7 @@ use crate::{
 
 use super::{
     analysis::reconnect::{BwdReachableVisAnalysis, ReconnectAnalysis},
-    raw::{EdgeKind, IndexesInstGraph, Node, NodeKind},
+    raw::{EdgeKind, NodeKind},
     InstGraph, RawEdgeIndex, RawNodeIndex,
 };
 
@@ -29,15 +28,12 @@ pub struct VisibleInstGraph {
 }
 
 impl InstGraph {
-    pub fn to_visible_opt(&self) -> VisibleInstGraph {
+    pub fn to_visible(&self) -> VisibleInstGraph {
         let bwd_vis_reachable = self.topo_analysis(&mut BwdReachableVisAnalysis);
         let mut reconnect = self.topo_analysis(&mut ReconnectAnalysis(bwd_vis_reachable));
         let (mut nodes, mut edges) = (0, 0);
         for (idx, data) in reconnect.iter_mut_enumerated() {
-            let node = &self.raw[idx];
-            if node.disabled() {
-                assert_eq!(data.len(), 0);
-            } else if node.hidden() {
+            if !self.raw[idx].visible() {
                 data.clear();
             }
             nodes += 1;
@@ -48,8 +44,7 @@ impl InstGraph {
             DiGraph::with_capacity(nodes, edges);
 
         for idx in self.raw.node_indices() {
-            let i_node = &self.raw[idx];
-            if !i_node.visible() {
+            if !self.raw[idx].visible() {
                 continue;
             }
             let hidden_parents = self.raw.neighbors_directed(idx, Incoming).count_hidden();
@@ -74,134 +69,34 @@ impl InstGraph {
         };
 
         for (i_idx, data) in reconnect.iter_enumerated() {
-            let Some(&v_idx) = self_.reverse.get(&i_idx) else {
+            let Some(v_idx) = self_.reverse(i_idx) else {
                 assert!(data.is_empty());
                 continue;
             };
-            for &(from_v, from_h, _to_h) in data {
-                let v_from_v = self_.reverse[&from_v];
-                let edge = if from_v == from_h {
-                    VisibleEdge::Direct(RawEdgeIndex::default())
-                } else {
-                    VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default())
-                };
-                self_.graph.add_edge(v_from_v.0, v_idx.0, edge);
+            let mut edges_to_add: Vec<_> = data
+                .iter()
+                .map(|&(from_v, from_h, to_h)| {
+                    let v_from_v = self_.reverse(from_v).unwrap();
+                    let (edge, to_edge) = if from_v == from_h {
+                        let edge =
+                            RawEdgeIndex(self.raw.graph.find_edge(from_v.0, i_idx.0).unwrap());
+                        (VisibleEdge::Direct(edge), edge)
+                    } else {
+                        let from_edge =
+                            RawEdgeIndex(self.raw.graph.find_edge(from_v.0, from_h.0).unwrap());
+                        let to_edge =
+                            RawEdgeIndex(self.raw.graph.find_edge(to_h.0, i_idx.0).unwrap());
+                        (VisibleEdge::Indirect(from_edge, to_edge), to_edge)
+                    };
+                    (to_edge, v_from_v, edge)
+                })
+                .collect();
+            edges_to_add.sort_unstable_by_key(|(to_edge, from, _)| (*to_edge, *from));
+
+            for (_, from, edge) in edges_to_add {
+                self_.graph.add_edge(from.0, v_idx.0, edge);
             }
         }
-        self_
-    }
-
-    pub fn to_visible(&self) -> VisibleInstGraph {
-        // debug_assert_eq!(self.hidden as usize, self.graph.node_weights().filter(|n| n.hidden).count());
-
-        // Code copied from `DiGraph::filter_map`, but that function does not
-        // allow for changing the node index type.
-        let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> =
-            DiGraph::with_capacity(self.raw.visible_nodes(), 0);
-        // mapping from old node index to new node index, end represents removed.
-        let mut node_index_map = vec![NodeIndex::end(); self.raw.graph.node_count()];
-        let node_map = |idx, node: &Node| {
-            node.visible().then(|| {
-                let hidden_parents = self.raw.neighbors_directed(idx, Incoming).count_hidden();
-                let hidden_children = self.raw.neighbors_directed(idx, Outgoing).count_hidden();
-                VisibleNode {
-                    idx,
-                    hidden_parents: hidden_parents as u32,
-                    hidden_children: hidden_children as u32,
-                }
-            })
-        };
-        for (i, node) in self.raw.graph.node_weights().enumerate() {
-            if let Some(nw) = node_map(RawNodeIndex(NodeIndex::new(i)), node) {
-                node_index_map[i] = graph.add_node(nw);
-            }
-        }
-        let edge_map = |idx, _| Some(VisibleEdge::Direct(idx));
-        for (i, edge) in self.raw.graph.edge_references().enumerate() {
-            // skip edge if any endpoint was removed
-            let source = node_index_map[edge.source().index()];
-            let target = node_index_map[edge.target().index()];
-            if source != NodeIndex::end() && target != NodeIndex::end() {
-                if let Some(ew) = edge_map(RawEdgeIndex(EdgeIndex::new(i)), edge.weight()) {
-                    graph.add_edge(source, target, ew);
-                }
-            }
-        }
-
-        let reverse: FxHashMap<_, _> = graph
-            .node_indices()
-            .map(VisibleNodeIndex)
-            .map(|idx| (graph[idx.0].idx, idx))
-            .collect();
-        let mut self_ = VisibleInstGraph {
-            graph,
-            reverse,
-            generation: self.raw.stats.generation,
-        };
-        self_.reconnect(self);
-        self_
-    }
-
-    pub fn to_visible_simplified(&self) -> VisibleInstGraph {
-        // debug_assert_eq!(self.hidden as usize, self.graph.node_weights().filter(|n| n.hidden).count());
-
-        // Code copied from `DiGraph::filter_map`, but that function does not
-        // allow for changing the node index type.
-        let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> =
-            DiGraph::with_capacity(self.raw.visible_nodes(), 0);
-        // mapping from old node index to new node index, end represents removed.
-        let mut node_index_map = vec![NodeIndex::end(); self.raw.graph.node_count()];
-        for (i, node) in self.raw.graph.node_weights().enumerate() {
-            if !node.visible() {
-                continue;
-            }
-            let idx = RawNodeIndex(NodeIndex::new(i));
-            let nw = VisibleNode {
-                idx,
-                hidden_parents: self.raw[idx]
-                    .inst_parents
-                    .nodes
-                    .iter()
-                    .filter(|&n| self.raw[*n].hidden())
-                    .count() as u32,
-                hidden_children: self.raw[idx]
-                    .inst_children
-                    .nodes
-                    .iter()
-                    .filter(|&n| self.raw[*n].hidden())
-                    .count() as u32,
-            };
-            node_index_map[i] = graph.add_node(nw);
-        }
-        // assumes that inst-nodes in self.raw.graph are ordered in topological order
-        let mut edge_idx = 0;
-        for (i, node) in self.raw.graph.node_weights().enumerate() {
-            let from = node_index_map[i];
-            if from == NodeIndex::end() {
-                continue;
-            }
-            for &next_inst in node.inst_children.nodes.iter() {
-                let next_inst = next_inst.index(&self.raw);
-                let to = node_index_map[next_inst.0.index()];
-                if to == NodeIndex::end() {
-                    continue;
-                }
-                let weight = VisibleEdge::Direct(RawEdgeIndex(EdgeIndex::new(edge_idx)));
-                graph.add_edge(from, to, weight);
-                edge_idx += 1;
-            }
-        }
-        let reverse: FxHashMap<_, _> = graph
-            .node_indices()
-            .map(VisibleNodeIndex)
-            .map(|idx| (graph[idx.0].idx, idx))
-            .collect();
-        let mut self_ = VisibleInstGraph {
-            graph,
-            reverse,
-            generation: self.raw.stats.generation,
-        };
-        self_.reconnect_simplified(self);
         self_
     }
 }
@@ -211,156 +106,8 @@ impl VisibleInstGraph {
         self.reverse.contains_key(&i_idx)
     }
 
-    pub(super) fn _reverse(&self, i_idx: RawNodeIndex) -> Option<VisibleNodeIndex> {
+    pub(super) fn reverse(&self, i_idx: RawNodeIndex) -> Option<VisibleNodeIndex> {
         self.reverse.get(&i_idx).copied()
-    }
-
-    fn reconnect(&mut self, igraph: &InstGraph) {
-        // Look for tuples of 4 indices:
-        //  - `from`: a visible node
-        //  - `from_child`: a hidden child of `from`
-        //  - `to_parent`: a hidden node reachable from `from_child` but not
-        //    reachable by any hidden node also reachable from `from_child`
-        //    (note that it's possible for `from_child == to_parent`)
-        //  - `to`: a visible child of `to_parent`
-        //
-        // There a 4 nested loops here which could be pretty expensive, however
-        // we assume that the connectivity of the graph is rather low and so all
-        // 3 inner nested loops are relatively cheap (few neighbors and not many
-        // reachable nodes). If this is not the case, then the graph would
-        // anyway have lots of edges and be hard to render.
-        for v_from in self.graph.node_indices() {
-            let i_from = self.graph[v_from].idx;
-            let Some((sg, _)) = igraph.raw.graph[i_from.0].subgraph else {
-                continue;
-            };
-            let sg = &igraph.subgraphs[sg];
-            // Found a potential `from` node, look for `from_child` nodes.
-            for i_from_edge in igraph.raw.graph.edges(i_from.0) {
-                // Edge between `from` -> `from_child`
-                let i_from_child = i_from_edge.target();
-                if igraph.raw.graph[i_from_child].visible() {
-                    continue;
-                }
-                let s_from_child = igraph.raw.graph[i_from_child].subgraph.unwrap().1;
-
-                let visible_reachable = || {
-                    sg.reach_fwd
-                        .reachable_from(s_from_child)
-                        .filter(|&s| igraph.raw.graph[sg.nodes[s as usize].0].visible())
-                };
-                // All nodes reachable from "any visible node reachable from `s_from_child`".
-                let fwd_reachable = sg.reach_fwd.reachable_from_many(visible_reachable());
-                if fwd_reachable.is_empty() {
-                    // no visible node reachable from `s_from_child`
-                    continue;
-                }
-
-                let non_visible_reachable =
-                    sg.reach_fwd.reachable_from_many([s_from_child].into_iter()) - fwd_reachable;
-                let non_visible_reachable =
-                    non_visible_reachable.iter().map(|s| sg.nodes[s as usize].0);
-
-                for i_to_parent in non_visible_reachable {
-                    // Found a potential `to_parent` node, look for `to` nodes.
-                    for i_to_edge in igraph.raw.graph.edges(i_to_parent) {
-                        let i_to = RawNodeIndex(i_to_edge.target());
-                        if !igraph.raw.graph[i_to.0].visible() {
-                            continue;
-                        }
-                        let v_to = self.reverse[&i_to];
-                        self.graph.add_edge(
-                            v_from,
-                            v_to.0,
-                            VisibleEdge::Indirect(
-                                RawEdgeIndex(i_from_edge.id()),
-                                RawEdgeIndex(i_to_edge.id()),
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    fn reconnect_simplified(&mut self, igraph: &InstGraph) {
-        // remember all direct edges (will be added to the graph in the end)
-        let direct_edges = self.graph.raw_edges().to_vec();
-        // nodes with missing parents
-        let in_set: Vec<_> = self
-            .graph
-            .node_indices()
-            .filter(|node| self.graph[*node].hidden_parents > 0)
-            .collect();
-        // add all edges (u,v) in out_set x in_set to the self.graph where v is reachable from u in the original graph
-        // and (u,v) is not an edge in the original graph, i.e., all indirect edges
-        for u in self.graph.node_indices() {
-            let out_v = &self.graph[u];
-            if out_v.hidden_children == 0 {
-                // skip nodes without missing children
-                continue;
-            }
-
-            let Some((subgraph_u, s_u)) = igraph.raw[out_v.idx].subgraph else {
-                continue;
-            };
-            for &v in &in_set {
-                let old_v = self.graph[v].idx;
-                let Some((subgraph_v, s_v)) = igraph.raw[old_v].subgraph else {
-                    continue;
-                };
-                if subgraph_u != subgraph_v {
-                    continue;
-                }
-                {
-                    if s_u != s_v
-                        && igraph.subgraphs[subgraph_u]
-                            .reach_fwd
-                            .in_transitive_closure(s_u, s_v)
-                    {
-                        // TODO: the edge indices are not correct
-                        self.graph.update_edge(
-                            u,
-                            v,
-                            VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default()),
-                        );
-                    }
-                }
-            }
-        }
-        // compute transitive reduction to minimize |E| and not clutter the graph
-        let toposorted_dag = petgraph::algo::toposort(&self.graph, None).unwrap();
-        let (intermediate, _) = petgraph::algo::tred::dag_to_toposorted_adjacency_list::<_, u32>(
-            &self.graph,
-            &toposorted_dag,
-        );
-        let (tred, _) = petgraph::algo::tred::dag_transitive_reduction_closure(&intermediate);
-        // remove all edges since we only want the direct edges and the indirect edges in the transitive reduction in the final graph
-        self.graph.clear_edges();
-        // add all direct edges to new_inst_graph that we removed previously
-        for direct_edge in direct_edges {
-            self.graph.add_edge(
-                direct_edge.source(),
-                direct_edge.target(),
-                direct_edge.weight,
-            );
-        }
-        // add all indirect edges from transitive reduction that are not direct edges
-        for indirect_edge in tred.edge_references() {
-            // in tred, the node indices are replaced by their topological rank
-            // hence we need to look up the index before adding to self.graph
-            let source = toposorted_dag[indirect_edge.source() as usize];
-            let target = toposorted_dag[indirect_edge.target() as usize];
-            // we only want indirect edges
-            if !self.graph.contains_edge(source, target) {
-                // TODO: the edge indices are not correct
-                self.graph.add_edge(
-                    source,
-                    target,
-                    VisibleEdge::Indirect(RawEdgeIndex::default(), RawEdgeIndex::default()),
-                );
-            }
-        }
     }
 }
 

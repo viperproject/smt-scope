@@ -140,7 +140,6 @@ impl MlExplainer {
         for (other1, _, gen, recurring) in others_rev {
             self.add_inst_deps(ml_out, parser, other1, gen, recurring);
         }
-
     }
 
     fn add_inst(

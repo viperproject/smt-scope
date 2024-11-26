@@ -280,7 +280,7 @@ impl MlExplainer {
                     self.graph.add_node(data)
                 });
                 self.graph
-                    .add_edge(eq, self.in_node, MLGraphEdge::HiddenEdge(false, rec_idx));
+                    .add_edge(eq, self.out_node, MLGraphEdge::HiddenEdge(false, rec_idx));
                 if added {
                     let ancestor_is_recurring = self.add_equalities(parser, eqidx, eq);
                     // TODO: Currently ML#6 in `problem.log` has a recurring

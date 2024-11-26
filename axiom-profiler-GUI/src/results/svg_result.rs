@@ -16,7 +16,6 @@ use super::{
     worker::Worker,
 };
 use material_yew::{dialog::MatDialog, WeakComponentLink};
-use palette::{encoding::Srgb, white_point::D65, FromColor, Hsluv, Hsv, LuvHue};
 use petgraph::{
     dot::{Config, Dot},
     visit::EdgeRef,
@@ -27,10 +26,9 @@ use smt_log_parser::{
         VisibleEdgeIndex,
     },
     display_with::DisplayCtxt,
-    items::QuantIdx,
     NonMaxU32,
 };
-use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 use viz_js::VizInstance;
 use web_sys::window;
 use yew::prelude::*;
@@ -349,7 +347,7 @@ impl Component for SVGResult {
                                     (ctxt, false, None),
                                     ctxt.parser,
                                     (data.hidden_parents, data.hidden_children),
-                                    (ctxt.parser, rc_parser.colour_map),
+                                    (ctxt.parser, &rc_parser.colour_map),
                                     (),
                                     (),
                                 );
@@ -358,6 +356,7 @@ impl Component for SVGResult {
                             },
                         )
                     );
+                    log::debug!("Graph DOT:\n{dot_output}");
                     ctx.props()
                         .progress
                         .emit(GraphState::Rendering(RenderingState::RenderingGraph));
@@ -462,7 +461,7 @@ impl Component for SVGResult {
                         ],
                         &|_, edge| edge.weight().all(ctxt.config.debug, (), (), (), (), ()),
                         &|_, (_, node_data)| {
-                            node_data.all(ctxt, ctxt, (), (), rc_parser.colour_map, (), ())
+                            node_data.all(ctxt, ctxt, (), (), &rc_parser.colour_map, (), ())
                         },
                     )
                 );
@@ -481,27 +480,21 @@ impl Component for SVGResult {
                     }
                 }
                 let join = "\n    ";
-                let sub_pre1 = "\n       style=filled\n       color=gray96\n    ";
-                let sub_pre2 = "\n       style=filled\n       color=aliceblue\n    ";
+                let cluster = |name, colour, middle| {
+                    format!("subgraph cluster_{name} {{{join}    style=filled{join}    color={colour}{join}{middle}{join}}}")
+                };
+                // let cluster = |name, colour, middle|
+                //     format!("subgraph cluster_{name} {{{join}    style=filled{join}    color={colour}{join}    {{{join}    rank=same{join}    rankdir=LR{join}{middle}{join}    }}{join}}}");
 
-                let cluster_in = format!(
-                    "subgraph cluster_in {{{sub_pre2}{}{join}}}",
-                    inputs.join(join)
-                );
-                let cluster_fixed = format!(
-                    "subgraph cluster_fixed {{{sub_pre1}{}{join}}}",
-                    fixeds.join(join)
-                );
-                let cluster_out = format!(
-                    "subgraph cluster_out {{{sub_pre2}{}{join}}}",
-                    outputs.join(join)
-                );
+                let cluster_in = cluster("in", "aliceblue", inputs.join(join));
+                let cluster_fixed = cluster("fixed", "gray96", fixeds.join(join));
+                let cluster_out = cluster("out", "aliceblue", outputs.join(join));
                 let dot_output = format!(
-                    "digraph {{{join}{}{join}{cluster_in}{join}{cluster_fixed}{join}{cluster_out}{}\n}}",
+                    "digraph {{{join}{}{join}{cluster_in}{join}{cluster_fixed}{join}{cluster_out}{join}{}\n}}",
                     settings.join(join),
                     outside.join("\n"),
                 );
-                log::info!("GRAPH SVG:\n{}", dot_output);
+                log::debug!("ML Graph DOT:\n{dot_output}");
                 ctx.props()
                     .progress
                     .emit(GraphState::Rendering(RenderingState::RenderingGraph));
@@ -579,93 +572,5 @@ impl SVGResult {
         use yew_agent::Bridged;
         let cb = std::rc::Rc::new(move |e| link.send_message(Msg::WorkerOutput(e)));
         Worker::bridge(cb)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct QuantIdxToColourMap {
-    total_count: usize,
-    non_quant_insts: bool,
-    coprime: NonZeroUsize,
-    shift: usize,
-}
-
-impl QuantIdxToColourMap {
-    pub fn new(quant_count: usize, non_quant_insts: bool) -> Self {
-        let total_count = quant_count + non_quant_insts as usize;
-        Self {
-            total_count,
-            non_quant_insts,
-            coprime: Self::find_coprime(total_count),
-            // Currently `idx == 0` will always have the same hue of 0, if we do
-            // not want this behavior pick a random number here instead.
-            shift: 0,
-        }
-    }
-
-    pub fn get(&self, qidx: Option<QuantIdx>) -> LuvHue<f64> {
-        debug_assert!(self.non_quant_insts || qidx.is_some());
-        let idx = qidx
-            .map(usize::from)
-            .map(|q| q + self.non_quant_insts as usize)
-            .unwrap_or_default();
-        // debug_assert!(idx < idx);
-        let idx_perm = (idx * self.coprime.get() + self.shift) % self.total_count;
-        LuvHue::new(360. * idx_perm as f64 / self.total_count as f64)
-    }
-    pub fn get_rbg_hue(&self, qidx: Option<QuantIdx>) -> f64 {
-        let hue = self.get(qidx);
-        let colour = Hsluv::<D65, f64>::new(hue, 100.0, 50.0);
-        let colour = Hsv::<Srgb, f64>::from_color(colour);
-        colour.hue.into_positive_degrees()
-    }
-    // pub fn get_for_quant_idx(&self, mkind: QuantIdx) -> LuvHue<f64> {
-    //     let qidx = Some(mkind);
-    //     debug_assert!(self.non_quant_insts || qidx.is_some());
-    //     let idx = qidx
-    //         .map(usize::from)
-    //         .map(|q| q + self.non_quant_insts as usize)
-    //         .unwrap_or_default();
-    //     // debug_assert!(idx < idx);
-    //     let idx_perm = (idx * self.coprime.get() + self.shift) % self.total_count;
-    //     LuvHue::new(360. * idx_perm as f64 / self.total_count as f64)
-    // }
-    // pub fn get_graphviz_hue_for_quant_idx(&self, mkind: QuantIdx) -> f64 {
-    //     let hue = self.get_for_quant_idx(mkind);
-    //     let colour = Hsluv::<D65, f64>::new(hue, 100.0, 50.0);
-    //     let colour = Hsv::<Srgb, f64>::from_color(colour);
-    //     colour.hue.into_positive_degrees() / 360.0
-    // }
-
-    #[allow(clippy::out_of_bounds_indexing)]
-    fn find_coprime(n: usize) -> NonZeroUsize {
-        // Workaround since `unwrap` isn't allowed in const functions.
-        const ONE: NonZeroUsize = match NonZeroUsize::new(1) {
-            Some(nz) => nz,
-            None => [][0],
-        };
-        // We try to find a coprime at around `n.30303...` to achieve a period
-        // of around 10 distinct colours for subsequent indices:
-        // 0.303, 0.606, 0.909, 0.212, 0.515, 0.818, 0.121, 0.424, 0.727, 0.030.
-        // That is, we get a group of 10 colours that are at least 0.1 apart,
-        // and then recursively 10 groups of 10 which are at least 0.01 apart, etc.
-        let aim = (n as u128)
-            .checked_mul(99 + 30)
-            .map(|aim| aim / 99 - 1)
-            .and_then(|aim| usize::try_from(aim).ok());
-        let Some(mut aim) = aim.and_then(NonZeroUsize::new) else {
-            return ONE;
-        };
-        let Some(n) = NonZeroUsize::new(n) else {
-            return ONE;
-        };
-        use gcd::Gcd;
-        while n.gcd(aim) != ONE {
-            let Some(new) = aim.checked_add(1) else {
-                return ONE;
-            };
-            aim = new;
-        }
-        aim
     }
 }

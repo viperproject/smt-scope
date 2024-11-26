@@ -364,15 +364,20 @@ impl Component for Omnibox {
             LoadingState::Parsing(parsing, cancel) => {
                 icon = Some("stop_circle");
                 callback = Some(cancel);
-                let progress = parsing.reader.bytes_read as f64 / parsing.file_size as f64;
+                let progress = parsing
+                    .file_size
+                    .map(|size| {
+                        let progress = parsing.reader.bytes_read as f64 / size as f64;
+                        format!("{:.0}%", progress * 100.0)
+                    })
+                    .unwrap_or_else(|| "?".to_string());
                 let speed = parsing
                     .speed
                     .map(byte_size_display)
                     .map(|(speed, unit)| format!(" - {speed:.0} {unit}/s",));
                 let (memory_use, unit) = byte_size_display(parsing.memory_use as f64);
                 let info = format!(
-                    "Parsing trace {:.0}%{} | Use {memory_use:.0}{unit}",
-                    progress * 100.0,
+                    "Parsing trace {progress}{} | Use {memory_use:.0}{unit}",
                     speed.unwrap_or_default()
                 );
                 omnibox_info = Some(AttrValue::from(info));

@@ -1,3 +1,4 @@
+pub mod colouring;
 pub mod indexer;
 pub mod lookup;
 pub mod overlay_page;

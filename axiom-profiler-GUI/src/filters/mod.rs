@@ -243,16 +243,19 @@ impl Component for FiltersState {
         let data = ctx.link().get_state().unwrap();
         let info = data.state.file_info.as_ref().unwrap();
         let file = &ctx.props().file;
-        let (size, unit) = byte_size_display(info.size as f64);
+        let size = info
+            .size
+            .map(|size| {
+                let (size, unit) = byte_size_display(size as f64);
+                format!("{size:.0} {unit}")
+            })
+            .unwrap_or_else(|| "?".to_string());
         let details = match &file.parser_state {
             ParseState::Paused(_, state) => {
                 let (parse_size, parse_unit) = byte_size_display(state.bytes_read as f64);
-                format!(
-                    "{} ({parse_size:.0} {parse_unit}/{size:.0} {unit})",
-                    info.name
-                )
+                format!("{} ({parse_size:.0} {parse_unit}/{size})", info.name)
             }
-            ParseState::Completed { .. } => format!("{} ({size:.0} {unit})", info.name),
+            ParseState::Completed { .. } => format!("{} ({size})", info.name),
             ParseState::Error(err) => format!("{} (error {err:?})", info.name),
         };
         // Existing ops

@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use gloo::file::File;
+use gloo_net::http::Response;
 use smt_log_parser::{
     parsers::{AsyncBufferRead, ParseState},
     LogParser, Z3Parser,
@@ -11,6 +12,7 @@ use web_sys::DataTransfer;
 use yew::{html::Scope, Callback, DragEvent};
 
 use crate::{
+    example::Example,
     global_callbacks::GlobalCallbacks,
     infobars::OmnibarMessage,
     state::{FileInfo, StateContext},
@@ -87,41 +89,115 @@ impl FileDataComponent {
         [drag_enter_ref, drag_leave_ref, drop_ref]
     }
 
-    pub fn load_opened_file(&mut self, file: File, link: &Scope<FileDataComponent>) -> bool {
-        let changed = self.file.is_some();
-        drop(self.file.take());
-        drop(self.reader.take());
+    pub fn pre_open_file(
+        &mut self,
+        name: String,
+        size: Option<u64>,
+        link: &Scope<FileDataComponent>,
+    ) -> bool {
+        // remove any old parser in the state
+        let state = link.get_state().unwrap();
+        state.update_parser(|p| p.take().is_some());
+        state.set_ml_viewer_mode(false);
 
-        let file_name = file.name();
-        let file_size = file.size();
-        let (name, size) = (file_name.clone(), file_size);
-        link.get_state().unwrap().update_file_info(move |info| {
+        state.update_file_info(move |info| {
             *info = Some(FileInfo { name, size });
             true
         });
 
-        log::info!("Selected file \"{file_name}\"");
+        // hide the flags page if shown
+        self.flags_visible.borrow().emit(Some(false));
+
+        let changed = self.file.is_some();
+        drop(self.file.take());
+        drop(self.reader.take());
+        changed
+    }
+
+    pub fn load_example(
+        &mut self,
+        example: Example,
+        response: Response,
+        link: &Scope<FileDataComponent>,
+    ) -> bool {
+        let size = response
+            .headers()
+            .get("Content-Length")
+            .and_then(|s| s.parse().ok());
+        let changed = self.pre_open_file(example.file_name(), size, link);
+
         *self.cancel.borrow_mut() = false;
         let cancel = self.cancel.clone();
-        let cancel_cb = Callback::from(move |_| {
-            *cancel.borrow_mut() = true;
-        });
-        let cancel = self.cancel.clone();
-        // Turn into stream
-        let blob: &web_sys::Blob = file.as_ref();
-        let stream = ReadableStream::from_raw(blob.stream().unchecked_into());
-        match stream.try_into_async_read() {
-            Ok(stream) => {
-                let link = link.clone();
+        let link = link.clone();
+
+        match response
+            .body()
+            .map(|body| ReadableStream::from_raw(body).try_into_async_read())
+        {
+            Some(Ok(stream)) => {
                 link.send_message(Msg::LoadingState(LoadingState::StartParsing));
                 let parser = Z3Parser::from_async(stream.buffer());
                 wasm_bindgen_futures::spawn_local(async move {
                     Self::parse_async(
                         parser,
                         cancel,
-                        file_size,
+                        size,
                         link,
-                        cancel_cb,
+                        1024 * 1024 * 1024,
+                        "Stopped parsing at 1GB",
+                    )
+                    .await
+                });
+            }
+            None | Some(Err(..)) => wasm_bindgen_futures::spawn_local(async move {
+                let text_data = match response.text().await {
+                    Ok(text) => text,
+                    Err(err) => {
+                        link.send_message(Msg::FailedOpening(err.to_string()));
+                        return;
+                    }
+                };
+
+                link.send_message(Msg::LoadingState(LoadingState::StartParsing));
+                let parser = Z3Parser::from_str(&text_data);
+                Self::parse_stream(
+                    parser,
+                    cancel,
+                    size,
+                    link,
+                    512 * 1024 * 1024,
+                    "Stopped parsing at 500MB, use Chrome or Firefox to increase this limit",
+                )
+                .await
+            }),
+        }
+
+        changed
+    }
+
+    pub fn load_opened_file(&mut self, file: File, link: &Scope<FileDataComponent>) -> bool {
+        let file_name = file.name();
+        let file_size = file.size();
+        let changed = self.pre_open_file(file_name.clone(), Some(file_size), link);
+
+        *self.cancel.borrow_mut() = false;
+        let cancel = self.cancel.clone();
+        let link = link.clone();
+
+        log::info!("Selected file \"{file_name}\"");
+        // Turn into stream
+        let blob: &web_sys::Blob = file.as_ref();
+        let stream = ReadableStream::from_raw(blob.stream().unchecked_into());
+        match stream.try_into_async_read() {
+            Ok(stream) => {
+                link.send_message(Msg::LoadingState(LoadingState::StartParsing));
+                let parser = Z3Parser::from_async(stream.buffer());
+                wasm_bindgen_futures::spawn_local(async move {
+                    Self::parse_async(
+                        parser,
+                        cancel,
+                        Some(file_size),
+                        link,
                         1024 * 1024 * 1024,
                         "Stopped parsing at 1GB",
                     )
@@ -129,14 +205,9 @@ impl FileDataComponent {
                 });
             }
             Err((_err, _stream)) => {
-                let link = link.clone();
+                log::info!("Loading to string \"{file_name}\"");
                 link.send_message(Msg::LoadingState(LoadingState::ReadingToString));
-                let reader = gloo::file::callbacks::read_as_bytes(&file, move |res| {
-                    log::info!("Loading to string \"{file_name}\"");
-                    let res = res.and_then(|res| {
-                        String::from_utf8(res)
-                            .map_err(|err| gloo::file::FileReadError::NotReadable(err.to_string()))
-                    });
+                let reader = gloo::file::callbacks::read_as_text(&file, move |res| {
                     let text_data = match res {
                         Ok(res) => res,
                         Err(err) => {
@@ -148,7 +219,7 @@ impl FileDataComponent {
                     link.send_message(Msg::LoadingState(LoadingState::StartParsing));
                     wasm_bindgen_futures::spawn_local(async move {
                         let parser = Z3Parser::from_str(&text_data);
-                        Self::parse_stream(parser, cancel, file_size, link, cancel_cb, 512 * 1024 * 1024, "Stopped parsing at 500MB, use Chrome or Firefox to increase this limit").await
+                        Self::parse_stream(parser, cancel, Some(file_size), link, 512 * 1024 * 1024, "Stopped parsing at 500MB, use Chrome or Firefox to increase this limit").await
                     });
                 });
                 self.reader = Some(reader);
@@ -165,9 +236,8 @@ impl FileDataComponent {
     async fn parse(
         mut parser: smt_log_parser::parsers::EitherParser<'_, Z3Parser>,
         cancel: Rc<RefCell<bool>>,
-        file_size: u64,
+        size: Option<u64>,
         link: yew::html::Scope<FileDataComponent>,
-        cancel_cb: yew::Callback<()>,
         use_mem_limit: usize,
         mem_limit_msg: &str,
     ) {
@@ -186,10 +256,13 @@ impl FileDataComponent {
             if mem_size > use_mem_limit {
                 break finished;
             }
-            let parsing = ParseProgress::new(state, file_size, mem_size);
+            let parsing = ParseProgress::new(state, size, mem_size);
+            let cancel = cancel.clone();
             link.send_message(Msg::LoadingState(LoadingState::Parsing(
                 parsing,
-                cancel_cb.clone(),
+                Callback::from(move |_| {
+                    *cancel.borrow_mut() = true;
+                }),
             )));
             gloo::timers::future::TimeoutFuture::new(0).await;
         };

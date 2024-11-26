@@ -11,7 +11,7 @@ use smt_log_parser::{
     NonMaxU32, Z3Parser,
 };
 
-use super::svg_result::QuantIdxToColourMap;
+use crate::utils::colouring::QuantIdxToColourMap;
 
 macro_rules! all_struct {
     ($name:ident {
@@ -123,7 +123,7 @@ impl
         (DisplayCtxt<'_>, bool, Option<NonMaxU32>),
         &'_ Z3Parser,
         (u32, u32),
-        (&'_ Z3Parser, QuantIdxToColourMap),
+        (&'_ Z3Parser, &'_ QuantIdxToColourMap),
         (),
         (),
     > for NodeKind
@@ -187,7 +187,7 @@ impl
         }
     }
 
-    fn fillcolor(&self, (parser, colour_map): (&Z3Parser, QuantIdxToColourMap)) -> String {
+    fn fillcolor(&self, (parser, colour_map): (&Z3Parser, &QuantIdxToColourMap)) -> String {
         use NodeKind::*;
         match self {
             Instantiation(inst_idx) => {
@@ -208,7 +208,7 @@ impl
     }
 }
 
-impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), QuantIdxToColourMap, (), ()>
+impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), &'_ QuantIdxToColourMap, (), ()>
     for MLGraphNode
 {
     fn label(&self, mut ctxt: DisplayCtxt) -> String {
@@ -287,7 +287,7 @@ impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), QuantIdxToColou
         }
     }
 
-    fn fillcolor(&self, ctx: QuantIdxToColourMap) -> String {
+    fn fillcolor(&self, ctx: &QuantIdxToColourMap) -> String {
         use MLGraphNode::*;
         match self {
             HiddenNode(..) => Default::default(),

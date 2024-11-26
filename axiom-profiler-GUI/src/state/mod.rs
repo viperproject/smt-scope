@@ -28,7 +28,7 @@ pub struct State {
 )]
 pub struct FileInfo {
     pub name: String,
-    pub size: u64,
+    pub size: Option<u64>,
 }
 
 #[derive(Clone, PartialEq)]

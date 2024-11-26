@@ -40,7 +40,9 @@ pub fn Topbar(props: &TopbarProps) -> Html {
         LoadingState::ReadingToString => indeterminate = true,
         LoadingState::StartParsing => indeterminate = true,
         LoadingState::Parsing(parsing, _) => {
-            progress = (parsing.reader.bytes_read as f64 / parsing.file_size as f64) as f32;
+            if let Some(size) = parsing.file_size {
+                progress = (parsing.reader.bytes_read as f64 / size as f64) as f32;
+            }
             buffer = 1.0;
         }
         LoadingState::DoneParsing(timeout, cancelled) => {

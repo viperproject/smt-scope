@@ -3,19 +3,20 @@ use std::rc::Rc;
 use std::sync::{Mutex, OnceLock, RwLock};
 
 use commands::{Command, CommandRef, CommandsContext};
+use example::{Example, ExampleRow};
 use fxhash::{FxHashMap, FxHashSet};
 use gloo::timers::callback::Timeout;
 use gloo_file::File;
 use gloo_file::{callbacks::FileReader, FileList};
+use gloo_net::http::Response;
 use material_yew::{MatDialog, MatIcon, MatIconButton, WeakComponentLink};
 use petgraph::visit::EdgeRef;
 use results::graph_info;
-use results::svg_result::{
-    Msg as SVGMsg, QuantIdxToColourMap, RenderedGraph, RenderingState, SVGResult,
-};
+use results::svg_result::{Msg as SVGMsg, RenderedGraph, RenderingState, SVGResult};
 use smt_log_parser::analysis::{InstGraph, RawNodeIndex, VisibleEdgeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{ParseState, ReaderState};
+use utils::colouring::QuantIdxToColourMap;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_timer::Instant;
@@ -41,6 +42,7 @@ pub use utils::position::*;
 
 pub mod commands;
 pub mod configuration;
+pub mod example;
 pub mod file;
 mod filters;
 mod global_callbacks;
@@ -70,6 +72,8 @@ pub static PREVENT_DEFAULT_DRAG_OVER: OnceLock<Mutex<bool>> = OnceLock::new();
 
 pub enum Msg {
     File(Option<File>),
+    OpenExample(Example),
+    LoadWebResponse(Example, Response),
     LoadedFile(Box<Z3Parser>, ParseState<bool>, bool),
     LoadingState(LoadingState),
     RenderedGraph(RenderedGraph),
@@ -98,7 +102,7 @@ pub enum LoadingState {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParseProgress {
     reader: ReaderState,
-    file_size: u64,
+    file_size: Option<u64>,
     time: Instant,
     bytes_delta: Option<usize>,
     time_delta: Option<std::time::Duration>,
@@ -106,7 +110,7 @@ pub struct ParseProgress {
     memory_use: usize,
 }
 impl ParseProgress {
-    pub fn new(reader: ReaderState, file_size: u64, memory_use: usize) -> Self {
+    pub fn new(reader: ReaderState, file_size: Option<u64>, memory_use: usize) -> Self {
         Self {
             reader,
             file_size,
@@ -332,14 +336,23 @@ impl Component for FileDataComponent {
                 let Some(file) = file else {
                     return false;
                 };
-                // remove any old parser in the state
-                let state = ctx.link().get_state().unwrap();
-                state.update_parser(|p| p.take().is_some());
-                state.set_ml_viewer_mode(false);
-                // hide the flags page if shown
-                self.flags_visible.borrow().emit(Some(false));
-
                 self.load_opened_file(file, ctx.link())
+            }
+            Msg::OpenExample(example) => {
+                let file = gloo_net::http::Request::get(&example.file_path()).send();
+                let link = ctx.link().clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    match file.await {
+                        Ok(response) => link.send_message(Msg::LoadWebResponse(example, response)),
+                        Err(e) => {
+                            link.send_message(Msg::FailedOpening(format!("Failed to load: {e}")))
+                        }
+                    };
+                });
+                false
+            }
+            Msg::LoadWebResponse(example, response) => {
+                self.load_example(example, response, ctx.link())
             }
             Msg::LoadingState(mut state) => {
                 log::info!("New state \"{state:?}\"");
@@ -403,6 +416,8 @@ impl Component for FileDataComponent {
                 true
             }
             Msg::FailedOpening(error) => {
+                log::error!("Failed to open file: {error}");
+
                 let message = OmnibarMessage {
                     message: error,
                     is_error: true,
@@ -635,8 +650,8 @@ impl Component for FileDataComponent {
             }
         });
         let help_dialog_clone = self.help_dialog.clone();
-        let show_shortcuts = Callback::from(move |click: MouseEvent| {
-            click.prevent_default();
+        let show_shortcuts = Callback::from(move |ev: MouseEvent| {
+            ev.prevent_default();
             help_dialog_clone.show();
         });
         let onopened = ctx.link().callback(|_| Msg::ShowHelpToggled(true));
@@ -675,6 +690,7 @@ impl Component for FileDataComponent {
                 <div class="sidebar-scroll"><div class="sidebar-scroll-container">
                     <SidebarSectionHeader header_text="Navigation" collapsed_text="Open a new trace" section={self.navigation_section.clone()}><ul>
                         <li><a href="#" draggable="false" id="open_trace_file"><div class="material-icons"><MatIcon>{"folder_open"}</MatIcon></div>{"Open trace file"}</a></li>
+                        <ExampleRow example={Example::Array} link={ctx.link().callback(|m| m)} />
                     </ul></SidebarSectionHeader>
                     {current_trace}
                     <SidebarSectionHeader header_text="Support" collapsed_text="Documentation & Bugs"><ul>
@@ -735,7 +751,7 @@ pub fn app() -> Html {
 pub struct RcParser {
     parser: Rc<RefCell<Z3Parser>>,
     lookup: Rc<StringLookupZ3>,
-    colour_map: QuantIdxToColourMap,
+    colour_map: Rc<QuantIdxToColourMap>,
     graph: Option<Rc<RefCell<InstGraph>>>,
     found_mls: Option<usize>,
 }
@@ -745,7 +761,7 @@ impl Clone for RcParser {
         Self {
             parser: self.parser.clone(),
             lookup: self.lookup.clone(),
-            colour_map: self.colour_map,
+            colour_map: self.colour_map.clone(),
             graph: self.graph.clone(),
             found_mls: self.found_mls,
         }
@@ -763,13 +779,12 @@ impl Eq for RcParser {}
 
 impl RcParser {
     fn new(parser: Z3Parser) -> Self {
-        let (quant_count, non_quant_insts) = parser.quant_count_incl_theory_solving();
-        let colour_map = QuantIdxToColourMap::new(quant_count, non_quant_insts);
+        let colour_map = QuantIdxToColourMap::new(&parser);
         let lookup = StringLookupZ3::init(&parser);
         Self {
             parser: Rc::new(RefCell::new(parser)),
             lookup: Rc::new(lookup),
-            colour_map,
+            colour_map: Rc::new(colour_map),
             graph: None,
             found_mls: None,
         }

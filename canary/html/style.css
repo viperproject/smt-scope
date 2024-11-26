@@ -71,6 +71,13 @@ div.page svg g.edge.selected {
     stroke-width: 3;
 }
 
+.home-page .home-page-center .home-page-hints .hintline {
+	font-style: italic;
+	color: blue;
+}
+.home-page .home-page-center .home-page-hints .hint {
+	padding-top: 0.5rem;
+}
 .home-page .home-page-center .channel-select fieldset > fieldset {
     display: flex;
     flex-direction: column-reverse;

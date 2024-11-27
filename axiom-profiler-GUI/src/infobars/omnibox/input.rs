@@ -1,12 +1,13 @@
 use fxhash::FxHashMap;
+use gloo::timers::callback::Timeout;
 use smt_log_parser::analysis::RawNodeIndex;
 use web_sys::HtmlInputElement;
 use yew::{
-    function_component, html, use_effect_with_deps, use_mut_ref, AttrValue, Callback, FocusEvent,
-    Html, InputEvent, MouseEvent, NodeRef, Properties,
+    function_component, html, use_context, use_effect_with_deps, AttrValue, Callback, Html,
+    InputEvent, MouseEvent, NodeRef, Properties,
 };
 
-use crate::utils::lookup::Kind;
+use crate::{infobars::DropdownCtxt, utils::lookup::Kind};
 
 use super::SearchAction;
 
@@ -15,36 +16,34 @@ pub struct OmniboxInputProps {
     pub omnibox: NodeRef,
     pub placeholder: AttrValue,
     pub omnibox_disabled: bool,
-    pub focused: bool,
     pub input: Option<String>,
-    pub onfocusin: Callback<FocusEvent>,
-    pub onfocusout: Callback<FocusEvent>,
     pub oninput: Callback<InputEvent>,
 }
 
 #[function_component]
 pub fn OmniboxInput(props: &OmniboxInputProps) -> Html {
-    let focused = use_mut_ref(|| false);
-    let old_focused = *focused.borrow();
+    let props_focused = use_context::<DropdownCtxt>().unwrap().enabled;
+    if props_focused {
+        let omnibox = props.omnibox.clone();
+        Timeout::new(1, move || {
+            let Some(omnibox) = omnibox.cast::<HtmlInputElement>() else {
+                return;
+            };
+            omnibox.focus().ok();
+            omnibox.select();
+        })
+        .forget();
+    }
     use_effect_with_deps(
-        move |(omnibox, input, focused)| {
+        move |(omnibox, input)| {
             if let Some(omnibox) = omnibox.cast::<HtmlInputElement>() {
                 omnibox.set_value(input.as_ref().map(|s| s.as_str()).unwrap_or_default());
-                if *focused != old_focused {
-                    if *focused {
-                        omnibox.focus().ok();
-                        omnibox.select();
-                    } else {
-                        omnibox.blur().ok();
-                    }
-                }
             }
             || {}
         },
-        (props.omnibox.clone(), props.input.clone(), props.focused),
+        (props.omnibox.clone(), props.input.clone()),
     );
-    *focused.borrow_mut() = props.focused;
-    html! { <input ref={props.omnibox.clone()} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} onfocusin={&props.onfocusin} onfocusout={&props.onfocusout} oninput={&props.oninput}/> }
+    html! { <input ref={&props.omnibox} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} oninput={&props.oninput} /> }
 }
 
 #[derive(Debug)]
@@ -198,7 +197,7 @@ impl SuggestionResult {
         self_: Option<&'a Self>,
         highlighted: usize,
         scroll_into_view: &'a NodeRef,
-        onclick: impl Fn(usize) -> Callback<MouseEvent> + 'a,
+        onmousedown: impl Fn(usize) -> Callback<MouseEvent> + 'a,
     ) -> Option<impl Iterator<Item = Html> + 'a> {
         let groups = self_.and_then(SuggestionResult::groups);
         groups.map(move |groups| {
@@ -208,7 +207,7 @@ impl SuggestionResult {
                     let highlighted = highlighted == i;
                     let class = if highlighted { "omnibox-highlighted" } else { "can-hover" };
                     let scroll_into_view = highlighted.then(|| scroll_into_view.clone()).unwrap_or_default();
-                    let onmousedown = onclick(i);
+                    let onmousedown = onmousedown(i);
                     let highlighted_name = HighlightedString(&suggestion.name, indices).into_html();
                     let highlighted_name = if let Some(arguments) = suggestion.details.arguments {
                         html! {

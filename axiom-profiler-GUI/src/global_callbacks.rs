@@ -3,8 +3,8 @@ use wasm_bindgen::{closure::Closure, JsCast};
 use yew::{
     html::Scope,
     prelude::{Context, Html},
-    Callback, Children, Component, ContextProvider, DragEvent, Event, KeyboardEvent, MouseEvent,
-    Properties,
+    Callback, Children, Component, ContextProvider, DragEvent, Event, FocusEvent, KeyboardEvent,
+    MouseEvent, Properties,
 };
 
 // Public interface
@@ -30,6 +30,8 @@ pub struct GlobalCallbacks {
     pub register_drag_leave: CallbackRegisterer<DragEvent>,
     pub register_drop: CallbackRegisterer<DragEvent>,
     pub register_resize: CallbackRegisterer<Event>,
+    pub register_blur: CallbackRegisterer<FocusEvent>,
+    pub register_focus: CallbackRegisterer<FocusEvent>,
 }
 impl PartialEq for GlobalCallbacks {
     fn eq(&self, _: &Self) -> bool {
@@ -64,11 +66,15 @@ pub struct GlobalCallbacksProvider {
     drag_leave: CallbackHolder<DragEvent>,
     drop: CallbackHolder<DragEvent>,
     resize: CallbackHolder<Event>,
+    blur: CallbackHolder<FocusEvent>,
+    focus: CallbackHolder<FocusEvent>,
 
     registerer: Rc<GlobalCallbacks>,
     onresize: Option<Closure<dyn Fn(Event)>>,
     onkeydown: Option<Closure<dyn Fn(KeyboardEvent)>>,
     onkeyup: Option<Closure<dyn Fn(KeyboardEvent)>>,
+    onblur: Option<Closure<dyn Fn(FocusEvent)>>,
+    onfocus: Option<Closure<dyn Fn(FocusEvent)>>,
 }
 
 #[derive(Properties, PartialEq)]
@@ -142,6 +148,22 @@ impl CallbackRegisterer<DragEvent> {
         }))
     }
 }
+impl CallbackRegisterer<FocusEvent> {
+    fn new_focus(link: Scope<GlobalCallbacksProvider>, kind: FocusEventKind) -> Self {
+        let id = Mutex::<usize>::new(0);
+        Self(Box::new(move |callback| {
+            let mut id = id.lock().unwrap();
+            let id_v = *id;
+            *id += 1;
+            drop(id);
+            link.send_message(Msg::RegisterFocus(kind, id_v, callback));
+            let link = link.clone();
+            CallbackRef(Box::new(move || {
+                link.send_message(Msg::DeRegisterFocus(kind, id_v))
+            }))
+        }))
+    }
+}
 
 impl GlobalCallbacksProvider {
     fn get_mouse_mut(&mut self, kind: MouseEventKind) -> &mut CallbackHolder<MouseEvent> {
@@ -164,6 +186,12 @@ impl GlobalCallbacksProvider {
             DragEventKind::DragEnter => &mut self.drag_enter,
             DragEventKind::DragLeave => &mut self.drag_leave,
             DragEventKind::Drop => &mut self.drop,
+        }
+    }
+    fn get_focus_mut(&mut self, kind: FocusEventKind) -> &mut CallbackHolder<FocusEvent> {
+        match kind {
+            FocusEventKind::Blur => &mut self.blur,
+            FocusEventKind::Focus => &mut self.focus,
         }
     }
     fn get_mut(&mut self, kind: EventKind) -> &mut CallbackHolder<Event> {
@@ -196,6 +224,12 @@ pub enum DragEventKind {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub enum FocusEventKind {
+    Blur,
+    Focus,
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum EventKind {
     Resize,
 }
@@ -212,6 +246,10 @@ pub enum Msg {
     RegisterDrag(DragEventKind, usize, Callback<DragEvent>),
     DeRegisterDrag(DragEventKind, usize),
     OnDrag(DragEventKind, DragEvent),
+
+    RegisterFocus(FocusEventKind, usize, Callback<FocusEvent>),
+    DeRegisterFocus(FocusEventKind, usize),
+    OnFocus(FocusEventKind, FocusEvent),
 
     Register(EventKind, usize, Callback<Event>),
     DeRegister(EventKind, usize),
@@ -269,6 +307,11 @@ impl Component for GlobalCallbacksProvider {
             ),
             register_drop: CallbackRegisterer::new_drag(ctx.link().clone(), DragEventKind::Drop),
             register_resize: CallbackRegisterer::new(ctx.link().clone(), EventKind::Resize),
+            register_blur: CallbackRegisterer::new_focus(ctx.link().clone(), FocusEventKind::Blur),
+            register_focus: CallbackRegisterer::new_focus(
+                ctx.link().clone(),
+                FocusEventKind::Focus,
+            ),
         };
         Self {
             mouse_down: CallbackHolder::default(),
@@ -282,11 +325,15 @@ impl Component for GlobalCallbacksProvider {
             drag_leave: CallbackHolder::default(),
             drop: CallbackHolder::default(),
             resize: CallbackHolder::default(),
+            blur: CallbackHolder::default(),
+            focus: CallbackHolder::default(),
 
             registerer: Rc::new(registerer),
             onresize: None,
             onkeydown: None,
             onkeyup: None,
+            onblur: None,
+            onfocus: None,
         }
     }
 
@@ -322,6 +369,17 @@ impl Component for GlobalCallbacksProvider {
             }
             Msg::OnDrag(kind, ev) => {
                 for (_, cb) in &self.get_drag_mut(kind).0 {
+                    cb.emit(ev.clone());
+                }
+            }
+            Msg::RegisterFocus(kind, id, cb) => self.get_focus_mut(kind).0.push((id, cb)),
+            Msg::DeRegisterFocus(kind, id) => {
+                let cbh = self.get_focus_mut(kind);
+                let idx = cbh.0.iter().position(|(i, _)| *i == id).unwrap();
+                cbh.0.swap_remove(idx);
+            }
+            Msg::OnFocus(kind, ev) => {
+                for (_, cb) in &self.get_focus_mut(kind).0 {
                     cb.emit(ev.clone());
                 }
             }
@@ -404,6 +462,24 @@ impl Component for GlobalCallbacksProvider {
                 .add_event_listener_with_callback("keyup", onkeyup.as_ref().unchecked_ref())
                 .unwrap();
             self.onkeyup = Some(onkeyup);
+
+            let link = ctx.link().clone();
+            let onblur: Closure<dyn Fn(FocusEvent)> = Closure::new(move |ev: FocusEvent| {
+                link.send_message(Msg::OnFocus(FocusEventKind::Blur, ev))
+            });
+            window
+                .add_event_listener_with_callback("blur", onblur.as_ref().unchecked_ref())
+                .unwrap();
+            self.onblur = Some(onblur);
+
+            let link = ctx.link().clone();
+            let onfocus: Closure<dyn Fn(FocusEvent)> = Closure::new(move |ev: FocusEvent| {
+                link.send_message(Msg::OnFocus(FocusEventKind::Focus, ev))
+            });
+            window
+                .add_event_listener_with_callback("focus", onfocus.as_ref().unchecked_ref())
+                .unwrap();
+            self.onfocus = Some(onfocus);
         }
     }
     fn destroy(&mut self, _ctx: &Context<Self>) {
@@ -423,6 +499,18 @@ impl Component for GlobalCallbacksProvider {
             let window = web_sys::window().unwrap();
             window
                 .remove_event_listener_with_callback("keyup", onkeyup.as_ref().unchecked_ref())
+                .unwrap();
+        }
+        if let Some(onblur) = self.onblur.take() {
+            let window = web_sys::window().unwrap();
+            window
+                .remove_event_listener_with_callback("blur", onblur.as_ref().unchecked_ref())
+                .unwrap();
+        }
+        if let Some(onfocus) = self.onfocus.take() {
+            let window = web_sys::window().unwrap();
+            window
+                .remove_event_listener_with_callback("focus", onfocus.as_ref().unchecked_ref())
                 .unwrap();
         }
     }

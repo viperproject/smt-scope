@@ -22,6 +22,7 @@ pub struct State {
     // TODO: rework mode system (put it under the same Option as file_info?)
     pub ml_viewer_mode: bool,
     pub overlay_visible: bool,
+    pub sidebar_closed: bool,
 }
 
 #[derive(
@@ -62,6 +63,13 @@ impl StateProvider {
         self.update.update(move |state| {
             let other = state.overlay_visible != overlay_visible;
             state.overlay_visible = overlay_visible;
+            StateUpdateKind::other(other)
+        });
+    }
+    pub fn set_sidebar_closed(&self, sidebar_closed: bool) {
+        self.update.update(move |state| {
+            let other = state.sidebar_closed != sidebar_closed;
+            state.sidebar_closed = sidebar_closed;
             StateUpdateKind::other(other)
         });
     }

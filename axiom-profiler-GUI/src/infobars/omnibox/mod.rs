@@ -1,6 +1,7 @@
 use std::{cmp::Ordering, rc::Rc};
 
 use fxhash::FxHashMap;
+use gloo::timers::callback::Timeout;
 use smt_log_parser::analysis::{visible::VisibleInstGraph, RawNodeIndex};
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::{
@@ -9,15 +10,17 @@ use yew::{
 };
 
 use crate::{
-    commands::{Command, CommandId, CommandRef, Commands, CommandsContext},
+    commands::{Command, CommandId, CommandRef, Commands, CommandsContext, Key, ShortcutKey},
     filters::byte_size_display,
-    infobars::topbar::OmnibarMessage,
+    infobars::{topbar::OmnibarMessage, DropdownButton},
     results::svg_result::RenderingState,
     utils::lookup::{CommandsWithName, Entry, Kind, Matches, StringLookupCommands},
-    CallbackRef, GlobalCallbacksContext, LoadingState, RcParser,
+    LoadingState, RcParser,
 };
 
 use self::input::{HighlightedString, OmniboxInput, PickedSuggestion, SuggestionResult};
+
+use super::DropdownContext;
 
 pub mod input;
 
@@ -27,7 +30,6 @@ const LAST_USED_DISPLAY: usize = 6;
 pub struct OmniboxProps {
     pub progress: LoadingState,
     pub message: Option<OmnibarMessage>,
-    pub omnibox: NodeRef,
     pub search: Callback<String, Option<SearchActionResult>>,
     pub pick: Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
     pub select: Callback<RawNodeIndex>,
@@ -36,7 +38,6 @@ pub struct OmniboxProps {
 pub enum Msg {
     Input(InputEvent),
     KeyDownTyping(KeyboardEvent),
-    KeyDownGlobal(KeyboardEvent),
     Picked(usize),
     Select { left: bool },
     Focus(bool),
@@ -44,7 +45,7 @@ pub enum Msg {
 }
 
 pub struct Omnibox {
-    focused: bool,
+    omnibox: NodeRef,
     command_mode: bool,
     input: Option<String>,
     highlighted: usize,
@@ -57,8 +58,7 @@ pub struct Omnibox {
     scroll_container: NodeRef,
     scroll_into_view: NodeRef,
     _handle: ContextHandle<Rc<Commands>>,
-    _callback_refs: [CallbackRef; 1],
-    _commands_search: [CommandRef; 2],
+    _commands_search: [CommandRef; 3],
 }
 
 impl Omnibox {
@@ -67,9 +67,8 @@ impl Omnibox {
             return;
         }
         if self.picked.is_none() != picked.is_none() {
-            for cmd in &self._commands_search {
-                cmd.set_disabled(picked.is_none());
-            }
+            self._commands_search[0].set_disabled(picked.is_none());
+            self._commands_search[1].set_disabled(picked.is_none());
         }
         self.picked = picked;
     }
@@ -80,11 +79,6 @@ impl Component for Omnibox {
     type Properties = OmniboxProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        // Global callbacks
-        let registerer = ctx.link().get_callbacks_registerer().unwrap();
-        let keydown = (registerer.register_keyboard_down)(ctx.link().callback(Msg::KeyDownGlobal));
-        let _callback_refs = [keydown];
-
         // Commands
         let (commands, _handle) = ctx
             .link()
@@ -94,21 +88,35 @@ impl Component for Omnibox {
         let next_search = Command {
             name: "Go to next search result".to_string(),
             execute: ctx.link().callback(|_| Msg::Select { left: false }),
-            keyboard_shortcut: vec!["Enter"],
+            keyboard_shortcut: ShortcutKey::empty(Key::Enter),
             disabled: true,
         };
         let next_search = (commands.register)(next_search);
         let prev_search = Command {
             name: "Go to previous search result".to_string(),
             execute: ctx.link().callback(|_| Msg::Select { left: true }),
-            keyboard_shortcut: vec!["Shift", "Enter"],
+            keyboard_shortcut: ShortcutKey::shift(Key::Enter),
             disabled: true,
         };
         let prev_search = (commands.register)(prev_search);
-        let _commands_search = [next_search, prev_search];
+        let link = ctx.link().clone();
+        let search_cmd = Command {
+            name: "Search".to_string(),
+            execute: Callback::from(move |_| {
+                let link = link.clone();
+                Timeout::new(1, move || {
+                    link.get_toggle().unwrap().emit(Some(true));
+                })
+                .forget();
+            }),
+            keyboard_shortcut: ShortcutKey::cmd('s'),
+            disabled: false,
+        };
+        let search_cmd = (commands.register)(search_cmd);
+        let _commands_search = [next_search, prev_search, search_cmd];
 
         Self {
-            focused: false,
+            omnibox: NodeRef::default(),
             command_mode: false,
             input: None,
             highlighted: 0,
@@ -121,14 +129,12 @@ impl Component for Omnibox {
             scroll_container: NodeRef::default(),
             scroll_into_view: NodeRef::default(),
             _handle,
-            _callback_refs,
             _commands_search,
         }
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         debug_assert!(ctx.props() != old_props);
         if ctx.props().progress != old_props.progress {
-            self.focused = false;
             self.command_mode = false;
             self.input = None;
             self.highlighted = 0;
@@ -141,15 +147,6 @@ impl Component for Omnibox {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::KeyDownGlobal(ev) => match ev.key().as_str() {
-                "Enter" => {
-                    ctx.link().send_message(Msg::Select {
-                        left: ev.shift_key(),
-                    });
-                    false
-                }
-                _ => false,
-            },
             Msg::KeyDownTyping(ev) => match ev.key().as_str() {
                 "Backspace" => {
                     if self.input.is_some() {
@@ -160,19 +157,16 @@ impl Component for Omnibox {
                         self.command_mode = false;
                         ctx.link().send_message(Msg::Focus(true));
                         true
-                    } else if self.focused {
-                        self.highlighted = 0;
-                        self.focused = false;
-                        true
                     } else {
-                        // Should not be reachable
-                        false
+                        self.highlighted = 0;
+                        ctx.link().get_toggle().unwrap().emit(Some(false));
+                        true
                     }
                 }
                 "Escape" => {
                     self.highlighted = 0;
                     self.command_mode = false;
-                    self.focused = false;
+                    ctx.link().get_toggle().unwrap().emit(Some(false));
                     self.actions = None;
                     self.input = None;
                     true
@@ -212,8 +206,7 @@ impl Component for Omnibox {
             },
             Msg::Input(_ev) => {
                 self.highlighted = 0;
-                let query = ctx
-                    .props()
+                let query = self
                     .omnibox
                     .cast::<HtmlInputElement>()
                     .map(|r| r.value())
@@ -232,7 +225,7 @@ impl Component for Omnibox {
                     self.actions = None;
                     self.set_picked(None);
                     self.input = None;
-                    if let Some(omnibox) = ctx.props().omnibox.cast::<HtmlInputElement>() {
+                    if let Some(omnibox) = self.omnibox.cast::<HtmlInputElement>() {
                         omnibox.set_value("");
                     }
                     self.commands =
@@ -259,8 +252,15 @@ impl Component for Omnibox {
                     .as_ref()
                     .map(|s| s.suggestion_idx)
                     .unwrap_or_default();
-                self.focused = focused;
-                if self.focused {
+                if let Some(omnibox) = self.omnibox.cast::<HtmlInputElement>() {
+                    if focused {
+                        omnibox.focus().ok();
+                        omnibox.select();
+                    } else {
+                        omnibox.blur().ok();
+                    }
+                }
+                if focused {
                     let input = self.input.as_deref().unwrap_or_default();
                     let new_actions = ctx
                         .props()
@@ -281,8 +281,8 @@ impl Component for Omnibox {
                 true
             }
             Msg::Picked(idx) => {
+                ctx.link().get_toggle().unwrap().emit(Some(false));
                 if self.command_mode {
-                    ctx.link().send_message(Msg::Focus(false));
                     if let Some(c) = self.commands.as_ref().and_then(|c| c.commands.get(idx)) {
                         if let Some(old) = self.last_used.iter().position(|(id, _)| id == &c.id) {
                             self.last_used.remove(old);
@@ -293,8 +293,6 @@ impl Component for Omnibox {
                     }
                     false
                 } else {
-                    self.focused = false;
-
                     self.set_picked(
                         self.actions
                             .as_ref()
@@ -427,12 +425,24 @@ impl Component for Omnibox {
                 AttrValue::from("Search or type '>' for commands")
             }
         });
-        let onfocusin = ctx.link().callback(|_| Msg::Focus(true));
-        let onfocusout = ctx.link().callback(|_| Msg::Focus(false));
         let oninput = ctx.link().callback(Msg::Input);
-        let dropdown =
-            self.command_mode || (self.focused && (self.input.is_some() || self.actions.is_some()));
+        let onkeydown = ctx.link().callback(|ev: KeyboardEvent| {
+            ev.stop_propagation();
+            ev.cancel_bubble();
+            Msg::KeyDownTyping(ev)
+        });
+
+        let dropdown = self.command_mode || self.input.is_some() || self.actions.is_some();
         let dropdown = dropdown.then(|| {
+            let onmousedown = |idx| {
+                let link = ctx.link().clone();
+                Callback::from(move |ev: MouseEvent| {
+                    if ev.button() != 0 || ev.ctrl_key() || ev.meta_key() || ev.alt_key() {
+                        return;
+                    }
+                    link.send_message(Msg::Picked(idx));
+                })
+            };
             let inner = if self.command_mode {
                 let idx = &mut 0;
                 let commands = self.commands.as_ref().map(|commands| {
@@ -451,25 +461,21 @@ impl Component for Omnibox {
                         } else {
                             "can-hover"
                         };
-                        let scroll_into_view = highlighted.then(|| self.scroll_into_view.clone()).unwrap_or_default();
+                        let scroll_into_view = highlighted
+                            .then(|| self.scroll_into_view.clone())
+                            .unwrap_or_default();
 
-                        let onmousedown = i.map(|i| ctx.link().callback(move |_| Msg::Picked(i)));
+                        let onmousedown = i.map(onmousedown);
                         let start = command.idx * query_len;
-                        let name = HighlightedString(&command.command.name, &commands.indices[start..start + query_len]).into_html();
-                        let last_used = command.last_used.map(|_| html! { <span class="tag">{"recently used"}</span> });
-                        let keyboard_shortcut = Some(&command.command.keyboard_shortcut).filter(|s| !s.is_empty()).map(|s| {
-                            let s = s.iter().map(|s| html! {
-                                <span class="pf-keycap">{match *s {
-                                    "Cmd" => html! {<i class="material-icons">{"keyboard_command_key"}</i>},
-                                    "Alt" => html! {<i class="material-icons">{"alt"}</i>},
-                                    "Ctrl" => html! {<i class="material-icons">{"control"}</i>},
-                                    "Enter" => html! {<i class="material-icons">{"keyboard_return"}</i>},
-                                    s if s.len() == 1 => html! {{s.to_uppercase()}},
-                                    s => html! {{s.to_lowercase()}},
-                                }}</span>
-                            });
-                            html! { <span class="hotkey">{for s}</span> }
-                        });
+                        let name = HighlightedString(
+                            &command.command.name,
+                            &commands.indices[start..start + query_len],
+                        )
+                        .into_html();
+                        let last_used = command
+                            .last_used
+                            .map(|_| html! { <span class="tag">{"recently used"}</span> });
+                        let keyboard_shortcut = command.command.keyboard_shortcut.to_html();
                         html! {
                             <li ref={scroll_into_view} {class} {onmousedown}>
                                 <span class="option-title">{name}</span>
@@ -481,54 +487,51 @@ impl Component for Omnibox {
                 });
                 self.wrapper(commands)
             } else {
-                let onclick = |idx| {
-                    let link = ctx.link().clone();
-                    Callback::from(move |ev: MouseEvent| {
-                        if ev.button() != 0 || ev.ctrl_key() || ev.meta_key() || ev.alt_key() {
-                            return;
-                        }
-                        link.send_message(Msg::Picked(idx));
-                    })
-                };
-                self.wrapper(SuggestionResult::as_html(self.actions.as_ref(), self.highlighted, &self.scroll_into_view, onclick))
+                self.wrapper(SuggestionResult::as_html(
+                    self.actions.as_ref(),
+                    self.highlighted,
+                    &self.scroll_into_view,
+                    onmousedown,
+                ))
             };
             html! {
-                <div class="omnibox-popup"><div class="omnibox-popup-content">{inner}</div></div>
+                <div class="omnibox-popup" onkeydown={onkeydown.clone()}>{inner}</div>
             }
         });
-        let onkeydown = ctx.link().callback(|ev: KeyboardEvent| {
-            ev.stop_propagation();
-            ev.cancel_bubble();
-            Msg::KeyDownTyping(ev)
-        });
-        let onkeyup = Callback::from(|ev: KeyboardEvent| {
-            ev.stop_propagation();
-            ev.cancel_bubble();
-        });
-        let test = self.picked.as_ref().map(|picked| {
+        let stepthrough = self.picked.as_ref().map(|picked| {
             let node_idx = picked.node_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
-            let left = ctx.link().callback(|_| Msg::Select { left: true });
-            let right = ctx.link().callback(|_| Msg::Select { left: false });
+            let left = ctx.link().callback(|ev: MouseEvent| {
+                ev.stop_propagation();
+                ev.cancel_bubble();
+                Msg::Select { left: true }
+            });
+            let right = ctx.link().callback(|ev: MouseEvent| {
+                ev.stop_propagation();
+                ev.cancel_bubble();
+                Msg::Select { left: false }
+            });
             html! {
             <>
                 <div class="current">{node_idx}{" / "}{picked.nodes.len()}</div>
-                <button onclick={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
-                <button onclick={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
+                <button onmousedown={left}><i class="material-icons left">{"keyboard_arrow_left"}</i></button>
+                <button onmousedown={right}><i class="material-icons right">{"keyboard_arrow_right"}</i></button>
             </>
             }
         });
 
-        let omnibox = ctx.props().omnibox.clone();
+        let omnibox = self.omnibox.clone();
         let input = (!omnibox_disabled)
             .then(|| self.input.clone())
             .unwrap_or_default();
         html! {
-            <div class="omnibox" {onkeydown} {onkeyup}>
-                <div class="icon">{icon}</div>
-                <OmniboxInput {omnibox} {placeholder} {omnibox_disabled} focused={self.focused} {input} {onfocusin} {onfocusout} {oninput} />
-                <div class="stepthrough">{test}</div>
-                <div>{dropdown}</div>
-            </div>
+            <DropdownButton idx={0} ontoggle={ctx.link().callback(Msg::Focus)} enable_on_click={()}>
+                <div class="omnibox" {onkeydown}>
+                    <div class="icon">{icon}</div>
+                    <OmniboxInput {omnibox} {placeholder} {omnibox_disabled} {input} {oninput} />
+                    <div class="stepthrough">{stepthrough}</div>
+                </div>
+                {dropdown}
+            </DropdownButton>
         }
     }
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {

@@ -1,11 +1,11 @@
 use yew::{
     html,
     prelude::{Context, Html},
-    Children, Component, KeyboardEvent, MouseEvent, NodeRef, Properties,
+    Children, Component, MouseEvent, NodeRef, Properties,
 };
 
 use crate::{
-    commands::{Command, CommandRef, CommandsContext},
+    commands::{Command, CommandRef, CommandsContext, ShortcutKey},
     CallbackRef, GlobalCallbacksContext, PagePosition,
 };
 
@@ -39,7 +39,7 @@ pub struct SplitDiv {
     dragging: bool,
     container: NodeRef,
 
-    _callback_refs: [CallbackRef; 3],
+    _callback_refs: [CallbackRef; 2],
     _command_refs: [CommandRef; 1],
 }
 
@@ -48,7 +48,6 @@ pub enum Msg {
     MouseDown(MouseEvent),
     MouseMove(MouseEvent),
     MouseUp(MouseEvent),
-    KeyDown(KeyboardEvent),
     ToggleDrawer,
 }
 
@@ -61,14 +60,13 @@ impl Component for SplitDiv {
         let registerer = ctx.link().get_callbacks_registerer().unwrap();
         let mouse_move_ref = (registerer.register_mouse_move)(ctx.link().callback(Msg::MouseMove));
         let mouse_up_ref = (registerer.register_mouse_up)(ctx.link().callback(Msg::MouseUp));
-        let keydown = (registerer.register_keyboard_down)(ctx.link().callback(Msg::KeyDown));
-        let _callback_refs = [mouse_move_ref, mouse_up_ref, keydown];
+        let _callback_refs = [mouse_move_ref, mouse_up_ref];
 
         let commands = ctx.link().get_commands_registerer().unwrap();
         let toggle = Command {
             name: "Toggle right drawer".to_string(),
             execute: ctx.link().callback(|_| Msg::ToggleDrawer),
-            keyboard_shortcut: vec!["r"],
+            keyboard_shortcut: ShortcutKey::empty('r'),
             disabled: ctx.props().left_bound == ctx.props().right_bound,
         };
         let toggle = (commands)(toggle);
@@ -102,7 +100,7 @@ impl Component for SplitDiv {
         }
         true
     }
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::MouseDown(ev) => {
                 ev.prevent_default();
@@ -123,12 +121,6 @@ impl Component for SplitDiv {
             }
             Msg::MouseUp(_) => {
                 self.dragging = false;
-                false
-            }
-            Msg::KeyDown(ev) => {
-                if ev.key() == "r" {
-                    ctx.link().send_message(Msg::ToggleDrawer);
-                }
                 false
             }
             Msg::ToggleDrawer => {

@@ -7,10 +7,10 @@ use yew::{
 };
 
 use crate::{
-    commands::{Command, CommandId, CommandRef, Commands, CommandsContext},
+    commands::{Command, CommandId, CommandRef, Commands, CommandsContext, Key, ShortcutKey},
     infobars::topbar::OmnibarMessage,
     utils::lookup::StringLookupCommands,
-    CallbackRef, GlobalCallbacksContext, MlData,
+    MlData,
 };
 
 use self::input::{MlOmniboxInput, PickedSuggestion};
@@ -20,13 +20,11 @@ pub mod input;
 #[derive(Properties, Clone, PartialEq)]
 pub struct MlOmniboxProps {
     pub message: Option<OmnibarMessage>,
-    pub omnibox: NodeRef,
     pub ml_data: MlData,
     pub pick_nth_ml: Callback<usize>,
 }
 
 pub enum Msg {
-    KeyDownGlobal(KeyboardEvent),
     Select { left: bool },
     CommandsUpdated(Rc<Commands>),
 }
@@ -40,7 +38,6 @@ pub struct MlOmnibox {
     scroll_container: NodeRef,
     scroll_into_view: NodeRef,
     _handle: ContextHandle<Rc<Commands>>,
-    _callback_refs: [CallbackRef; 1],
     _commands_search: [CommandRef; 2],
 }
 
@@ -49,29 +46,25 @@ impl Component for MlOmnibox {
     type Properties = MlOmniboxProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        // Global callbacks
-        let registerer = ctx.link().get_callbacks_registerer().unwrap();
-        let keydown = (registerer.register_keyboard_down)(ctx.link().callback(Msg::KeyDownGlobal));
-        let _callback_refs = [keydown];
-
         // Commands
         let (commands, _handle) = ctx
             .link()
             .get_commands(ctx.link().callback(Msg::CommandsUpdated))
             .unwrap();
         let all_commands = StringLookupCommands::with_commands(commands.commands.iter().cloned());
+        let disabled = ctx.props().ml_data.sum() == 0;
         let next_search = Command {
-            name: "Go to next search result".to_string(),
+            name: "Go to next matching loop".to_string(),
             execute: ctx.link().callback(|_| Msg::Select { left: false }),
-            keyboard_shortcut: vec!["Enter"],
-            disabled: true,
+            keyboard_shortcut: ShortcutKey::empty(Key::Enter),
+            disabled,
         };
         let next_search = (commands.register)(next_search);
         let prev_search = Command {
-            name: "Go to previous search result".to_string(),
+            name: "Go to previous matching loop".to_string(),
             execute: ctx.link().callback(|_| Msg::Select { left: true }),
-            keyboard_shortcut: vec!["Shift", "Enter"],
-            disabled: true,
+            keyboard_shortcut: ShortcutKey::shift(Key::Enter),
+            disabled,
         };
         let prev_search = (commands.register)(prev_search);
         let _commands_search = [next_search, prev_search];
@@ -84,22 +77,12 @@ impl Component for MlOmnibox {
             scroll_container: NodeRef::default(),
             scroll_into_view: NodeRef::default(),
             _handle,
-            _callback_refs,
             _commands_search,
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::KeyDownGlobal(ev) => match ev.key().as_str() {
-                "Enter" => {
-                    ctx.link().send_message(Msg::Select {
-                        left: ev.shift_key(),
-                    });
-                    false
-                }
-                _ => false,
-            },
             Msg::Select { left } => {
                 let Some(picked) = &mut self.picked else {
                     return false;
@@ -184,7 +167,7 @@ impl Component for MlOmnibox {
             ev.stop_propagation();
             ev.cancel_bubble();
         });
-        let test = if ctx.props().ml_data.sum() > 0 {
+        let stepthrough = if ctx.props().ml_data.sum() > 0 {
             self.picked.as_ref().map(|picked| {
             let ml_idx = picked.ml_idx.map(|i| (i + 1).to_string()).unwrap_or_else(|| "?".to_string());
             let left = ctx.link().callback(|_| Msg::Select { left: true });
@@ -200,15 +183,14 @@ impl Component for MlOmnibox {
         } else {
             None
         };
-        let omnibox = ctx.props().omnibox.clone();
         let input = (!omnibox_disabled)
             .then(|| self.input.clone())
             .unwrap_or_default();
         html! {
             <div class="omnibox" {onkeyup}>
                 <div class="icon">{icon}</div>
-                <MlOmniboxInput {omnibox} {placeholder} omnibox_disabled={true} focused={self.focused} {input} />
-                <div class="stepthrough">{test}</div>
+                <MlOmniboxInput {placeholder} omnibox_disabled={true} focused={self.focused} {input} />
+                <div class="stepthrough">{stepthrough}</div>
             </div>
         }
     }

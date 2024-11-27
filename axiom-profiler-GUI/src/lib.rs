@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Mutex, OnceLock, RwLock};
 
-use commands::{Command, CommandRef, CommandsContext};
+use commands::{Command, CommandRef, CommandsContext, ShortcutKey};
 use example::{Example, ExampleRow};
 use fxhash::{FxHashMap, FxHashSet};
 use gloo::timers::callback::Timeout;
@@ -83,8 +83,8 @@ pub enum Msg {
     ClearMessage,
     SelectedNodes(Vec<RawNodeIndex>),
     SelectedEdges(Vec<VisibleEdgeIndex>),
-    KeyDown(KeyboardEvent),
     ShowHelpToggled(bool),
+    ToggleSidebar,
     SearchMatchingLoops,
 }
 
@@ -197,11 +197,10 @@ pub struct FileDataComponent {
     insts_info_link: WeakComponentLink<graph_info::GraphInfo>,
     filters_state_link: WeakComponentLink<FiltersState>,
     showing_help: bool,
-    omnibox: NodeRef,
-    sidebar_button: NodeRef,
+    sidebar: NodeRef,
     flags_visible: SetVisibleCallback,
-    _callback_refs: [CallbackRef; 6],
-    _command_refs: [CommandRef; 4],
+    _callback_refs: [CallbackRef; 5],
+    _command_refs: [CommandRef; 3],
 }
 
 impl FileDataComponent {
@@ -232,8 +231,6 @@ impl Component for FileDataComponent {
 
     fn create(ctx: &Context<Self>) -> Self {
         let help_dialog = WeakComponentLink::<MatDialog>::default();
-        let sidebar_button = NodeRef::default();
-        let omnibox = NodeRef::default();
         let flags_visible = SetVisibleCallback::default();
 
         // Global Callbacks
@@ -251,51 +248,28 @@ impl Component for FileDataComponent {
             }
         }));
         let [drag_enter_ref, drag_leave_ref, drop_ref] = Self::file_drag(&registerer, ctx.link());
-        let keydown = (registerer.register_keyboard_down)(ctx.link().callback(Msg::KeyDown));
         let _callback_refs = [
             mouse_move_ref,
             drag_over_ref,
             drag_enter_ref,
             drag_leave_ref,
             drop_ref,
-            keydown,
         ];
 
         // Commands
         let commands = ctx.link().get_commands_registerer().unwrap();
-        let omnibox_ref = omnibox.clone();
-        let search_cmd = Command {
-            name: "Search".to_string(),
-            execute: Callback::from(move |_| {
-                let omnibox_ref = omnibox_ref.clone();
-                Timeout::new(10, move || {
-                    omnibox_ref
-                        .cast::<HtmlElement>()
-                        .map(|omnibox| omnibox.focus().ok());
-                })
-                .forget();
-            }),
-            keyboard_shortcut: vec!["Cmd", "s"],
-            disabled: false,
-        };
-        let search_cmd = (commands)(search_cmd);
         let help_dialog_ref = help_dialog.clone();
         let help_cmd = Command {
             name: "Show help".to_string(),
             execute: Callback::from(move |_| help_dialog_ref.show()),
-            keyboard_shortcut: vec!["?"],
+            keyboard_shortcut: ShortcutKey::empty('?'),
             disabled: false,
         };
         let help_cmd = (commands)(help_cmd);
-        let sidebar_button_ref = sidebar_button.clone();
         let hide_sidebar_cmd = Command {
             name: "Toggle left sidebar".to_string(),
-            execute: Callback::from(move |_| {
-                if let Some(b) = sidebar_button_ref.cast::<HtmlElement>() {
-                    b.click()
-                }
-            }),
-            keyboard_shortcut: vec!["Cmd", "b"],
+            execute: ctx.link().callback(move |()| Msg::ToggleSidebar),
+            keyboard_shortcut: ShortcutKey::cmd('b'),
             disabled: false,
         };
         let hide_sidebar_cmd = (commands)(hide_sidebar_cmd);
@@ -305,11 +279,11 @@ impl Component for FileDataComponent {
             execute: Callback::from(move |_| {
                 flags_visible_ref.borrow().emit(None);
             }),
-            keyboard_shortcut: vec!["Cmd", ","],
+            keyboard_shortcut: ShortcutKey::cmd(','),
             disabled: false,
         };
         let toggle_flags_cmd = (commands)(toggle_flags_cmd);
-        let _command_refs = [help_cmd, hide_sidebar_cmd, search_cmd, toggle_flags_cmd];
+        let _command_refs = [help_cmd, hide_sidebar_cmd, toggle_flags_cmd];
         Self {
             file_select: NodeRef::default(),
             file: None,
@@ -323,8 +297,7 @@ impl Component for FileDataComponent {
             insts_info_link: WeakComponentLink::default(),
             filters_state_link: WeakComponentLink::default(),
             showing_help: false,
-            omnibox,
-            sidebar_button,
+            sidebar: NodeRef::default(),
             flags_visible,
             _callback_refs,
             _command_refs,
@@ -490,42 +463,24 @@ impl Component for FileDataComponent {
                 self.showing_help = showing_help;
                 false
             }
-            Msg::KeyDown(event) => match event.key().as_str() {
-                "?" => {
-                    if self.showing_help {
-                        self.help_dialog.close();
-                    } else {
-                        self.help_dialog.show();
-                    }
-                    false
+            Msg::ToggleSidebar => {
+                let Some(sidebar) = self.sidebar.cast::<HtmlElement>() else {
+                    return false;
+                };
+                let state = ctx.link().get_state().unwrap();
+                let sidebar_closed = state.state.sidebar_closed;
+                let open_files = self.file.is_some();
+                if !ALLOW_HIDE_SIDEBAR_NO_FILE && !sidebar_closed && !open_files {
+                    return false;
                 }
-                "s" => {
-                    if event.meta_key() {
-                        event.prevent_default();
-                        self.omnibox
-                            .cast::<HtmlElement>()
-                            .and_then(|omnibox| omnibox.focus().ok());
-                    }
-                    false
+                if sidebar_closed {
+                    sidebar.class_list().remove_1("hide-sidebar").ok();
+                } else {
+                    sidebar.class_list().add_1("hide-sidebar").ok();
                 }
-                "b" => {
-                    if event.meta_key() {
-                        event.prevent_default();
-                        if let Some(sidebar_button) = self.sidebar_button.cast::<HtmlElement>() {
-                            sidebar_button.click()
-                        }
-                    }
-                    false
-                }
-                "," => {
-                    if event.meta_key() {
-                        event.prevent_default();
-                        self.flags_visible.borrow().emit(None);
-                    }
-                    false
-                }
-                _ => false,
-            },
+                state.set_sidebar_closed(!sidebar_closed);
+                false
+            }
             Msg::SearchMatchingLoops => {
                 log::info!("Searching matching loops");
                 if let Some(_file) = &mut self.file {
@@ -566,8 +521,6 @@ impl Component for FileDataComponent {
             env!("VERGEN_GIT_SHA")
         );
         let is_canary = version().is_none();
-
-        let sidebar = NodeRef::default();
 
         let current_trace = match &self.file {
             Some(file) => {
@@ -642,19 +595,9 @@ impl Component for FileDataComponent {
                     .and_then(|files| (files.len() == 1).then(|| files[0].clone())),
             )
         });
-        let sidebar_ref = sidebar.clone();
-        let open_files = self.file.is_some();
-        let toggle_sidebar = Callback::from(move |ev: MouseEvent| {
+        let toggle_sidebar = ctx.link().callback(move |ev: MouseEvent| {
             ev.prevent_default();
-            let Some(sidebar) = sidebar_ref.cast::<HtmlElement>() else {
-                return;
-            };
-            if ALLOW_HIDE_SIDEBAR_NO_FILE
-                || sidebar.class_list().contains("hide-sidebar")
-                || open_files
-            {
-                sidebar.class_list().toggle("hide-sidebar").ok();
-            }
+            Msg::ToggleSidebar
         });
         let help_dialog_clone = self.help_dialog.clone();
         let show_shortcuts = Callback::from(move |ev: MouseEvent| {
@@ -698,8 +641,8 @@ impl Component for FileDataComponent {
         }).unwrap_or_default();
         html! {
         <>
-            <nav class="sidebar" ref={sidebar}>
-                <header class={header_class}><img src="html/logo_side_small.png" class="brand"/><div ref={&self.sidebar_button} class="sidebar-button" onmousedown={toggle_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
+            <nav class="sidebar" ref={&self.sidebar}>
+                <header class={header_class}><img src="html/logo_side_small.png" class="brand"/><div class="sidebar-button" onmousedown={toggle_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
                 <input type="file" ref={&self.file_select} class="trace_file" accept=".log" onchange={on_change} multiple=false/>
                 <div class="sidebar-scroll"><div class="sidebar-scroll-container">
                     <SidebarSectionHeader header_text="Navigation" collapsed_text="Open a new trace" section={self.navigation_section.clone()}><ul>
@@ -721,7 +664,7 @@ impl Component for FileDataComponent {
                     </div>
                 </div></div>
             </nav>
-            <Topbar progress={self.progress.clone()} {message} omnibox={self.omnibox.clone()} {search} {pick} {select} {pick_nth_ml} />
+            <Topbar progress={self.progress.clone()} {message} {search} {pick} {select} {pick_nth_ml} />
             <div class="alerts"></div>
             <div class={page_class}>
                 {page}

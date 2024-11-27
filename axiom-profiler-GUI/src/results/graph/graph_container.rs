@@ -8,7 +8,7 @@ use wasm_timer::Instant;
 use web_sys::{Element, HtmlInputElement, ResizeObserver, ResizeObserverEntry};
 use yew::prelude::*;
 
-use crate::commands::{Command, CommandRef, CommandsContext};
+use crate::commands::{Command, CommandRef, CommandsContext, Key, ShortcutKey};
 use crate::results::svg_result::RenderedGraph;
 use crate::state::StateContext;
 use crate::{CallbackRef, GlobalCallbacksContext, PagePosition, PrecisePosition};
@@ -177,7 +177,7 @@ impl Component for GraphContainer {
         let select_all = Command {
             name: "Select all".to_string(),
             execute: ctx.props().select_all.clone(),
-            keyboard_shortcut: vec!["Cmd", "a"],
+            keyboard_shortcut: ShortcutKey::cmd('a'),
             disabled: false,
         };
         let select_all = (commands)(select_all);
@@ -185,14 +185,14 @@ impl Component for GraphContainer {
         let deselect_all = Command {
             name: "Deselect".to_string(),
             execute: ctx.props().deselect_all.clone(),
-            keyboard_shortcut: vec!["Esc"],
+            keyboard_shortcut: ShortcutKey::empty(Key::Escape),
             disabled: true,
         };
         let deselect_all = (commands)(deselect_all);
         let focus_selection = Command {
             name: "Focus selection".to_string(),
             execute: ctx.link().callback(|_| Msg::FocusSelection),
-            keyboard_shortcut: vec!["f"],
+            keyboard_shortcut: ShortcutKey::empty('f'),
             disabled: true,
         };
         let focus_selection = (commands)(focus_selection);
@@ -324,27 +324,16 @@ impl Component for GraphContainer {
                 false
             }
             Msg::KeyDown(ev) => {
+                if ev.meta_key() || ev.ctrl_key() || ev.shift_key() || ev.alt_key() {
+                    return false;
+                }
                 if ctx.link().get_state().unwrap().state.overlay_visible {
                     return false;
                 }
 
                 let key = ev.key();
-                let plain = !ev.meta_key() && !ev.ctrl_key() && !ev.shift_key() && !ev.alt_key();
                 match key.as_str() {
-                    "a" if ev.meta_key() => {
-                        ev.prevent_default();
-                        ctx.props().select_all.emit(());
-                        false
-                    }
-                    "f" if plain => {
-                        ctx.link().send_message(Msg::FocusSelection);
-                        false
-                    }
-                    "Escape" if plain => {
-                        ctx.props().deselect_all.emit(());
-                        false
-                    }
-                    "w" | "a" | "s" | "d" | "q" | "e" if plain => {
+                    "w" | "a" | "s" | "d" | "q" | "e" => {
                         let (held, _, released) = self
                             .held_keys
                             .entry(key)

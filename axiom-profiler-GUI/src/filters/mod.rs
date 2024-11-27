@@ -334,7 +334,7 @@ impl Component for FiltersState {
         let class = match (self.dragging, self.will_delete) {
             (true, true) => "delete will-delete",
             (true, false) => "delete",
-            _ => "delete hidden",
+            _ => "delete display-none",
         };
         let dragging = html! {
             <li ref={&self.delete_node} class={class}><a draggable="false">
@@ -343,7 +343,7 @@ impl Component for FiltersState {
             </a></li>
         };
         let graph_details = file.rendered.as_ref().map(|g| {
-            let class = if self.dragging { "hidden" } else { "" };
+            let class = if self.dragging { "display-none" } else { "" };
             let mls = ml_data.map(|data| if data.maybe_mls == 0 {
                 format!(", {} mtch loop", data.sure_mls)
             } else {

@@ -1,9 +1,11 @@
 use std::{ops::Deref, rc::Rc, sync::Mutex};
 
 use yew::{
-    html::Scope, Callback, Children, Component, Context, ContextHandle, ContextProvider, Html,
-    Properties,
+    html, html::Scope, Callback, Children, Component, Context, ContextHandle, ContextProvider,
+    Html, KeyboardEvent, Properties,
 };
+
+use crate::{CallbackRef, GlobalCallbacksContext};
 
 // Public interface
 
@@ -64,8 +66,154 @@ impl PartialEq for Commands {
 pub struct Command {
     pub name: String,
     pub execute: Callback<()>,
-    pub keyboard_shortcut: Vec<&'static str>,
+    pub keyboard_shortcut: Shortcut,
     pub disabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Shortcut {
+    /// Manually capture the keyboard shortcut yourself.
+    Manual(Vec<&'static str>),
+    /// Automatically capture the keyboard shortcut by the command handler.
+    Automatic(ShortcutKey),
+    None,
+}
+
+impl Shortcut {
+    fn cmd() -> Html {
+        html! {<span class="pf-keycap"><i class="material-icons">{"keyboard_command_key"}</i></span>}
+    }
+    fn alt() -> Html {
+        html! {<span class="pf-keycap"><i class="material-icons">{"alt"}</i></span>}
+    }
+    fn ctrl() -> Html {
+        html! {<span class="pf-keycap"><i class="material-icons">{"control"}</i></span>}
+    }
+    fn enter() -> Html {
+        html! {<span class="pf-keycap"><i class="material-icons">{"keyboard_return"}</i></span>}
+    }
+    fn shift() -> Html {
+        // html! {<span class="pf-keycap"><i class="material-icons">{"shift"}</i></span>}
+        html! {<span class="pf-keycap">{"shift"}</span>}
+    }
+    fn key(char: char) -> Html {
+        html! {<span class="pf-keycap">{char.to_uppercase()}</span>}
+    }
+    pub fn to_html(&self) -> Option<Html> {
+        match self {
+            Shortcut::Manual(s) => {
+                let s = s.iter().map(|s| match *s {
+                    "Cmd" => Self::cmd(),
+                    "Alt" => Self::alt(),
+                    "Ctrl" => Self::ctrl(),
+                    "Enter" => Self::enter(),
+                    s if s.len() == 1 => Self::key(s.chars().next().unwrap()),
+                    s => html! {<span class="pf-keycap">{s.to_lowercase()}</span>},
+                });
+                Some(html! { <span class="hotkey">{for s}</span> })
+            }
+            Shortcut::Automatic(shortcut_key) => {
+                let mut s = Vec::new();
+                if shortcut_key.cmd {
+                    s.push(Self::cmd());
+                }
+                if shortcut_key.alt {
+                    s.push(Self::alt());
+                }
+                if shortcut_key.shift {
+                    s.push(Self::shift());
+                }
+                match shortcut_key.key {
+                    Key::Escape => s.push(html! {<span class="pf-keycap">{"esc"}</span>}),
+                    Key::Enter => s.push(Self::enter()),
+                    Key::Char(c) => s.push(Self::key(c)),
+                }
+                Some(html! { <span class="hotkey">{for s}</span> })
+            }
+            Shortcut::None => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShortcutKey {
+    pub key: Key,
+    pub shift: bool,
+    pub cmd: bool,
+    pub ctrl: bool,
+    pub alt: bool,
+}
+
+impl ShortcutKey {
+    pub fn automatic<K: Into<Key>>(
+        key: K,
+        shift: bool,
+        cmd: bool,
+        ctrl: bool,
+        alt: bool,
+    ) -> Shortcut {
+        let key = key.into();
+        Shortcut::Automatic(Self {
+            key,
+            shift,
+            cmd,
+            ctrl,
+            alt,
+        })
+    }
+
+    pub fn empty<K: Into<Key>>(key: K) -> Shortcut {
+        Self::automatic(key, false, false, false, false)
+    }
+    pub fn shift<K: Into<Key>>(key: K) -> Shortcut {
+        Self::automatic(key, true, false, false, false)
+    }
+    pub fn cmd<K: Into<Key>>(key: K) -> Shortcut {
+        Self::automatic(key, false, true, false, false)
+    }
+    pub fn ctrl<K: Into<Key>>(key: K) -> Shortcut {
+        Self::automatic(key, false, false, true, false)
+    }
+    pub fn alt<K: Into<Key>>(key: K) -> Shortcut {
+        Self::automatic(key, false, false, false, true)
+    }
+}
+
+impl TryFrom<&KeyboardEvent> for ShortcutKey {
+    type Error = String;
+    fn try_from(value: &KeyboardEvent) -> Result<Self, Self::Error> {
+        let shift = value.shift_key();
+        let cmd = value.meta_key();
+        let ctrl = value.ctrl_key();
+        let alt = value.alt_key();
+        let key = value.key();
+        let key = match key.as_str() {
+            "Escape" => Key::Escape,
+            "Enter" => Key::Enter,
+            s if s.len() == 1 => Key::Char(s.chars().next().unwrap()),
+            _ => return Err(key),
+        };
+        Ok(Self {
+            key,
+            shift,
+            cmd,
+            ctrl,
+            alt,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Key {
+    Escape,
+    Enter,
+    Char(char),
+}
+
+impl From<char> for Key {
+    fn from(c: char) -> Self {
+        Self::Char(c)
+    }
 }
 
 // Private interface
@@ -91,7 +239,8 @@ impl CommandRegisterer {
 
 // Provider
 
-pub struct CommandsProvider(Commands);
+#[allow(dead_code)]
+pub struct CommandsProvider(Commands, CallbackRef);
 
 #[derive(Properties, PartialEq)]
 pub struct CommandsProviderProps {
@@ -102,6 +251,7 @@ pub enum Msg {
     Register(CommandId, Command),
     DeRegister(CommandId),
     SetDisabled(CommandId, bool),
+    KeyDownGlobal(KeyboardEvent),
 }
 
 impl Component for CommandsProvider {
@@ -109,11 +259,14 @@ impl Component for CommandsProvider {
     type Properties = CommandsProviderProps;
 
     fn create(ctx: &Context<Self>) -> Self {
+        let registerer = ctx.link().get_callbacks_registerer().unwrap();
+        let keydown = (registerer.register_keyboard_down)(ctx.link().callback(Msg::KeyDownGlobal));
+
         let commands = Commands {
             commands: Vec::new(),
             register: CommandRegisterer::new(ctx.link().clone()),
         };
-        Self(commands)
+        Self(commands, keydown)
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -131,6 +284,24 @@ impl Component for CommandsProvider {
                 let command = self.0.commands.iter_mut().find(|(i, _)| i == &id).unwrap();
                 command.1.disabled = disabled;
                 true
+            }
+            Msg::KeyDownGlobal(ev) => {
+                let Ok(key) = ShortcutKey::try_from(&ev) else {
+                    return false;
+                };
+                for (_, cmd) in &self.0.commands {
+                    if cmd.disabled {
+                        continue;
+                    }
+                    let Shortcut::Automatic(shortcut) = &cmd.keyboard_shortcut else {
+                        continue;
+                    };
+                    if shortcut == &key {
+                        ev.prevent_default();
+                        cmd.execute.emit(());
+                    }
+                }
+                false
             }
         }
     }

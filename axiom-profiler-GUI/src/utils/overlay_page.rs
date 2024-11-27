@@ -56,7 +56,7 @@ impl Component for Overlay {
         let class = if self.visible {
             "overlay"
         } else {
-            "overlay hidden"
+            "overlay display-none"
         };
         let onclick = ctx.link().callback(|_| Msg::SetVisible(Some(false)));
         html! {

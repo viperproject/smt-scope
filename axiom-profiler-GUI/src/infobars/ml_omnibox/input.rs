@@ -1,6 +1,6 @@
 use web_sys::HtmlInputElement;
 use yew::{
-    function_component, html, use_effect_with_deps, use_mut_ref, AttrValue, Html, NodeRef,
+    function_component, html, use_effect_with_deps, use_mut_ref, use_node_ref, AttrValue, Html,
     Properties,
 };
 
@@ -10,7 +10,6 @@ use super::SearchAction;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct MlOmniboxInputProps {
-    pub omnibox: NodeRef,
     pub placeholder: AttrValue,
     pub omnibox_disabled: bool,
     pub focused: bool,
@@ -19,6 +18,7 @@ pub struct MlOmniboxInputProps {
 
 #[function_component]
 pub fn MlOmniboxInput(props: &MlOmniboxInputProps) -> Html {
+    let omnibox = use_node_ref();
     let focused = use_mut_ref(|| false);
     let old_focused = *focused.borrow();
     use_effect_with_deps(
@@ -36,10 +36,10 @@ pub fn MlOmniboxInput(props: &MlOmniboxInputProps) -> Html {
             }
             || {}
         },
-        (props.omnibox.clone(), props.input.clone(), props.focused),
+        (omnibox.clone(), props.input.clone(), props.focused),
     );
     *focused.borrow_mut() = props.focused;
-    html! { <input ref={props.omnibox.clone()} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} /> }
+    html! { <input ref={omnibox} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} /> }
 }
 
 #[derive(Debug, PartialEq)]

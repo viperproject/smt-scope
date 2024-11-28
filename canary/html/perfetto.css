@@ -56,21 +56,26 @@ h1, h2, h3 {
 	box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.1490196078);
 	min-height: calc(var(--topbar-height) - 1px);
 	display: flex;
-	justify-content: center;
+	justify-content: space-between;
 	align-items: center;
 }
 
-.topbar .omnibox {
+.topbar .omnibox-outer {
 	position: relative;
-	width: 90%;
+	width: 66%;
 	max-width: 600px;
+	flex-shrink: 0;
+}
+
+.topbar .omnibox {
+	width: 100%;
 	transition: opacity 0.25s ease, color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, width 0.25s ease, height 0.25s ease, max-width 0.25s ease, max-height 0.25s ease, margin 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-radius 0.25s ease;
 	display: grid;
 	grid-template-areas: "icon input stepthrough";
 	grid-template-columns: 34px auto max-content;
 	border-radius: 2px;
 	background-color: white;
-	border: solid 1px transparent;
+	/* border: solid 1px transparent; */
 	line-height: 34px;
 }
 .topbar .omnibox:focus-within {
@@ -78,7 +83,7 @@ h1, h2, h3 {
 	box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.2);
 }
 
-.topbar .omnibox .icon {
+.topbar .icon {
 	font-family: "Material Icons";
 	font-size: 24px;
 	line-height: 1;
@@ -447,7 +452,6 @@ table {
 
 .sidebar {
 	--sidebar-padding-bottom: 40px;
-	--sidebar-timing: 0.15s;
 	grid-area: sidebar;
 	z-index: 4;
 	background-color: var(--expanded-background);
@@ -461,7 +465,8 @@ table {
 
 :root {
 	--sidebar-width: 230px;
-	--topbar-height: 44px;
+	--topbar-height: 41px;
+	--sidebar-timing: 0.15s;
 	--monospace-font: "Roboto Mono", monospace;
 	--track-shell-width: 250px;
 	--track-border-color: #00000025;
@@ -479,6 +484,7 @@ table {
 	/* switch to this to change topbar color in ML mode:
 	--topbar-ml-background: hsl(243, 92%, 95%); */
 	--flags-accent-color: rgb(10, 75, 165);
+	--menu-text-color: hsl(210, 4%, 28%);
 }
 
 * {
@@ -523,7 +529,7 @@ table {
 
 .sidebar > header .brand {
 	height: 36px;
-	margin-top: 4px;
+	margin-top: calc((var(--topbar-height) - 36px) / 2);
 }
 
 .sidebar .sidebar-button {
@@ -531,13 +537,14 @@ table {
 	z-index: 5;
 	background-color: var(--expanded-background);
 	height: var(--topbar-height);
-	left: calc(var(--sidebar-width) - 50px);
+	left: calc(var(--sidebar-width) - var(--topbar-height));
 	border-radius: 0 5px 5px 0;
 	border-bottom: inherit;
 	visibility: visible;
 	transition: left var(--anim-easing) var(--sidebar-timing);
-	width: 48px;
+	width: var(--topbar-height);
 	overflow: hidden;
+	--mdc-icon-button-size: var(--topbar-height);
 }
 
 .sidebar.hide-sidebar .sidebar-button {
@@ -656,18 +663,18 @@ table {
 	pointer-events: none;
 	transition: opacity 0.1s ease, color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease, width 0.1s ease, height 0.1s ease, max-width 0.1s ease, max-height 0.1s ease, margin 0.1s ease, transform 0.1s ease, box-shadow 0.1s ease, border-radius 0.1s ease;
 	opacity: 0;
-	color: hsl(210, 4%, 28%);
+	color: var(--menu-text-color);
 }
 
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content a {
-	color: hsl(210, 4%, 28%);
+	color: var(--menu-text-color);
 }
 
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li.drag > a {
 	color: #0000;
 }
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li div.placeholder {
-	color: hsl(210, 4%, 28%);
+	color: var(--menu-text-color);
 	background-color: inherit;
 	position: absolute;
 	top: 0;
@@ -730,18 +737,18 @@ table {
 	opacity: 1;
 }
 
-.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content ul {
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content ul, .topbar .menu-bar .dropdown-popup ul {
 	list-style-type: none;
 	margin: 0;
 	padding: 0;
 }
 
-.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li {
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li, .topbar .menu-bar .dropdown-popup li {
 	position: relative;
 	transition: opacity 0.1s ease, color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease, width 0.1s ease, height 0.1s ease, max-width 0.1s ease, max-height 0.1s ease, margin 0.1s ease, margin-top 0s, transform 0.1s ease, box-shadow 0.1s ease, border-radius 0.1s ease;
 }
 
-.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li a {
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li a, .topbar .menu-bar .dropdown-popup li a {
 	line-height: 24px;
 	font-size: 14px;
 	padding: 4px 12px;
@@ -749,6 +756,9 @@ table {
 	display: flex;
 	overflow: hidden;
 	white-space: nowrap;
+}
+.topbar .menu-bar .dropdown-popup li a {
+	padding: 4px 8px 4px 4px;
 }
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li a input {
 	background-color: var(--hover-background);
@@ -760,7 +770,7 @@ table {
 	margin: 0 2px;
 }
 
-.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li .material-icons {
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li .material-icons, .topbar .menu-bar .dropdown-popup li .material-icons {
 	margin-right: 10px;
 	font-size: inherit;
 }

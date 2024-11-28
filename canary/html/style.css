@@ -21,14 +21,21 @@ html {
     flex: 1;
 }
 
+.display-contents {
+    display: contents;
+}
+.display-none {
+    display: none;
+}
+.position-relative {
+    position: relative;
+}
+
 div.page .overlay {
     position: absolute;
     width: 100%;
     height: 100%;
     background-color: #fff;
-}
-div.page .overlay.hidden {
-    display: none;
 }
 div.page .overlay .close-button {
     position: absolute;
@@ -111,19 +118,65 @@ mwc-dialog {
 	background-color: var(--topbar-ml-background);
 }
 
-.topbar .omnibox .omnibox-popup {
+.topbar .menu-bar {
+    display: flex;
+    --menu-bar-margin: calc((var(--topbar-height) - 34px) / 2);
+    margin: 0 var(--menu-bar-margin);
+	transition: margin-left var(--anim-easing) var(--sidebar-timing);
+    flex-basis: 100%;
+}
+.topbar .menu-bar.pad {
+    margin-left: calc(var(--menu-bar-margin) + var(--topbar-height));
+}
+.topbar .menu-bar a {
+    line-height: 34px;
+    text-decoration: none;
+    overflow: hidden;
+    white-space: nowrap;
+    color: var(--menu-text-color);
+    border-radius: 2px;
+    display: block;
+}
+.topbar .menu-bar a.menu-button {
+    padding: 0 12px;
+}
+.topbar a.menu-button:hover, .topbar .hover a.menu-button {
+    background-color: var(--hover-background);
+}
+
+.topbar .menu-bar a.history-button {
+    padding: 0 5px;
+    margin-left: 5px;
+}
+.topbar .menu-bar a.history-button:not(.disabled):hover {
+    background-color: var(--hover-background);
+}
+.topbar .menu-bar a.history-button.disabled {
+    color: #aaa;
+    cursor: default;
+}
+
+.topbar .menu-bar .dropdown-popup li {
+	border-radius: 2px;
+}
+.topbar .menu-bar .dropdown-popup li:hover {
+    background-color: var(--hover-background);
+}
+
+.dropdown-popup {
     position: absolute;
-    top: 38px;
-    left: 0px;
+    top: 100%;
+    background: var(--section-background);
+    border: solid 1px var(--expanded-background);
+    border-radius: 2px;
+    box-shadow: 2px 2px 16px rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    margin-top: 2px;
+}
+.omnibox-outer .dropdown-popup {
     width: 100%;
     background: white;
     border: solid 1px #aaa;
-    border-radius: 2px;
-    box-shadow: 2px 2px 16px rgba(0, 0, 0, 0.2);
-}
-.topbar .omnibox .omnibox-popup .omnibox-popup-content {
-    position: relative;
-    padding: 4px;
 }
 .omnibox-dropdown {
     font-family: "Roboto Condensed", sans-serif;
@@ -206,7 +259,7 @@ mwc-dialog {
     justify-content: center;
     gap: 4px;
 }
-.pf-keycap i, .dd-keycap i, .topbar .omnibox .dd-keycap i.icon {
+.pf-keycap i, .dd-keycap i, .topbar .omnibox-popup .dd-keycap i.icon {
     font-size: inherit;
     vertical-align: baseline;
     line-height: 1;

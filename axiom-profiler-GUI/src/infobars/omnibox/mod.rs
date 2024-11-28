@@ -495,7 +495,7 @@ impl Component for Omnibox {
                 ))
             };
             html! {
-                <div class="omnibox-popup" onkeydown={onkeydown.clone()}>{inner}</div>
+                <div class="omnibox-popup" onkeydown={onkeydown.clone()} tabindex={"0"}>{inner}</div>
             }
         });
         let stepthrough = self.picked.as_ref().map(|picked| {
@@ -525,9 +525,9 @@ impl Component for Omnibox {
             .unwrap_or_default();
         html! {
             <DropdownButton idx={0} ontoggle={ctx.link().callback(Msg::Focus)} enable_on_click={()}>
-                <div class="omnibox" {onkeydown}>
+                <div class="omnibox">
                     <div class="icon">{icon}</div>
-                    <OmniboxInput {omnibox} {placeholder} {omnibox_disabled} {input} {oninput} />
+                    <OmniboxInput {omnibox} {placeholder} {omnibox_disabled} {input} {oninput} {onkeydown} />
                     <div class="stepthrough">{stepthrough}</div>
                 </div>
                 {dropdown}
@@ -709,22 +709,19 @@ impl PartialOrd for CommandAction {
 }
 impl Ord for CommandAction {
     fn cmp(&self, other: &Self) -> Ordering {
-        let last_used_order =
-            |lu: Option<usize>| usize::MAX - lu.map(|lu| usize::MAX - lu).unwrap_or_default();
+        self.ordering()
+            .cmp(&other.ordering())
+    }
+}
+impl CommandAction {
+    pub fn ordering(&self) -> (bool, usize, u16, &str, CommandId) {
         (
             self.command.disabled,
-            last_used_order(self.last_used),
+            usize::MAX - self.last_used.map(|lu| usize::MAX - lu).unwrap_or_default(),
             u16::MAX - self.score,
             self.command.name.as_str(),
             self.id,
         )
-            .cmp(&(
-                other.command.disabled,
-                last_used_order(other.last_used),
-                u16::MAX - other.score,
-                other.command.name.as_str(),
-                other.id,
-            ))
     }
 }
 

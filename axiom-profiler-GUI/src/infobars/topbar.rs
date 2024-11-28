@@ -1,11 +1,12 @@
 use material_yew::linear_progress::MatLinearProgress;
 use smt_log_parser::analysis::RawNodeIndex;
-use yew::{function_component, html, use_context, use_node_ref, Callback, Html, Properties};
+use yew::{
+    function_component, html, use_context, use_node_ref, Callback, Html, NodeRef, Properties,
+};
 
 use crate::{
     infobars::{
-        ml_omnibox::MlOmnibox, DropdownButton, DropdownContainer, MenuButton, Omnibox,
-        SearchActionResult,
+        ml_omnibox::MlOmnibox, Dropdown, DropdownButton, DropdownContainer, History, MenuButton, Omnibox, SearchActionResult
     },
     state::StateProvider,
     utils::lookup::Kind,
@@ -26,12 +27,12 @@ pub struct TopbarProps {
     pub pick: Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
     pub select: Callback<RawNodeIndex>,
     pub pick_nth_ml: Callback<usize>,
+
+    pub dropdowns: Vec<(String, Html)>,
 }
 
 #[function_component]
 pub fn Topbar(props: &TopbarProps) -> Html {
-    let ref_ = use_node_ref();
-
     let mut class = "progress progress-anim";
     let mut closed = false;
     let mut indeterminate = false;
@@ -83,23 +84,26 @@ pub fn Topbar(props: &TopbarProps) -> Html {
     } else {
         "topbar"
     };
-    let mut dropdown_left = Vec::new();
-    if state.state.parser.is_some() {
-        dropdown_left.push(html! {<DropdownButton idx={0}>
-            <MenuButton label={"View"} />
-            <div>{"Test1"}</div>
-        </DropdownButton>});
-        dropdown_left.push(html! {<DropdownButton idx={1}>
-            <MenuButton label={"View"} />
-            <div>{"Test2"}</div>
+    let (dl, dm, dr) = (use_node_ref(), use_node_ref(), use_node_ref());
+    let mut dropdown_left = Vec::<Html>::new();
+    let mut dropdown_right = Vec::<Html>::new();
+    for (idx, (label, html)) in props.dropdowns.iter().enumerate() {
+        dropdown_left.push(html! {<DropdownButton idx={idx as u32}>
+            <MenuButton label={label.clone()} />
+            <Dropdown>{html.clone()}</Dropdown>
         </DropdownButton>});
     }
-    let dropdown_right = html! {};
+    dropdown_right.push(html! {<History />});
+    let dl_class = if state.state.sidebar_closed {
+        "menu-bar pad"
+    } else {
+        "menu-bar"
+    };
     html! {
     <div class={topbar_class}>
-        <DropdownContainer><div class={if state.state.sidebar_closed { "menu-bar pad" } else { "menu-bar" }}>{for dropdown_left}</div></DropdownContainer>
-        <div ref={&ref_} class="omnibox-outer"><DropdownContainer container_ref={ref_}>{omnibox}</DropdownContainer></div>
-        <div class="menu-bar">{dropdown_right}</div>
+        <div ref={&dl} class={dl_class}>     <DropdownContainer container_ref={dl}>{for dropdown_left} </DropdownContainer></div>
+        <div ref={&dm} class="omnibox-outer"><DropdownContainer container_ref={dm}>{omnibox}           </DropdownContainer></div>
+        <div ref={&dr} class="menu-bar">     <DropdownContainer container_ref={dr}>{for dropdown_right}</DropdownContainer></div>
         <div {class}><MatLinearProgress {closed} {indeterminate} {progress} {buffer}/></div>
     </div>
     }

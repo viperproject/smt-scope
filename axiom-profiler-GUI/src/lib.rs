@@ -4,6 +4,7 @@ use std::sync::{Mutex, OnceLock, RwLock};
 
 use commands::{Command, CommandRef, CommandsContext, ShortcutKey};
 use example::{Example, ExampleRow};
+use filters::AddFilterSidebar;
 use fxhash::{FxHashMap, FxHashSet};
 use gloo::timers::callback::Timeout;
 use gloo_file::File;
@@ -522,8 +523,34 @@ impl Component for FileDataComponent {
         );
         let is_canary = version().is_none();
 
+        let data = ctx.link().get_state().unwrap();
+
+        let mut dropdowns = Vec::new();
         let current_trace = match &self.file {
             Some(file) => {
+                if !data.state.ml_viewer_mode {
+                    let ml_data = data.state.parser.as_ref().unwrap().ml_data;
+                    let filters_state_link = self.filters_state_link.clone();
+                    let new_filter = Callback::from(move |f| {
+                        let Some(filters_state_link) = &*filters_state_link.borrow() else {
+                            return;
+                        };
+                        filters_state_link.send_message(filters::Msg::AddFilter(true, f));
+                    });
+                    let filters_state_link = self.filters_state_link.clone();
+                    let reset = Callback::from(move |e: MouseEvent| {
+                        e.prevent_default();
+                        let Some(filters_state_link) = &*filters_state_link.borrow() else {
+                            return;
+                        };
+                        filters_state_link.send_message(filters::Msg::ResetOperations);
+                    });
+                    dropdowns.push(("View".to_string(), html! {<>
+                        <AddFilterSidebar {new_filter} {ml_data} nodes={Vec::new()} general_filters={true}/>
+                        <li><a draggable="false" href="#" onclick={reset}><div class="material-icons"><MatIcon>{"restore"}</MatIcon></div>{"Reset operations"}</a></li>
+                    </>}));
+                }
+
                 let search_matching_loops = ctx.link().callback(|_| Msg::SearchMatchingLoops);
                 html! {
                     <FiltersState file={file.clone()} search_matching_loops={search_matching_loops} weak_link={self.filters_state_link.clone()} />
@@ -538,7 +565,6 @@ impl Component for FileDataComponent {
             data.set_overlay_visible(visible);
         });
 
-        let data = ctx.link().get_state().unwrap();
         let parser = data.state.parser.clone();
         let parser_ref = parser.clone();
         let visible = self
@@ -664,7 +690,7 @@ impl Component for FileDataComponent {
                     </div>
                 </div></div>
             </nav>
-            <Topbar progress={self.progress.clone()} {message} {search} {pick} {select} {pick_nth_ml} />
+            <Topbar progress={self.progress.clone()} {message} {search} {pick} {select} {pick_nth_ml} {dropdowns} />
             <div class="alerts"></div>
             <div class={page_class}>
                 {page}

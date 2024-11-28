@@ -123,13 +123,13 @@ mwc-dialog {
     --menu-bar-margin: calc((var(--topbar-height) - 34px) / 2);
     margin: 0 var(--menu-bar-margin);
 	transition: margin-left var(--anim-easing) var(--sidebar-timing);
+    flex-basis: 100%;
 }
 .topbar .menu-bar.pad {
     margin-left: calc(var(--menu-bar-margin) + var(--topbar-height));
 }
-.topbar a.menu-button {
+.topbar .menu-bar a {
     line-height: 34px;
-    padding: 0 12px;
     text-decoration: none;
     overflow: hidden;
     white-space: nowrap;
@@ -137,14 +137,34 @@ mwc-dialog {
     border-radius: 2px;
     display: block;
 }
-.topbar a.menu-button:hover, .topbar .hover a.menu-button {
-    background-color: var(--expanded-background);
+.topbar .menu-bar a.menu-button {
+    padding: 0 12px;
 }
+.topbar a.menu-button:hover, .topbar .hover a.menu-button {
+    background-color: var(--hover-background);
+}
+
+.topbar .menu-bar a.history-button {
+    padding: 0 5px;
+    margin-left: 5px;
+}
+.topbar .menu-bar a.history-button:not(.disabled):hover {
+    background-color: var(--hover-background);
+}
+.topbar .menu-bar a.history-button.disabled {
+    color: #aaa;
+    cursor: default;
+}
+
+.topbar .menu-bar .dropdown-popup li:hover {
+    background-color: var(--hover-background);
+}
+
 .dropdown-popup {
     position: absolute;
     top: 100%;
-    background: var(--topbar-background);
-    border: solid 1px #aaa;
+    background: var(--section-background);
+    border: solid 1px var(--expanded-background);
     border-radius: 2px;
     box-shadow: 2px 2px 16px rgba(0, 0, 0, 0.2);
     padding: 4px;
@@ -153,6 +173,7 @@ mwc-dialog {
 .omnibox-outer .dropdown-popup {
     width: 100%;
     background: white;
+    border: solid 1px #aaa;
 }
 .omnibox-dropdown {
     font-family: "Roboto Condensed", sans-serif;

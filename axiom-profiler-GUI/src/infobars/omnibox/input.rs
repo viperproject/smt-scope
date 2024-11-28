@@ -3,8 +3,7 @@ use gloo::timers::callback::Timeout;
 use smt_log_parser::analysis::RawNodeIndex;
 use web_sys::HtmlInputElement;
 use yew::{
-    function_component, html, use_context, use_effect_with_deps, AttrValue, Callback, Html,
-    InputEvent, MouseEvent, NodeRef, Properties,
+    function_component, html, use_context, use_effect_with_deps, AttrValue, Callback, Html, InputEvent, KeyboardEvent, MouseEvent, NodeRef, Properties
 };
 
 use crate::{infobars::DropdownCtxt, utils::lookup::Kind};
@@ -17,6 +16,7 @@ pub struct OmniboxInputProps {
     pub placeholder: AttrValue,
     pub omnibox_disabled: bool,
     pub input: Option<String>,
+    pub onkeydown: Callback<KeyboardEvent>,
     pub oninput: Callback<InputEvent>,
 }
 
@@ -43,7 +43,7 @@ pub fn OmniboxInput(props: &OmniboxInputProps) -> Html {
         },
         (props.omnibox.clone(), props.input.clone()),
     );
-    html! { <input ref={&props.omnibox} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} oninput={&props.oninput} /> }
+    html! { <input ref={&props.omnibox} placeholder={&props.placeholder} readonly={props.omnibox_disabled} disabled={props.omnibox_disabled} onkeydown={&props.onkeydown} oninput={&props.oninput} /> }
 }
 
 #[derive(Debug)]

@@ -15,7 +15,7 @@ pub trait CommandsContext {
         updated: Callback<Rc<Commands>>,
     ) -> Option<(Rc<Commands>, ContextHandle<Rc<Commands>>)>;
     fn get_commands_registerer(&self) -> Option<CommandRegisterer> {
-        self.get_commands(Callback::noop()).map(|c| c.0.register)
+        self.get_commands(Callback::noop()).map(|c| c.0.register.clone())
     }
 }
 impl<T: Component> CommandsContext for Scope<T> {
@@ -27,12 +27,21 @@ impl<T: Component> CommandsContext for Scope<T> {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct CommandRegisterer(&'static dyn Fn(Command) -> CommandRef);
+#[derive(Clone)]
+pub struct CommandRegisterer(Rc<dyn Fn(Command) -> CommandRef>);
 impl Deref for CommandRegisterer {
-    type Target = &'static dyn Fn(Command) -> CommandRef;
+    type Target = dyn Fn(Command) -> CommandRef;
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &*self.0
+    }
+}
+
+#[derive(Clone)]
+pub struct HistoryRegisterer(Rc<dyn Fn(Command, bool) -> CommandRef>);
+impl Deref for HistoryRegisterer {
+    type Target = dyn Fn(Command, bool) -> CommandRef;
+    fn deref(&self) -> &Self::Target {
+        &*self.0
     }
 }
 
@@ -117,6 +126,9 @@ impl Shortcut {
                 if shortcut_key.cmd {
                     s.push(Self::cmd());
                 }
+                if shortcut_key.ctrl {
+                    s.push(Self::ctrl());
+                }
                 if shortcut_key.alt {
                     s.push(Self::alt());
                 }
@@ -138,54 +150,60 @@ impl Shortcut {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShortcutKey {
     pub key: Key,
-    pub shift: bool,
     pub cmd: bool,
     pub ctrl: bool,
     pub alt: bool,
+    pub shift: bool,
 }
 
 impl ShortcutKey {
-    pub fn automatic<K: Into<Key>>(
-        key: K,
-        shift: bool,
+    pub const fn automatic(
+        key: Key,
         cmd: bool,
         ctrl: bool,
         alt: bool,
+        shift: bool,
     ) -> Shortcut {
-        let key = key.into();
         Shortcut::Automatic(Self {
             key,
-            shift,
             cmd,
             ctrl,
             alt,
+            shift,
         })
     }
 
     pub fn empty<K: Into<Key>>(key: K) -> Shortcut {
-        Self::automatic(key, false, false, false, false)
-    }
-    pub fn shift<K: Into<Key>>(key: K) -> Shortcut {
-        Self::automatic(key, true, false, false, false)
+        Self::automatic(key.into(), false, false, false, false)
     }
     pub fn cmd<K: Into<Key>>(key: K) -> Shortcut {
-        Self::automatic(key, false, true, false, false)
+        Self::automatic(key.into(), true, false, false, false)
     }
     pub fn ctrl<K: Into<Key>>(key: K) -> Shortcut {
-        Self::automatic(key, false, false, true, false)
+        Self::automatic(key.into(), false, true, false, false)
     }
     pub fn alt<K: Into<Key>>(key: K) -> Shortcut {
-        Self::automatic(key, false, false, false, true)
+        Self::automatic(key.into(), false, false, true, false)
+    }
+    pub fn shift<K: Into<Key>>(key: K) -> Shortcut {
+        Self::automatic(key.into(), false, false, false, true)
+    }
+
+    pub const fn undo() -> Shortcut {
+        Self::automatic(Key::Char('z'), true, false, false, false)
+    }
+    pub const fn redo() -> Shortcut {
+        Self::automatic(Key::Char('z'), true, false, false, true)
     }
 }
 
 impl TryFrom<&KeyboardEvent> for ShortcutKey {
     type Error = String;
     fn try_from(value: &KeyboardEvent) -> Result<Self, Self::Error> {
-        let shift = value.shift_key();
         let cmd = value.meta_key();
         let ctrl = value.ctrl_key();
         let alt = value.alt_key();
+        let shift = value.shift_key();
         let key = value.key();
         let key = match key.as_str() {
             "Escape" => Key::Escape,
@@ -195,10 +213,10 @@ impl TryFrom<&KeyboardEvent> for ShortcutKey {
         };
         Ok(Self {
             key,
-            shift,
             cmd,
             ctrl,
             alt,
+            shift,
         })
     }
 }
@@ -221,19 +239,23 @@ impl From<char> for Key {
 impl CommandRegisterer {
     fn new(link: Scope<CommandsProvider>) -> Self {
         let id = Mutex::<usize>::new(0);
-        Self(Box::leak(Box::new(move |command| {
-            let mut id = id.lock().unwrap();
-            let id_v = CommandId(*id);
-            *id += 1;
-            drop(id);
-            link.send_message(Msg::Register(id_v, command));
-            let link_ref = link.clone();
-            let deregister = Box::new(move || link_ref.send_message(Msg::DeRegister(id_v)));
-            let link_ref = link.clone();
-            let set_disabled =
-                Box::new(move |disabled| link_ref.send_message(Msg::SetDisabled(id_v, disabled)));
-            CommandRef(deregister, set_disabled)
-        })))
+        Self(Rc::new(move |command| {
+            CommandRegisterer::mk_command_ref(&link, &id, command)
+        }))
+    }
+
+    fn mk_command_ref(link: &Scope<CommandsProvider>, id: &Mutex<usize>, command: Command) -> CommandRef {
+        let mut id = id.lock().unwrap();
+        let id_v = CommandId(*id);
+        *id += 1;
+        drop(id);
+        link.send_message(Msg::Register(id_v, command));
+        let link_ref = link.clone();
+        let deregister = Box::new(move || link_ref.send_message(Msg::DeRegister(id_v)));
+        let link_ref = link.clone();
+        let set_disabled =
+            Box::new(move |disabled| link_ref.send_message(Msg::SetDisabled(id_v, disabled)));
+        CommandRef(deregister, set_disabled)
     }
 }
 
@@ -282,6 +304,9 @@ impl Component for CommandsProvider {
             }
             Msg::SetDisabled(id, disabled) => {
                 let command = self.0.commands.iter_mut().find(|(i, _)| i == &id).unwrap();
+                if command.1.disabled == disabled {
+                    return false;
+                }
                 command.1.disabled = disabled;
                 true
             }

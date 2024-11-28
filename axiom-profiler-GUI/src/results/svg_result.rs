@@ -356,7 +356,7 @@ impl Component for SVGResult {
                             },
                         )
                     );
-                    log::debug!("Graph DOT:\n{dot_output}");
+                    // log::debug!("Graph DOT:\n{dot_output}");
                     ctx.props()
                         .progress
                         .emit(GraphState::Rendering(RenderingState::RenderingGraph));
@@ -411,7 +411,7 @@ impl Component for SVGResult {
                         .borrow()
                         .as_ref()
                         .unwrap()
-                        .send_message(filters::Msg::UndoOperation);
+                        .send_message(filters::Msg::UndoOperation(true));
                     false
                 }
                 WarningChoice::Apply => {

@@ -757,6 +757,9 @@ table {
 	overflow: hidden;
 	white-space: nowrap;
 }
+.topbar .menu-bar .dropdown-popup li a {
+	padding: 4px 8px 4px 4px;
+}
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li a input {
 	background-color: var(--hover-background);
 	border: 0;

@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use material_yew::icon::MatIcon;
-use yew::{function_component, html, use_context, Callback, Component, Html, MouseEvent, Properties};
+use yew::{function_component, html, use_context, Callback, Html, MouseEvent};
 
-use crate::commands::{self, Command, CommandRef, Commands, CommandsContext, ShortcutKey};
+use crate::commands::{Commands, ShortcutKey};
 
 #[function_component]
 pub fn History() -> Html {

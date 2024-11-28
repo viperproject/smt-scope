@@ -9,11 +9,10 @@ use smt_log_parser::analysis::{raw::NodeKind, RawNodeIndex};
 use smt_log_parser::parsers::ParseState;
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
+pub use self::add_filter::AddFilterSidebar;
 use crate::commands::{Command, CommandRef, CommandsContext, ShortcutKey};
 use crate::{
-    filters::{
-        manage_filter::{DraggableList, ExistingFilter},
-    },
+    filters::manage_filter::{DraggableList, ExistingFilter},
     infobars::SidebarSectionHeader,
     results::{
         filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN},
@@ -23,7 +22,6 @@ use crate::{
     utils::toggle_list::ToggleList,
     OpenedFileInfo, SIZE_NAMES,
 };
-pub use self::add_filter::AddFilterSidebar;
 
 use self::manage_filter::DragState;
 use material_yew::WeakComponentLink;
@@ -92,13 +90,19 @@ impl FilterChain {
     fn rerender_msgs(&self, first: bool) -> impl Iterator<Item = SVGMsg> + '_ {
         [SVGMsg::ResetGraph]
             .into_iter()
-            .chain(self.applied_chain().iter().cloned().map(SVGMsg::ApplyFilter))
+            .chain(
+                self.applied_chain()
+                    .iter()
+                    .cloned()
+                    .map(SVGMsg::ApplyFilter),
+            )
             .chain([SVGMsg::RenderGraph(first)])
     }
 
     pub fn update_history(&self) {
         self.undo.set_disabled(self.filter_chain_history_idx == 0);
-        self.redo.set_disabled(self.filter_chain_history_idx + 1 >= self.filter_chain_history.len());
+        self.redo
+            .set_disabled(self.filter_chain_history_idx + 1 >= self.filter_chain_history.len());
     }
 
     pub fn send_updates(&mut self, file: &OpenedFileInfo) -> bool {
@@ -106,8 +110,10 @@ impl FilterChain {
             return false;
         }
         self.filter_chain_history_idx += 1;
-        self.filter_chain_history.truncate(self.filter_chain_history_idx);
-        self.filter_chain_history.push(self.new_filter_chain.clone());
+        self.filter_chain_history
+            .truncate(self.filter_chain_history_idx);
+        self.filter_chain_history
+            .push(self.new_filter_chain.clone());
         self.update_history();
         file.send_updates(self.rerender_msgs(false));
         true
@@ -127,7 +133,8 @@ impl FilterChain {
             }
             self.filter_chain_history_idx += 1;
         }
-        self.new_filter_chain.clone_from(&self.filter_chain_history[self.filter_chain_history_idx]);
+        self.new_filter_chain
+            .clone_from(&self.filter_chain_history[self.filter_chain_history_idx]);
         self.update_history();
         file.send_updates(self.rerender_msgs(false));
         true
@@ -214,9 +221,7 @@ impl Component for FiltersState {
                 self.chain.new_filter_chain.clear();
                 false
             }
-            Msg::UndoOperation(undo) => {
-                self.chain.undo_operation(&ctx.props().file, undo)
-            }
+            Msg::UndoOperation(undo) => self.chain.undo_operation(&ctx.props().file, undo),
             Msg::SelectFilter(idx) => {
                 self.edit_filter = None;
                 if self.selected_filter.is_some_and(|i| i == idx) {
@@ -317,7 +322,12 @@ impl Component for FiltersState {
             ParseState::Error(err) => format!("{} (error {err:?})", info.name),
         };
         // Existing ops
-        let elem_hashes: Vec<_> = self.chain.new_filter_chain.iter().map(Filter::get_hash).collect();
+        let elem_hashes: Vec<_> = self
+            .chain
+            .new_filter_chain
+            .iter()
+            .map(Filter::get_hash)
+            .collect();
         let elements: Vec<_> = self.chain.new_filter_chain.iter().enumerate().map(|(idx, filter)| {
             let onclick = ctx.link().callback(move |_| Msg::SelectFilter(idx));
             let delete = ctx.link().callback(move |_| Msg::Delete(idx));
@@ -347,26 +357,25 @@ impl Component for FiltersState {
 
         // Selected nodes
         let selected_nodes = !ctx.props().file.selected_nodes.is_empty();
-        let selected_nodes =
-            (selected_nodes && !data.state.ml_viewer_mode).then(|| {
-                let new_filter = ctx.link().callback(|f| Msg::AddFilter(false, f));
-                let nodes = ctx.props().file.selected_nodes.clone();
-                let header = format!(
-                    "Selected {} Node{}",
-                    nodes.len(),
-                    if nodes.len() == 1 { "" } else { "s" }
-                );
-                let collapsed_text = format!(
-                    "Actions on the {} selected node{}",
-                    nodes.len(),
-                    if nodes.len() == 1 { "" } else { "s" }
-                );
-                html! {
-                    <SidebarSectionHeader header_text={header} collapsed_text={collapsed_text}><ul>
-                        <AddFilterSidebar {new_filter} {nodes} general_filters={false}/>
-                    </ul></SidebarSectionHeader>
-                }
-            });
+        let selected_nodes = (selected_nodes && !data.state.ml_viewer_mode).then(|| {
+            let new_filter = ctx.link().callback(|f| Msg::AddFilter(false, f));
+            let nodes = ctx.props().file.selected_nodes.clone();
+            let header = format!(
+                "Selected {} Node{}",
+                nodes.len(),
+                if nodes.len() == 1 { "" } else { "s" }
+            );
+            let collapsed_text = format!(
+                "Actions on the {} selected node{}",
+                nodes.len(),
+                if nodes.len() == 1 { "" } else { "s" }
+            );
+            html! {
+                <SidebarSectionHeader header_text={header} collapsed_text={collapsed_text}><ul>
+                    <AddFilterSidebar {new_filter} {nodes} general_filters={false}/>
+                </ul></SidebarSectionHeader>
+            }
+        });
 
         // Operations
         let class = match (self.dragging, self.will_delete) {

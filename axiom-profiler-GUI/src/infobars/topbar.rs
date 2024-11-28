@@ -1,12 +1,11 @@
 use material_yew::linear_progress::MatLinearProgress;
 use smt_log_parser::analysis::RawNodeIndex;
-use yew::{
-    function_component, html, use_context, use_node_ref, Callback, Html, NodeRef, Properties,
-};
+use yew::{function_component, html, use_context, use_node_ref, Callback, Html, Properties};
 
 use crate::{
     infobars::{
-        ml_omnibox::MlOmnibox, Dropdown, DropdownButton, DropdownContainer, History, MenuButton, Omnibox, SearchActionResult
+        ml_omnibox::MlOmnibox, Dropdown, DropdownButton, DropdownContainer, History, MenuButton,
+        Omnibox, SearchActionResult,
     },
     state::StateProvider,
     utils::lookup::Kind,

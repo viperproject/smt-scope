@@ -3,7 +3,8 @@ use gloo::timers::callback::Timeout;
 use smt_log_parser::analysis::RawNodeIndex;
 use web_sys::HtmlInputElement;
 use yew::{
-    function_component, html, use_context, use_effect_with_deps, AttrValue, Callback, Html, InputEvent, KeyboardEvent, MouseEvent, NodeRef, Properties
+    function_component, html, use_context, use_effect_with_deps, AttrValue, Callback, Html,
+    InputEvent, KeyboardEvent, MouseEvent, NodeRef, Properties,
 };
 
 use crate::{infobars::DropdownCtxt, utils::lookup::Kind};

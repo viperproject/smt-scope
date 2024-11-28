@@ -15,7 +15,8 @@ pub trait CommandsContext {
         updated: Callback<Rc<Commands>>,
     ) -> Option<(Rc<Commands>, ContextHandle<Rc<Commands>>)>;
     fn get_commands_registerer(&self) -> Option<CommandRegisterer> {
-        self.get_commands(Callback::noop()).map(|c| c.0.register.clone())
+        self.get_commands(Callback::noop())
+            .map(|c| c.0.register.clone())
     }
 }
 impl<T: Component> CommandsContext for Scope<T> {
@@ -157,13 +158,7 @@ pub struct ShortcutKey {
 }
 
 impl ShortcutKey {
-    pub const fn automatic(
-        key: Key,
-        cmd: bool,
-        ctrl: bool,
-        alt: bool,
-        shift: bool,
-    ) -> Shortcut {
+    pub const fn automatic(key: Key, cmd: bool, ctrl: bool, alt: bool, shift: bool) -> Shortcut {
         Shortcut::Automatic(Self {
             key,
             cmd,
@@ -244,7 +239,11 @@ impl CommandRegisterer {
         }))
     }
 
-    fn mk_command_ref(link: &Scope<CommandsProvider>, id: &Mutex<usize>, command: Command) -> CommandRef {
+    fn mk_command_ref(
+        link: &Scope<CommandsProvider>,
+        id: &Mutex<usize>,
+        command: Command,
+    ) -> CommandRef {
         let mut id = id.lock().unwrap();
         let id_v = CommandId(*id);
         *id += 1;

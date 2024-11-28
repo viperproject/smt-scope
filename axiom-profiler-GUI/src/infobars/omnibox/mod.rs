@@ -709,8 +709,7 @@ impl PartialOrd for CommandAction {
 }
 impl Ord for CommandAction {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.ordering()
-            .cmp(&other.ordering())
+        self.ordering().cmp(&other.ordering())
     }
 }
 impl CommandAction {

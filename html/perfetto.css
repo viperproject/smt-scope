@@ -31,29 +31,51 @@ h1, h2, h3 {
 	margin: 0;
 }
 
+#body.filedrag::after {
+	content: "Drop the trace file to open it";
+	position: fixed;
+	z-index: 99;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	border: 10px dashed #404854;
+	text-align: center;
+	font-size: 3rem;
+	line-height: 100vh;
+	color: #333;
+	background: rgba(255, 255, 255, 0.5);
+}
+
 .topbar {
 	grid-area: topbar;
 	position: relative;
 	z-index: 3;
 	overflow: visible;
-	background-color: hsl(215, 1%, 95%);
+	background-color: var(--topbar-background);
 	box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.1490196078);
 	min-height: calc(var(--topbar-height) - 1px);
 	display: flex;
-	justify-content: center;
+	justify-content: space-between;
 	align-items: center;
 }
 
-.topbar .omnibox {
-	width: 90%;
+.topbar .omnibox-outer {
+	position: relative;
+	width: 66%;
 	max-width: 600px;
+	flex-shrink: 0;
+}
+
+.topbar .omnibox {
+	width: 100%;
 	transition: opacity 0.25s ease, color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, width 0.25s ease, height 0.25s ease, max-width 0.25s ease, max-height 0.25s ease, margin 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-radius 0.25s ease;
 	display: grid;
 	grid-template-areas: "icon input stepthrough";
 	grid-template-columns: 34px auto max-content;
 	border-radius: 2px;
 	background-color: white;
-	border: solid 1px transparent;
+	/* border: solid 1px transparent; */
 	line-height: 34px;
 }
 .topbar .omnibox:focus-within {
@@ -61,7 +83,7 @@ h1, h2, h3 {
 	box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.2);
 }
 
-.topbar .omnibox .icon {
+.topbar .icon {
 	font-family: "Material Icons";
 	font-size: 24px;
 	line-height: 1;
@@ -75,9 +97,15 @@ h1, h2, h3 {
 	-webkit-font-feature-settings: "liga";
 	-webkit-font-smoothing: antialiased;
 	font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.topbar .omnibox > .icon {
 	margin: 5px;
 	color: #aaa;
 	grid-area: icon;
+}
+.topbar .omnibox > .icon a {
+	color: #aaa;
 	text-decoration: none;
 }
 
@@ -97,6 +125,63 @@ h1, h2, h3 {
 	color: #b4b7ba;
 	font-family: "Roboto Condensed", sans-serif;
 	font-weight: 400;
+}
+
+.topbar .omnibox .stepthrough {
+	grid-area: stepthrough;
+	display: flex;
+	font: inherit;
+	font-size: 14px;
+	font-family: "Roboto Condensed", sans-serif;
+	font-weight: 300;
+	color: #aaa;
+}
+.topbar .omnibox .stepthrough .current {
+	padding-right: 10px;
+}
+.topbar .omnibox .stepthrough .material-icons.left {
+	border-right: rgb(218, 217, 217) solid 1px;
+}
+
+.material-icons {
+	vertical-align: middle;
+}
+button {
+	background: none;
+	color: inherit;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	outline: inherit;
+}
+
+.omnibox-empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 10px;
+	user-select: none;
+	color: #19212b;
+	margin: auto;
+	justify-content: center;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.omnibox-empty-state > i {
+	font-size: 5em;
+	margin-bottom: 8px;
+}
+.omnibox-empty-state .omnibox-empty-state-title {
+	text-align: center;
+	font-weight: bolder;
+	margin-bottom: 2px;
+}
+.omnibox-empty-state .omnibox-empty-state-content {
+	text-align: center;
+	font-size: smaller;
 }
 
 .topbar .progress {
@@ -119,6 +204,11 @@ h1, h2, h3 {
 	overflow: hidden;
 }
 
+.hotkey {
+	display: flex;
+	flex-direction: row;
+	gap: 2px;
+}
 .keycap {
 	background-color: #fafbfc;
 	border: 1px solid #d1d5da;
@@ -177,6 +267,62 @@ table {
     border-bottom-style: solid;
     background: #0001;
     box-shadow: 0 1px 0 #3d5688;
+}
+
+.flags-page {
+	height: 100%;
+	overflow-y: scroll;
+	z-index: 1;
+}
+.flags-content {
+	max-width: 100ch;
+	width: 60%;
+	margin: 0 auto;
+	padding: 3rem;
+	display: grid;
+}
+.flags-content h1 {
+	font-size: larger;
+	margin: 1rem 1rem;
+}
+.flags-content button {
+	background: none;
+	border: 1px solid rgb(218, 220, 224);
+	border-radius: 2px;
+	color: var(--flags-accent-color);
+	font-size: 0.8125rem;
+	padding: 8px 12px;
+	cursor: pointer;
+	font-weight: 500;
+	margin: 3px 0.5rem;
+}
+.flag-widget {
+	display: grid;
+	grid-template: "title control" auto "description control" auto/1fr auto;
+	gap: 0.3rem;
+	padding: 1rem 1rem;
+	align-items: center;
+}
+.flag-widget:nth-child(2n+1) {
+	background-color: #f6f6f6;
+}
+.flag-widget label {
+	font-weight: bold;
+}
+.flag-widget select {
+	grid-area: control;
+	background: white;
+	border: 1px solid var(--flags-accent-color);
+	color: var(--flags-accent-color);
+	font-size: 0.8125rem;
+	height: 1.625rem;
+	letter-spacing: 0.01em;
+	max-width: 150px;
+	text-align-last: center;
+	width: 100%;
+}
+.flag-widget .description {
+	font-size: smaller;
 }
 
 .home-page {
@@ -306,7 +452,6 @@ table {
 
 .sidebar {
 	--sidebar-padding-bottom: 40px;
-	--sidebar-timing: 0.15s;
 	grid-area: sidebar;
 	z-index: 4;
 	background-color: var(--expanded-background);
@@ -320,7 +465,8 @@ table {
 
 :root {
 	--sidebar-width: 230px;
-	--topbar-height: 44px;
+	--topbar-height: 41px;
+	--sidebar-timing: 0.15s;
 	--monospace-font: "Roboto Mono", monospace;
 	--track-shell-width: 250px;
 	--track-border-color: #00000025;
@@ -333,6 +479,12 @@ table {
 	--expanded-background: hsl(215, 22%, 81%);
 	--section-background: hsl(213, 26%, 87%);
 	--hover-background: hsl(216, 15%, 75%);
+	--topbar-background: hsl(215, 1%, 95%);
+	--topbar-ml-background: hsl(215, 1%, 95%);
+	/* switch to this to change topbar color in ML mode:
+	--topbar-ml-background: hsl(243, 92%, 95%); */
+	--flags-accent-color: rgb(10, 75, 165);
+	--menu-text-color: hsl(210, 4%, 28%);
 }
 
 * {
@@ -377,7 +529,7 @@ table {
 
 .sidebar > header .brand {
 	height: 36px;
-	margin-top: 4px;
+	margin-top: calc((var(--topbar-height) - 36px) / 2);
 }
 
 .sidebar .sidebar-button {
@@ -385,13 +537,14 @@ table {
 	z-index: 5;
 	background-color: var(--expanded-background);
 	height: var(--topbar-height);
-	left: calc(var(--sidebar-width) - 50px);
+	left: calc(var(--sidebar-width) - var(--topbar-height));
 	border-radius: 0 5px 5px 0;
 	border-bottom: inherit;
 	visibility: visible;
 	transition: left var(--anim-easing) var(--sidebar-timing);
-	width: 48px;
+	width: var(--topbar-height);
 	overflow: hidden;
+	--mdc-icon-button-size: var(--topbar-height);
 }
 
 .sidebar.hide-sidebar .sidebar-button {
@@ -510,18 +663,18 @@ table {
 	pointer-events: none;
 	transition: opacity 0.1s ease, color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease, width 0.1s ease, height 0.1s ease, max-width 0.1s ease, max-height 0.1s ease, margin 0.1s ease, transform 0.1s ease, box-shadow 0.1s ease, border-radius 0.1s ease;
 	opacity: 0;
-	color: hsl(210, 4%, 28%);
+	color: var(--menu-text-color);
 }
 
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content a {
-	color: hsl(210, 4%, 28%);
+	color: var(--menu-text-color);
 }
 
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li.drag > a {
 	color: #0000;
 }
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li div.placeholder {
-	color: hsl(210, 4%, 28%);
+	color: var(--menu-text-color);
 	background-color: inherit;
 	position: absolute;
 	top: 0;
@@ -584,18 +737,18 @@ table {
 	opacity: 1;
 }
 
-.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content ul {
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content ul, .topbar .menu-bar .dropdown-popup ul {
 	list-style-type: none;
 	margin: 0;
 	padding: 0;
 }
 
-.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li {
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li, .topbar .menu-bar .dropdown-popup li {
 	position: relative;
 	transition: opacity 0.1s ease, color 0.1s ease, background-color 0.1s ease, border-color 0.1s ease, width 0.1s ease, height 0.1s ease, max-width 0.1s ease, max-height 0.1s ease, margin 0.1s ease, margin-top 0s, transform 0.1s ease, box-shadow 0.1s ease, border-radius 0.1s ease;
 }
 
-.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li a {
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li a, .topbar .menu-bar .dropdown-popup li a {
 	line-height: 24px;
 	font-size: 14px;
 	padding: 4px 12px;
@@ -603,6 +756,9 @@ table {
 	display: flex;
 	overflow: hidden;
 	white-space: nowrap;
+}
+.topbar .menu-bar .dropdown-popup li a {
+	padding: 4px 8px 4px 4px;
 }
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li a input {
 	background-color: var(--hover-background);
@@ -614,7 +770,7 @@ table {
 	margin: 0 2px;
 }
 
-.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li .material-icons {
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li .material-icons, .topbar .menu-bar .dropdown-popup li .material-icons {
 	margin-right: 10px;
 	font-size: inherit;
 }

@@ -549,6 +549,18 @@ impl Component for FileDataComponent {
                         <AddFilterSidebar {new_filter} {ml_data} nodes={Vec::new()} general_filters={true}/>
                         <li><a draggable="false" href="#" onclick={reset}><div class="material-icons"><MatIcon>{"restore"}</MatIcon></div>{"Reset operations"}</a></li>
                     </>}));
+
+                    // Selected nodes
+                    let filters_state_link = self.filters_state_link.clone();
+                    let new_filter = Callback::from(move |f| {
+                        let Some(filters_state_link) = &*filters_state_link.borrow() else {
+                            return;
+                        };
+                        filters_state_link.send_message(filters::Msg::AddFilter(false, f));
+                    });
+                    dropdowns.push(("Selection".to_string(), html! {<>
+                        <AddFilterSidebar {new_filter} nodes={file.selected_nodes.clone()} general_filters={false}/>
+                    </>}));
                 }
 
                 let search_matching_loops = ctx.link().callback(|_| Msg::SearchMatchingLoops);

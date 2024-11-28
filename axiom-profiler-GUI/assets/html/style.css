@@ -159,8 +159,12 @@ mwc-dialog {
 .topbar .menu-bar .dropdown-popup li {
 	border-radius: 2px;
 }
-.topbar .menu-bar .dropdown-popup li:hover {
+.topbar .menu-bar .dropdown-popup li:hover:not(.disabled) {
     background-color: var(--hover-background);
+}
+.topbar .menu-bar .dropdown-popup li.disabled a {
+	color: #aaa;
+    cursor: default;
 }
 
 .dropdown-popup {

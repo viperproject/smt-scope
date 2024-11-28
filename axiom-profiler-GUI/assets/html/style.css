@@ -148,23 +148,18 @@ mwc-dialog {
     padding: 0 5px;
     margin-left: 5px;
 }
-.topbar .menu-bar a.history-button:not(.disabled):hover {
+.topbar .menu-bar a.history-button:not(.disabled):hover,
+.topbar .menu-bar .dropdown-popup li:not(.disabled):hover {
     background-color: var(--hover-background);
 }
-.topbar .menu-bar a.history-button.disabled {
+.topbar .menu-bar a.history-button.disabled,
+.topbar .menu-bar .dropdown-popup li.disabled a {
     color: #aaa;
     cursor: default;
 }
 
 .topbar .menu-bar .dropdown-popup li {
 	border-radius: 2px;
-}
-.topbar .menu-bar .dropdown-popup li:hover:not(.disabled) {
-    background-color: var(--hover-background);
-}
-.topbar .menu-bar .dropdown-popup li.disabled a {
-	color: #aaa;
-    cursor: default;
 }
 
 .dropdown-popup {

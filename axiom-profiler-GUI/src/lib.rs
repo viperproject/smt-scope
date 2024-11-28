@@ -17,6 +17,7 @@ use results::svg_result::{Msg as SVGMsg, RenderedGraph, RenderingState, SVGResul
 use smt_log_parser::analysis::{InstGraph, RawNodeIndex, VisibleEdgeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{ParseState, ReaderState};
+use state::StateProvider;
 use utils::colouring::QuantIdxToColourMap;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
@@ -87,6 +88,7 @@ pub enum Msg {
     ShowHelpToggled(bool),
     ToggleSidebar,
     SearchMatchingLoops,
+    StateChanged(Rc<StateProvider>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -200,6 +202,8 @@ pub struct FileDataComponent {
     showing_help: bool,
     sidebar: NodeRef,
     flags_visible: SetVisibleCallback,
+    state: Rc<StateProvider>,
+    _handle: ContextHandle<Rc<StateProvider>>,
     _callback_refs: [CallbackRef; 5],
     _command_refs: [CommandRef; 3],
 }
@@ -233,6 +237,10 @@ impl Component for FileDataComponent {
     fn create(ctx: &Context<Self>) -> Self {
         let help_dialog = WeakComponentLink::<MatDialog>::default();
         let flags_visible = SetVisibleCallback::default();
+        let (state, _handle) = ctx
+            .link()
+            .context(ctx.link().callback(Msg::StateChanged))
+            .unwrap();
 
         // Global Callbacks
         let registerer = ctx.link().get_callbacks_registerer().unwrap();
@@ -300,6 +308,8 @@ impl Component for FileDataComponent {
             showing_help: false,
             sidebar: NodeRef::default(),
             flags_visible,
+            state,
+            _handle,
             _callback_refs,
             _command_refs,
         }
@@ -411,7 +421,7 @@ impl Component for FileDataComponent {
                 self.progress = LoadingState::NoFileSelected;
                 let file = self.file.take();
                 drop(file);
-                ctx.link().get_state().unwrap().close_file();
+                self.state.close_file();
                 true
             }
             Msg::ShowMessage(message, millis) => {
@@ -425,8 +435,7 @@ impl Component for FileDataComponent {
             Msg::LoadedFile(parser, parser_state, parser_cancelled) => {
                 drop(self.reader.take());
                 let parser = RcParser::new(*parser);
-                let state = ctx.link().get_state().unwrap();
-                state.update_parser(move |p| {
+                self.state.update_parser(move |p| {
                     *p = Some(parser);
                     true
                 });
@@ -468,8 +477,7 @@ impl Component for FileDataComponent {
                 let Some(sidebar) = self.sidebar.cast::<HtmlElement>() else {
                     return false;
                 };
-                let state = ctx.link().get_state().unwrap();
-                let sidebar_closed = state.state.sidebar_closed;
+                let sidebar_closed = self.state.state.sidebar_closed;
                 let open_files = self.file.is_some();
                 if !ALLOW_HIDE_SIDEBAR_NO_FILE && !sidebar_closed && !open_files {
                     return false;
@@ -479,14 +487,13 @@ impl Component for FileDataComponent {
                 } else {
                     sidebar.class_list().add_1("hide-sidebar").ok();
                 }
-                state.set_sidebar_closed(!sidebar_closed);
+                self.state.set_sidebar_closed(!sidebar_closed);
                 false
             }
             Msg::SearchMatchingLoops => {
                 log::info!("Searching matching loops");
                 if let Some(_file) = &mut self.file {
-                    let state = ctx.link().get_state().unwrap();
-                    let parser = state.state.parser.as_ref().unwrap();
+                    let parser = self.state.state.parser.as_ref().unwrap();
                     if let Some(g) = &parser.graph {
                         let mut g = g.borrow_mut();
                         let ml_data = g.search_matching_loops(&mut parser.parser.borrow_mut());
@@ -494,7 +501,7 @@ impl Component for FileDataComponent {
                             sure_mls: ml_data.sure_mls,
                             maybe_mls: ml_data.maybe_mls,
                         };
-                        state.update_parser(move |p| {
+                        self.state.update_parser(move |p| {
                             p.as_mut().unwrap().ml_data = Some(ml_data);
                             true
                         });
@@ -503,6 +510,10 @@ impl Component for FileDataComponent {
                 }
                 log::info!("Returning false");
                 false
+            }
+            Msg::StateChanged(state) => {
+                self.state = state;
+                true
             }
         }
     }
@@ -523,13 +534,11 @@ impl Component for FileDataComponent {
         );
         let is_canary = version().is_none();
 
-        let data = ctx.link().get_state().unwrap();
-
         let mut dropdowns = Vec::new();
         let current_trace = match &self.file {
             Some(file) => {
-                if !data.state.ml_viewer_mode {
-                    let ml_data = data.state.parser.as_ref().unwrap().ml_data;
+                if !self.state.state.ml_viewer_mode {
+                    let ml_data = self.state.state.parser.as_ref().unwrap().ml_data;
                     let filters_state_link = self.filters_state_link.clone();
                     let new_filter = Callback::from(move |f| {
                         let Some(filters_state_link) = &*filters_state_link.borrow() else {
@@ -577,7 +586,7 @@ impl Component for FileDataComponent {
             data.set_overlay_visible(visible);
         });
 
-        let parser = data.state.parser.clone();
+        let parser = self.state.state.parser.clone();
         let parser_ref = parser.clone();
         let visible = self
             .file

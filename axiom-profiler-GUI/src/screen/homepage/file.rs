@@ -1,28 +1,147 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, ops::Deref, rc::Rc};
 
 use gloo::file::File;
 use gloo_net::http::Response;
 use smt_log_parser::{
-    parsers::{AsyncBufferRead, ParseState},
+    parsers::{AsyncBufferRead, AsyncParser, ParseState, ReaderState, StreamParser},
     LogParser, Z3Parser,
 };
 use wasm_bindgen::JsCast;
 use wasm_streams::ReadableStream;
+use wasm_timer::Instant;
 use web_sys::DataTransfer;
 use yew::{html::Scope, Callback, DragEvent};
 
 use crate::{
-    example::Example,
     global_callbacks::GlobalCallbacks,
     infobars::{OmniboxMessage, OmniboxMessageKind},
-    state::{FileInfo, StateContext},
-    CallbackRef, FileDataComponent, LoadingState, Msg, ParseProgress, PREVENT_DEFAULT_DRAG_OVER,
+    results::svg_result::RenderingState,
+    screen::{homepage::HomepageM, Manager},
+    state::FileInfo,
+    utils::{colouring::QuantIdxToColourMap, lookup::StringLookupZ3},
+    CallbackRef, OmniboxContext, PREVENT_DEFAULT_DRAG_OVER,
 };
 
-impl FileDataComponent {
-    pub fn file_drag(
+use super::{example::Example, Homepage};
+
+#[derive(Clone)]
+pub struct RcParser(Rc<Parser>);
+
+impl PartialEq for RcParser {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Deref for RcParser {
+    type Target = Parser;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl RcParser {
+    pub fn new(parser: Z3Parser) -> Self {
+        let colour_map = QuantIdxToColourMap::new(&parser);
+        let lookup = StringLookupZ3::init(&parser);
+        let parser = Parser {
+            parser: RefCell::new(parser),
+            lookup,
+            colour_map,
+        };
+        Self(Rc::new(parser))
+    }
+}
+
+pub struct Parser {
+    pub parser: RefCell<Z3Parser>,
+    pub lookup: StringLookupZ3,
+    pub colour_map: QuantIdxToColourMap,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum LoadingState {
+    #[default]
+    NoFileSelected,
+    ReadingToString,
+    StartParsing,
+    Parsing(ParseProgress, Callback<()>),
+    // Stopped early, cancelled?
+    DoneParsing(bool, bool),
+    Rendering(RenderingState, bool, bool),
+    FileDisplayed,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParseProgress {
+    pub reader: ReaderState,
+    pub file_size: Option<u64>,
+    time: Instant,
+    bytes_delta: Option<usize>,
+    time_delta: Option<std::time::Duration>,
+    pub speed: Option<f64>,
+    pub memory_use: usize,
+}
+
+impl ParseProgress {
+    fn new(reader: ReaderState, file_size: Option<u64>, memory_use: usize) -> Self {
+        Self {
+            reader,
+            file_size,
+            time: Instant::now(),
+            bytes_delta: None,
+            time_delta: None,
+            speed: None,
+            memory_use,
+        }
+    }
+    pub fn delta(&mut self, old: &Self) {
+        assert!(self.reader.bytes_read > old.reader.bytes_read);
+        if self.reader.bytes_read < old.reader.bytes_read {
+            *self = old.clone();
+            return;
+        }
+        // Value >= 0.0, the higher the value the more smoothed out the speed is
+        // (but also takes longer to react to changes in speed)
+        const SPEED_SMOOTHING: f64 = 10.0;
+        let bytes_delta = self.reader.bytes_read - old.reader.bytes_read;
+        self.bytes_delta = Some(bytes_delta);
+        let time_delta = self.time - old.time;
+        self.time_delta = Some(time_delta);
+        let speed = bytes_delta as f64 / time_delta.as_secs_f64();
+        self.speed = Some(
+            old.speed
+                .map(|old| (speed + SPEED_SMOOTHING * old) / (SPEED_SMOOTHING + 1.0))
+                .unwrap_or(speed),
+        );
+    }
+}
+
+#[derive(Clone)]
+pub struct FileData {
+    pub file_info: FileInfo,
+    pub opened: Option<OpenedFileInfo>,
+}
+
+#[derive(Clone)]
+pub struct OpenedFileInfo {
+    pub parser: RcParser,
+    pub state: ParseState<bool>,
+    pub cancelled: bool,
+}
+
+impl PartialEq for OpenedFileInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.parser == other.parser
+            && core::mem::discriminant(&self.state) == core::mem::discriminant(&other.state)
+            && self.cancelled == other.cancelled
+    }
+}
+
+impl Homepage {
+    pub(super) fn file_drag(
         registerer: &GlobalCallbacks,
-        link: &Scope<FileDataComponent>,
+        link: &Scope<Manager>,
     ) -> [CallbackRef; 3] {
         /// Detects if a file is being dragged over the window
         fn file_drag(event: &DragEvent) -> bool {
@@ -83,49 +202,43 @@ impl FileDataComponent {
                     .and_then(DataTransfer::files)
                     .and_then(|files| (files.length() == 1).then(|| files.get(0).unwrap()))
                     .map(File::from);
-                link.send_message(Msg::File(file));
+                link.send_message(HomepageM::OpenFile(file));
             }
         }));
         [drag_enter_ref, drag_leave_ref, drop_ref]
     }
 
-    pub fn pre_open_file(
-        &mut self,
-        name: String,
-        size: Option<u64>,
-        link: &Scope<FileDataComponent>,
-    ) -> bool {
-        // remove any old parser in the state
-        let state = link.get_state().unwrap();
-        state.close_file();
-        state.update_file_info(move |info| {
-            *info = Some(FileInfo { name, size });
-            true
-        });
-
+    fn pre_open_file(&mut self, file_info: FileInfo, link: &Scope<Manager>) {
         // hide the flags page if shown
-        self.flags_visible.borrow().emit(Some(false));
+        self.toggle_flags.borrow().emit(Some(false));
+        link.clear_omnibox();
 
-        let changed = self.file.is_some();
         drop(self.file.take());
         drop(self.reader.take());
-        changed
+        self.file = Some(FileData {
+            file_info,
+            opened: None,
+        });
     }
 
-    pub fn load_example(
+    pub(super) fn load_example(
         &mut self,
         example: Example,
         response: Response,
-        link: &Scope<FileDataComponent>,
+        link: &Scope<Manager>,
     ) -> bool {
         let size = response
             .headers()
             .get("Content-Length")
             .and_then(|s| s.parse().ok());
-        let changed = self.pre_open_file(example.file_name(), size, link);
+        let file_info = FileInfo {
+            name: example.file_name(),
+            size,
+        };
+        self.pre_open_file(file_info, link);
 
-        *self.cancel.borrow_mut() = false;
-        let cancel = self.cancel.clone();
+        *self.stop_loading.borrow_mut() = false;
+        let stop_loading = self.stop_loading.clone();
         let link = link.clone();
 
         match response
@@ -133,12 +246,12 @@ impl FileDataComponent {
             .map(|body| ReadableStream::from_raw(body).try_into_async_read())
         {
             Some(Ok(stream)) => {
-                link.send_message(Msg::LoadingState(LoadingState::StartParsing));
+                link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
                 let parser = Z3Parser::from_async(stream.buffer());
                 wasm_bindgen_futures::spawn_local(async move {
                     Self::parse_async(
                         parser,
-                        cancel,
+                        stop_loading,
                         size,
                         link,
                         1024 * 1024 * 1024,
@@ -151,16 +264,16 @@ impl FileDataComponent {
                 let text_data = match response.text().await {
                     Ok(text) => text,
                     Err(err) => {
-                        link.send_message(Msg::FailedOpening(err.to_string()));
+                        link.send_message(HomepageM::FailedOpening(err.to_string()));
                         return;
                     }
                 };
 
-                link.send_message(Msg::LoadingState(LoadingState::StartParsing));
+                link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
                 let parser = Z3Parser::from_str(&text_data);
                 Self::parse_stream(
                     parser,
-                    cancel,
+                    stop_loading,
                     size,
                     link,
                     512 * 1024 * 1024,
@@ -170,31 +283,33 @@ impl FileDataComponent {
             }),
         }
 
-        changed
+        true
     }
 
-    pub fn load_opened_file(&mut self, file: File, link: &Scope<FileDataComponent>) -> bool {
-        let file_name = file.name();
-        let file_size = file.size();
-        let changed = self.pre_open_file(file_name.clone(), Some(file_size), link);
+    pub(super) fn load_opened_file(&mut self, file: File, link: &Scope<Manager>) -> bool {
+        let file_info = FileInfo {
+            name: file.name(),
+            size: Some(file.size()),
+        };
+        self.pre_open_file(file_info.clone(), link);
 
-        *self.cancel.borrow_mut() = false;
-        let cancel = self.cancel.clone();
+        *self.stop_loading.borrow_mut() = false;
+        let stop_loading = self.stop_loading.clone();
         let link = link.clone();
 
-        log::info!("Selected file \"{file_name}\"");
+        log::info!("Selected file \"{}\"", file_info.name);
         // Turn into stream
         let blob: &web_sys::Blob = file.as_ref();
         let stream = ReadableStream::from_raw(blob.stream().unchecked_into());
         match stream.try_into_async_read() {
             Ok(stream) => {
-                link.send_message(Msg::LoadingState(LoadingState::StartParsing));
+                link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
                 let parser = Z3Parser::from_async(stream.buffer());
                 wasm_bindgen_futures::spawn_local(async move {
                     Self::parse_async(
                         parser,
-                        cancel,
-                        Some(file_size),
+                        stop_loading,
+                        file_info.size,
                         link,
                         1024 * 1024 * 1024,
                         "Stopped parsing at 1GB",
@@ -203,27 +318,27 @@ impl FileDataComponent {
                 });
             }
             Err((_err, _stream)) => {
-                log::info!("Loading to string \"{file_name}\"");
-                link.send_message(Msg::LoadingState(LoadingState::ReadingToString));
+                log::info!("Loading to string \"{}\"", file_info.name);
+                link.send_message(HomepageM::LoadingState(LoadingState::ReadingToString));
                 let reader = gloo::file::callbacks::read_as_text(&file, move |res| {
                     let text_data = match res {
                         Ok(res) => res,
                         Err(err) => {
-                            link.send_message(Msg::FailedOpening(err.to_string()));
+                            link.send_message(HomepageM::FailedOpening(err.to_string()));
                             return;
                         }
                     };
-                    log::info!("Parsing \"{file_name}\"");
-                    link.send_message(Msg::LoadingState(LoadingState::StartParsing));
+                    log::info!("Parsing \"{}\"", file_info.name);
+                    link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
                     wasm_bindgen_futures::spawn_local(async move {
                         let parser = Z3Parser::from_str(&text_data);
-                        Self::parse_stream(parser, cancel, Some(file_size), link, 512 * 1024 * 1024, "Stopped parsing at 500MB, use Chrome or Firefox to increase this limit").await
+                        Self::parse_stream(parser, stop_loading, file_info.size, link, 512 * 1024 * 1024, "Stopped parsing at 500MB, use Chrome or Firefox to increase this limit").await
                     });
                 });
                 self.reader = Some(reader);
             }
         };
-        changed
+        true
     }
 
     #[duplicate::duplicate_item(
@@ -232,10 +347,10 @@ impl FileDataComponent {
         [parse_async]  [AsyncParser]  [code.await];
     )]
     async fn parse(
-        mut parser: smt_log_parser::parsers::EitherParser<'_, Z3Parser>,
-        cancel: Rc<RefCell<bool>>,
+        mut parser: EitherParser<'_, Z3Parser>,
+        stop_loading: Rc<RefCell<bool>>,
         size: Option<u64>,
-        link: yew::html::Scope<FileDataComponent>,
+        link: Scope<Manager>,
         use_mem_limit: usize,
         mem_limit_msg: &str,
     ) {
@@ -244,7 +359,7 @@ impl FileDataComponent {
             let finished = add_await([parser.process_until(|_, _| {
                 lines_to_read -= 1;
                 let pause = lines_to_read == 0;
-                (pause || *cancel.borrow()).then_some(pause)
+                (pause || *stop_loading.borrow()).then_some(pause)
             })]);
             let ParseState::Paused(true, state) = finished else {
                 break finished;
@@ -255,38 +370,38 @@ impl FileDataComponent {
                 break finished;
             }
             let parsing = ParseProgress::new(state, size, mem_size);
-            let cancel = cancel.clone();
-            link.send_message(Msg::LoadingState(LoadingState::Parsing(
+            let stop_loading = stop_loading.clone();
+            link.send_message(HomepageM::LoadingState(LoadingState::Parsing(
                 parsing,
                 Callback::from(move |_| {
-                    *cancel.borrow_mut() = true;
+                    *stop_loading.borrow_mut() = true;
                 }),
             )));
             gloo::timers::future::TimeoutFuture::new(0).await;
         };
-        let cancel = *cancel.borrow();
+        let stop_loading = *stop_loading.borrow();
         match finished {
-            ParseState::Paused(..) if !cancel => {
+            ParseState::Paused(..) if !stop_loading => {
                 let message = OmniboxMessage {
                     message: mem_limit_msg.to_string(),
                     kind: OmniboxMessageKind::Warning,
                 };
-                link.send_message(Msg::ShowMessage((message, 8000)));
+                link.omnibox_message(message, 8000);
             }
             ParseState::Error(err) => {
-                link.send_message(Msg::FailedOpening(err.to_string()));
+                link.send_message(HomepageM::FailedOpening(err.to_string()));
                 return;
             }
             _ => (),
         }
-        link.send_message(Msg::LoadingState(LoadingState::DoneParsing(
+        link.send_message(HomepageM::LoadingState(LoadingState::DoneParsing(
             finished.is_timeout(),
-            cancel,
+            stop_loading,
         )));
-        link.send_message(Msg::LoadedFile(
+        link.send_message(HomepageM::LoadedFile(
             Box::new(parser.take_parser()),
             finished,
-            cancel,
+            stop_loading,
         ))
     }
 }

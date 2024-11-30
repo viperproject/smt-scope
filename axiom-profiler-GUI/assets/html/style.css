@@ -4,7 +4,10 @@ html {
     --mdc-icon-font: "Material Icons Outlined";
 }
 
-.loading-bar-failed > mwc-linear-progress {
+.loading-bar-warning > mwc-linear-progress {
+    --mdc-theme-primary: orange;
+}
+.loading-bar-error > mwc-linear-progress {
     --mdc-theme-primary: red;
 }
 

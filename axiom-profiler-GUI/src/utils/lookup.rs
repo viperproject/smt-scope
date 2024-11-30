@@ -15,6 +15,12 @@ pub struct StringLookup<T> {
     values: FxHashMap<Utf32String, T>,
 }
 
+impl<T> Default for StringLookup<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> StringLookup<T> {
     pub fn new() -> Self {
         let config = Config::DEFAULT;

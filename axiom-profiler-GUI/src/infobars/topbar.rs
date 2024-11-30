@@ -1,4 +1,6 @@
-use material_yew::linear_progress::MatLinearProgress;
+use std::rc::Rc;
+
+use material_yew::linear_progress::{LinearProgressProps, MatLinearProgress};
 use smt_log_parser::analysis::RawNodeIndex;
 use yew::{function_component, html, use_context, use_node_ref, Callback, Html, Properties};
 
@@ -7,21 +9,29 @@ use crate::{
         ml_omnibox::MlOmnibox, Dropdown, DropdownButton, DropdownContainer, History, MenuButton,
         Omnibox, SearchActionResult,
     },
+    screen::extra,
     state::StateProvider,
     utils::lookup::Kind,
-    LoadingState,
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OmnibarMessage {
+pub struct OmniboxMessage {
     pub message: String,
-    pub is_error: bool,
+    pub kind: OmniboxMessageKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum OmniboxMessageKind {
+    Info,
+    Warning,
+    Error,
 }
 
 #[derive(PartialEq, Properties)]
 pub struct TopbarProps {
-    pub progress: LoadingState,
-    pub message: Option<OmnibarMessage>,
+    pub omnibox: Rc<extra::Omnibox>,
+    pub message: Option<OmniboxMessage>,
+
     pub search: Callback<String, Option<SearchActionResult>>,
     pub pick: Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
     pub select: Callback<RawNodeIndex>,
@@ -31,40 +41,35 @@ pub struct TopbarProps {
 
 #[function_component]
 pub fn Topbar(props: &TopbarProps) -> Html {
-    let mut class = "progress progress-anim";
-    let mut closed = false;
-    let mut indeterminate = false;
-    let mut progress = 0.0;
-    let mut buffer = 0.0;
-    match &props.progress {
-        LoadingState::NoFileSelected => {
-            closed = true;
-        }
-        LoadingState::ReadingToString => indeterminate = true,
-        LoadingState::StartParsing => indeterminate = true,
-        LoadingState::Parsing(parsing, _) => {
-            if let Some(size) = parsing.file_size {
-                progress = (parsing.reader.bytes_read as f64 / size as f64) as f32;
+    let class;
+    let loading_bar = if let Some(message) = &props.message {
+        let colour_props = LinearProgressProps {
+            indeterminate: false,
+            progress: 1.0,
+            buffer: 1.0,
+            reverse: false,
+            closed: false,
+        };
+        match message.kind {
+            OmniboxMessageKind::Info => {
+                class = "progress progress-anim loading-bar-info";
+                props.omnibox.progress.clone()
             }
-            buffer = 1.0;
-        }
-        LoadingState::DoneParsing(timeout, cancelled) => {
-            if *timeout && !*cancelled {
-                class = "progress progress-anim loading-bar-failed";
+            OmniboxMessageKind::Warning => {
+                class = "progress progress-anim loading-bar-warning";
+                colour_props
             }
-            progress = 1.0;
-            buffer = 1.0;
+            OmniboxMessageKind::Error => {
+                class = "progress progress-anim lloading-bar-error";
+                colour_props
+            }
         }
-        LoadingState::Rendering(..) => indeterminate = true,
-        LoadingState::FileDisplayed => closed = true,
+    } else {
+        class = "progress progress-anim";
+        props.omnibox.progress.clone()
     };
-    if props.message.as_ref().is_some_and(|m| m.is_error) {
-        class = "progress progress-anim loading-bar-failed";
-        progress = 1.0;
-        buffer = 1.0;
-        closed = false;
-        indeterminate = false;
-    }
+    // log::info!("Topbar {loading_bar:?} ({class})");
+
     let state = use_context::<std::rc::Rc<StateProvider>>().expect("no ctx found");
     let ml_viewer_mode = state.state.ml_viewer_mode;
     let omnibox = if ml_viewer_mode {
@@ -74,7 +79,7 @@ pub fn Topbar(props: &TopbarProps) -> Html {
         }
     } else {
         html! {
-            <Omnibox progress={props.progress.clone()} message={props.message.clone()} search={props.search.clone()} pick={props.pick.clone()} select={props.select.clone()} />
+            <Omnibox omnibox={props.omnibox.clone()} message={props.message.clone()} search={props.search.clone()} pick={props.pick.clone()} select={props.select.clone()} />
         }
     };
     let topbar_class = if ml_viewer_mode {
@@ -102,7 +107,7 @@ pub fn Topbar(props: &TopbarProps) -> Html {
         <div ref={&dl} class={dl_class}>     <DropdownContainer container_ref={dl}>{for dropdown_left} </DropdownContainer></div>
         <div ref={&dm} class="omnibox-outer"><DropdownContainer container_ref={dm}>{omnibox}           </DropdownContainer></div>
         <div ref={&dr} class="menu-bar">     <DropdownContainer container_ref={dr}>{for dropdown_right}</DropdownContainer></div>
-        <div {class}><MatLinearProgress {closed} {indeterminate} {progress} {buffer}/></div>
+        <div {class}><MatLinearProgress ..loading_bar/></div>
     </div>
     }
 }

@@ -5,17 +5,16 @@ use gloo::timers::callback::Timeout;
 use smt_log_parser::analysis::{visible::VisibleInstGraph, RawNodeIndex};
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::{
-    html, prelude::Context, AttrValue, Callback, Component, ContextHandle, Html, InputEvent,
-    KeyboardEvent, MouseEvent, NodeRef, Properties,
+    html, prelude::Context, Callback, Component, ContextHandle, Html, InputEvent, KeyboardEvent,
+    MouseEvent, NodeRef, Properties,
 };
 
 use crate::{
     commands::{Command, CommandId, CommandRef, Commands, CommandsContext, Key, ShortcutKey},
-    filters::byte_size_display,
-    infobars::{topbar::OmnibarMessage, DropdownButton},
-    results::svg_result::RenderingState,
+    infobars::{topbar::OmniboxMessage, DropdownButton, OmniboxMessageKind},
+    screen::extra,
     utils::lookup::{CommandsWithName, Entry, Kind, Matches, StringLookupCommands},
-    LoadingState, RcParser,
+    RcParser,
 };
 
 use self::input::{HighlightedString, OmniboxInput, PickedSuggestion, SuggestionResult};
@@ -28,8 +27,8 @@ const LAST_USED_DISPLAY: usize = 6;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct OmniboxProps {
-    pub progress: LoadingState,
-    pub message: Option<OmnibarMessage>,
+    pub omnibox: Rc<extra::Omnibox>,
+    pub message: Option<OmniboxMessage>,
     pub search: Callback<String, Option<SearchActionResult>>,
     pub pick: Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
     pub select: Callback<RawNodeIndex>,
@@ -134,7 +133,7 @@ impl Component for Omnibox {
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         debug_assert!(ctx.props() != old_props);
-        if ctx.props().progress != old_props.progress {
+        if ctx.props().omnibox.disabled || ctx.props().message.is_some() {
             self.command_mode = false;
             self.input = None;
             self.highlighted = 0;
@@ -338,78 +337,43 @@ impl Component for Omnibox {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let mut omnibox_info = ctx
-            .props()
-            .message
-            .as_ref()
-            .map(|m| AttrValue::from(m.message.clone()));
-        let mut icon = ctx
-            .props()
-            .message
-            .as_ref()
-            .is_some_and(|m| m.is_error)
-            .then_some("error");
-        let mut callback = None;
+        let search_or_command = self.input.is_some() || self.command_mode;
 
-        match &ctx.props().progress {
-            LoadingState::NoFileSelected => (),
-            LoadingState::ReadingToString => {
-                omnibox_info = Some(AttrValue::from("Loading trace"));
-            }
-            LoadingState::StartParsing => {
-                omnibox_info = Some(AttrValue::from("Parsing trace"));
-            }
-            LoadingState::Parsing(parsing, cancel) => {
-                icon = Some("stop_circle");
-                callback = Some(cancel);
-                let progress = parsing
-                    .file_size
-                    .map(|size| {
-                        let progress = parsing.reader.bytes_read as f64 / size as f64;
-                        format!("{:.0}%", progress * 100.0)
-                    })
-                    .unwrap_or_else(|| "?".to_string());
-                let speed = parsing
-                    .speed
-                    .map(byte_size_display)
-                    .map(|(speed, unit)| format!(" - {speed:.0} {unit}/s",));
-                let (memory_use, unit) = byte_size_display(parsing.memory_use as f64);
-                let info = format!(
-                    "Parsing trace {progress}{} | Use {memory_use:.0}{unit}",
-                    speed.unwrap_or_default()
-                );
-                omnibox_info = Some(AttrValue::from(info));
-            }
-            LoadingState::DoneParsing(..) => (),
-            LoadingState::Rendering(RenderingState::ConstructingGraph, timeout, _)
-            | LoadingState::Rendering(RenderingState::ConstructedGraph, timeout, _) => {
-                if *timeout {
-                    omnibox_info = Some(AttrValue::from("Analysing partial trace"));
-                } else {
-                    omnibox_info = Some(AttrValue::from("Analysing trace"));
-                }
-            }
-            LoadingState::Rendering(
-                RenderingState::GraphToDot | RenderingState::RenderingGraph,
-                _,
-                _,
-            ) => {
-                omnibox_info = Some(AttrValue::from("Rendering trace"));
-            }
-            LoadingState::FileDisplayed => (),
-        };
-        let omnibox_disabled = omnibox_info.is_some();
-        let icon = icon.unwrap_or({
-            if omnibox_disabled {
-                "info"
-            } else if self.command_mode {
+        let props = ctx.props();
+        let icon = if search_or_command {
+            if self.command_mode {
                 "chevron_right"
             } else {
                 "search"
             }
-        });
-        let icon = if let Some(callback) = callback {
-            let callback = callback.clone();
+        } else {
+            props
+                .message
+                .as_ref()
+                .map(|m| match m.kind {
+                    OmniboxMessageKind::Info => "info",
+                    OmniboxMessageKind::Warning => "warning_amber",
+                    OmniboxMessageKind::Error => "error_outline",
+                })
+                .unwrap_or(props.omnibox.icon)
+        };
+        let placeholder = if self.command_mode {
+            "Filter commands...".to_string()
+        } else {
+            props
+                .message
+                .as_ref()
+                .map(|m| m.message.clone())
+                .unwrap_or_else(|| props.omnibox.placeholder.clone())
+        };
+        let omnibox_disabled =
+            !search_or_command && (props.message.is_some() || props.omnibox.disabled);
+        let icon_mousedown = (!search_or_command && props.message.is_none())
+            .then_some(&props.omnibox.icon_mousedown)
+            .cloned()
+            .flatten();
+
+        let icon = if let Some(callback) = icon_mousedown {
             let onclick = Callback::from(move |click: MouseEvent| {
                 click.prevent_default();
                 callback.emit(());
@@ -418,13 +382,6 @@ impl Component for Omnibox {
         } else {
             html! { {icon} }
         };
-        let placeholder = omnibox_info.unwrap_or_else(|| {
-            if self.command_mode {
-                AttrValue::from("Filter commands...")
-            } else {
-                AttrValue::from("Search or type '>' for commands")
-            }
-        });
         let oninput = ctx.link().callback(Msg::Input);
         let onkeydown = ctx.link().callback(|ev: KeyboardEvent| {
             ev.stop_propagation();

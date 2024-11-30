@@ -3,41 +3,39 @@ use std::rc::Rc;
 use std::sync::{Mutex, OnceLock, RwLock};
 
 use commands::{Command, CommandRef, CommandsContext, ShortcutKey};
-use example::{Example, ExampleRow};
+use example::Example;
 use filters::AddFilterSidebar;
 use fxhash::{FxHashMap, FxHashSet};
 use gloo::timers::callback::Timeout;
+use gloo_file::callbacks::FileReader;
 use gloo_file::File;
-use gloo_file::{callbacks::FileReader, FileList};
 use gloo_net::http::Response;
+use infobars::OmniboxMessageKind;
 use material_yew::{MatDialog, MatIcon, MatIconButton, WeakComponentLink};
 use petgraph::visit::EdgeRef;
 use results::graph_info;
 use results::svg_result::{Msg as SVGMsg, RenderedGraph, RenderingState, SVGResult};
+use screen::{Change, Manager};
 use smt_log_parser::analysis::{InstGraph, RawNodeIndex, VisibleEdgeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{ParseState, ReaderState};
 use state::StateProvider;
 use utils::colouring::QuantIdxToColourMap;
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsCast;
 use wasm_timer::Instant;
-use web_sys::{HtmlElement, HtmlInputElement};
+use web_sys::HtmlElement;
 use yew::html::Scope;
 use yew::prelude::*;
 
 use crate::commands::CommandsProvider;
-use crate::configuration::{ConfigurationProvider, Flags};
+use crate::configuration::ConfigurationProvider;
 use crate::filters::FiltersState;
 
-use crate::infobars::{OmnibarMessage, SearchActionResult, SidebarSectionHeader, Topbar};
+use crate::infobars::{OmniboxMessage, SearchActionResult, SidebarSectionHeader, Topbar};
 use crate::results::filters::Filter;
 use crate::results::svg_result::GraphState;
-use crate::state::{StateContext, StateProviderContext};
-use crate::utils::{
-    lookup::StringLookupZ3,
-    overlay_page::{Overlay, SetVisibleCallback},
-};
+use crate::screen::extra;
+use crate::state::StateProviderContext;
+use crate::utils::{lookup::StringLookupZ3, overlay_page::SetVisibleCallback};
 
 pub use global_callbacks::{CallbackRef, GlobalCallbacksContext, GlobalCallbacksProvider};
 pub use utils::position::*;
@@ -51,9 +49,34 @@ mod global_callbacks;
 pub mod homepage;
 mod infobars;
 pub mod results;
+pub mod screen;
 pub mod shortcuts;
 pub mod state;
 mod utils;
+
+#[derive(Clone, PartialEq)]
+struct OmniboxMessageContext {
+    send: Callback<(OmniboxMessage, u32)>,
+    clear: Callback<()>,
+}
+
+pub trait OmniboxContext {
+    /// Display `message` in the omnibox for `millis` milliseconds.
+    fn omnibox_message(&self, message: OmniboxMessage, millis: u32);
+    /// Clear any messages displayed in the omnibox.
+    fn clear_omnibox(&self);
+}
+
+impl OmniboxContext for Scope<Manager> {
+    fn omnibox_message(&self, message: OmniboxMessage, millis: u32) {
+        let sender: OmniboxMessageContext = self.context(Callback::noop()).unwrap().0;
+        sender.send.emit((message, millis));
+    }
+    fn clear_omnibox(&self) {
+        let sender: OmniboxMessageContext = self.context(Callback::noop()).unwrap().0;
+        sender.clear.emit(());
+    }
+}
 
 pub const GIT_DESCRIBE: &str = env!("VERGEN_GIT_DESCRIBE");
 pub fn version() -> Option<semver::Version> {
@@ -81,7 +104,7 @@ pub enum Msg {
     RenderedGraph(RenderedGraph),
     FailedOpening(String),
     CloseFile,
-    ShowMessage(OmnibarMessage, u32),
+    ShowMessage((OmniboxMessage, u32)),
     ClearMessage,
     SelectedNodes(Vec<RawNodeIndex>),
     SelectedEdges(Vec<VisibleEdgeIndex>),
@@ -89,6 +112,10 @@ pub enum Msg {
     ToggleSidebar,
     SearchMatchingLoops,
     StateChanged(Rc<StateProvider>),
+
+    UpdateSidebar(Rc<extra::Sidebar>),
+    UpdateTopbar(Rc<extra::Topbar>),
+    UpdateOmnibox(Rc<extra::Omnibox>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -188,28 +215,32 @@ impl OpenedFileInfo {
 }
 
 pub struct FileDataComponent {
-    file_select: NodeRef,
+    sidebar: Rc<extra::Sidebar>,
+    topbar: Rc<extra::Topbar>,
+    omnibox: Rc<extra::Omnibox>,
+    omc: OmniboxMessageContext,
+
     file: Option<OpenedFileInfo>,
     reader: Option<FileReader>,
     pending_ops: usize,
     progress: LoadingState,
-    message: Option<(Timeout, OmnibarMessage)>,
+    message: Option<(Timeout, OmniboxMessage)>,
     cancel: Rc<RefCell<bool>>,
     navigation_section: NodeRef,
     help_dialog: WeakComponentLink<MatDialog>,
     insts_info_link: WeakComponentLink<graph_info::GraphInfo>,
     filters_state_link: WeakComponentLink<FiltersState>,
     showing_help: bool,
-    sidebar: NodeRef,
+    sidebar_ref: NodeRef,
     flags_visible: SetVisibleCallback,
     state: Rc<StateProvider>,
     _handle: ContextHandle<Rc<StateProvider>>,
-    _callback_refs: [CallbackRef; 5],
-    _command_refs: [CommandRef; 3],
+    _callback_refs: [CallbackRef; 2],
+    _command_refs: [CommandRef; 2],
 }
 
 impl FileDataComponent {
-    pub fn set_message(&mut self, link: &Scope<Self>, message: OmnibarMessage, millis: u32) {
+    pub fn set_message(&mut self, link: &Scope<Self>, message: OmniboxMessage, millis: u32) {
         log::info!("Showing message: {message:?}");
 
         let clear_error = link.callback(|_| Msg::ClearMessage);
@@ -221,7 +252,7 @@ impl FileDataComponent {
     }
     pub fn clear_message(&mut self, error_only: bool) {
         if let Some((timeout, message)) = self.message.take() {
-            if error_only && !message.is_error {
+            if error_only && !matches!(message.kind, OmniboxMessageKind::Error) {
                 self.message = Some((timeout, message));
             } else {
                 timeout.cancel();
@@ -248,21 +279,12 @@ impl Component for FileDataComponent {
             (registerer.register_mouse_move)(Callback::from(|event: MouseEvent| {
                 *mouse_position().write().unwrap() = PagePosition::from(&event);
             }));
-        let pd = PREVENT_DEFAULT_DRAG_OVER.get_or_init(Mutex::default);
         let drag_over_ref = (registerer.register_drag_over)(Callback::from(|event: DragEvent| {
             *mouse_position().write().unwrap() = PagePosition::from(&event);
-            let pd = *pd.lock().unwrap();
-            if pd {
-                event.prevent_default();
-            }
         }));
-        let [drag_enter_ref, drag_leave_ref, drop_ref] = Self::file_drag(&registerer, ctx.link());
         let _callback_refs = [
             mouse_move_ref,
             drag_over_ref,
-            drag_enter_ref,
-            drag_leave_ref,
-            drop_ref,
         ];
 
         // Commands
@@ -282,19 +304,16 @@ impl Component for FileDataComponent {
             disabled: false,
         };
         let hide_sidebar_cmd = (commands)(hide_sidebar_cmd);
-        let flags_visible_ref = flags_visible.clone();
-        let toggle_flags_cmd = Command {
-            name: "Toggle flags page".to_string(),
-            execute: Callback::from(move |_| {
-                flags_visible_ref.borrow().emit(None);
-            }),
-            keyboard_shortcut: ShortcutKey::cmd(','),
-            disabled: false,
-        };
-        let toggle_flags_cmd = (commands)(toggle_flags_cmd);
-        let _command_refs = [help_cmd, hide_sidebar_cmd, toggle_flags_cmd];
+        let _command_refs = [help_cmd, hide_sidebar_cmd];
         Self {
-            file_select: NodeRef::default(),
+            sidebar: Rc::default(),
+            topbar: Rc::default(),
+            omnibox: Rc::default(),
+            omc: OmniboxMessageContext {
+                send: ctx.link().callback(Msg::ShowMessage),
+                clear: ctx.link().callback(|_| Msg::ClearMessage),
+            },
+
             file: None,
             reader: None,
             pending_ops: 0,
@@ -306,7 +325,7 @@ impl Component for FileDataComponent {
             insts_info_link: WeakComponentLink::default(),
             filters_state_link: WeakComponentLink::default(),
             showing_help: false,
-            sidebar: NodeRef::default(),
+            sidebar_ref: NodeRef::default(),
             flags_visible,
             state,
             _handle,
@@ -317,6 +336,18 @@ impl Component for FileDataComponent {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            Msg::UpdateSidebar(sidebar) => {
+                self.sidebar = sidebar;
+                true
+            }
+            Msg::UpdateTopbar(topbar) => {
+                self.topbar = topbar;
+                true
+            }
+            Msg::UpdateOmnibox(omnibox) => {
+                self.omnibox = omnibox;
+                true
+            }
             Msg::File(file) => {
                 let Some(file) = file else {
                     return false;
@@ -403,9 +434,9 @@ impl Component for FileDataComponent {
             Msg::FailedOpening(error) => {
                 log::error!("Failed to open file: {error}");
 
-                let message = OmnibarMessage {
+                let message = OmniboxMessage {
                     message: error,
-                    is_error: true,
+                    kind: OmniboxMessageKind::Error,
                 };
                 self.set_message(ctx.link(), message, 10000);
 
@@ -424,12 +455,14 @@ impl Component for FileDataComponent {
                 self.state.close_file();
                 true
             }
-            Msg::ShowMessage(message, millis) => {
+            Msg::ShowMessage((message, millis)) => {
                 self.set_message(ctx.link(), message, millis);
                 true
             }
             Msg::ClearMessage => {
-                self.message.take();
+                if let Some((timeout, _)) = self.message.take() {
+                    timeout.cancel();
+                }
                 true
             }
             Msg::LoadedFile(parser, parser_state, parser_cancelled) => {
@@ -474,7 +507,7 @@ impl Component for FileDataComponent {
                 false
             }
             Msg::ToggleSidebar => {
-                let Some(sidebar) = self.sidebar.cast::<HtmlElement>() else {
+                let Some(sidebar) = self.sidebar_ref.cast::<HtmlElement>() else {
                     return false;
                 };
                 let sidebar_closed = self.state.state.sidebar_closed;
@@ -580,12 +613,6 @@ impl Component for FileDataComponent {
             None => html! {},
         };
 
-        let link = ctx.link().clone();
-        let flags_visible_changed = Callback::from(move |visible| {
-            let data = link.get_state().unwrap();
-            data.set_overlay_visible(visible);
-        });
-
         let parser = self.state.state.parser.clone();
         let parser_ref = parser.clone();
         let visible = self
@@ -633,23 +660,9 @@ impl Component for FileDataComponent {
         });
 
         // Callbacks
-        let file_select_ref = self.file_select.clone();
-        let on_change = ctx.link().callback(move |_| {
-            let files = file_select_ref.cast::<HtmlInputElement>().unwrap().files();
-            Msg::File(
-                files
-                    .map(FileList::from)
-                    .and_then(|files| (files.len() == 1).then(|| files[0].clone())),
-            )
-        });
         let toggle_sidebar = ctx.link().callback(move |ev: MouseEvent| {
             ev.prevent_default();
             Msg::ToggleSidebar
-        });
-        let help_dialog_clone = self.help_dialog.clone();
-        let show_shortcuts = Callback::from(move |ev: MouseEvent| {
-            ev.prevent_default();
-            help_dialog_clone.show();
         });
         let onopened = ctx.link().callback(|_| Msg::ShowHelpToggled(true));
         let onclosed = ctx.link().callback(|_| Msg::ShowHelpToggled(false));
@@ -674,36 +687,48 @@ impl Component for FileDataComponent {
         } else {
             "page"
         };
-        let flags_visible = self.flags_visible.clone();
-        let toggle_settings = Callback::from(move |click: MouseEvent| {
-            click.prevent_default();
-            flags_visible.borrow().emit(None);
-        });
-        let close_file = self.file.as_ref().map(|_file| {
-            let onclick = ctx.link().callback(|ev: MouseEvent| {
-                ev.prevent_default();
-                Msg::CloseFile
-            });
-            html!{<li><a href="#" draggable="false" {onclick}><div class="material-icons"><MatIcon>{"close"}</MatIcon></div>{"Close file"}</a></li>}
-        }).unwrap_or_default();
-        html! {
-        <>
-            <nav class="sidebar" ref={&self.sidebar}>
+
+        let sidebar_html = (*self.sidebar).clone();
+        let sidebar_html = sidebar_html.into_iter().map(|s| {
+            let elements = s.elements.into_iter().filter_map(|e| match e {
+                extra::ElementKind::Simple(simple_button) => {
+                    if simple_button.disabled {
+                        return None;
+                    }
+                    let (href, onmousedown) = match simple_button.click {
+                        extra::Action::Href(href) => (href, None),
+                        extra::Action::MouseDown(callback) => {
+                            ("#".to_string(), Some(Callback::from(move |ev: MouseEvent| {
+                                ev.prevent_default();
+                                callback.emit(());
+                            })))
+                        }
+                    };
+                    let id = simple_button.text.to_lowercase().replace(" ", "_");
+                    Some(html! {
+                        <li><a {id} {href} draggable="false" {onmousedown}><div class="material-icons"><MatIcon>{simple_button.icon}</MatIcon></div>{simple_button.text}</a></li>
+                    })
+                }
+                extra::ElementKind::Custom(data) => Some(data),
+            }).collect::<Html>();
+            html! {
+                <SidebarSectionHeader header_text={s.header_text} collapsed_text={s.collapsed_text}><ul>
+                    {elements}
+                </ul></SidebarSectionHeader>
+            }
+        }).collect::<Html>();
+
+        let sidebar = ctx.link().callback(Msg::UpdateSidebar);
+        let topbar = ctx.link().callback(Msg::UpdateTopbar);
+        let omnibox = ctx.link().callback(Msg::UpdateOmnibox);
+        let initial = Change::Homepage(self.help_dialog.clone());
+
+        html! {<>
+            <nav class="sidebar" ref={&self.sidebar_ref}>
                 <header class={header_class}><img src="html/logo_side_small.png" class="brand"/><div class="sidebar-button" onmousedown={toggle_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
-                <input type="file" ref={&self.file_select} class="trace_file" accept=".log" onchange={on_change} multiple=false/>
                 <div class="sidebar-scroll"><div class="sidebar-scroll-container">
-                    <SidebarSectionHeader header_text="Navigation" collapsed_text="Open a new trace" section={self.navigation_section.clone()}><ul>
-                        <li><a href="#" draggable="false" id="open_trace_file"><div class="material-icons"><MatIcon>{"folder_open"}</MatIcon></div>{"Open trace file"}</a></li>
-                        <ExampleRow example={Example::Array} link={ctx.link().callback(|m| m)} />
-                        {close_file}
-                    </ul></SidebarSectionHeader>
-                    {current_trace}
-                    <SidebarSectionHeader header_text="Support" collapsed_text="Documentation & Bugs"><ul>
-                        <li><a href="#" draggable="false" onclick={show_shortcuts} id="keyboard_shortcuts"><div class="material-icons"><MatIcon>{"help"}</MatIcon></div>{"Keyboard shortcuts"}</a></li>
-                        <li><a href="https://github.com/viperproject/axiom-profiler-2/blob/main/README.md" target="_blank" id="documentation"><div class="material-icons"><MatIcon>{"find_in_page"}</MatIcon></div>{"Documentation"}</a></li>
-                        <li><a href="#" draggable="false" onclick={toggle_settings} id="flags"><div class="material-icons"><MatIcon>{"emoji_flags"}</MatIcon></div>{"Flags"}</a></li>
-                        <li><a href="https://github.com/viperproject/axiom-profiler-2/issues/new" target="_blank" id="report_a_bug"><div class="material-icons"><MatIcon>{"bug_report"}</MatIcon></div>{"Report a bug"}</a></li>
-                    </ul></SidebarSectionHeader>
+                    {sidebar_html}
+                    // {current_trace}
                     <div class="sidebar-footer">
                         <div title="Number of pending operations" class="dbg-info-square"><div>{"OPS"}</div><div>{self.pending_ops}</div></div>
                         <div title="Service Worker: Serving from cache not implemented yet." class="dbg-info-square amber"><div>{"SW"}</div><div>{"NA"}</div></div>
@@ -711,36 +736,18 @@ impl Component for FileDataComponent {
                     </div>
                 </div></div>
             </nav>
-            <Topbar progress={self.progress.clone()} {message} {search} {pick} {select} {pick_nth_ml} {dropdowns} />
+            <Topbar omnibox={self.omnibox.clone()} {message} {search} {pick} {select} {pick_nth_ml} {dropdowns} />
             <div class="alerts"></div>
+            <ContextProvider<OmniboxMessageContext> context={self.omc.clone()}>
             <div class={page_class}>
-                {page}
-                <Overlay visible_changed={flags_visible_changed} set_visible={self.flags_visible.clone()}><Flags /></Overlay>
+                // {page}
+                <Manager {sidebar} {topbar} {omnibox} {initial} />
             </div>
+            </ContextProvider<OmniboxMessageContext>>
 
             // Shortcuts dialog
             <shortcuts::Shortcuts noderef={self.help_dialog.clone()} {onopened} {onclosed}/>
-        </>
-                }
-    }
-
-    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
-        if first_render {
-            // Do this instead of `onclick` when creating `open_trace_file`
-            // above. Otherwise we run into the error here:
-            // https://github.com/leptos-rs/leptos/issues/2104 due to the `.click()`.
-            let input = self.file_select.cast::<HtmlInputElement>().unwrap();
-            let closure: Closure<dyn Fn(MouseEvent)> = Closure::new(move |e: MouseEvent| {
-                e.prevent_default();
-                input.click();
-            });
-            let div = gloo::utils::document()
-                .get_element_by_id("open_trace_file")
-                .unwrap();
-            div.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())
-                .unwrap();
-            closure.forget();
-        }
+        </>}
     }
 }
 

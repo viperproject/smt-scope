@@ -8,7 +8,7 @@ use yew::{
 
 use crate::{
     commands::{Command, CommandId, CommandRef, Commands, CommandsContext, Key, ShortcutKey},
-    infobars::topbar::OmnibarMessage,
+    infobars::{topbar::OmniboxMessage, OmniboxMessageKind},
     utils::lookup::StringLookupCommands,
     MlData,
 };
@@ -19,7 +19,7 @@ pub mod input;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct MlOmniboxProps {
-    pub message: Option<OmnibarMessage>,
+    pub message: Option<OmniboxMessage>,
     pub ml_data: MlData,
     pub pick_nth_ml: Callback<usize>,
 }
@@ -125,7 +125,7 @@ impl Component for MlOmnibox {
             .props()
             .message
             .as_ref()
-            .is_some_and(|m| m.is_error)
+            .is_some_and(|m| matches!(m.kind, OmniboxMessageKind::Error))
             .then_some("error");
 
         let omnibox_disabled = omnibox_info.is_some();

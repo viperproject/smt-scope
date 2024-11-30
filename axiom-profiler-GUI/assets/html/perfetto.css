@@ -559,7 +559,7 @@ table {
 	border-bottom: 1px solid hsl(215, 22%, 71%);
 }
 
-.sidebar input[type="file"] {
+input[type="file"] {
 	display: none;
 }
 

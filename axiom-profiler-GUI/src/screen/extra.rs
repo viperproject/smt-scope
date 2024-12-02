@@ -1,3 +1,5 @@
+use std::{cell::{Cell, RefCell}, rc::Rc};
+
 use material_yew::linear_progress::LinearProgressProps;
 use yew::{Callback, Html, NodeRef};
 
@@ -40,24 +42,43 @@ pub struct SidebarSection {
 }
 
 #[derive(Clone, PartialEq, Default)]
-pub struct SidebarSectionRef(NodeRef);
+pub struct SidebarSectionRef {
+    ref_: NodeRef,
+    collapsed: Rc<Cell<bool>>,
+}
 
 impl SidebarSectionRef {
     fn class_list(&self) -> Option<web_sys::DomTokenList> {
-        self.0.cast::<web_sys::Element>().map(|el| el.class_list())
+        self.ref_.cast::<web_sys::Element>().map(|el| el.class_list())
     }
 
     pub fn expand(&self) -> bool {
+        self.collapsed.set(false);
         self.class_list()
             .is_some_and(|class_list| class_list.add_1("expanded").is_ok())
     }
     pub fn collapse(&self) -> bool {
+        self.collapsed.set(true);
         self.class_list()
             .is_some_and(|class_list| class_list.remove_1("expanded").is_ok())
     }
     pub fn toggle(&self) -> bool {
-        self.class_list()
-            .is_some_and(|class_list| class_list.toggle("expanded").is_ok())
+        self.collapsed.set(!self.collapsed.get());
+        self.set()
+    }
+    pub fn set(&self) -> bool {
+        if self.collapsed.get() {
+            self.collapse()
+        } else {
+            self.expand()
+        }
+    }
+
+    pub fn ref_(&self) -> &NodeRef {
+        &self.ref_
+    }
+    pub fn expanded(&self) -> bool {
+        !self.collapsed.get()
     }
 }
 

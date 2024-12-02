@@ -2,26 +2,20 @@ mod example;
 mod file;
 mod screen;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::Mutex;
+use std::{cell::RefCell, rc::Rc, sync::Mutex};
 
 use gloo::file::{callbacks::FileReader, File, FileList};
 use gloo::net::http::Response;
 use material_yew::{dialog::MatDialog, WeakComponentLink};
-use smt_log_parser::parsers::ParseState;
-use smt_log_parser::Z3Parser;
+use smt_log_parser::{parsers::ParseState, Z3Parser};
 use web_sys::HtmlInputElement;
-use yew::DragEvent;
-use yew::{html, html::Scope, Callback, Html, NodeRef};
+use yew::{html, html::Scope, Callback, DragEvent, Html, NodeRef};
 
 use crate::commands::{Command, CommandRef, CommandsContext, ShortcutKey};
 use crate::configuration::Flags;
 use crate::filters::byte_size_display;
 use crate::infobars::{OmniboxMessage, OmniboxMessageKind};
-use crate::results::svg_result::RenderingState;
-use crate::screen::file::FileProps;
-use crate::screen::Change;
+use crate::screen::{file::FileProps, Change};
 use crate::state::FileInfo;
 use crate::utils::overlay_page::{Overlay, SetVisibleCallback};
 use crate::{CallbackRef, GlobalCallbacksContext, OmniboxContext, PREVENT_DEFAULT_DRAG_OVER};
@@ -406,24 +400,6 @@ impl Screen for Homepage {
                 }
                 LoadingState::DoneParsing(..) => {
                     omnibox.progress.progress = 1.0;
-                    omnibox.progress.closed = false;
-                }
-                // TODO: move this to the file screen
-                LoadingState::Rendering(render_state, timeout, _) => {
-                    match render_state {
-                        RenderingState::ConstructingGraph | RenderingState::ConstructedGraph => {
-                            if *timeout {
-                                omnibox.placeholder = "Analysing partial trace".to_string();
-                            } else {
-                                omnibox.placeholder = "Analysing trace".to_string();
-                            }
-                        }
-                        RenderingState::GraphToDot | RenderingState::RenderingGraph => {
-                            omnibox.placeholder = "Rendering trace".to_string()
-                        }
-                    }
-                    omnibox.progress.progress = 1.0;
-                    omnibox.progress.indeterminate = true;
                     omnibox.progress.closed = false;
                 }
                 LoadingState::FileDisplayed => omnibox.progress.progress = 1.0,

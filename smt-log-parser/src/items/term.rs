@@ -66,7 +66,7 @@ pub struct Quantifier {
 /// Represents an ID string of the form `name!id`.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum QuantKind {
     Lambda(BoxSlice<ProofIdx>),
     NamedQuant(IString),
@@ -78,26 +78,51 @@ pub enum QuantKind {
 }
 
 impl QuantKind {
-    /// Splits an ID string into name and ID number (if unnamed).
-    /// 0 is used for identifiers without a number
-    /// (usually for theory-solving 'quantifiers' such as "basic#", "arith#")    
     pub(crate) fn parse(strings: &mut StringTable, value: &str) -> Self {
-        let mut split = value.split('!');
-        let name = split.next().expect(value);
-        split
-            .next()
-            .and_then(|id| id.parse::<usize>().ok())
-            .map(|id| Self::UnnamedQuant {
+        match QuantKindParse::parse(value) {
+            QuantKindParse::Named(name) => Self::NamedQuant(IString(strings.get_or_intern(name))),
+            QuantKindParse::Unnamed { name, id } => Self::UnnamedQuant {
                 name: IString(strings.get_or_intern(name)),
                 id,
-            })
-            .unwrap_or_else(|| Self::NamedQuant(IString(strings.get_or_intern(value))))
+            },
+        }
     }
+
+    pub fn parse_existing(strings: &StringTable, value: &str) -> Option<Self> {
+        match QuantKindParse::parse(value) {
+            QuantKindParse::Named(name) => Some(Self::NamedQuant(IString(strings.get(name)?))),
+            QuantKindParse::Unnamed { name, id } => Some(Self::UnnamedQuant {
+                name: IString(strings.get(name)?),
+                id,
+            }),
+        }
+    }
+
     pub fn user_name(&self) -> Option<IString> {
         match self {
             Self::NamedQuant(name) => Some(*name),
             _ => None,
         }
+    }
+}
+
+enum QuantKindParse<'a> {
+    Named(&'a str),
+    Unnamed { name: &'a str, id: usize },
+}
+
+impl<'a> QuantKindParse<'a> {
+    /// Splits an ID string into name and ID number (if unnamed).
+    /// 0 is used for identifiers without a number
+    /// (usually for theory-solving 'quantifiers' such as "basic#", "arith#")
+    fn parse(value: &'a str) -> Self {
+        let mut split = value.split('!');
+        let name = split.next().expect(value);
+        split
+            .next()
+            .and_then(|id| id.parse::<usize>().ok())
+            .map(|id| Self::Unnamed { name, id })
+            .unwrap_or(Self::Named(name))
     }
 }
 

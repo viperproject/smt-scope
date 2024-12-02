@@ -10,6 +10,7 @@ use yew::prelude::*;
 
 use crate::commands::{Command, CommandRef, CommandsContext, Key, ShortcutKey};
 use crate::results::svg_result::RenderedGraph;
+use crate::screen::graph::UserSelectionM;
 use crate::state::StateContext;
 use crate::{CallbackRef, GlobalCallbacksContext, PagePosition, PrecisePosition};
 
@@ -33,7 +34,7 @@ pub enum Msg {
 }
 
 pub struct GraphContainer {
-    graph: Option<(Html, u32)>,
+    graph: (Html, u32),
     window: GraphWindow,
 
     mouse_closures: Option<Closure<dyn Fn(MouseEvent)>>,
@@ -137,14 +138,10 @@ impl GraphWindow {
 
 #[derive(Properties, PartialEq)]
 pub struct GraphContainerProps {
-    pub rendered: Option<RenderedGraph>,
-    pub update_selected_nodes: Callback<RawNodeIndex>,
-    pub update_selected_edges: Callback<VisibleEdgeIndex>,
-    pub deselect_all: Callback<()>,
-    pub select_all: Callback<()>,
+    pub rendered: RenderedGraph,
+    pub selection: Callback<UserSelectionM>,
     pub selected_nodes: Vec<RawNodeIndex>,
     pub selected_edges: Vec<VisibleEdgeIndex>,
-    pub weak_link: WeakComponentLink<GraphContainer>,
 }
 
 impl Component for GraphContainer {
@@ -152,17 +149,16 @@ impl Component for GraphContainer {
     type Properties = GraphContainerProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        ctx.props()
-            .weak_link
-            .borrow_mut()
-            .replace(ctx.link().clone());
+        // ctx.props()
+        //     .weak_link
+        //     .borrow_mut()
+        //     .replace(ctx.link().clone());
 
-        let graph = ctx.props().rendered.as_ref().map(|r| {
-            (
-                Html::from_html_unchecked(r.svg_text.clone()),
-                r.graph.generation,
-            )
-        });
+        let rendered = &ctx.props().rendered;
+        let graph = (
+            Html::from_html_unchecked(rendered.svg_text.clone()),
+            rendered.graph.generation,
+        );
 
         // Global callbacks
         let registerer = ctx.link().get_callbacks_registerer().unwrap();
@@ -174,17 +170,19 @@ impl Component for GraphContainer {
 
         // Commands
         let commands = ctx.link().get_commands_registerer().unwrap();
+        let selection = ctx.props().selection.clone();
         let select_all = Command {
             name: "Select all".to_string(),
-            execute: ctx.props().select_all.clone(),
+            execute: Callback::from(move |_| selection.emit(UserSelectionM::SelectAll)),
             keyboard_shortcut: ShortcutKey::cmd('a'),
             disabled: false,
         };
         let select_all = (commands)(select_all);
         let _command_refs = [select_all];
+        let selection = ctx.props().selection.clone();
         let deselect_all = Command {
             name: "Deselect".to_string(),
-            execute: ctx.props().deselect_all.clone(),
+            execute: Callback::from(move |_| selection.emit(UserSelectionM::DeselectAll)),
             keyboard_shortcut: ShortcutKey::empty(Key::Escape),
             disabled: true,
         };
@@ -218,15 +216,12 @@ impl Component for GraphContainer {
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         debug_assert!(ctx.props() != old_props);
         self.zoom_factor_delta = 1.0;
-        if self.graph.as_ref().map(|g| g.1)
-            != ctx.props().rendered.as_ref().map(|r| r.graph.generation)
-        {
-            self.graph = ctx.props().rendered.as_ref().map(|r| {
-                (
-                    Html::from_html_unchecked(r.svg_text.clone()),
-                    r.graph.generation,
-                )
-            });
+        if self.graph.1 != ctx.props().rendered.graph.generation {
+            let rendered = &ctx.props().rendered;
+            self.graph = (
+                Html::from_html_unchecked(rendered.svg_text.clone()),
+                rendered.graph.generation,
+            );
         }
         let old_no_selection =
             old_props.selected_nodes.is_empty() && old_props.selected_edges.is_empty();
@@ -311,7 +306,7 @@ impl Component for GraphContainer {
             Msg::MouseUp(_) => {
                 if let Some((_, _, drag)) = self.drag_start.take() {
                     if !drag {
-                        ctx.props().deselect_all.emit(());
+                        ctx.props().selection.emit(UserSelectionM::DeselectAll);
                     }
                 }
                 false
@@ -477,6 +472,12 @@ impl Component for GraphContainer {
             .unwrap_or(zoom_factor.len() - 1);
         let zoom_factor = zoom_factor[0..zoom_factor.len() - idx].to_string();
         let set_scroll = ctx.link().callback(Msg::SetScrollTo);
+        let selection = ctx.props().selection.clone();
+        let update_selected_nodes =
+            Callback::from(move |node| selection.emit(UserSelectionM::ToggleNode(node)));
+        let selection = ctx.props().selection.clone();
+        let update_selected_edges =
+            Callback::from(move |edge| selection.emit(UserSelectionM::ToggleEdge(edge)));
         html! {
         <div ref={&self.window.scroll_window} style="height: 100%; overflow: auto; overscroll-behavior-x: none;" {onwheel} {onscroll}>
             <div style="position: absolute; bottom: 0; left: 0; z-index: 1;">
@@ -486,8 +487,8 @@ impl Component for GraphContainer {
             <Graph
                 rendered={ctx.props().rendered.clone()}
                 on_rerender={ctx.link().callback(|_| Msg::Resize(Vec::new()))}
-                update_selected_nodes={&ctx.props().update_selected_nodes}
-                update_selected_edges={&ctx.props().update_selected_edges}
+                {update_selected_nodes}
+                {update_selected_edges}
                 zoom_factor={self.zoom_factor}
                 zoom_factor_delta={self.zoom_factor_delta}
                 zoom_with_mouse={self.zoom_with_mouse}

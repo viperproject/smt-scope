@@ -11,9 +11,9 @@ use crate::results::svg_result::RenderedGraph;
 use crate::utils::svg::{SvgHelper, ViewBox};
 use crate::{mouse_position, PrecisePosition};
 
-#[derive(Properties, PartialEq, Default)]
+#[derive(Properties, PartialEq)]
 pub struct GraphProps {
-    pub rendered: Option<RenderedGraph>,
+    pub rendered: RenderedGraph,
     pub on_rerender: Callback<()>,
     pub update_selected_nodes: Callback<RawNodeIndex>,
     pub update_selected_edges: Callback<VisibleEdgeIndex>,
@@ -32,7 +32,7 @@ pub struct GraphProps {
 
 #[function_component]
 pub fn Graph(props: &GraphProps) -> Html {
-    let generation = props.rendered.as_ref().map(|r| r.graph.generation);
+    let generation = props.rendered.graph.generation;
     let div_ref = use_node_ref();
 
     {
@@ -45,10 +45,7 @@ pub fn Graph(props: &GraphProps) -> Html {
         let scroll_window = props.scroll_window.clone();
         let set_scroll = props.set_scroll.clone();
         use_effect_with_deps(
-            move |&(generation, zoom_factor)| {
-                if generation.is_none() {
-                    return;
-                }
+            move |&(_generation, zoom_factor)| {
                 let div = div_ref
                     .cast::<Element>()
                     .expect("div_ref not attached to div element");
@@ -137,10 +134,7 @@ pub fn Graph(props: &GraphProps) -> Html {
         let selected_nodes: FxHashSet<_> = props.selected_nodes.iter().copied().collect();
 
         use_effect_with_deps(
-            move |(generation, selected_nodes)| {
-                if generation.is_none() {
-                    return;
-                }
+            move |(_generation, selected_nodes)| {
                 let div = div_ref
                     .cast::<Element>()
                     .expect("div_ref not attached to div element");
@@ -167,10 +161,7 @@ pub fn Graph(props: &GraphProps) -> Html {
         let selected_edges: FxHashSet<_> = props.selected_edges.iter().copied().collect();
 
         use_effect_with_deps(
-            move |(generation, selected_edges)| {
-                if generation.is_none() {
-                    return;
-                }
+            move |(_generation, selected_edges)| {
                 let div = div_ref
                     .cast::<Element>()
                     .expect("div_ref not attached to div element");
@@ -198,174 +189,159 @@ pub fn Graph(props: &GraphProps) -> Html {
 
         let div_ref = div_ref.clone();
         use_effect_with_deps(
-            move |generation| {
+            move |_generation| {
                 on_rerender.emit(());
-                let (nodes, edges) = if generation.is_some() {
-                    let div = div_ref
-                        .cast::<Element>()
-                        .expect("div_ref not attached to div element");
 
-                    // construct event_listeners that emit node indices (contained in title tags)
-                    let descendant_nodes = div.get_elements_by_class_name("node");
-                    let node_closures: Vec<_> = (0..descendant_nodes.length())
-                        .map(|i| {
-                            // extract node_index from node to construct callback that emits it
-                            let node = descendant_nodes.item(i).unwrap();
-                            // Create a duplicate of the node which is transparent
-                            // to make it more clickable, especially when it gets
-                            // gets selected and the original node becomes larger.
-                            let node_shape = node
-                                .get_elements_by_tag_name("polygon")
-                                .item(0)
-                                .or_else(|| node.get_elements_by_tag_name("ellipse").item(0));
-                            if let Some(node_shape) = node_shape {
-                                if let Some(parent) = node_shape.parent_node() {
-                                    if let Some(duplicate) = node_shape
-                                        .clone_node()
-                                        .ok()
-                                        .and_then(|e| e.dyn_into::<Element>().ok())
-                                    {
-                                        let _ = parent.append_child(&duplicate);
-                                        duplicate.set_attribute("stroke-width", "5").unwrap();
-                                        duplicate.set_attribute("stroke", "transparent").unwrap();
-                                        duplicate.set_attribute("fill", "transparent").unwrap();
-                                    }
+                let div = div_ref
+                    .cast::<Element>()
+                    .expect("div_ref not attached to div element");
+
+                // construct event_listeners that emit node indices (contained in title tags)
+                let descendant_nodes = div.get_elements_by_class_name("node");
+                let node_closures: Vec<_> = (0..descendant_nodes.length())
+                    .map(|i| {
+                        // extract node_index from node to construct callback that emits it
+                        let node = descendant_nodes.item(i).unwrap();
+                        // Create a duplicate of the node which is transparent
+                        // to make it more clickable, especially when it gets
+                        // gets selected and the original node becomes larger.
+                        let node_shape = node
+                            .get_elements_by_tag_name("polygon")
+                            .item(0)
+                            .or_else(|| node.get_elements_by_tag_name("ellipse").item(0));
+                        if let Some(node_shape) = node_shape {
+                            if let Some(parent) = node_shape.parent_node() {
+                                if let Some(duplicate) = node_shape
+                                    .clone_node()
+                                    .ok()
+                                    .and_then(|e| e.dyn_into::<Element>().ok())
+                                {
+                                    let _ = parent.append_child(&duplicate);
+                                    duplicate.set_attribute("stroke-width", "5").unwrap();
+                                    duplicate.set_attribute("stroke", "transparent").unwrap();
+                                    duplicate.set_attribute("fill", "transparent").unwrap();
                                 }
                             }
-                            let idx = node.id().strip_prefix("node_").unwrap().parse::<usize>();
-                            let idx = RawNodeIndex(NodeIndex::new(idx.unwrap()));
-                            // attach event listener to node
-                            let callback = nodes_callback.clone();
-                            let mousedown: Closure<dyn Fn(Event)> =
-                                Closure::new(move |e: Event| {
-                                    e.cancel_bubble();
-                                    e.stop_propagation();
-                                    callback.emit(idx);
-                                });
-                            node.add_event_listener_with_callback(
-                                "mousedown",
-                                mousedown.as_ref().unchecked_ref(),
-                            )
-                            .unwrap();
-                            let callback = nodes_callback.clone();
-                            let mouseover: Closure<dyn Fn(Event)> =
-                                Closure::new(move |e: Event| {
-                                    let Ok(e) = e.dyn_into::<web_sys::MouseEvent>() else {
-                                        return;
-                                    };
-                                    if e.buttons() == 1 && e.shift_key() {
-                                        callback.emit(idx)
-                                    }
-                                });
-                            node.add_event_listener_with_callback(
+                        }
+                        let idx = node.id().strip_prefix("node_").unwrap().parse::<usize>();
+                        let idx = RawNodeIndex(NodeIndex::new(idx.unwrap()));
+                        // attach event listener to node
+                        let callback = nodes_callback.clone();
+                        let mousedown: Closure<dyn Fn(Event)> = Closure::new(move |e: Event| {
+                            e.cancel_bubble();
+                            e.stop_propagation();
+                            callback.emit(idx);
+                        });
+                        node.add_event_listener_with_callback(
+                            "mousedown",
+                            mousedown.as_ref().unchecked_ref(),
+                        )
+                        .unwrap();
+                        let callback = nodes_callback.clone();
+                        let mouseover: Closure<dyn Fn(Event)> = Closure::new(move |e: Event| {
+                            let Ok(e) = e.dyn_into::<web_sys::MouseEvent>() else {
+                                return;
+                            };
+                            if e.buttons() == 1 && e.shift_key() {
+                                callback.emit(idx)
+                            }
+                        });
+                        node.add_event_listener_with_callback(
+                            "mouseover",
+                            mouseover.as_ref().unchecked_ref(),
+                        )
+                        .unwrap();
+                        (mousedown, mouseover)
+                    })
+                    .collect();
+                let direct_edges = div.get_elements_by_class_name("edge");
+                let edge_closures: Vec<_> = (0..direct_edges.length())
+                    .map(|i| {
+                        // extract edge_index from edge to construct callback that emits it
+                        let edge = direct_edges.item(i).unwrap();
+                        // Create a duplicate of the edge which is transparent
+                        // to make it more clickable.
+                        let mut edge_hover_select = edge.clone();
+                        if let Some(edge_path) = edge.get_elements_by_tag_name("path").item(0) {
+                            if let Some(parent) = edge_path.parent_node() {
+                                if let Some(duplicate) = edge_path
+                                    .clone_node()
+                                    .ok()
+                                    .and_then(|e| e.dyn_into::<Element>().ok())
+                                {
+                                    let _ = parent.append_child(&duplicate);
+                                    duplicate.set_attribute("stroke-width", "15").unwrap();
+                                    duplicate.set_attribute("stroke", "transparent").unwrap();
+                                    duplicate.remove_attribute("stroke-dasharray").ok();
+                                    edge_hover_select = duplicate;
+                                }
+                            }
+                        }
+                        let idx = edge.id().strip_prefix("edge_").unwrap().parse::<usize>();
+                        let idx = VisibleEdgeIndex(EdgeIndex::new(idx.unwrap()));
+                        // attach event listener to edge
+                        let callback = edges_callback.clone();
+                        let mousedown: Closure<dyn Fn(Event)> = Closure::new(move |e: Event| {
+                            e.cancel_bubble();
+                            e.stop_propagation();
+                            callback.emit(idx);
+                        });
+                        edge.add_event_listener_with_callback(
+                            "mousedown",
+                            mousedown.as_ref().unchecked_ref(),
+                        )
+                        .unwrap();
+                        let callback = edges_callback.clone();
+                        let mouseover: Closure<dyn Fn(Event)> = Closure::new(move |e: Event| {
+                            let Ok(e) = e.dyn_into::<web_sys::MouseEvent>() else {
+                                return;
+                            };
+                            if e.buttons() == 1 && e.shift_key() {
+                                callback.emit(idx)
+                            }
+                        });
+                        // Attach this event only to the edge and not the whole
+                        // `edge` (including the arrowhead) because then we get
+                        // two mousover events when moving from path to arrowhead.
+                        edge_hover_select
+                            .add_event_listener_with_callback(
                                 "mouseover",
                                 mouseover.as_ref().unchecked_ref(),
                             )
                             .unwrap();
-                            (mousedown, mouseover)
-                        })
-                        .collect();
-                    let direct_edges = div.get_elements_by_class_name("edge");
-                    let edge_closures: Vec<_> = (0..direct_edges.length())
-                        .map(|i| {
-                            // extract edge_index from edge to construct callback that emits it
-                            let edge = direct_edges.item(i).unwrap();
-                            // Create a duplicate of the edge which is transparent
-                            // to make it more clickable.
-                            let mut edge_hover_select = edge.clone();
-                            if let Some(edge_path) = edge.get_elements_by_tag_name("path").item(0) {
-                                if let Some(parent) = edge_path.parent_node() {
-                                    if let Some(duplicate) = edge_path
-                                        .clone_node()
-                                        .ok()
-                                        .and_then(|e| e.dyn_into::<Element>().ok())
-                                    {
-                                        let _ = parent.append_child(&duplicate);
-                                        duplicate.set_attribute("stroke-width", "15").unwrap();
-                                        duplicate.set_attribute("stroke", "transparent").unwrap();
-                                        duplicate.remove_attribute("stroke-dasharray").ok();
-                                        edge_hover_select = duplicate;
-                                    }
-                                }
-                            }
-                            let idx = edge.id().strip_prefix("edge_").unwrap().parse::<usize>();
-                            let idx = VisibleEdgeIndex(EdgeIndex::new(idx.unwrap()));
-                            // attach event listener to edge
-                            let callback = edges_callback.clone();
-                            let mousedown: Closure<dyn Fn(Event)> =
-                                Closure::new(move |e: Event| {
-                                    e.cancel_bubble();
-                                    e.stop_propagation();
-                                    callback.emit(idx);
-                                });
-                            edge.add_event_listener_with_callback(
+                        (mousedown, mouseover, edge_hover_select)
+                    })
+                    .collect();
+                move || {
+                    for (i, (mousedown, mouseover)) in node_closures.iter().enumerate() {
+                        if let Some(node) = descendant_nodes.item(i as u32) {
+                            node.remove_event_listener_with_callback(
                                 "mousedown",
                                 mousedown.as_ref().unchecked_ref(),
                             )
                             .unwrap();
-                            let callback = edges_callback.clone();
-                            let mouseover: Closure<dyn Fn(Event)> =
-                                Closure::new(move |e: Event| {
-                                    let Ok(e) = e.dyn_into::<web_sys::MouseEvent>() else {
-                                        return;
-                                    };
-                                    if e.buttons() == 1 && e.shift_key() {
-                                        callback.emit(idx)
-                                    }
-                                });
-                            // Attach this event only to the edge and not the whole
-                            // `edge` (including the arrowhead) because then we get
-                            // two mousover events when moving from path to arrowhead.
-                            edge_hover_select
-                                .add_event_listener_with_callback(
-                                    "mouseover",
-                                    mouseover.as_ref().unchecked_ref(),
-                                )
-                                .unwrap();
-                            (mousedown, mouseover, edge_hover_select)
-                        })
-                        .collect();
-                    (
-                        Some((descendant_nodes, node_closures)),
-                        Some((direct_edges, edge_closures)),
-                    )
-                } else {
-                    (None, None)
-                };
-                move || {
-                    if let Some((descendant_nodes, node_closures)) = nodes {
-                        for (i, (mousedown, mouseover)) in node_closures.iter().enumerate() {
-                            if let Some(node) = descendant_nodes.item(i as u32) {
-                                node.remove_event_listener_with_callback(
-                                    "mousedown",
-                                    mousedown.as_ref().unchecked_ref(),
-                                )
-                                .unwrap();
-                                node.remove_event_listener_with_callback(
-                                    "mouseover",
-                                    mouseover.as_ref().unchecked_ref(),
-                                )
-                                .unwrap();
-                            }
+                            node.remove_event_listener_with_callback(
+                                "mouseover",
+                                mouseover.as_ref().unchecked_ref(),
+                            )
+                            .unwrap();
                         }
                     }
-                    if let Some((direct_edges, edge_closures)) = edges {
-                        for (i, (mousedown, mouseover, edge_hover_select)) in
-                            edge_closures.iter().enumerate()
-                        {
-                            if let Some(edge) = direct_edges.item(i as u32) {
-                                edge.remove_event_listener_with_callback(
-                                    "mousedown",
-                                    mousedown.as_ref().unchecked_ref(),
+                    for (i, (mousedown, mouseover, edge_hover_select)) in
+                        edge_closures.iter().enumerate()
+                    {
+                        if let Some(edge) = direct_edges.item(i as u32) {
+                            edge.remove_event_listener_with_callback(
+                                "mousedown",
+                                mousedown.as_ref().unchecked_ref(),
+                            )
+                            .unwrap();
+                            edge_hover_select
+                                .remove_event_listener_with_callback(
+                                    "mouseover",
+                                    mouseover.as_ref().unchecked_ref(),
                                 )
                                 .unwrap();
-                                edge_hover_select
-                                    .remove_event_listener_with_callback(
-                                        "mouseover",
-                                        mouseover.as_ref().unchecked_ref(),
-                                    )
-                                    .unwrap();
-                            }
                         }
                     }
                 }
@@ -374,15 +350,11 @@ pub fn Graph(props: &GraphProps) -> Html {
         );
     }
 
-    generation
-        .map(|_| {
-            html! {
-                    <div class="no-select" ref={div_ref}>
-                        {props.children.clone()}
-                    </div>
-            }
-        })
-        .unwrap_or_default()
+    html! {
+        <div class="no-select" ref={div_ref}>
+            {props.children.clone()}
+        </div>
+    }
 }
 
 #[derive(Properties)]

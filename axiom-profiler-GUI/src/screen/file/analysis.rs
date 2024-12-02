@@ -28,3 +28,9 @@ impl PartialEq for RcAnalysis {
 pub struct AnalysisData {
     pub graph: InstGraph,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AnalysisState {
+    ConstructingGraph,
+    Failed(String),
+}

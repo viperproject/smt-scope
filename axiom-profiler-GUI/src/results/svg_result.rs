@@ -2,7 +2,7 @@ use crate::{
     configuration::ConfigurationContext,
     filters,
     results::{
-        filters::FilterOutput,
+        filters::{FilterOutput, FilterOutputKind},
         graph_info::{GraphInfo, MatchingLoopGraphData, Msg as GraphInfoMsg},
         graphviz::{DotEdgeProperties, DotNodeProperties},
     },
@@ -28,7 +28,7 @@ use smt_log_parser::{
     display_with::DisplayCtxt,
     NonMaxU32,
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, cmp::Ordering, rc::Rc};
 use viz_js::VizInstance;
 use web_sys::window;
 use yew::prelude::*;
@@ -65,10 +65,47 @@ pub enum Msg {
     RenderMLGraph(usize, MatchingLoop),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct GraphDimensions {
     pub node_count: usize,
     pub edge_count: usize,
+}
+
+impl GraphDimensions {
+    pub fn default_permissions() -> Self {
+        Self {
+            node_count: NODE_LIMIT,
+            edge_count: EDGE_LIMIT,
+        }
+    }
+
+    pub fn of_graph(visible: &VisibleInstGraph) -> Self {
+        Self {
+            node_count: visible.graph.node_count(),
+            edge_count: visible.graph.edge_count(),
+        }
+    }
+
+    pub fn max(self, other: Self) -> Self {
+        Self {
+            node_count: self.node_count.max(other.node_count),
+            edge_count: self.edge_count.max(other.edge_count),
+        }
+    }
+}
+
+impl PartialOrd for GraphDimensions {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (
+            self.node_count.cmp(&other.node_count),
+            self.edge_count.cmp(&other.edge_count),
+        ) {
+            (Ordering::Equal, ord) | (ord, Ordering::Equal) => Some(ord),
+            (Ordering::Less, Ordering::Less) => Some(Ordering::Less),
+            (Ordering::Greater, Ordering::Greater) => Some(Ordering::Greater),
+            (Ordering::Less, Ordering::Greater) | (Ordering::Greater, Ordering::Less) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -207,16 +244,8 @@ impl Component for SVGResult {
             Msg::WorkerOutput(_out) => false,
             Msg::ApplyFilter(filter) => {
                 log::debug!("Applying filter {:?}", filter);
-                let config = |parser| {
-                    let cfg = ctx.link().get_configuration().unwrap();
-                    DisplayCtxt {
-                        parser,
-                        term_display: &data.state.term_display,
-                        config: cfg.config.display,
-                    }
-                };
-                match filter.apply(inst_graph, &parser.borrow(), config) {
-                    FilterOutput::LongestPath(path) => {
+                match filter.apply(inst_graph, &parser.borrow()).kind {
+                    FilterOutputKind::SelectNodes(path) => {
                         ctx.props().selected_nodes.emit(path);
                         // self.insts_info_link
                         //     .borrow()
@@ -225,20 +254,20 @@ impl Component for SVGResult {
                         //     .send_message(GraphInfoMsg::SelectNodes(path));
                         false
                     }
-                    FilterOutput::MatchingLoopGeneralizedTerms(gen_terms) => {
-                        ctx.props()
-                            .insts_info_link
-                            .borrow()
-                            .as_ref()
-                            .unwrap()
-                            .send_message(GraphInfoMsg::ShowGeneralizedTerms(gen_terms));
-                        false
-                    }
-                    FilterOutput::MatchingLoopGraph(ml_idx, graph) => {
+                    // FilterOutput::MatchingLoopGeneralizedTerms(gen_terms) => {
+                    //     ctx.props()
+                    //         .insts_info_link
+                    //         .borrow()
+                    //         .as_ref()
+                    //         .unwrap()
+                    //         .send_message(GraphInfoMsg::ShowGeneralizedTerms(gen_terms));
+                    //     false
+                    // }
+                    FilterOutputKind::MatchingLoopGraph(ml_idx, graph) => {
                         ctx.link().send_message(Msg::RenderMLGraph(ml_idx, graph));
                         false
                     }
-                    FilterOutput::None => false,
+                    FilterOutputKind::Other => false,
                 }
             }
             Msg::ResetGraph => {

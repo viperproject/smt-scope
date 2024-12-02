@@ -15,7 +15,6 @@ use yew::{html::Scope, Callback, DragEvent};
 use crate::{
     global_callbacks::GlobalCallbacks,
     infobars::{OmniboxMessage, OmniboxMessageKind},
-    results::svg_result::RenderingState,
     screen::{homepage::HomepageM, Manager},
     state::FileInfo,
     utils::{colouring::QuantIdxToColourMap, lookup::StringLookupZ3},
@@ -66,9 +65,8 @@ pub enum LoadingState {
     ReadingToString,
     StartParsing,
     Parsing(ParseProgress, Callback<()>),
-    // Stopped early, cancelled?
+    /// Stopped early, cancelled?
     DoneParsing(bool, bool),
-    Rendering(RenderingState, bool, bool),
     FileDisplayed,
 }
 
@@ -139,6 +137,9 @@ impl PartialEq for OpenedFileInfo {
 }
 
 impl Homepage {
+    const BROWSER_MEM_LIMIT: usize = 2 * 1024 * 1024 * 1024;
+    const MAX_PARSE_BYTES: usize = Self::BROWSER_MEM_LIMIT / 2;
+
     pub(super) fn file_drag(
         registerer: &GlobalCallbacks,
         link: &Scope<Manager>,
@@ -249,15 +250,7 @@ impl Homepage {
                 link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
                 let parser = Z3Parser::from_async(stream.buffer());
                 wasm_bindgen_futures::spawn_local(async move {
-                    Self::parse_async(
-                        parser,
-                        stop_loading,
-                        size,
-                        link,
-                        1024 * 1024 * 1024,
-                        "Stopped parsing at 1GB",
-                    )
-                    .await
+                    Self::parse_async(parser, stop_loading, size, link, None).await
                 });
             }
             None | Some(Err(..)) => wasm_bindgen_futures::spawn_local(async move {
@@ -268,18 +261,12 @@ impl Homepage {
                         return;
                     }
                 };
+                let memory_use = text_data.len() + 64 * 1024 * 1024;
+                let remaining_memory = Self::BROWSER_MEM_LIMIT.saturating_sub(memory_use);
 
                 link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
                 let parser = Z3Parser::from_str(&text_data);
-                Self::parse_stream(
-                    parser,
-                    stop_loading,
-                    size,
-                    link,
-                    512 * 1024 * 1024,
-                    "Stopped parsing at 500MB, use Chrome or Firefox to increase this limit",
-                )
-                .await
+                Self::parse_stream(parser, stop_loading, size, link, Some(remaining_memory)).await
             }),
         }
 
@@ -306,15 +293,7 @@ impl Homepage {
                 link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
                 let parser = Z3Parser::from_async(stream.buffer());
                 wasm_bindgen_futures::spawn_local(async move {
-                    Self::parse_async(
-                        parser,
-                        stop_loading,
-                        file_info.size,
-                        link,
-                        1024 * 1024 * 1024,
-                        "Stopped parsing at 1GB",
-                    )
-                    .await
+                    Self::parse_async(parser, stop_loading, file_info.size, link, None).await
                 });
             }
             Err((_err, _stream)) => {
@@ -328,11 +307,21 @@ impl Homepage {
                             return;
                         }
                     };
+                    let remaining_memory =
+                        Self::BROWSER_MEM_LIMIT - text_data.len() - 64 * 1024 * 1024;
+
                     log::info!("Parsing \"{}\"", file_info.name);
                     link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
                     wasm_bindgen_futures::spawn_local(async move {
                         let parser = Z3Parser::from_str(&text_data);
-                        Self::parse_stream(parser, stop_loading, file_info.size, link, 512 * 1024 * 1024, "Stopped parsing at 500MB, use Chrome or Firefox to increase this limit").await
+                        Self::parse_stream(
+                            parser,
+                            stop_loading,
+                            file_info.size,
+                            link,
+                            Some(remaining_memory),
+                        )
+                        .await
                     });
                 });
                 self.reader = Some(reader);
@@ -342,18 +331,24 @@ impl Homepage {
     }
 
     #[duplicate::duplicate_item(
-        parse          EitherParser   add_await(code);
-        [parse_stream] [StreamParser] [code];
-        [parse_async]  [AsyncParser]  [code.await];
+        parse          EitherParser   IS_STREAM add_await(code);
+        [parse_stream] [StreamParser] [true]    [code];
+        [parse_async]  [AsyncParser]  [false]   [code.await];
     )]
     async fn parse(
         mut parser: EitherParser<'_, Z3Parser>,
         stop_loading: Rc<RefCell<bool>>,
         size: Option<u64>,
         link: Scope<Manager>,
-        use_mem_limit: usize,
-        mem_limit_msg: &str,
+        use_mem_limit: Option<usize>,
     ) {
+        let limited_by_async = use_mem_limit.is_some_and(|l| l < Self::MAX_PARSE_BYTES);
+        let use_mem_limit = if limited_by_async {
+            use_mem_limit.unwrap()
+        } else {
+            Self::MAX_PARSE_BYTES
+        };
+
         let finished = loop {
             let mut lines_to_read = 100_000;
             let finished = add_await([parser.process_until(|_, _| {
@@ -382,11 +377,20 @@ impl Homepage {
         let stop_loading = *stop_loading.borrow();
         match finished {
             ParseState::Paused(..) if !stop_loading => {
+                let addendum = if limited_by_async {
+                    ", use Chrome or Firefox to increase this limit"
+                } else {
+                    " due to browser memory limit"
+                };
                 let message = OmniboxMessage {
-                    message: mem_limit_msg.to_string(),
+                    message: format!(
+                        "Stopped parsing at {}MB{addendum}",
+                        use_mem_limit / 1024 / 1024,
+                    ),
                     kind: OmniboxMessageKind::Warning,
                 };
-                link.omnibox_message(message, 8000);
+                let message_time = if limited_by_async { 6000 } else { 3000 };
+                link.omnibox_message(message, message_time);
             }
             ParseState::Error(err) => {
                 link.send_message(HomepageM::FailedOpening(err.to_string()));

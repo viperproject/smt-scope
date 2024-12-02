@@ -352,8 +352,8 @@ impl Component for Omnibox {
                 .as_ref()
                 .map(|m| match m.kind {
                     OmniboxMessageKind::Info => "info",
-                    OmniboxMessageKind::Warning => "warning_amber",
-                    OmniboxMessageKind::Error => "error_outline",
+                    OmniboxMessageKind::Warning => "warning",
+                    OmniboxMessageKind::Error => "error",
                 })
                 .unwrap_or(props.omnibox.icon)
         };

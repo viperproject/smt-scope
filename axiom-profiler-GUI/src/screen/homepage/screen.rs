@@ -163,7 +163,7 @@ pub fn HomepageScreen() -> Html {
     });
     let set_hover = Callback::from(move |_| fieldset_hover_state.set(true));
     html! {
-        <><div class="home-page-center">
+        <div class="home-page"><div class="home-page-center">
             <div class="home-page-title">
                 <img src="html/logo_small.png" class="logo" />{"Axiom Profiler"}</div>
             <HomepageHints />
@@ -179,7 +179,7 @@ pub fn HomepageScreen() -> Html {
                 </fieldset>
             </div>
         // Can add a footer here
-        </div><a href="#" target="_blank" class="footer">{""}</a></>
+        </div><a href="#" target="_blank" class="footer">{""}</a></div>
     }
 }
 

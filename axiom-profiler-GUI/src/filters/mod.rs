@@ -390,22 +390,22 @@ impl Component for FiltersState {
         });
         html! {
         <>
-            <SidebarSectionHeader header_text="Current Trace" collapsed_text="Actions on the current trace"><ul>
-                <li><a draggable="false" class="trace-file-name">{details}</a></li>
-                {ml_viewer_mode}
-            </ul></SidebarSectionHeader>
-            <SidebarSectionHeader header_text={"Graph Operations"} collapsed_text={"Operations applied to the graph"}><ul>
-                {graph_details}
-                {dragging}
-                <DraggableList hashes={elem_hashes} drag={drag} will_delete={will_delete} delete_node={self.delete_node.clone()} selected={self.selected_filter} editing={self.edit_filter}>
-                    {for elements}
-                </DraggableList>
-            </ul></SidebarSectionHeader>
-            <SidebarSectionHeader header_text={"Global Operations"} collapsed_text={"Enable/Disable nodes by category"} section={self.global_section.clone()}><ul>
-            <ToggleList {toggle} {selected}>
-                {for disablers}
-            </ToggleList>
-            </ul></SidebarSectionHeader>
+            // <SidebarSectionHeader header_text="Current Trace" collapsed_text="Actions on the current trace"><ul>
+            //     <li><a draggable="false" class="trace-file-name">{details}</a></li>
+            //     {ml_viewer_mode}
+            // </ul></SidebarSectionHeader>
+            // <SidebarSectionHeader header_text={"Graph Operations"} collapsed_text={"Operations applied to the graph"}><ul>
+            //     {graph_details}
+            //     {dragging}
+            //     <DraggableList hashes={elem_hashes} drag={drag} will_delete={will_delete} delete_node={self.delete_node.clone()} selected={self.selected_filter} editing={self.edit_filter}>
+            //         {for elements}
+            //     </DraggableList>
+            // </ul></SidebarSectionHeader>
+            // <SidebarSectionHeader header_text={"Global Operations"} collapsed_text={"Enable/Disable nodes by category"} section={self.global_section.clone()}><ul>
+            // <ToggleList {toggle} {selected}>
+            //     {for disablers}
+            // </ToggleList>
+            // </ul></SidebarSectionHeader>
         </>
         }
     }

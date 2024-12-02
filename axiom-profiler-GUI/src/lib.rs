@@ -282,10 +282,7 @@ impl Component for FileDataComponent {
         let drag_over_ref = (registerer.register_drag_over)(Callback::from(|event: DragEvent| {
             *mouse_position().write().unwrap() = PagePosition::from(&event);
         }));
-        let _callback_refs = [
-            mouse_move_ref,
-            drag_over_ref,
-        ];
+        let _callback_refs = [mouse_move_ref, drag_over_ref];
 
         // Commands
         let commands = ctx.link().get_commands_registerer().unwrap();
@@ -682,11 +679,6 @@ impl Component for FileDataComponent {
         });
         let message = self.message.as_ref().map(|(_, message)| message).cloned();
         let header_class = if is_canary { "canary" } else { "stable" };
-        let page_class = if at_homepage {
-            "page home-page"
-        } else {
-            "page"
-        };
 
         let sidebar_html = (*self.sidebar).clone();
         let sidebar_html = sidebar_html.into_iter().map(|s| {
@@ -698,21 +690,21 @@ impl Component for FileDataComponent {
                     let (href, onmousedown) = match simple_button.click {
                         extra::Action::Href(href) => (href, None),
                         extra::Action::MouseDown(callback) => {
-                            ("#".to_string(), Some(Callback::from(move |ev: MouseEvent| {
-                                ev.prevent_default();
-                                callback.emit(());
-                            })))
+                            ("#".to_string(), Some(Callback::from(move |_| callback.emit(()))))
                         }
                     };
                     let id = simple_button.text.to_lowercase().replace(" ", "_");
+                    let onclick = onmousedown.is_some().then(|| Callback::from(move |ev: MouseEvent| {
+                        ev.prevent_default();
+                    }));
                     Some(html! {
-                        <li><a {id} {href} draggable="false" {onmousedown}><div class="material-icons"><MatIcon>{simple_button.icon}</MatIcon></div>{simple_button.text}</a></li>
+                        <li><a {id} {href} draggable="false" {onmousedown} {onclick}><div class="material-icons"><MatIcon>{simple_button.icon}</MatIcon></div>{simple_button.text}</a></li>
                     })
                 }
                 extra::ElementKind::Custom(data) => Some(data),
             }).collect::<Html>();
             html! {
-                <SidebarSectionHeader header_text={s.header_text} collapsed_text={s.collapsed_text}><ul>
+                <SidebarSectionHeader section={s.ref_.clone()} header_text={s.header_text} collapsed_text={s.collapsed_text}><ul>
                     {elements}
                 </ul></SidebarSectionHeader>
             }
@@ -739,7 +731,7 @@ impl Component for FileDataComponent {
             <Topbar omnibox={self.omnibox.clone()} {message} {search} {pick} {select} {pick_nth_ml} {dropdowns} />
             <div class="alerts"></div>
             <ContextProvider<OmniboxMessageContext> context={self.omc.clone()}>
-            <div class={page_class}>
+            <div class="page">
                 // {page}
                 <Manager {sidebar} {topbar} {omnibox} {initial} />
             </div>

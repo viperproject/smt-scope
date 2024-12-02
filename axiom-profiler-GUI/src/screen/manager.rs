@@ -21,7 +21,6 @@ pub struct ScreenManager {
     sidebar: Rc<Sidebar>,
     topbar: Rc<Topbar>,
     omnibox: Rc<Omnibox>,
-    initial: Change,
     screen: ScreenKind,
 }
 
@@ -29,8 +28,7 @@ impl Component for Manager {
     type Message = ManagerM;
     type Properties = ManagerProps;
     fn create(ctx: &Context<Self>) -> Self {
-        let initial = ctx.props().initial.clone();
-        let screen = initial.clone().create(ctx.link());
+        let screen = ctx.props().initial.clone().create(ctx.link());
         let sidebar = Rc::new(screen.view_sidebar(ctx.link()));
         ctx.props().sidebar.emit(Rc::clone(&sidebar));
         let topbar = Rc::new(screen.view_topbar(ctx.link()));
@@ -41,17 +39,19 @@ impl Component for Manager {
             sidebar,
             topbar,
             omnibox,
-            initial,
             screen,
         })
     }
 
-    fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        if self.0.initial == old_props.initial {
-            return false;
-        }
-        self.0.initial = old_props.initial.clone();
-        self.0.screen.changed(ctx.link(), &old_props.initial)
+    fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
+        // Do not use old props as they may have been rejected are aren't up to
+        // date, use `self.0.screen.as_change()` instead.
+
+        // let old_props = self.0.screen.as_change();
+        self.0.screen.changed(ctx.link(), &ctx.props().initial)
+        // if changed {
+        //     log::info!("Manager changed {:?} -> {:?}", old_props.name(), ctx.props().initial.name());
+        // }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -93,5 +93,8 @@ impl Component for Manager {
 
     fn destroy(&mut self, ctx: &Context<Self>) {
         self.0.screen.destroy(ctx.link());
+        ctx.props().sidebar.emit(Default::default());
+        ctx.props().topbar.emit(Default::default());
+        ctx.props().omnibox.emit(Default::default());
     }
 }

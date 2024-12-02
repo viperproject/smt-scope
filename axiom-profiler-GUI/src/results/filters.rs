@@ -9,7 +9,7 @@ use smt_log_parser::{
         InstGraph, RawNodeIndex,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::QuantIdx,
+    items::{QuantIdx, QuantKind},
     Z3Parser,
 };
 
@@ -46,13 +46,9 @@ pub enum Filter {
 }
 
 impl Filter {
-    pub fn apply<'a>(
-        self,
-        graph: &mut InstGraph,
-        parser: &'a Z3Parser,
-        config: impl FnOnce(&'a Z3Parser) -> DisplayCtxt<'a>,
-    ) -> FilterOutput {
-        match self {
+    pub fn apply<'a>(&self, graph: &mut InstGraph, parser: &'a Z3Parser) -> FilterOutput {
+        let mut kind = FilterOutputKind::Other;
+        let modified = match *self {
             Filter::MaxNodeIdx(max) => graph
                 .raw
                 .set_visibility_when(true, |idx: RawNodeIndex, _: &Node| idx.0.index() >= max),
@@ -90,7 +86,9 @@ impl Filter {
             Filter::MaxBranching(n) => graph.keep_first_n_children(n),
             Filter::ShowNeighbours(nidx, direction) => {
                 let nodes: Vec<_> = graph.raw.neighbors_directed(nidx, direction).collect();
-                graph.raw.set_visibility_many(false, nodes.into_iter())
+                let modified = graph.raw.set_visibility_many(false, nodes.iter().copied());
+                kind = FilterOutputKind::SelectNodes(nodes);
+                modified
             }
             Filter::VisitSubTreeWithRoot(nidx, retain) => {
                 let nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nidx.0)
@@ -112,21 +110,25 @@ impl Filter {
                     node.fwd_depth.min as usize > depth
                 }),
             Filter::ShowLongestPath(nidx) => {
-                return FilterOutput::LongestPath(graph.raw.show_longest_path_through(nidx))
+                let (modified, nodes) = graph.raw.show_longest_path_through(nidx);
+                kind = FilterOutputKind::SelectNodes(nodes);
+                modified
             }
-            Filter::ShowNamedQuantifier(name) => {
-                let ctxt = config(parser);
-                graph
-                    .raw
-                    .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
-                        node.kind().inst().is_some_and(|i| {
-                            parser[parser[i].match_]
-                                .kind
-                                .quant_idx()
-                                .map(|q| parser[q].kind.with(&ctxt).to_string())
-                                .is_some_and(|s| s == name)
+            Filter::ShowNamedQuantifier(ref name) => {
+                if let Some(name) = QuantKind::parse_existing(&parser.strings, &name) {
+                    graph
+                        .raw
+                        .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
+                            node.kind().inst().is_some_and(|i| {
+                                parser[parser[i].match_]
+                                    .kind
+                                    .quant_idx()
+                                    .is_some_and(|q| parser[q].kind == name)
+                            })
                         })
-                    })
+                } else {
+                    false
+                }
             }
             // TODO: implement
             Filter::SelectNthMatchingLoop(n) => {
@@ -178,7 +180,8 @@ impl Filter {
                     .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
                         node.kind().inst().is_some() && !node.part_of_ml.contains(&n)
                     });
-                return FilterOutput::MatchingLoopGraph(n, ml_graph);
+                kind = FilterOutputKind::MatchingLoopGraph(n, ml_graph);
+                true
             }
             Filter::ShowMatchingLoopSubgraph => {
                 // graph.raw.reset_visibility_to(true);
@@ -200,8 +203,8 @@ impl Filter {
                 //     }
                 // }
             }
-        }
-        FilterOutput::None
+        };
+        FilterOutput { modified, kind }
     }
     pub fn get_hash(&self) -> u64 {
         use std::collections::hash_map::DefaultHasher;
@@ -212,11 +215,17 @@ impl Filter {
     }
 }
 
-pub enum FilterOutput {
-    LongestPath(Vec<RawNodeIndex>),
-    MatchingLoopGeneralizedTerms(Vec<String>),
+#[derive(Debug)]
+pub struct FilterOutput {
+    pub modified: bool,
+    pub kind: FilterOutputKind,
+}
+
+#[derive(Debug)]
+pub enum FilterOutputKind {
+    SelectNodes(Vec<RawNodeIndex>),
     MatchingLoopGraph(usize, MatchingLoop),
-    None,
+    Other,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

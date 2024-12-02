@@ -14,7 +14,11 @@ use yew::{
     function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties,
 };
 
-use crate::{configuration::ConfigurationProvider, state::StateProvider};
+use crate::{
+    configuration::ConfigurationProvider,
+    screen::{file::RcAnalysis, homepage::RcParser},
+    state::StateProvider,
+};
 
 use super::{
     graphviz::{DotEdgeProperties, DotNodeProperties},
@@ -170,6 +174,8 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
 
 #[derive(Properties, PartialEq)]
 pub struct SelectedNodesInfoProps {
+    pub parser: RcParser,
+    pub analysis: RcAnalysis,
     pub selected_nodes: Vec<(RawNodeIndex, bool)>,
     pub on_click: Callback<RawNodeIndex>,
 }
@@ -177,6 +183,8 @@ pub struct SelectedNodesInfoProps {
 #[function_component]
 pub fn SelectedNodesInfo(
     SelectedNodesInfoProps {
+        parser,
+        analysis,
         selected_nodes,
         on_click,
     }: &SelectedNodesInfoProps,
@@ -187,12 +195,12 @@ pub fn SelectedNodesInfo(
     if selected_nodes.is_empty() {
         return html! {};
     }
-    let parser = data.state.parser.as_ref().unwrap();
-    let graph = parser.graph.as_ref().unwrap();
-    let parser = &*parser.parser;
-    let graph = graph.borrow();
+    let parser = parser.parser.borrow();
+    let parser = &*parser;
+    let graph = analysis.borrow();
+    let graph = &graph.graph;
     let ctxt = &DisplayCtxt {
-        parser: &parser.borrow(),
+        parser,
         term_display: &data.state.term_display,
         config: cfg.config.display,
     };
@@ -349,14 +357,18 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
 
 #[derive(Properties, PartialEq)]
 pub struct SelectedEdgesInfoProps {
+    pub parser: RcParser,
+    pub analysis: RcAnalysis,
     pub selected_edges: Vec<(VisibleEdgeIndex, bool)>,
-    pub rendered: Option<RenderedGraph>,
+    pub rendered: RenderedGraph,
     pub on_click: Callback<VisibleEdgeIndex>,
 }
 
 #[function_component]
 pub fn SelectedEdgesInfo(
     SelectedEdgesInfoProps {
+        parser,
+        analysis,
         selected_edges,
         rendered,
         on_click,
@@ -368,15 +380,12 @@ pub fn SelectedEdgesInfo(
     if selected_edges.is_empty() {
         return html! {};
     }
-    let Some(rendered) = rendered else {
-        return html! {};
-    };
-    let parser = data.state.parser.as_ref().unwrap();
-    let graph = parser.graph.as_ref().unwrap();
-    let parser = &*parser.parser;
-    let graph = graph.borrow();
+    let parser = parser.parser.borrow();
+    let parser = &*parser;
+    let graph = analysis.borrow();
+    let graph = &graph.graph;
     let ctxt = &DisplayCtxt {
-        parser: &parser.borrow(),
+        parser,
         term_display: &data.state.term_display,
         config: cfg.config.display,
     };

@@ -70,7 +70,7 @@ pub enum GraphM {
     RenderCommand {
         cmd: RenderCommand,
         filter_only: bool,
-        from_undo: bool
+        from_undo: bool,
     },
     UndoOperation(bool),
     UserPermission(WarningChoice),
@@ -101,7 +101,11 @@ impl Screen for Graph {
         Self {
             state: Ok(GraphState::GraphToDot),
             waiting: None,
-            filter: FiltersState::new(props.default_filters.clone(), Self::default_permissions(), link),
+            filter: FiltersState::new(
+                props.default_filters.clone(),
+                Self::default_permissions(),
+                link,
+            ),
             selected_nodes: Vec::new(),
             selected_edges: Vec::new(),
             graph_warning: WeakComponentLink::default(),
@@ -117,7 +121,11 @@ impl Screen for Graph {
         if props.parser != old_props.parser || props.analysis != old_props.analysis {
             *self = Self::create(link, props);
         } else if props.default_filters != old_props.default_filters {
-            self.filter = FiltersState::new(props.default_filters.clone(), Self::default_permissions(), link);
+            self.filter = FiltersState::new(
+                props.default_filters.clone(),
+                Self::default_permissions(),
+                link,
+            );
         }
         true
     }
@@ -129,7 +137,11 @@ impl Screen for Graph {
         msg: Self::Message,
     ) -> bool {
         match msg {
-            GraphM::RenderCommand { cmd, filter_only, from_undo } => {
+            GraphM::RenderCommand {
+                cmd,
+                filter_only,
+                from_undo,
+            } => {
                 let parser = props.parser.parser.borrow();
                 let mut analysis = props.analysis.borrow_mut();
 
@@ -250,8 +262,14 @@ impl Screen for Graph {
     }
 
     fn view_topbar(&self, link: &Scope<Manager>, props: &Self::Properties) -> Topbar {
-        // TODO
-        vec![]
+        let parser = props.parser.parser.borrow();
+        let graph = props.analysis.borrow();
+        FiltersState::topbar(
+            &*parser,
+            &graph.graph,
+            &link.callback(|f| GraphM::Filter(FilterM::AddFilter(f))),
+            &[],
+        )
     }
 
     fn view_omnibox(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Omnibox {

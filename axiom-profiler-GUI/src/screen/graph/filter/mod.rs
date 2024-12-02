@@ -1,9 +1,14 @@
+mod add_filter;
 mod chain;
 mod manage_filter;
 
-use std::num::NonZeroUsize;
+use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
 
 use material_yew::icon::MatIcon;
+use smt_log_parser::{
+    analysis::{InstGraph, RawNodeIndex},
+    Z3Parser,
+};
 use yew::{html, html::Scope, Callback, Context, NodeRef};
 
 use crate::{
@@ -13,10 +18,12 @@ use crate::{
         svg_result::GraphDimensions,
     },
     screen::{
-        extra::{ElementKind, SidebarSection, SidebarSectionRef},
+        extra::{ElementKind, SidebarSection, SidebarSectionRef, Topbar, TopbarMenu},
         Manager,
     },
 };
+
+use self::add_filter::AddFilter;
 
 use super::GraphM;
 
@@ -25,21 +32,18 @@ pub use manage_filter::*;
 
 pub enum FilterM {
     Drag(Option<DragState>),
-    WillDelete(bool),
     SelectFilter(usize),
     Delete(usize),
     Edit(usize),
     EndEdit(usize, Filter),
+    AddFilter(Filter),
 }
 
 pub struct FiltersState {
     pub chain: FilterChain,
     pub no_effects: Vec<usize>,
 
-    delete_node: NodeRef,
-    global_section: NodeRef,
     dragging: bool,
-    will_delete: bool,
     selected_filter: Option<usize>,
     edit_filter: Option<usize>,
 }
@@ -47,30 +51,46 @@ pub struct FiltersState {
 impl FiltersState {
     pub fn new(initial: Vec<Filter>, permissions: GraphDimensions, link: &Scope<Manager>) -> Self {
         let chain = FilterChain::new(initial, permissions, link);
-        let delete_node = NodeRef::default();
-        let global_section = NodeRef::default();
         FiltersState {
             chain,
             no_effects: Vec::new(),
-            delete_node,
-            global_section,
             dragging: false,
-            will_delete: false,
             selected_filter: None,
             edit_filter: None,
         }
     }
 
+    fn filter_chain(&self) -> impl Iterator<Item = (usize, bool, &Filter)> + '_ {
+        let mut no_effect_idx = 0;
+        self.chain
+            .new_filter_chain
+            .iter()
+            .enumerate()
+            .map(move |(idx, filter)| {
+                let no_effect = self
+                    .no_effects
+                    .get(no_effect_idx)
+                    .is_some_and(|i| *i == idx);
+                if no_effect {
+                    no_effect_idx += 1;
+                }
+                (idx, no_effect, filter)
+            })
+    }
+
+    fn move_element<T>(arr: &mut [T], from: usize, to: usize) {
+        use std::cmp::Ordering::*;
+        match from.cmp(&to) {
+            Equal => (),
+            Less => arr[from..=to].rotate_left(1),
+            Greater => arr[to..=from].rotate_right(1),
+        }
+    }
+
     pub fn update(&mut self, link: &Scope<Manager>, msg: FilterM) -> bool {
         match msg {
-            FilterM::WillDelete(will_delete) => {
-                let changed = self.will_delete != will_delete;
-                self.will_delete = will_delete;
-                changed
-            }
             FilterM::Drag(drag) => {
                 self.dragging = drag.is_none();
-                self.will_delete = false;
                 let Some(drag) = drag else {
                     // Drag start
                     return true;
@@ -78,7 +98,7 @@ impl FiltersState {
                 if drag.delete {
                     self.chain.new_filter_chain.remove(drag.start_idx);
                 } else {
-                    self.chain.new_filter_chain.swap(drag.start_idx, drag.idx);
+                    Self::move_element(&mut self.chain.new_filter_chain, drag.start_idx, drag.idx);
                 }
                 self.chain.send_updates(link);
                 true
@@ -126,6 +146,30 @@ impl FiltersState {
                 self.chain.new_filter_chain[idx] = filter;
                 self.chain.send_updates(link) || modified
             }
+            FilterM::AddFilter(filter) => {
+                // TODO:
+                // if let Filter::SelectNthMatchingLoop(n) = &filter {
+                //     let state = ctx.link().get_state().unwrap();
+                //     let graph = &state.state.parser.as_ref().unwrap().graph;
+                //     // This relies on the fact that the graph is updated before the `AddFilter` is
+                //     if !graph.as_ref().is_some_and(|g| {
+                //         (**g)
+                //             .borrow()
+                //             .found_matching_loops()
+                //             .is_some_and(|(sure, maybe)| sure + maybe > *n)
+                //     }) {
+                //         return false;
+                //     }
+                // }
+
+                let edit = filter.is_editable();
+                self.edit_filter = edit.then_some(self.chain.new_filter_chain.len());
+                self.chain.new_filter_chain.push(filter);
+                if !edit {
+                    self.chain.send_updates(link);
+                }
+                true
+            }
         }
     }
 
@@ -137,43 +181,31 @@ impl FiltersState {
             <li class={class}><a draggable="false" class="trace-file-name">{details}</a></li>
         });
 
-        let class = match (self.dragging, self.will_delete) {
-            (true, true) => "delete will-delete",
-            (true, false) => "delete",
-            _ => "delete display-none",
-        };
-        let dragging = ElementKind::Custom(html! {
-            <li ref={&self.delete_node} class={class}><a draggable="false">
-                <div class="material-icons"><MatIcon>{"delete"}</MatIcon></div>
-                {"Delete"}
-            </a></li>
-        });
-
         let drag = link.callback(|ds| GraphM::Filter(FilterM::Drag(ds)));
-        let will_delete =
-            link.callback(|will_delete| GraphM::Filter(FilterM::WillDelete(will_delete)));
-        let elem_hashes: Vec<_> = self
-            .chain
-            .new_filter_chain
-            .iter()
-            .map(Filter::get_hash)
+
+        let classes: Vec<_> = self
+            .filter_chain()
+            .map(|(idx, no_effect, _)| {
+                (no_effect && !self.edit_filter.is_some_and(|i| idx == i)).then_some("no-effect")
+            })
             .collect();
-        let elements: Vec<_> = self.chain.new_filter_chain.iter().enumerate().map(|(idx, filter)| {
+        let elements: Vec<_> = self.filter_chain().map(|(idx, _, filter)| {
             let onclick = link.callback(move |_| GraphM::Filter(FilterM::SelectFilter(idx)));
             let delete = link.callback(move |_| GraphM::Filter(FilterM::Delete(idx)));
             let edit = link.callback(move |_| GraphM::Filter(FilterM::Edit(idx)));
             let selected = self.selected_filter.is_some_and(|i| i == idx);
             let editing = self.edit_filter.is_some_and(|i| i == idx);
             let end_edit = link.callback(move |filter| GraphM::Filter(FilterM::EndEdit(idx, filter)));
-            html!{<ExistingFilter filter={filter.clone()} onclick={onclick} selected={selected} editing={editing} delete={delete} edit={edit} end_edit={end_edit} />}
+            html!{<ExistingFilter filter={filter.clone()} {onclick} {selected} {editing} {delete} {edit} {end_edit} />}
         }).collect();
+        let no_drag = self.selected_filter.or_else(|| self.edit_filter);
         let list = ElementKind::Custom(html! {
-            <DraggableList hashes={elem_hashes} drag={drag} will_delete={will_delete} delete_node={self.delete_node.clone()} selected={self.selected_filter} editing={self.edit_filter}>
+            <DraggableList {classes} drag={drag} {no_drag}>
                 {for elements}
             </DraggableList>
         });
 
-        let elements = vec![graph_info, dragging, list];
+        let elements = vec![graph_info, list];
 
         SidebarSection {
             ref_: SidebarSectionRef::default(),
@@ -181,6 +213,29 @@ impl FiltersState {
             collapsed_text: "Operations applied to the graph".to_string(),
             elements,
         }
+    }
+
+    pub fn topbar(
+        parser: &Z3Parser,
+        graph: &InstGraph,
+        new_filter: &Callback<Filter>,
+        selected: &[RawNodeIndex],
+    ) -> Topbar {
+        let add_filter = AddFilter {
+            parser,
+            graph,
+            new_filter,
+        };
+
+        let general = TopbarMenu {
+            button_text: "View",
+            dropdown: add_filter.general(),
+        };
+        let selection = TopbarMenu {
+            button_text: "Selection",
+            dropdown: add_filter.selection(selected),
+        };
+        vec![general, selection]
     }
 }
 

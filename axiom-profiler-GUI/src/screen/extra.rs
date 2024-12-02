@@ -1,7 +1,10 @@
-use std::{cell::{Cell, RefCell}, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
-use material_yew::linear_progress::LinearProgressProps;
-use yew::{Callback, Html, NodeRef};
+use material_yew::{icon::MatIcon, linear_progress::LinearProgressProps};
+use yew::{html, Callback, Html, MouseEvent, NodeRef};
 
 pub type Sidebar = Vec<SidebarSection>;
 pub type Topbar = Vec<TopbarMenu>;
@@ -33,31 +36,26 @@ impl Default for Omnibox {
     }
 }
 
-#[derive(Clone, PartialEq)]
+/// For sections which do not change, these should be generated once and saved.
+#[derive(Debug, Clone, PartialEq)]
 pub struct SidebarSection {
-    /// This cannot be updated after creation. Make sure to either use the same
-    /// one each time or just pass in a default value.
     pub ref_: SidebarSectionRef,
     pub header_text: &'static str,
     pub collapsed_text: String,
     pub elements: Vec<ElementKind>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct SidebarSectionRef {
     ref_: NodeRef,
     collapsed: Rc<Cell<bool>>,
 }
 
-impl PartialEq for SidebarSectionRef {
-    fn eq(&self, _other: &Self) -> bool {
-        true
-    }
-}
-
 impl SidebarSectionRef {
     fn class_list(&self) -> Option<web_sys::DomTokenList> {
-        self.ref_.cast::<web_sys::Element>().map(|el| el.class_list())
+        self.ref_
+            .cast::<web_sys::Element>()
+            .map(|el| el.class_list())
     }
 
     pub fn expand(&self) -> bool {
@@ -90,7 +88,7 @@ impl SidebarSectionRef {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ElementKind {
     Simple(SimpleButton),
     Custom(Html),
@@ -102,17 +100,47 @@ pub struct TopbarMenu {
     pub dropdown: Vec<SimpleButton>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SimpleButton {
     pub icon: &'static str,
     /// This determines the text of the button as well as the element ID, it
     /// should therefore be unique.
     pub text: String,
+    pub hover_text: Option<String>,
     pub disabled: bool,
     pub click: Action,
 }
 
-#[derive(Clone, PartialEq)]
+impl SimpleButton {
+    pub fn to_html(self) -> Html {
+        let (href, onmousedown) = match self.click {
+            Action::Href(href) => (href, None),
+            Action::MouseDown(callback) => (
+                "#".to_string(),
+                (!self.disabled).then(|| {
+                    Callback::from(move |ev: MouseEvent| {
+                        ev.prevent_default();
+                        callback.emit(())
+                    })
+                }),
+            ),
+        };
+        let id = self.text.to_lowercase().replace(" ", "_");
+        let onclick = onmousedown.is_some().then(|| {
+            Callback::from(move |ev: MouseEvent| {
+                ev.prevent_default();
+            })
+        });
+        let class = self.disabled.then_some("disabled");
+        html! {
+            <li {class}><a {id} {href} draggable="false" title={self.hover_text} {onmousedown} {onclick}><div class="material-icons"><MatIcon>{self.icon}</MatIcon></div>{self.text}</a></li>
+        }
+    }
+}
+
+/// This cannot be updated after creation. Make sure to use functionally the
+/// same one each time.
+#[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     Href(String),
     MouseDown(Callback<()>),

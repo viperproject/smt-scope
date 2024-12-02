@@ -1,7 +1,7 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use gloo::timers::callback::Timeout;
-use material_yew::icon::MatIcon;
+use material_yew::{icon::MatIcon, WeakComponentLink};
 use smt_log_parser::items::QuantIdx;
 use web_sys::{Element, HtmlElement, HtmlInputElement};
 use yew::{
@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub enum Msg {
-    OnDragStart(usize, usize),
+    OnDragStart(usize),
     OnDrag,
     OnDragEnd,
     MouseMove(usize),
@@ -24,41 +24,54 @@ pub enum Msg {
 pub struct DraggableList {
     drag: Option<DragState>,
     hover: Option<usize>,
-    display: Vec<DisplayElement>,
-    hashes: Vec<u64>,
-    selected: Option<usize>,
+    display: Vec<NodeRef>,
+    delete_node: NodeRef,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct DragState {
-    #[allow(dead_code)]
-    pub orig_idx: usize,
     pub start_idx: usize,
     pub idx: usize,
     pub delete: bool,
-}
-
-struct DisplayElement {
-    idx: usize,
-    node: Html,
-    node_ref: NodeRef,
 }
 
 impl DraggableList {
     pub fn hover(&self) -> Option<usize> {
         self.hover.filter(|_| self.drag.is_none())
     }
-    pub fn get_pos(&self, idx: usize) -> Option<(f64, f64)> {
-        let node = self.display.get(idx)?.node_ref.cast::<HtmlElement>()?;
-        let rect = node.get_bounding_client_rect();
-        Some((rect.top(), rect.bottom()))
+
+    pub fn find_drag_idx(&self, mouse_y: f64) -> usize {
+        for (idx, display) in self.display.iter().enumerate() {
+            let Some(node) = display.cast::<HtmlElement>() else {
+                continue;
+            };
+            let rect = node.get_bounding_client_rect();
+            if mouse_y <= rect.bottom() {
+                return idx;
+            }
+        }
+        self.display.len() - 1
     }
+
+    pub fn drag_offset(&self, idx: usize) -> usize {
+        self.drag
+            .map(|d| {
+                if idx == d.idx {
+                    d.start_idx
+                } else if d.idx < idx && idx <= d.start_idx {
+                    idx - 1
+                } else if d.start_idx <= idx && idx < d.idx {
+                    idx + 1
+                } else {
+                    idx
+                }
+            })
+            .unwrap_or(idx)
+    }
+
     pub fn mouse_within(&self, idx: usize) -> bool {
         let pos = *mouse_position().read().unwrap();
-        let Some(display) = self.display.get(idx) else {
-            return false;
-        };
-        let Some(node) = display.node_ref.cast::<HtmlElement>() else {
+        let Some(node) = self.display[idx].cast::<HtmlElement>() else {
             return false;
         };
         let rect = node.get_bounding_client_rect();
@@ -67,71 +80,14 @@ impl DraggableList {
             && rect.top() <= pos.y as f64
             && pos.y as f64 <= rect.bottom()
     }
-    pub fn try_incr(&mut self, mouse_y: f64) -> bool {
-        let Some(mut drag) = self.drag else {
-            return false;
-        };
-        loop {
-            let new_idx = drag.idx + 1;
-            if new_idx >= self.display.len() {
-                break;
-            }
-            let Some((pos, _)) = self.get_pos(new_idx) else {
-                break;
-            };
-            // log::info!("Drag event down? {pos:?} vs {pos:?} ({drag:?})");
-            if pos <= mouse_y {
-                self.display.swap(drag.idx, new_idx);
-                drag.idx = new_idx;
-            } else {
-                break;
-            }
-        }
-        let old = self.drag.replace(drag).unwrap();
-        old.idx != drag.idx
-    }
-    pub fn try_decr(&mut self, mouse_y: f64) -> bool {
-        let Some(mut drag) = self.drag else {
-            return false;
-        };
-        loop {
-            if drag.idx == 0 {
-                break;
-            }
-            let new_idx = drag.idx - 1;
-            let Some((_, pos)) = self.get_pos(new_idx) else {
-                break;
-            };
-            // log::info!("Drag event up? {pos:?} vs {pos:?} ({drag:?})");
-            if mouse_y <= pos {
-                self.display.swap(new_idx, drag.idx);
-                drag.idx = new_idx;
-            } else {
-                break;
-            }
-        }
-        let old = self.drag.replace(drag).unwrap();
-        old.idx != drag.idx
-    }
 }
 
-#[derive(Properties)]
+#[derive(Properties, PartialEq)]
 pub struct DraggableListProps {
-    pub hashes: Vec<u64>,
+    pub classes: Vec<Option<&'static str>>,
+    pub no_drag: Option<usize>,
     pub drag: Callback<Option<DragState>>,
-    pub will_delete: Callback<bool>,
-    pub delete_node: NodeRef,
-    pub selected: Option<usize>,
-    pub editing: Option<usize>,
     pub children: Children,
-}
-
-impl PartialEq for DraggableListProps {
-    fn eq(&self, other: &Self) -> bool {
-        self.hashes == other.hashes
-            && self.selected == other.selected
-            && self.editing == other.editing
-    }
 }
 
 impl Component for DraggableList {
@@ -142,45 +98,25 @@ impl Component for DraggableList {
         Self {
             drag: None,
             hover: None,
-            display: ctx
-                .props()
-                .children
-                .iter()
-                .enumerate()
-                .map(|(idx, element)| DisplayElement {
-                    idx,
-                    node: element.clone(),
-                    node_ref: NodeRef::default(),
-                })
+            display: (0..ctx.props().children.len())
+                .map(|_| NodeRef::default())
                 .collect(),
-            hashes: ctx.props().hashes.clone(),
-            selected: ctx.props().selected,
+            delete_node: NodeRef::default(),
         }
     }
 
-    fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
-        self.hashes.clone_from(&ctx.props().hashes);
-        self.selected = ctx.props().selected;
-        self.display = ctx
-            .props()
-            .children
-            .iter()
-            .enumerate()
-            .map(|(idx, element)| DisplayElement {
-                idx,
-                node: element.clone(),
-                node_ref: NodeRef::default(),
-            })
-            .collect();
-        self.drag = None;
+    fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
+        if ctx.props().children.len() != old_props.children.len() {
+            self.display
+                .resize_with(ctx.props().children.len(), || NodeRef::default());
+        }
         true
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::OnDragStart(orig_idx, idx) => {
+            Msg::OnDragStart(idx) => {
                 self.drag = Some(DragState {
-                    orig_idx,
                     start_idx: idx,
                     idx,
                     delete: false,
@@ -192,16 +128,19 @@ impl Component for DraggableList {
                 true
             }
             Msg::OnDrag => {
+                let Some(mut drag) = self.drag else {
+                    return false;
+                };
                 let pos = *mouse_position().read().unwrap();
                 let mouse_y = pos.y as f64;
-                let mut changed = self.try_decr(mouse_y) || self.try_incr(mouse_y);
-                let Some(drag) = &mut self.drag else {
-                    return changed;
-                };
+                let new_idx = self.find_drag_idx(mouse_y);
+                let mut changed = drag.idx != new_idx;
+                drag.idx = new_idx;
+
                 // Delete
                 let mut new_delete = false;
                 if drag.idx == 0 {
-                    let header = ctx.props().delete_node.cast::<Element>();
+                    let header = self.delete_node.cast::<Element>();
                     if let Some(header_ref) = header {
                         let rect = header_ref.get_bounding_client_rect();
                         new_delete = rect.left() <= pos.x as f64
@@ -210,11 +149,9 @@ impl Component for DraggableList {
                             && pos.y as f64 <= rect.bottom();
                     }
                 }
-                if drag.delete != new_delete {
-                    ctx.props().will_delete.emit(new_delete);
-                }
                 changed |= drag.delete != new_delete;
                 drag.delete = new_delete;
+                self.drag = Some(drag);
 
                 // Fly-back animation enable or disable
                 if let Some(mut pd) = PREVENT_DEFAULT_DRAG_OVER
@@ -259,20 +196,25 @@ impl Component for DraggableList {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let display = self.display.iter().enumerate().map(|(curr_idx, display)| {
-            let is_selected = ctx.props().selected.is_some_and(|selected| selected == curr_idx);
-            let is_editing = ctx.props().editing.is_some_and(|editing| editing == curr_idx);
-            let draggable = !is_selected && !is_editing;
+        let mut children: Vec<_> = ctx.props().children.iter().map(Some).collect();
+        let display = (0..children.len()).map(|idx| {
+            let child_idx = self.drag_offset(idx);
+            let node = children[child_idx].take().unwrap();
+
+            let external_class = self.drag.is_none().then(|| ctx.props().classes.get(idx).copied().flatten()).flatten();
+
+            let draggable = !ctx.props().no_drag.is_some_and(|no_drag| no_drag == idx);
             let placeholder = NodeRef::default();
-            let class = if self.drag.is_some_and(|d| d.idx == curr_idx) {
-                "no-hover drag"
-            } else if self.hover().is_some_and(|hover| hover == curr_idx) {
-                "no-hover hover"
-            } else {
-                "no-hover"
+            let mut class = vec!["no-hover"];
+            if self.drag.is_some_and(|d| d.idx == idx) {
+                class.push("drag");
+            } else if self.hover().is_some_and(|hover| hover == idx) {
+                class.push("hover");
             };
-            let orig_idx = display.idx;
-            let node_ref = display.node_ref.clone();
+            class.extend(external_class);
+            let class = class.join(" ");
+
+            let node_ref = self.display[idx].clone();
             let placeholder_ref = placeholder.clone();
             let link = ctx.link().clone();
             let ondragstart = Callback::from(move |e: web_sys::DragEvent| {
@@ -287,26 +229,35 @@ impl Component for DraggableList {
                     let (x, y) = (pos.x as f64 - rect.left(), pos.y as f64 - rect.top());
                     dt.set_drag_image(&placeholder_ref.cast::<web_sys::Element>().unwrap(), x as i32, y as i32);
                 }
-                link.send_message(Msg::OnDragStart(orig_idx, curr_idx))
+                link.send_message(Msg::OnDragStart(idx))
             });
             let ondrag = ctx.link().callback(|_| Msg::OnDrag);
             let ondragend = ctx.link().callback(|_| Msg::OnDragEnd);
-            let onmousemove = ctx.link().callback(move |_| Msg::MouseMove(curr_idx));
-            let onmouseleave = ctx.link().callback(move |_| Msg::MouseLeave(curr_idx));
+            let onmousemove = ctx.link().callback(move |_| Msg::MouseMove(idx));
+            let onmouseleave = ctx.link().callback(move |_| Msg::MouseLeave(idx));
             let placeholder = if draggable {
-                html! {<div ref={placeholder} class={"placeholder"}>{display.node.clone()}</div>}
+                html! {<div ref={placeholder} class={"placeholder"}>{node.clone()}</div>}
             } else {
                 html! {}
             };
             html!{
-                <li draggable={draggable.to_string()} ref={&display.node_ref} {class} {ondragstart} {ondrag} {ondragend} {onmousemove} {onmouseleave}>
-                    {display.node.clone()}
+                <li draggable={draggable.to_string()} ref={&self.display[idx]} {class} {ondragstart} {ondrag} {ondragend} {onmousemove} {onmouseleave}>
+                    {node}
                     {placeholder}
                 </li>}
         });
-        html! {
+        let class = match self.drag {
+            Some(DragState { delete: true, .. }) => "delete will-delete",
+            Some(_) => "delete",
+            None => "delete display-none",
+        };
+        html! {<>
+            <li ref={&self.delete_node} class={class}><a draggable="false">
+                <div class="material-icons"><MatIcon>{"delete"}</MatIcon></div>
+                {"Delete"}
+            </a></li>
             {for display}
-        }
+        </>}
     }
 }
 
@@ -329,7 +280,7 @@ pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
     let icon = props.filter.icon();
     let hover = props.filter.long_text(fc, true);
     let filter_text = props.filter.short_text(fc);
-    let onclick = Some(props.onclick.clone()).filter(|_| !props.editing);
+    let onclick = (!props.editing).then(|| props.onclick.clone());
     let onclick = Callback::from(move |e: web_sys::MouseEvent| {
         e.prevent_default();
         if let Some(oc) = onclick.as_ref() {
@@ -364,7 +315,7 @@ pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
     });
     html! {
     <>
-        <a href="#" draggable="false" title={hover} onclick={onclick}>
+        <a href="#" draggable="false" title={hover} {onclick}>
             <div class="material-icons small"><MatIcon>{icon}</MatIcon></div>
             <ExistingFilterText filter={filter_text} editing={props.editing} update={update} />
         </a>

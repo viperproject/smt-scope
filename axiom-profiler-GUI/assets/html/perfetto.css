@@ -487,6 +487,7 @@ table {
 	--topbar-ml-background: hsl(243, 92%, 95%); */
 	--flags-accent-color: rgb(10, 75, 165);
 	--menu-text-color: hsl(210, 4%, 28%);
+	--menu-text-disabled-color: #aaa;
 }
 
 * {
@@ -710,6 +711,7 @@ input[type="file"] {
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li > div.overlay > a {
     flex-basis: 100%;
 	justify-content: center;
+	color: inherit;
 }
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li > div.overlay > a.edit {
     background-color: hsl(218, 100%, 85%);
@@ -776,8 +778,11 @@ input[type="file"] {
 	margin-right: 10px;
 	font-size: inherit;
 }
-.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li:not(.drag) .material-icons.small {
+/* .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li:not(.drag) .material-icons.small {
 	color: hsl(216, 3.5%, 48%);
+} */
+.sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li.no-effect a {
+	color: var(--menu-text-disabled-color);
 }
 
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li .trace-file-name {

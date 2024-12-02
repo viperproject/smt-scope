@@ -107,7 +107,11 @@ impl FilterChain {
 
     fn send_render_command(&self, link: &Scope<Manager>, filter_only: bool, from_undo: bool) {
         let cmd = Self::rerender_command(self.applied_chain(), &self.new_filter_chain);
-        link.send_message(GraphM::RenderCommand { cmd, filter_only, from_undo });
+        link.send_message(GraphM::RenderCommand {
+            cmd,
+            filter_only,
+            from_undo,
+        });
     }
 
     pub fn update_history(&self) {
@@ -146,8 +150,7 @@ impl FilterChain {
             self.filter_chain_history_idx + 1
         };
         let new_chain = &self.filter_chain_history[new];
-        self.new_filter_chain
-            .clone_from(&new_chain.0);
+        self.new_filter_chain.clone_from(&new_chain.0);
         self.permissions = self.permissions.max(new_chain.1);
 
         self.send_render_command(link, filter_only, undo);

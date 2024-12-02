@@ -33,6 +33,7 @@ impl Example {
             ElementKind::Simple(SimpleButton {
                 icon: "description",
                 text: format!("Open {} example", example.name()),
+                hover_text: None,
                 disabled: false,
                 click: Action::MouseDown(link.callback(move |()| HomepageM::OpenExample(example))),
             })

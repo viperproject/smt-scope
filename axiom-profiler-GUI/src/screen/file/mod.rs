@@ -41,6 +41,7 @@ impl FileProps {
 
 pub struct File {
     analysis: Result<AnalysisState, RcAnalysis>,
+    current_trace: SidebarSection,
 
     view: Option<Change>,
     nested_sidebar: Rc<Sidebar>,
@@ -73,7 +74,9 @@ impl Screen for File {
     type Message = FileM;
     type Properties = FileProps;
 
-    fn create(link: &Scope<Manager>, _props: &Self::Properties) -> Self {
+    fn create(link: &Scope<Manager>, props: &Self::Properties) -> Self {
+        let current_trace = Self::current_trace(link, props);
+
         let link = link.clone();
         gloo::timers::callback::Timeout::new(10, move || {
             link.send_message(FileM::StartAnalysis);
@@ -83,6 +86,7 @@ impl Screen for File {
         let analysis = Ok(AnalysisState::ConstructingGraph);
         Self {
             analysis,
+            current_trace,
             view: None,
             nested_sidebar: Default::default(),
             nested_topbar: Default::default(),
@@ -183,65 +187,8 @@ impl Screen for File {
         }
     }
 
-    fn view_sidebar(&self, link: &Scope<Manager>, props: &Self::Properties) -> Sidebar {
-        let analysed = self.analysis().is_some();
-
-        let size = props
-            .file_info
-            .size
-            .map(|size| {
-                let (size, unit) = byte_size_display(size as f64);
-                format!("{size:.0} {unit}")
-            })
-            .unwrap_or_else(|| "?".to_string());
-        let trace_info = match &props.opened_file.state {
-            ParseState::Paused(_, state) => {
-                let (parse_size, parse_unit) = byte_size_display(state.bytes_read as f64);
-                format!(
-                    "{} ({parse_size:.0} {parse_unit}/{size})",
-                    props.file_info.name
-                )
-            }
-            ParseState::Completed { .. } => format!("{} ({size})", props.file_info.name),
-            ParseState::Error(err) => format!("{} (error {err:?})", props.file_info.name),
-        };
-        let trace_info = html! {
-            <li><a draggable="false" class="trace-file-name">{trace_info}</a></li>
-        };
-
-        let current_trace = SidebarSection {
-            ref_: SidebarSectionRef::default(),
-            header_text: "Analysis",
-            collapsed_text: "Select analysis view".to_string(),
-            elements: vec![
-                ElementKind::Custom(trace_info),
-                ElementKind::Simple(SimpleButton {
-                    icon: "summarize",
-                    text: "Summary".to_string(),
-                    disabled: false,
-                    click: Action::MouseDown(
-                        link.callback(|()| FileM::ChangeView(ViewChoice::Overview)),
-                    ),
-                }),
-                ElementKind::Simple(SimpleButton {
-                    icon: "account_tree",
-                    text: "Instantiation graph".to_string(),
-                    disabled: !analysed,
-                    click: Action::MouseDown(
-                        link.callback(|()| FileM::ChangeView(ViewChoice::Graph)),
-                    ),
-                }),
-                ElementKind::Simple(SimpleButton {
-                    icon: "all_inclusive",
-                    text: "Matching loops".to_string(),
-                    disabled: !analysed,
-                    click: Action::MouseDown(
-                        link.callback(|()| FileM::ChangeView(ViewChoice::MatchingLoop)),
-                    ),
-                }),
-            ],
-        };
-        [current_trace]
+    fn view_sidebar(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Sidebar {
+        [self.get_current_trace()]
             .into_iter()
             .chain(self.nested_sidebar.iter().cloned())
             .collect()
@@ -274,5 +221,83 @@ impl Screen for File {
             }
         }
         omnibox
+    }
+}
+
+impl File {
+    fn get_current_trace(&self) -> SidebarSection {
+        let analysed = self.analysis().is_some();
+        let mut current_trace = self.current_trace.clone();
+        for elem in current_trace.elements.iter_mut().skip(2) {
+            let ElementKind::Simple(elem) = elem else {
+                unreachable!()
+            };
+            elem.disabled = !analysed;
+        }
+        current_trace
+    }
+
+    fn current_trace(
+        link: &Scope<Manager>,
+        props: &<Self as Screen>::Properties,
+    ) -> SidebarSection {
+        let size = props
+            .file_info
+            .size
+            .map(|size| {
+                let (size, unit) = byte_size_display(size as f64);
+                format!("{size:.0} {unit}")
+            })
+            .unwrap_or_else(|| "?".to_string());
+        let trace_info = match &props.opened_file.state {
+            ParseState::Paused(_, state) => {
+                let (parse_size, parse_unit) = byte_size_display(state.bytes_read as f64);
+                format!(
+                    "{} ({parse_size:.0} {parse_unit}/{size})",
+                    props.file_info.name
+                )
+            }
+            ParseState::Completed { .. } => format!("{} ({size})", props.file_info.name),
+            ParseState::Error(err) => format!("{} (error {err:?})", props.file_info.name),
+        };
+        let trace_info = html! {
+            <li><a draggable="false" class="trace-file-name">{trace_info}</a></li>
+        };
+
+        SidebarSection {
+            ref_: SidebarSectionRef::default(),
+            header_text: "Analysis",
+            collapsed_text: "Select analysis view".to_string(),
+            elements: vec![
+                ElementKind::Custom(trace_info),
+                ElementKind::Simple(SimpleButton {
+                    icon: "summarize",
+                    text: "Summary".to_string(),
+                    hover_text: Some("View with summary of analysed file".to_string()),
+                    disabled: false,
+                    click: Action::MouseDown(
+                        link.callback(|()| FileM::ChangeView(ViewChoice::Overview)),
+                    ),
+                }),
+                ElementKind::Simple(SimpleButton {
+                    icon: "account_tree",
+                    text: "Instantiation graph".to_string(),
+                    hover_text: Some("View with quantifier instantiation graph".to_string()),
+                    disabled: true,
+                    click: Action::MouseDown(
+                        link.callback(|()| FileM::ChangeView(ViewChoice::Graph)),
+                    ),
+                }),
+                ElementKind::Simple(SimpleButton {
+                    icon: "all_inclusive",
+                    text: "Matching loops".to_string(),
+                    hover_text: Some("View with found matching loops".to_string()),
+                    disabled: true,
+                    click: Action::MouseDown(
+                        link.callback(|()| FileM::ChangeView(ViewChoice::MatchingLoop)),
+                    ),
+                }),
+            ],
+        }
     }
 }

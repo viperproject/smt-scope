@@ -133,7 +133,12 @@ impl Filter {
             // TODO: implement
             Filter::SelectNthMatchingLoop(n) => {
                 graph.raw.reset_visibility_to(true);
-                let ml_graph = graph.nth_matching_loop_graph(n).unwrap();
+                let Some(ml_graph) = graph.nth_matching_loop_graph(n) else {
+                    return FilterOutput {
+                        modified: false,
+                        kind: FilterOutputKind::Other,
+                    };
+                };
                 let nodes_of_nth_matching_loop = graph
                     .raw
                     .node_indices()
@@ -205,13 +210,6 @@ impl Filter {
             }
         };
         FilterOutput { modified, kind }
-    }
-    pub fn get_hash(&self) -> u64 {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        hasher.finish()
     }
 }
 

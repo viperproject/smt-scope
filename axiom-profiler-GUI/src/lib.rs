@@ -15,6 +15,7 @@ use material_yew::{MatDialog, MatIcon, MatIconButton, WeakComponentLink};
 use petgraph::visit::EdgeRef;
 use results::graph_info;
 use results::svg_result::{Msg as SVGMsg, RenderedGraph, RenderingState, SVGResult};
+use screen::extra::SimpleButton;
 use screen::{Change, Manager};
 use smt_log_parser::analysis::{InstGraph, RawNodeIndex, VisibleEdgeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
@@ -347,24 +348,11 @@ impl Component for FileDataComponent {
                     }
 
                     let elements = s.elements.into_iter().filter_map(|e| match e {
-                        extra::ElementKind::Simple(simple_button) => {
-                            if simple_button.disabled {
-                                return None;
-                            }
-                            let (href, onmousedown) = match simple_button.click {
-                                extra::Action::Href(href) => (href, None),
-                                extra::Action::MouseDown(callback) => {
-                                    ("#".to_string(), Some(Callback::from(move |_| callback.emit(()))))
-                                }
-                            };
-                            let id = simple_button.text.to_lowercase().replace(" ", "_");
-                            let onclick = onmousedown.is_some().then(|| Callback::from(move |ev: MouseEvent| {
-                                ev.prevent_default();
-                            }));
-                            Some(html! {
-                                <li><a {id} {href} draggable="false" {onmousedown} {onclick}><div class="material-icons"><MatIcon>{simple_button.icon}</MatIcon></div>{simple_button.text}</a></li>
-                            })
-                        }
+                        extra::ElementKind::Simple(simple_button) => if simple_button.disabled {
+                            None
+                        } else {
+                            Some(simple_button.to_html())
+                        },
                         extra::ElementKind::Custom(data) => Some(data),
                     }).collect::<Html>();
                     html! {
@@ -603,51 +591,18 @@ impl Component for FileDataComponent {
         );
         let is_canary = version().is_none();
 
-        let mut dropdowns = Vec::new();
-        let current_trace = match &self.file {
-            Some(file) => {
-                if !self.state.state.ml_viewer_mode {
-                    let ml_data = self.state.state.parser.as_ref().unwrap().ml_data;
-                    let filters_state_link = self.filters_state_link.clone();
-                    let new_filter = Callback::from(move |f| {
-                        let Some(filters_state_link) = &*filters_state_link.borrow() else {
-                            return;
-                        };
-                        filters_state_link.send_message(filters::Msg::AddFilter(true, f));
-                    });
-                    let filters_state_link = self.filters_state_link.clone();
-                    let reset = Callback::from(move |e: MouseEvent| {
-                        e.prevent_default();
-                        let Some(filters_state_link) = &*filters_state_link.borrow() else {
-                            return;
-                        };
-                        filters_state_link.send_message(filters::Msg::ResetOperations);
-                    });
-                    dropdowns.push(("View".to_string(), html! {<>
-                        <AddFilterSidebar {new_filter} {ml_data} nodes={Vec::new()} general_filters={true}/>
-                        <li><a draggable="false" href="#" onclick={reset}><div class="material-icons"><MatIcon>{"restore"}</MatIcon></div>{"Reset operations"}</a></li>
-                    </>}));
-
-                    // Selected nodes
-                    let filters_state_link = self.filters_state_link.clone();
-                    let new_filter = Callback::from(move |f| {
-                        let Some(filters_state_link) = &*filters_state_link.borrow() else {
-                            return;
-                        };
-                        filters_state_link.send_message(filters::Msg::AddFilter(false, f));
-                    });
-                    dropdowns.push(("Selection".to_string(), html! {<>
-                        <AddFilterSidebar {new_filter} nodes={file.selected_nodes.clone()} general_filters={false}/>
-                    </>}));
-                }
-
-                let search_matching_loops = ctx.link().callback(|_| Msg::SearchMatchingLoops);
-                html! {
-                    <FiltersState file={file.clone()} search_matching_loops={search_matching_loops} weak_link={self.filters_state_link.clone()} />
-                }
-            }
-            None => html! {},
-        };
+        let dropdowns: Vec<_> = (*self.topbar)
+            .clone()
+            .into_iter()
+            .map(|topbar_menu| {
+                let elements = topbar_menu
+                    .dropdown
+                    .into_iter()
+                    .map(SimpleButton::to_html)
+                    .collect::<Html>();
+                (topbar_menu.button_text, elements)
+            })
+            .collect();
 
         let parser = self.state.state.parser.clone();
         let parser_ref = parser.clone();

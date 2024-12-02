@@ -36,7 +36,7 @@ pub struct TopbarProps {
     pub pick: Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
     pub select: Callback<RawNodeIndex>,
     pub pick_nth_ml: Callback<usize>,
-    pub dropdowns: Vec<(String, Html)>,
+    pub dropdowns: Vec<(&'static str, Html)>,
 }
 
 #[function_component]

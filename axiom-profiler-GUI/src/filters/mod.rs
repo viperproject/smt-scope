@@ -326,7 +326,7 @@ impl Component for FiltersState {
             .chain
             .new_filter_chain
             .iter()
-            .map(Filter::get_hash)
+            .map(|_| todo!())
             .collect();
         let elements: Vec<_> = self.chain.new_filter_chain.iter().enumerate().map(|(idx, filter)| {
             let onclick = ctx.link().callback(move |_| Msg::SelectFilter(idx));

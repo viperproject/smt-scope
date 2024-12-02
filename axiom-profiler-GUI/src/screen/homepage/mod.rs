@@ -34,8 +34,9 @@ pub struct Homepage {
 
     toggle_flags: SetVisibleCallback,
     overlay_visible: bool,
-    navigation_section: SidebarSectionRef,
 
+    navigation: SidebarSection,
+    support: SidebarSection,
     nested_sidebar: Rc<Sidebar>,
     nested_topbar: Rc<Topbar>,
     nested_omnibox: Rc<Omnibox>,
@@ -72,8 +73,14 @@ impl Screen for Homepage {
     type Message = HomepageM;
     type Properties = WeakComponentLink<MatDialog>;
 
-    fn create(link: &Scope<Manager>, _props: &Self::Properties) -> Self {
+    fn create(link: &Scope<Manager>, props: &Self::Properties) -> Self {
         let toggle_flags = SetVisibleCallback::default();
+        let file_select = NodeRef::default();
+
+        // Sidebar
+
+        let navigation = Self::navigation(link, file_select.clone());
+        let support = Self::support(props.clone(), toggle_flags.clone());
 
         // Callbacks
 
@@ -104,7 +111,7 @@ impl Screen for Homepage {
         let _command_refs = [toggle_flags_cmd];
 
         Self {
-            file_select: NodeRef::default(),
+            file_select,
             stop_loading: Default::default(),
             file: None,
             reader: None,
@@ -112,8 +119,9 @@ impl Screen for Homepage {
 
             toggle_flags,
             overlay_visible: false,
-            navigation_section: Default::default(),
 
+            navigation,
+            support,
             nested_sidebar: Default::default(),
             nested_topbar: Default::default(),
             nested_omnibox: Default::default(),
@@ -173,7 +181,7 @@ impl Screen for Homepage {
                 link.omnibox_message(message, 10000);
 
                 link.send_message(HomepageM::CloseFile);
-                let _ = self.navigation_section.expand();
+                let _ = self.navigation.ref_.expand();
                 false
             }
             HomepageM::LoadedFile(parser, state, cancelled) => {
@@ -196,7 +204,7 @@ impl Screen for Homepage {
                     state,
                     cancelled,
                 });
-                let _ = self.navigation_section.collapse();
+                let _ = self.navigation.ref_.collapse();
                 true
             }
             HomepageM::CloseFile => {
@@ -262,87 +270,11 @@ impl Screen for Homepage {
         </>}
     }
 
-    fn view_sidebar(&self, link: &Scope<Manager>, props: &Self::Properties) -> Sidebar {
-        let file_select = self.file_select.clone();
-        let open_file = Callback::from(move |_| {
-            let input = file_select.cast::<HtmlInputElement>().unwrap();
-            input.click();
-        });
-
-        let open_file = ElementKind::Simple(SimpleButton {
-            icon: "folder_open",
-            text: "Open trace file".to_string(),
-            disabled: false,
-            click: Action::MouseDown(open_file),
-        });
-        let examples = Example::elements(link);
-        let close_file = ElementKind::Simple(SimpleButton {
-            icon: "close",
-            text: "Close file".to_string(),
-            disabled: self.file.is_none(),
-            click: Action::MouseDown(link.callback(|()| HomepageM::CloseFile)),
-        });
-
-        let help_dialog = props.clone();
-        let show_shortcuts = Callback::from(move |()| {
-            help_dialog.show();
-        });
-
-        let toggle_flags = self.toggle_flags.clone();
-        let toggle_flags = Callback::from(move |()| {
-            toggle_flags.borrow().emit(None);
-        });
-
-        let naviagation = SidebarSection {
-            ref_: self.navigation_section.clone(),
-            header_text: "Navigation",
-            collapsed_text: "Open a new trace".to_string(),
-            elements: [open_file]
-                .into_iter()
-                .chain(examples)
-                .chain([close_file])
-                .collect(),
-        };
-        let support = SidebarSection {
-            ref_: Default::default(),
-            header_text: "Support",
-            collapsed_text: "Documentation & Bugs".to_string(),
-            elements: vec![
-                ElementKind::Simple(SimpleButton {
-                    icon: "help",
-                    text: "Keyboard shortcuts".to_string(),
-                    disabled: false,
-                    click: Action::MouseDown(show_shortcuts),
-                }),
-                ElementKind::Simple(SimpleButton {
-                    icon: "find_in_page",
-                    text: "Documentation".to_string(),
-                    disabled: false,
-                    click: Action::Href(
-                        "https://github.com/viperproject/axiom-profiler-2/blob/main/README.md"
-                            .to_string(),
-                    ),
-                }),
-                ElementKind::Simple(SimpleButton {
-                    icon: "emoji_flags",
-                    text: "Flags".to_string(),
-                    disabled: false,
-                    click: Action::MouseDown(toggle_flags),
-                }),
-                ElementKind::Simple(SimpleButton {
-                    icon: "bug_report",
-                    text: "Report a bug".to_string(),
-                    disabled: false,
-                    click: Action::Href(
-                        "https://github.com/viperproject/axiom-profiler-2/issues/new".to_string(),
-                    ),
-                }),
-            ],
-        };
-        [naviagation]
+    fn view_sidebar(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Sidebar {
+        [self.get_navigation()]
             .into_iter()
             .chain(self.nested_sidebar.iter().cloned())
-            .chain([support])
+            .chain([self.support.clone()])
             .collect()
     }
 
@@ -409,6 +341,105 @@ impl Screen for Homepage {
                 LoadingState::NoFileSelected | LoadingState::FileDisplayed
             );
             omnibox
+        }
+    }
+}
+
+impl Homepage {
+    fn get_navigation(&self) -> SidebarSection {
+        let mut navigation = self.navigation.clone();
+        let Some(ElementKind::Simple(element)) = navigation.elements.last_mut() else {
+            unreachable!();
+        };
+        element.disabled = self.file.is_none();
+        navigation
+    }
+
+    fn navigation(link: &Scope<Manager>, file_select: NodeRef) -> SidebarSection {
+        let open_file = Callback::from(move |_| {
+            let input = file_select.cast::<HtmlInputElement>().unwrap();
+            input.click();
+        });
+
+        let open_file = ElementKind::Simple(SimpleButton {
+            icon: "folder_open",
+            text: "Open trace file".to_string(),
+            hover_text: Some("Open a new trace file".to_string()),
+            disabled: false,
+            click: Action::MouseDown(open_file),
+        });
+        let examples = Example::elements(link);
+        let close_file = ElementKind::Simple(SimpleButton {
+            icon: "close",
+            text: "Close file".to_string(),
+            hover_text: Some("Close the currently opened trace file".to_string()),
+            disabled: true,
+            click: Action::MouseDown(link.callback(|()| HomepageM::CloseFile)),
+        });
+
+        SidebarSection {
+            ref_: Default::default(),
+            header_text: "Navigation",
+            collapsed_text: "Open a new trace".to_string(),
+            elements: [open_file]
+                .into_iter()
+                .chain(examples)
+                .chain([close_file])
+                .collect(),
+        }
+    }
+
+    fn support(
+        help_dialog: WeakComponentLink<MatDialog>,
+        toggle_flags: SetVisibleCallback,
+    ) -> SidebarSection {
+        let show_shortcuts = Callback::from(move |()| {
+            help_dialog.show();
+        });
+
+        let toggle_flags = Callback::from(move |()| {
+            toggle_flags.borrow().emit(None);
+        });
+
+        SidebarSection {
+            ref_: Default::default(),
+            header_text: "Support",
+            collapsed_text: "Documentation & Bugs".to_string(),
+            elements: vec![
+                ElementKind::Simple(SimpleButton {
+                    icon: "help",
+                    text: "Keyboard shortcuts".to_string(),
+                    hover_text: Some("Show the help dialog".to_string()),
+                    disabled: false,
+                    click: Action::MouseDown(show_shortcuts),
+                }),
+                ElementKind::Simple(SimpleButton {
+                    icon: "find_in_page",
+                    text: "Documentation".to_string(),
+                    hover_text: Some("Open the GitHub README".to_string()),
+                    disabled: false,
+                    click: Action::Href(
+                        "https://github.com/viperproject/axiom-profiler-2/blob/main/README.md"
+                            .to_string(),
+                    ),
+                }),
+                ElementKind::Simple(SimpleButton {
+                    icon: "emoji_flags",
+                    text: "Flags".to_string(),
+                    hover_text: Some("Toggle the configuration flags page".to_string()),
+                    disabled: false,
+                    click: Action::MouseDown(toggle_flags),
+                }),
+                ElementKind::Simple(SimpleButton {
+                    icon: "bug_report",
+                    text: "Report a bug".to_string(),
+                    hover_text: Some("Open a new issue on GitHub".to_string()),
+                    disabled: false,
+                    click: Action::Href(
+                        "https://github.com/viperproject/axiom-profiler-2/issues/new".to_string(),
+                    ),
+                }),
+            ],
         }
     }
 }

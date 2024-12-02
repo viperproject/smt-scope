@@ -42,8 +42,8 @@ impl Graph {
             graph.raw.reset_visibility_to(false);
             self.filter.no_effects.clear();
         }
-        let mut modified = false;
-        let mut update_view = false;
+        let mut modified = cmd.is_full();
+        let mut update_view = cmd.is_full();
 
         for (can_select, idx, filter) in cmd.filters() {
             let output = filter.apply(graph, parser);
@@ -51,6 +51,7 @@ impl Graph {
 
             modified |= output.modified;
             if !output.modified {
+                update_view = true;
                 self.filter.no_effects.push(idx);
             }
             match output.kind {

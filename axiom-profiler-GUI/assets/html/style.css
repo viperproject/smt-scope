@@ -157,7 +157,7 @@ mwc-dialog {
 }
 .topbar .menu-bar a.history-button.disabled,
 .topbar .menu-bar .dropdown-popup li.disabled a {
-    color: #aaa;
+    color: var(--menu-text-disabled-color);
     cursor: default;
 }
 
@@ -222,7 +222,7 @@ mwc-dialog {
 }
 .omnibox-dropdown .omnibox-options-container li.omnibox-disabled {
     background-color: #eee;
-    color: #aaa;
+    color: var(--menu-text-disabled-color);
 }
 .omnibox-dropdown .omnibox-options-container li.group-header {
     font-weight: 500;

@@ -44,11 +44,9 @@ pub struct Graph {
     state: Result<GraphState, RenderedGraph>,
     /// Either waiting for render or permissions (so the state could be either
     /// of the two)
-    waiting: Option<Rc<VisibleInstGraph>>,
+    waiting: Option<(bool, Rc<VisibleInstGraph>)>,
 
     filter: FiltersState,
-    /// The maximum dimensions I have permission to render
-    permissions: GraphDimensions,
 
     selected_nodes: Vec<RawNodeIndex>,
     selected_edges: Vec<VisibleEdgeIndex>,
@@ -60,10 +58,20 @@ impl Graph {
     fn rendered_graph(&self) -> Option<&RenderedGraph> {
         self.state.as_ref().err()
     }
+    fn waiting(&self) -> Option<&VisibleInstGraph> {
+        self.waiting.as_ref().map(|(_, g)| &**g)
+    }
+    fn default_permissions() -> GraphDimensions {
+        GraphDimensions::default_permissions()
+    }
 }
 
 pub enum GraphM {
-    RenderCommand(RenderCommand, bool),
+    RenderCommand {
+        cmd: RenderCommand,
+        filter_only: bool,
+        from_undo: bool
+    },
     UndoOperation(bool),
     UserPermission(WarningChoice),
     RenderedGraph(RenderedGraph),
@@ -93,8 +101,7 @@ impl Screen for Graph {
         Self {
             state: Ok(GraphState::GraphToDot),
             waiting: None,
-            filter: FiltersState::new(props.default_filters.clone(), link),
-            permissions: GraphDimensions::default_permissions(),
+            filter: FiltersState::new(props.default_filters.clone(), Self::default_permissions(), link),
             selected_nodes: Vec::new(),
             selected_edges: Vec::new(),
             graph_warning: WeakComponentLink::default(),
@@ -110,7 +117,7 @@ impl Screen for Graph {
         if props.parser != old_props.parser || props.analysis != old_props.analysis {
             *self = Self::create(link, props);
         } else if props.default_filters != old_props.default_filters {
-            self.filter = FiltersState::new(props.default_filters.clone(), link);
+            self.filter = FiltersState::new(props.default_filters.clone(), Self::default_permissions(), link);
         }
         true
     }
@@ -122,7 +129,7 @@ impl Screen for Graph {
         msg: Self::Message,
     ) -> bool {
         match msg {
-            GraphM::RenderCommand(cmd, filter_only) => {
+            GraphM::RenderCommand { cmd, filter_only, from_undo } => {
                 let parser = props.parser.parser.borrow();
                 let mut analysis = props.analysis.borrow_mut();
 
@@ -137,22 +144,23 @@ impl Screen for Graph {
                     &analysis.graph,
                     &props.parser.colour_map,
                     is_first,
+                    from_undo,
                 )
             }
             GraphM::UndoOperation(undo) => self.filter.chain.undo_operation(link, undo, false),
             GraphM::UserPermission(choice) => match choice {
                 WarningChoice::Cancel => {
                     assert!(self.rendered_graph().is_some());
-                    let Some(_) = self.waiting.take() else {
+                    let Some((from_undo, _)) = self.waiting.take() else {
                         log::error!("UserPermission: could not find graph-to-render to cancel");
                         return false;
                     };
-                    self.filter.chain.undo_operation(link, true, true);
+                    self.filter.chain.undo_operation(link, !from_undo, true);
                     true
                 }
                 WarningChoice::Apply => false,
                 WarningChoice::Render => {
-                    let Some(visible) = self.waiting.take() else {
+                    let Some((_, visible)) = self.waiting.take() else {
                         log::error!("UserPermission: could not find graph-to-render to apply");
                         return false;
                     };
@@ -217,8 +225,7 @@ impl Screen for Graph {
             return html! {};
         };
         let dimensions = self
-            .waiting
-            .as_deref()
+            .waiting()
             .map(GraphDimensions::of_graph)
             .unwrap_or(rendered.dims());
         html! {<>
@@ -236,7 +243,7 @@ impl Screen for Graph {
     }
 
     fn view_sidebar(&self, link: &Scope<Manager>, _props: &Self::Properties) -> Sidebar {
-        let waiting = self.waiting.as_deref().map(GraphDimensions::of_graph);
+        let waiting = self.waiting().map(GraphDimensions::of_graph);
         let rendered = self.rendered_graph().map(RenderedGraph::dims);
         let dims = waiting.or(rendered);
         vec![self.filter.sidebar(dims, link)]

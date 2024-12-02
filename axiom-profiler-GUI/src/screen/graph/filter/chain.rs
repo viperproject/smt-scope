@@ -5,7 +5,7 @@ use yew::{html::Scope, Callback, Context};
 use crate::{
     commands::{Command, CommandRef, CommandsContext, ShortcutKey},
     filters::FiltersState,
-    results::filters::Filter,
+    results::{filters::Filter, svg_result::GraphDimensions},
     screen::Manager,
 };
 
@@ -13,7 +13,10 @@ use super::GraphM;
 
 pub struct FilterChain {
     pub(super) new_filter_chain: Vec<Filter>,
-    filter_chain_history: Vec<Vec<Filter>>,
+    /// The maximum dimensions I have permission to render
+    permissions: GraphDimensions,
+
+    filter_chain_history: Vec<(Vec<Filter>, GraphDimensions)>,
     filter_chain_history_idx: usize,
     undo: CommandRef,
     redo: CommandRef,
@@ -47,7 +50,7 @@ impl RenderCommand {
 }
 
 impl FilterChain {
-    pub fn new(initial: Vec<Filter>, link: &Scope<Manager>) -> Self {
+    pub fn new(initial: Vec<Filter>, permissions: GraphDimensions, link: &Scope<Manager>) -> Self {
         let registerer = link.get_commands_registerer().unwrap();
         let undo = Command {
             name: "Undo".to_string(),
@@ -66,23 +69,25 @@ impl FilterChain {
 
         let self_ = Self {
             new_filter_chain: initial.clone(),
-            filter_chain_history: vec![initial.clone()],
+            permissions,
+            filter_chain_history: vec![(initial.clone(), permissions)],
             filter_chain_history_idx: 0,
             undo,
             redo,
         };
-        link.send_message(GraphM::RenderCommand(
-            RenderCommand::Full {
+        link.send_message(GraphM::RenderCommand {
+            cmd: RenderCommand::Full {
                 all: initial,
                 first: true,
             },
-            false,
-        ));
+            filter_only: false,
+            from_undo: false,
+        });
         self_
     }
 
     fn applied_chain(&self) -> &Vec<Filter> {
-        &self.filter_chain_history[self.filter_chain_history_idx]
+        &self.filter_chain_history[self.filter_chain_history_idx].0
     }
 
     fn rerender_command(from: &[Filter], to: &[Filter]) -> RenderCommand {
@@ -100,9 +105,9 @@ impl FilterChain {
         }
     }
 
-    fn send_render_command(&self, link: &Scope<Manager>, filter_only: bool) {
-        let command = Self::rerender_command(self.applied_chain(), &self.new_filter_chain);
-        link.send_message(GraphM::RenderCommand(command, filter_only));
+    fn send_render_command(&self, link: &Scope<Manager>, filter_only: bool, from_undo: bool) {
+        let cmd = Self::rerender_command(self.applied_chain(), &self.new_filter_chain);
+        link.send_message(GraphM::RenderCommand { cmd, filter_only, from_undo });
     }
 
     pub fn update_history(&self) {
@@ -115,13 +120,13 @@ impl FilterChain {
         if &self.new_filter_chain == self.applied_chain() {
             return false;
         }
-        self.send_render_command(link, false);
+        self.send_render_command(link, false, false);
 
         self.filter_chain_history_idx += 1;
         self.filter_chain_history
             .truncate(self.filter_chain_history_idx);
         self.filter_chain_history
-            .push(self.new_filter_chain.clone());
+            .push((self.new_filter_chain.clone(), self.permissions));
         self.update_history();
         true
     }
@@ -140,13 +145,24 @@ impl FilterChain {
             }
             self.filter_chain_history_idx + 1
         };
+        let new_chain = &self.filter_chain_history[new];
         self.new_filter_chain
-            .clone_from(&self.filter_chain_history[new]);
+            .clone_from(&new_chain.0);
+        self.permissions = self.permissions.max(new_chain.1);
 
-        self.send_render_command(link, filter_only);
+        self.send_render_command(link, filter_only, undo);
 
         self.filter_chain_history_idx = new;
         self.update_history();
         true
+    }
+
+    pub fn get_permissions(&self) -> GraphDimensions {
+        self.permissions
+    }
+
+    pub fn set_permissions(&mut self, permissions: GraphDimensions) {
+        self.permissions = permissions;
+        self.filter_chain_history[self.filter_chain_history_idx].1 = permissions;
     }
 }

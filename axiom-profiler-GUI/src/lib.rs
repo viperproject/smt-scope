@@ -216,6 +216,7 @@ impl OpenedFileInfo {
 
 pub struct FileDataComponent {
     sidebar: Rc<extra::Sidebar>,
+    sidebar_html: Vec<Html>,
     topbar: Rc<extra::Topbar>,
     omnibox: Rc<extra::Omnibox>,
     omc: OmniboxMessageContext,
@@ -304,6 +305,7 @@ impl Component for FileDataComponent {
         let _command_refs = [help_cmd, hide_sidebar_cmd];
         Self {
             sidebar: Rc::default(),
+            sidebar_html: Vec::new(),
             topbar: Rc::default(),
             omnibox: Rc::default(),
             omc: OmniboxMessageContext {
@@ -334,7 +336,44 @@ impl Component for FileDataComponent {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::UpdateSidebar(sidebar) => {
-                self.sidebar = sidebar;
+                let old = core::mem::replace(&mut self.sidebar, sidebar);
+                let sidebar_html = core::mem::take(&mut self.sidebar_html);
+                let mut sidebar_html: Vec<_> = old.iter().zip(sidebar_html).collect();
+
+                let sidebar_html = (*self.sidebar).clone().into_iter().map(|s| {
+                    let idx = sidebar_html.iter().position(|(o, _)| *o == &s);
+                    if let Some(idx) = idx {
+                        return sidebar_html.swap_remove(idx).1;
+                    }
+
+                    let elements = s.elements.into_iter().filter_map(|e| match e {
+                        extra::ElementKind::Simple(simple_button) => {
+                            if simple_button.disabled {
+                                return None;
+                            }
+                            let (href, onmousedown) = match simple_button.click {
+                                extra::Action::Href(href) => (href, None),
+                                extra::Action::MouseDown(callback) => {
+                                    ("#".to_string(), Some(Callback::from(move |_| callback.emit(()))))
+                                }
+                            };
+                            let id = simple_button.text.to_lowercase().replace(" ", "_");
+                            let onclick = onmousedown.is_some().then(|| Callback::from(move |ev: MouseEvent| {
+                                ev.prevent_default();
+                            }));
+                            Some(html! {
+                                <li><a {id} {href} draggable="false" {onmousedown} {onclick}><div class="material-icons"><MatIcon>{simple_button.icon}</MatIcon></div>{simple_button.text}</a></li>
+                            })
+                        }
+                        extra::ElementKind::Custom(data) => Some(data),
+                    }).collect::<Html>();
+                    html! {
+                        <SidebarSectionHeader section={s.ref_.clone()} header_text={s.header_text} collapsed_text={s.collapsed_text}><ul>
+                            {elements}
+                        </ul></SidebarSectionHeader>
+                    }
+                }).collect();
+                self.sidebar_html = sidebar_html;
                 true
             }
             Msg::UpdateTopbar(topbar) => {
@@ -680,35 +719,7 @@ impl Component for FileDataComponent {
         let message = self.message.as_ref().map(|(_, message)| message).cloned();
         let header_class = if is_canary { "canary" } else { "stable" };
 
-        let sidebar_html = (*self.sidebar).clone();
-        let sidebar_html = sidebar_html.into_iter().map(|s| {
-            let elements = s.elements.into_iter().filter_map(|e| match e {
-                extra::ElementKind::Simple(simple_button) => {
-                    if simple_button.disabled {
-                        return None;
-                    }
-                    let (href, onmousedown) = match simple_button.click {
-                        extra::Action::Href(href) => (href, None),
-                        extra::Action::MouseDown(callback) => {
-                            ("#".to_string(), Some(Callback::from(move |_| callback.emit(()))))
-                        }
-                    };
-                    let id = simple_button.text.to_lowercase().replace(" ", "_");
-                    let onclick = onmousedown.is_some().then(|| Callback::from(move |ev: MouseEvent| {
-                        ev.prevent_default();
-                    }));
-                    Some(html! {
-                        <li><a {id} {href} draggable="false" {onmousedown} {onclick}><div class="material-icons"><MatIcon>{simple_button.icon}</MatIcon></div>{simple_button.text}</a></li>
-                    })
-                }
-                extra::ElementKind::Custom(data) => Some(data),
-            }).collect::<Html>();
-            html! {
-                <SidebarSectionHeader section={s.ref_.clone()} header_text={s.header_text} collapsed_text={s.collapsed_text}><ul>
-                    {elements}
-                </ul></SidebarSectionHeader>
-            }
-        }).collect::<Html>();
+        let sidebar_html: Html = self.sidebar_html.clone().into_iter().collect();
 
         let sidebar = ctx.link().callback(Msg::UpdateSidebar);
         let topbar = ctx.link().callback(Msg::UpdateTopbar);

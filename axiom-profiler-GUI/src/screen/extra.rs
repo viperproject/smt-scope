@@ -35,16 +35,24 @@ impl Default for Omnibox {
 
 #[derive(Clone, PartialEq)]
 pub struct SidebarSection {
+    /// This cannot be updated after creation. Make sure to either use the same
+    /// one each time or just pass in a default value.
     pub ref_: SidebarSectionRef,
     pub header_text: &'static str,
     pub collapsed_text: String,
     pub elements: Vec<ElementKind>,
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, Default)]
 pub struct SidebarSectionRef {
     ref_: NodeRef,
     collapsed: Rc<Cell<bool>>,
+}
+
+impl PartialEq for SidebarSectionRef {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
 }
 
 impl SidebarSectionRef {

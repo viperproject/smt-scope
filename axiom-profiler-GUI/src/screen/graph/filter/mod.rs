@@ -45,8 +45,8 @@ pub struct FiltersState {
 }
 
 impl FiltersState {
-    pub fn new(initial: Vec<Filter>, link: &Scope<Manager>) -> Self {
-        let chain = FilterChain::new(initial, link);
+    pub fn new(initial: Vec<Filter>, permissions: GraphDimensions, link: &Scope<Manager>) -> Self {
+        let chain = FilterChain::new(initial, permissions, link);
         let delete_node = NodeRef::default();
         let global_section = NodeRef::default();
         FiltersState {

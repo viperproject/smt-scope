@@ -81,14 +81,15 @@ impl Graph {
         graph: &InstGraph,
         colour_map: &QuantIdxToColourMap,
         is_first: bool,
+        from_undo: bool,
     ) -> bool {
         // If we applied a previous filter but did not give permission to render.
         drop(self.waiting.take());
 
         let visible = Rc::new(graph.to_visible());
-        self.waiting = Some(Rc::clone(&visible));
+        self.waiting = Some((from_undo, Rc::clone(&visible)));
         let dimensions = GraphDimensions::of_graph(&visible);
-        if dimensions <= self.permissions || is_first {
+        if dimensions <= self.filter.chain.get_permissions() || is_first {
             self.render(visible, link, parser, graph, colour_map)
         } else {
             self.graph_warning.show();
@@ -107,7 +108,8 @@ impl Graph {
         let dimensions = GraphDimensions::of_graph(&visible);
 
         log::debug!("Rendering graph with {dimensions:?}");
-        self.permissions = dimensions.max(GraphDimensions::default_permissions());
+        let new_permissions = dimensions.max(Self::default_permissions());
+        self.filter.chain.set_permissions(new_permissions);
 
         // self.async_graph_and_filter_chain = false;
 

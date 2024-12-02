@@ -150,7 +150,7 @@ pub fn AddFilterSidebar(props: &AddFilterSidebarProps) -> Html {
     };
     let filters = filters.into_iter().map(|(enabled, first, other)| {
         let icon = first.icon();
-        let fc = |i| {
+        let fc = |i: RawNodeIndex| {
             outer_graph
                 .as_ref()
                 .map(|g| *g.borrow().raw[i].kind())

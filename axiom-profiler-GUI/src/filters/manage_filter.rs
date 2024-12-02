@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use gloo::timers::callback::Timeout;
 use material_yew::icon::MatIcon;
-use smt_log_parser::items::QuantIdx;
+use smt_log_parser::{analysis::RawNodeIndex, items::QuantIdx};
 use web_sys::{Element, HtmlElement, HtmlInputElement};
 use yew::{
     function_component, html, use_context, Callback, Children, Component, Context, Html, NodeRef,
@@ -325,7 +325,7 @@ pub struct ExistingFilterProps {
 pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
     let data = use_context::<Rc<StateProvider>>().unwrap();
     let graph = data.state.parser.as_ref().and_then(|p| p.graph.as_ref());
-    let fc = |i| graph.as_ref().map(|g| *g.borrow().raw[i].kind()).unwrap();
+    let fc = |i: RawNodeIndex| graph.as_ref().map(|g| *g.borrow().raw[i].kind()).unwrap();
     let icon = props.filter.icon();
     let hover = props.filter.long_text(fc, true);
     let filter_text = props.filter.short_text(fc);

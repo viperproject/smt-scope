@@ -471,6 +471,19 @@ impl<T: IndexesInstGraph> IndexMut<T> for RawInstGraph {
     }
 }
 
+impl Index<RawEdgeIndex> for RawInstGraph {
+    type Output = EdgeKind;
+    fn index(&self, index: RawEdgeIndex) -> &Self::Output {
+        &self.graph[index.0]
+    }
+}
+
+impl IndexMut<RawEdgeIndex> for RawInstGraph {
+    fn index_mut(&mut self, index: RawEdgeIndex) -> &mut Self::Output {
+        &mut self.graph[index.0]
+    }
+}
+
 #[derive(Clone)]
 pub struct Neighbors<'a> {
     pub raw: &'a RawInstGraph,

@@ -75,18 +75,14 @@ impl InstGraph {
             };
             let mut edges_to_add: Vec<_> = data
                 .iter()
-                .map(|&(from_v, from_h, to_h)| {
+                .map(|&(from_v, to_h)| {
                     let v_from_v = self_.reverse(from_v).unwrap();
-                    let (edge, to_edge) = if from_v == from_h {
-                        let edge =
-                            RawEdgeIndex(self.raw.graph.find_edge(from_v.0, i_idx.0).unwrap());
-                        (VisibleEdge::Direct(edge), edge)
+                    let to_edge =
+                        RawEdgeIndex(self.raw.graph.find_edge(to_h.0, i_idx.0).unwrap());
+                    let edge = if from_v == to_h {
+                        VisibleEdge::Direct(to_edge)
                     } else {
-                        let from_edge =
-                            RawEdgeIndex(self.raw.graph.find_edge(from_v.0, from_h.0).unwrap());
-                        let to_edge =
-                            RawEdgeIndex(self.raw.graph.find_edge(to_h.0, i_idx.0).unwrap());
-                        (VisibleEdge::Indirect(from_edge, to_edge), to_edge)
+                        VisibleEdge::Indirect(from_v, to_edge)
                     };
                     (to_edge, v_from_v, edge)
                 })
@@ -144,7 +140,7 @@ pub struct VisibleNode {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum VisibleEdge {
     Direct(RawEdgeIndex),
-    Indirect(RawEdgeIndex, RawEdgeIndex),
+    Indirect(RawNodeIndex, RawEdgeIndex),
 }
 
 impl std::fmt::Debug for VisibleEdge {
@@ -165,7 +161,7 @@ impl VisibleEdge {
             {
                 graph
                     .non_visible_paths_between(
-                        RawNodeIndex(graph.raw.graph.edge_endpoints(from.0).unwrap().1),
+                        *from,
                         RawNodeIndex(graph.raw.graph.edge_endpoints(to.0).unwrap().0),
                     )
                     .unwrap()
@@ -185,7 +181,7 @@ impl VisibleEdge {
                 // TODO: clean this up
                 let (all_between, non_visible_between) = graph
                     .non_visible_paths_between(
-                        RawNodeIndex(graph.raw.graph.edge_endpoints(from.0).unwrap().1),
+                        *from,
                         RawNodeIndex(graph.raw.graph.edge_endpoints(to.0).unwrap().0),
                     )
                     .unwrap();
@@ -199,11 +195,14 @@ impl VisibleEdge {
                 };
                 let non_visible_between = non_visible_between.unwrap();
 
-                let get_kind = |n| Some(graph.raw[*non_visible_between.get(n)?].kind());
+                let get_kind = |n| {
+                    let idx: RawNodeIndex = *non_visible_between.get(n)?;
+                    Some(graph.raw[idx].kind())
+                };
 
-                match (graph.raw.graph[from.0], graph.raw.graph[to.0]) {
+                match (graph.raw[*from].kind(), graph.raw[*to]) {
                     // Starting at Instantiation
-                    (EdgeKind::Yield, EdgeKind::Blame { trigger_term })
+                    (NodeKind::Instantiation(..), EdgeKind::Blame { trigger_term })
                         if non_visible_between.len() == 1 =>
                     {
                         VisibleEdgeKind::YieldBlame {
@@ -211,13 +210,13 @@ impl VisibleEdge {
                             trigger_term,
                         }
                     }
-                    (EdgeKind::Yield, EdgeKind::TEqualitySimple { .. })
+                    (NodeKind::Instantiation(..), EdgeKind::TEqualitySimple { .. })
                         if non_visible_between.len() == 2 =>
                     {
                         VisibleEdgeKind::YieldEq(get_kind(1).unwrap().eq_given().unwrap())
                     }
                     (
-                        EdgeKind::Yield,
+                        NodeKind::Instantiation(..),
                         EdgeKind::BlameEq {
                             trigger_term,
                             eq_order,
@@ -241,13 +240,13 @@ impl VisibleEdge {
                     }
 
                     // Starting at ENode
-                    (EdgeKind::EqualityFact, EdgeKind::TEqualitySimple { .. })
+                    (NodeKind::ENode(..), EdgeKind::TEqualitySimple { .. })
                         if non_visible_between.len() == 1 =>
                     {
                         VisibleEdgeKind::ENodeEq(get_kind(0).unwrap().eq_given().unwrap())
                     }
                     (
-                        EdgeKind::EqualityFact,
+                        NodeKind::ENode(..),
                         EdgeKind::BlameEq {
                             trigger_term,
                             eq_order,
@@ -308,16 +307,17 @@ pub enum VisibleEdgeKind {
     /// `ENode` -> `GivenEquality` -> ...
     ENodeEqOther((EqGivenIdx, Option<NonMaxU32>)),
 
-    Unknown(RawEdgeIndex, RawEdgeIndex),
+    Unknown(RawNodeIndex, RawEdgeIndex),
 }
 
 impl VisibleEdgeKind {
     pub fn blame(&self, graph: &InstGraph) -> NodeKind {
         use NodeKind::*;
         match self {
-            VisibleEdgeKind::Direct(edge, _) | VisibleEdgeKind::Unknown(edge, ..) => {
+            VisibleEdgeKind::Direct(edge, _) => {
                 *graph.raw.graph[graph.raw.graph.edge_endpoints(edge.0).unwrap().0].kind()
             }
+            VisibleEdgeKind::Unknown(from, ..) => *graph.raw[*from].kind(),
 
             VisibleEdgeKind::YieldEq(given_eq)
             | VisibleEdgeKind::YieldBlameEq { given_eq, .. }

@@ -43,7 +43,7 @@ impl TopoAnalysis<false, false> for BwdReachableVisAnalysis {
 pub struct ReconnectAnalysis(pub TiVec<RawNodeIndex, bool>);
 
 impl TopoAnalysis<true, false> for ReconnectAnalysis {
-    type Value = FxHashSet<(RawNodeIndex, RawNodeIndex, RawNodeIndex)>;
+    type Value = FxHashSet<(RawNodeIndex, RawNodeIndex)>;
 
     fn collect<'a, 'n, T: Iterator<Item = (RawNodeIndex, &'n Self::Value)>>(
         &mut self,
@@ -68,14 +68,17 @@ impl TopoAnalysis<true, false> for ReconnectAnalysis {
                     data.extend(from_data.iter().copied());
                 }
                 (true, false) => {
-                    data.insert((fidx, cidx, cidx));
+                    data.insert((fidx, fidx));
                 }
                 (false, true) => {
-                    let new = from_data.iter().map(|&(fv, fh, _)| (fv, fh, fidx));
+                    let new = from_data.iter().map(|&(fv, fv2)| {
+                        debug_assert_eq!(fv, fv2);
+                        (fv, fidx)
+                    });
                     data.extend(new)
                 }
                 (true, true) => {
-                    data.insert((fidx, fidx, fidx));
+                    data.insert((fidx, fidx));
                 }
             }
         }

@@ -325,17 +325,16 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
             VisibleEdgeKind::ENodeEqOther(_) => "ENode Equality Other".to_string(),
             VisibleEdgeKind::Unknown(start, end) => {
                 let ctxt = self.ctxt;
-                let hidden_from = self.graph.raw.graph.edge_endpoints(start.0).unwrap().1;
-                let hidden_to = self.graph.raw.graph.edge_endpoints(end.0).unwrap().0;
-                let hidden_from = NodeInfo {
-                    node: &self.graph.raw.graph[hidden_from],
+                let from = NodeInfo {
+                    node: &self.graph.raw[*start],
                     ctxt,
                 };
+                let hidden_to = self.graph.raw.graph.edge_endpoints(end.0).unwrap().0;
                 let hidden_to = NodeInfo {
                     node: &self.graph.raw.graph[hidden_to],
                     ctxt,
                 };
-                format!("Compound {} to {}", hidden_from.kind(), hidden_to.kind())
+                format!("Compound {} to {}", from.kind(), hidden_to.kind())
             }
         }
     }

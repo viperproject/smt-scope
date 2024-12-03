@@ -70,20 +70,24 @@ impl FilterChain {
         let self_ = Self {
             new_filter_chain: initial.clone(),
             permissions,
-            filter_chain_history: vec![(initial.clone(), permissions)],
+            filter_chain_history: vec![(initial, permissions)],
             filter_chain_history_idx: 0,
             undo,
             redo,
         };
+        self_.rerender(link, true);
+        self_
+    }
+
+    pub fn rerender(&self, link: &Scope<Manager>, first: bool) {
         link.send_message(GraphM::RenderCommand {
             cmd: RenderCommand::Full {
-                all: initial,
-                first: true,
+                all: self.new_filter_chain.clone(),
+                first,
             },
             filter_only: false,
             from_undo: false,
         });
-        self_
     }
 
     fn applied_chain(&self) -> &Vec<Filter> {

@@ -5,13 +5,14 @@ mod visible;
 
 use std::rc::Rc;
 
+use filter::DisablersState;
 use material_yew::{dialog::MatDialog, WeakComponentLink};
 use smt_log_parser::analysis::{visible::VisibleInstGraph, RawNodeIndex, VisibleEdgeIndex};
 use yew::{html, html::Scope, Html};
 
 use crate::{
     results::{
-        filters::{Filter, FilterOutput, FilterOutputKind},
+        filters::{Disabler, Filter, FilterOutput, FilterOutputKind},
         render_warning::{Warning, WarningChoice},
         svg_result::GraphDimensions,
     },
@@ -38,6 +39,7 @@ pub struct GraphProps {
     pub parser: RcParser,
     pub analysis: RcAnalysis,
     pub default_filters: Vec<Filter>,
+    pub default_disablers: Vec<(Disabler, bool)>,
 }
 
 pub struct Graph {
@@ -47,9 +49,9 @@ pub struct Graph {
     waiting: Option<(bool, Rc<VisibleInstGraph>)>,
 
     filter: FiltersState,
+    disabler: DisablersState,
 
-    selected_nodes: Vec<RawNodeIndex>,
-    selected_edges: Vec<VisibleEdgeIndex>,
+    nodes_to_select: Vec<RawNodeIndex>,
 
     graph_warning: WeakComponentLink<MatDialog>,
 }
@@ -74,8 +76,10 @@ pub enum GraphM {
     },
     UndoOperation(bool),
     UserPermission(WarningChoice),
+    RenderFailed(String),
     RenderedGraph(RenderedGraph),
     Filter(FilterM),
+    ToggleDisabler(usize),
 
     Selection(SelectionM),
 }
@@ -106,8 +110,8 @@ impl Screen for Graph {
                 Self::default_permissions(),
                 link,
             ),
-            selected_nodes: Vec::new(),
-            selected_edges: Vec::new(),
+            disabler: DisablersState::new(props.default_disablers.clone()),
+            nodes_to_select: Vec::new(),
             graph_warning: WeakComponentLink::default(),
         }
     }
@@ -187,48 +191,63 @@ impl Screen for Graph {
                     )
                 }
             },
+            GraphM::RenderFailed(err) => {
+                log::error!("Error rendering graph: {err}");
+                self.state = Ok(GraphState::Failed(err));
+                true
+            }
             GraphM::RenderedGraph(rendered) => {
                 drop(self.waiting.take());
                 self.state = Err(rendered);
                 true
             }
             GraphM::Filter(filter) => self.filter.update(link, filter),
-            GraphM::Selection(sel) => match sel {
-                SelectionM::SetSelection(nodes, edges) => {
-                    if self.selected_nodes == nodes && self.selected_edges == edges {
-                        return false;
+            GraphM::ToggleDisabler(idx) => {
+                self.disabler.toggle(idx);
+                self.filter.chain.rerender(link, false);
+                true
+            }
+            GraphM::Selection(sel) => {
+                let Err(rendered) = &mut self.state else {
+                    return false;
+                };
+                match sel {
+                    SelectionM::SetSelection(nodes, edges) => {
+                        if rendered.selected_nodes == nodes && rendered.selected_edges == edges {
+                            return false;
+                        }
+                        rendered.selected_nodes = nodes;
+                        rendered.selected_edges = edges;
+                        true
                     }
-                    self.selected_nodes = nodes;
-                    self.selected_edges = edges;
-                    true
-                }
-                SelectionM::ToggleNode(node) => {
-                    let idx = self.selected_nodes.iter().position(|&n| n == node);
-                    if let Some(idx) = idx {
-                        self.selected_nodes.remove(idx);
-                    } else {
-                        self.selected_nodes.push(node);
+                    SelectionM::ToggleNode(node) => {
+                        let idx = rendered.selected_nodes.iter().position(|&n| n == node);
+                        if let Some(idx) = idx {
+                            rendered.selected_nodes.remove(idx);
+                        } else {
+                            rendered.selected_nodes.push(node);
+                        }
+                        true
                     }
-                    true
-                }
-                SelectionM::ToggleEdge(edge) => {
-                    let idx = self.selected_edges.iter().position(|&e| e == edge);
-                    if let Some(idx) = idx {
-                        self.selected_edges.remove(idx);
-                    } else {
-                        self.selected_edges.push(edge);
+                    SelectionM::ToggleEdge(edge) => {
+                        let idx = rendered.selected_edges.iter().position(|&e| e == edge);
+                        if let Some(idx) = idx {
+                            rendered.selected_edges.remove(idx);
+                        } else {
+                            rendered.selected_edges.push(edge);
+                        }
+                        true
                     }
-                    true
-                }
-                SelectionM::DeselectAll => {
-                    if self.selected_nodes.is_empty() && self.selected_edges.is_empty() {
-                        return false;
+                    SelectionM::DeselectAll => {
+                        if rendered.selected_nodes.is_empty() && rendered.selected_edges.is_empty() {
+                            return false;
+                        }
+                        rendered.selected_nodes.clear();
+                        rendered.selected_edges.clear();
+                        true
                     }
-                    self.selected_nodes.clear();
-                    self.selected_edges.clear();
-                    true
                 }
-            },
+            }
         }
     }
 
@@ -246,40 +265,45 @@ impl Screen for Graph {
                 analysis={props.analysis.clone()}
                 rendered={rendered.clone()}
                 outdated={self.waiting.is_some()}
-                selected_nodes={self.selected_nodes.clone()}
-                selected_edges={self.selected_edges.clone()}
+                selected_nodes={rendered.selected_nodes.clone()}
+                selected_edges={rendered.selected_edges.clone()}
                 update_selected={link.callback(GraphM::Selection)}
             />
             <Warning noderef={self.graph_warning.clone()} onclosed={link.callback(GraphM::UserPermission)} {dimensions}/>
         </>}
     }
 
-    fn view_sidebar(&self, link: &Scope<Manager>, _props: &Self::Properties) -> Sidebar {
+    fn view_sidebar(&self, link: &Scope<Manager>, props: &Self::Properties) -> Sidebar {
         let waiting = self.waiting().map(GraphDimensions::of_graph);
         let rendered = self.rendered_graph().map(RenderedGraph::dims);
         let dims = waiting.or(rendered);
-        vec![self.filter.sidebar(dims, link)]
+        vec![self.filter.sidebar(dims, link, &props.analysis), self.disabler.sidebar(link)]
     }
 
     fn view_topbar(&self, link: &Scope<Manager>, props: &Self::Properties) -> Topbar {
         let parser = props.parser.parser.borrow();
         let graph = props.analysis.borrow();
+        let selected = self.rendered_graph().map(|r| r.selected_nodes.as_slice()).unwrap_or_default();
         FiltersState::topbar(
             &*parser,
             &graph.graph,
             &link.callback(|f| GraphM::Filter(FilterM::AddFilter(f))),
-            &[],
+            selected,
         )
     }
 
     fn view_omnibox(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Omnibox {
         let mut omnibox = Omnibox::default();
+        omnibox.disabled = self.state.is_ok();
         match &self.state {
             Ok(GraphState::GraphToDot | GraphState::RenderingGraph) => {
-                omnibox.disabled = true;
                 omnibox.placeholder = "Rendering trace".to_string();
                 omnibox.progress.indeterminate = true;
                 omnibox.progress.closed = false;
+            }
+            Ok(GraphState::Failed(err)) => {
+                omnibox.icon = "error";
+                omnibox.placeholder = err.clone();
             }
             Err(_) => (),
         }

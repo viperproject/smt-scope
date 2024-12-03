@@ -9,7 +9,7 @@ use smt_log_parser::{
     analysis::{InstGraph, RawNodeIndex},
     Z3Parser,
 };
-use yew::{html, html::Scope, Callback, Context, NodeRef};
+use yew::{html::Scope, html, Callback, Context, MouseEvent, NodeRef};
 
 use crate::{
     commands::{Command, CommandRef, CommandsContext, ShortcutKey},
@@ -18,9 +18,8 @@ use crate::{
         svg_result::GraphDimensions,
     },
     screen::{
-        extra::{ElementKind, SidebarSection, SidebarSectionRef, Topbar, TopbarMenu},
-        Manager,
-    },
+        extra::{ElementKind, SidebarSection, SidebarSectionRef, Topbar, TopbarMenu}, file::RcAnalysis, Manager
+    }, utils::toggle_list::ToggleList,
 };
 
 use self::add_filter::AddFilter;
@@ -173,7 +172,7 @@ impl FiltersState {
         }
     }
 
-    pub fn sidebar(&self, dims: Option<GraphDimensions>, link: &Scope<Manager>) -> SidebarSection {
+    pub fn sidebar(&self, dims: Option<GraphDimensions>, link: &Scope<Manager>, analysis: &RcAnalysis) -> SidebarSection {
         let dims = dims.unwrap_or_default();
         let class = if self.dragging { "display-none" } else { "" };
         let details = format!("{} node, {} edge", dims.node_count, dims.edge_count);
@@ -196,7 +195,8 @@ impl FiltersState {
             let selected = self.selected_filter.is_some_and(|i| i == idx);
             let editing = self.edit_filter.is_some_and(|i| i == idx);
             let end_edit = link.callback(move |filter| GraphM::Filter(FilterM::EndEdit(idx, filter)));
-            html!{<ExistingFilter filter={filter.clone()} {onclick} {selected} {editing} {delete} {edit} {end_edit} />}
+            let analysis = analysis.clone();
+            html!{<ExistingFilter filter={filter.clone()} {onclick} {selected} {editing} {delete} {edit} {end_edit} {analysis} />}
         }).collect();
         let no_drag = self.selected_filter.or_else(|| self.edit_filter);
         let list = ElementKind::Custom(html! {
@@ -240,19 +240,52 @@ impl FiltersState {
 }
 
 pub struct DisablersState {
-    disabler_chain: Vec<(Disabler, bool)>,
+    disablers_modified: bool,
+    disablers: Vec<(Disabler, bool)>,
 }
 
 impl DisablersState {
-    pub fn reset_disabled(&mut self, link: &Scope<Manager>) {
-        // let msg = SVGMsg::SetDisabled(
-        //     self.disabler_chain
-        //         .iter()
-        //         .filter(|&(_d, b)| *b)
-        //         .map(|(d, _b)| *d)
-        //         .collect(),
-        // );
-        // let msgs = self.chain.rerender_msgs(first);
-        // file.send_updates(std::iter::once(msg).chain(msgs));
+    pub fn new(disablers: Vec<(Disabler, bool)>) -> Self {
+        DisablersState {
+            disablers_modified: true,
+            disablers,
+        }
+    }
+
+    pub fn toggle(&mut self, idx: usize) {
+        self.disablers_modified = true;
+        self.disablers[idx].1 = !self.disablers[idx].1;
+    }
+
+    pub fn modified(&mut self) -> bool {
+        core::mem::replace(&mut self.disablers_modified, false)
+    }
+
+    pub fn disablers(&self) -> impl Iterator<Item = Disabler> + Clone + '_ {
+        self.disablers.iter().filter(|(_, b)| *b).map(|(d, _)| d).copied()
+    }
+
+    pub fn sidebar(&self, link: &Scope<Manager>) -> SidebarSection {
+        let toggle = link.callback(GraphM::ToggleDisabler);
+        let selected: Vec<_> = self.disablers.iter().map(|(_, b)| *b).collect();
+        let disablers = self.disablers.iter().map(|(d, b)| {
+            let onclick = Callback::from(move |e: MouseEvent| e.prevent_default());
+            let action = if *b { "Enable " } else { "Disable " };
+            let icon = if *b { "visibility_off" } else { "visibility" };
+            html! { <a draggable="false" href="#" {onclick} class="disabler">
+                <div class="material-icons"><MatIcon>{icon}</MatIcon></div>{action}{d.description()}
+            </a> }
+        });
+        let disablers = html! {
+            <ToggleList {toggle} {selected}>
+                {for disablers}
+            </ToggleList>
+        };
+        SidebarSection {
+            ref_: SidebarSectionRef::default(),
+            header_text: "Global Operations",
+            collapsed_text: "Enable/Disable nodes by category".to_string(),
+            elements: vec![ElementKind::Custom(disablers)],
+        }
     }
 }

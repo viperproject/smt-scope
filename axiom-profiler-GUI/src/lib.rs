@@ -686,7 +686,6 @@ impl Component for FileDataComponent {
                 <header class={header_class}><img src="html/logo_side_small.png" class="brand"/><div class="sidebar-button" onmousedown={toggle_sidebar}><MatIconButton icon="menu"></MatIconButton></div></header>
                 <div class="sidebar-scroll"><div class="sidebar-scroll-container">
                     {sidebar_html}
-                    // {current_trace}
                     <div class="sidebar-footer">
                         <div title="Number of pending operations" class="dbg-info-square"><div>{"OPS"}</div><div>{self.pending_ops}</div></div>
                         <div title="Service Worker: Serving from cache not implemented yet." class="dbg-info-square amber"><div>{"SW"}</div><div>{"NA"}</div></div>

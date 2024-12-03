@@ -90,9 +90,9 @@ pub fn Topbar(props: &TopbarProps) -> Html {
     let (dl, dm, dr) = (use_node_ref(), use_node_ref(), use_node_ref());
     let mut dropdown_left = Vec::<Html>::new();
     let mut dropdown_right = Vec::<Html>::new();
-    for (idx, (label, html)) in props.dropdowns.iter().enumerate() {
+    for (idx, &(label, ref html)) in props.dropdowns.iter().enumerate() {
         dropdown_left.push(html! {<DropdownButton idx={idx as u32}>
-            <MenuButton label={label.clone()} />
+            <MenuButton {label} />
             <Dropdown>{html.clone()}</Dropdown>
         </DropdownButton>});
     }

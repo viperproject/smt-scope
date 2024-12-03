@@ -8,7 +8,7 @@ use yew::{html, html::Scope, Html};
 use crate::{
     filters::byte_size_display,
     infobars::{OmniboxMessage, OmniboxMessageKind},
-    results::filters::DEFAULT_FILTER_CHAIN,
+    results::filters::{DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN},
     state::FileInfo,
     OmniboxContext,
 };
@@ -153,6 +153,7 @@ impl Screen for File {
                             parser: props.opened_file.parser.clone(),
                             analysis: analysis.clone(),
                             default_filters: DEFAULT_FILTER_CHAIN.to_vec(),
+                            default_disablers: DEFAULT_DISABLER_CHAIN.to_vec(),
                         })
                     }
                     ViewChoice::MatchingLoop => Change::MatchingLoop(MatchingLoopProps {}),

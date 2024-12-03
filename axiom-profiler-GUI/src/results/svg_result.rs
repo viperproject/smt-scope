@@ -42,6 +42,9 @@ pub const AST_DEPTH_LIMIT: NonMaxU32 = unsafe { NonMaxU32::new_unchecked(5) };
 pub struct RenderedGraph {
     pub graph: Rc<VisibleInstGraph>,
     pub svg_text: AttrValue,
+
+    pub selected_nodes: Vec<RawNodeIndex>,
+    pub selected_edges: Vec<VisibleEdgeIndex>,
 }
 
 impl PartialEq for RenderedGraph {
@@ -457,6 +460,8 @@ impl Component for SVGResult {
                 let rendered = RenderedGraph {
                     graph: Rc::new(rendered),
                     svg_text,
+                    selected_nodes: Vec::new(),
+                    selected_edges: Vec::new(),
                 };
                 self.rendered = Some(rendered.clone());
                 ctx.props().progress.emit(GraphState::Constructed(rendered));

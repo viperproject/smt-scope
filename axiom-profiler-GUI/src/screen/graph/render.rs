@@ -6,9 +6,7 @@ use petgraph::{
     visit::EdgeRef,
 };
 use smt_log_parser::{
-    analysis::{visible::VisibleInstGraph, InstGraph},
-    display_with::DisplayCtxt,
-    Z3Parser,
+    analysis::{visible::VisibleInstGraph, InstGraph, RawNodeIndex, VisibleEdgeIndex, VisibleNodeIndex}, display_with::DisplayCtxt, FxHashMap, FxHashSet, Z3Parser
 };
 use viz_js::VizInstance;
 use wasm_timer::Instant;
@@ -17,7 +15,7 @@ use yew::{html::Scope, AttrValue};
 use crate::{
     configuration::ConfigurationContext,
     results::{
-        filters::FilterOutputKind,
+        filters::{Disabler, FilterOutputKind},
         graphviz::{DotEdgeProperties, DotNodeProperties},
         svg_result::GraphDimensions,
     },
@@ -39,6 +37,9 @@ impl Graph {
         cmd: RenderCommand,
     ) -> (bool, bool, bool) {
         if cmd.is_full() {
+            if self.disabler.modified() {
+                Disabler::apply(self.disabler.disablers(), graph, parser);
+            }
             graph.raw.reset_visibility_to(false);
             self.filter.no_effects.clear();
         }
@@ -56,12 +57,8 @@ impl Graph {
             }
             match output.kind {
                 FilterOutputKind::SelectNodes(to_select) => {
-                    if can_select
-                        && (!self.selected_edges.is_empty() || self.selected_nodes != to_select)
-                    {
-                        update_view = true;
-                        self.selected_edges.clear();
-                        self.selected_nodes = to_select;
+                    if can_select {
+                        update_view |= self.set_to_select(to_select);
                     }
                 }
                 FilterOutputKind::MatchingLoopGraph(ml_idx, graph) => {
@@ -73,6 +70,23 @@ impl Graph {
             }
         }
         (cmd.is_first(), modified, update_view)
+    }
+
+    fn set_to_select(&mut self, to_select: Vec<RawNodeIndex>) -> bool {
+        let (modified, nodes) = match &mut self.state {
+            Ok(_) => (false, &mut self.nodes_to_select),
+            Err(rendered) => {
+                let modified = !rendered.selected_edges.is_empty();
+                rendered.selected_edges.clear();
+                (modified, &mut rendered.selected_nodes)
+            }
+        };
+        if &to_select == &*nodes {
+            modified
+        } else {
+            *nodes = to_select;
+            true
+        }
     }
 
     pub(super) fn render_careful(
@@ -106,13 +120,12 @@ impl Graph {
         graph: &InstGraph,
         colour_map: &QuantIdxToColourMap,
     ) -> bool {
+        let (selected_nodes, selected_edges) = self.update_selected(graph, &visible);
         let dimensions = GraphDimensions::of_graph(&visible);
 
         log::debug!("Rendering graph with {dimensions:?}");
         let new_permissions = dimensions.max(Self::default_permissions());
         self.filter.chain.set_permissions(new_permissions);
-
-        // self.async_graph_and_filter_chain = false;
 
         // TODO: this has no effect, we'll update the state again slightly
         // further down the control chain.
@@ -197,9 +210,14 @@ impl Graph {
             // options.engine = "twopi".to_string();
 
             let start = Instant::now();
-            let svg = graphviz
-                .render_svg_element(dot_output, options)
-                .expect("Could not render graphviz");
+            let svg = match graphviz
+                .render_svg_element(dot_output, options) {
+                Ok(svg) => svg,
+                Err(e) => {
+                    link.send_message(GraphM::RenderFailed(format!("Graphviz error: {e:?}")));
+                    return;
+                }
+            };
             let elapsed = start.elapsed();
             log::info!(
                 "Graph: Converting dot-String to SVG took {} seconds",
@@ -209,9 +227,52 @@ impl Graph {
             let rendered = RenderedGraph {
                 graph: visible,
                 svg_text,
+                selected_nodes,
+                selected_edges,
             };
             link.send_message(GraphM::RenderedGraph(rendered));
         });
         true
+    }
+
+    fn update_selected(&mut self, 
+        graph: &InstGraph,
+        visible: &VisibleInstGraph) -> (Vec<RawNodeIndex>, Vec<VisibleEdgeIndex>) {
+        let mut selected_nodes = core::mem::take(&mut self.nodes_to_select);
+        let Err(old) = &self.state else {
+            return (selected_nodes, Vec::new());
+        };
+        selected_nodes.extend(old.selected_nodes.iter().copied().filter(|i_idx| visible.contains(*i_idx)));
+
+        // Update selected edges
+        let mut selected_edges = old.selected_edges.clone();
+
+        let mut to_update: FxHashMap<_, _> = selected_edges
+            .iter_mut()
+            .flat_map(|e| {
+                let old_edge = &old.graph[*e];
+                let different = !visible
+                    .graph
+                    .edge_weight(e.0)
+                    .is_some_and(|edge| edge == old_edge);
+                different.then_some((old_edge, e))
+            })
+            .collect();
+        if !to_update.is_empty() {
+            for new_edge in visible.graph.edge_references() {
+                if let Some(e) = to_update.remove(new_edge.weight()) {
+                    *e = VisibleEdgeIndex(new_edge.id());
+                    if to_update.is_empty() {
+                        break;
+                    }
+                }
+            }
+            if !to_update.is_empty() {
+                let to_remove: FxHashSet<_> =
+                    to_update.into_values().map(|v| *v).collect();
+                selected_edges.retain(|e| !to_remove.contains(e));
+            }
+        }
+        (selected_nodes, selected_edges)
     }
 }

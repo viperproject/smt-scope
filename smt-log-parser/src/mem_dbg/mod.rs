@@ -6,6 +6,7 @@ pub use utils::*;
 
 use core::fmt;
 use core::ops::{Deref, DerefMut};
+use std::collections::hash_map::IntoValues;
 
 macro_rules! derive_wrapper {
     ($head:ident $(:: $tail:ident)+ $(<$($rest1:tt)*)? $(: $($rest2:tt)*)?) => {
@@ -169,6 +170,11 @@ impl<K, V> std::iter::IntoIterator for FxHashMap<K, V> {
     type IntoIter = std::collections::hash_map::IntoIter<K, V>;
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+impl<K, V> FxHashMap<K, V> {
+    pub fn into_values(self) -> IntoValues<K, V> {
+        self.0.into_values()
     }
 }
 

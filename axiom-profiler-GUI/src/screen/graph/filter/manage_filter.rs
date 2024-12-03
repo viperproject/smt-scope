@@ -10,7 +10,7 @@ use yew::{
 };
 
 use crate::{
-    mouse_position, results::filters::Filter, state::StateProvider, PREVENT_DEFAULT_DRAG_OVER,
+    mouse_position, results::filters::Filter, screen::file::RcAnalysis, state::StateProvider, PREVENT_DEFAULT_DRAG_OVER
 };
 
 pub enum Msg {
@@ -270,13 +270,13 @@ pub struct ExistingFilterProps {
     pub end_edit: Callback<Filter>,
     pub selected: bool,
     pub editing: bool,
+    pub analysis: RcAnalysis,
 }
 
 #[function_component]
 pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
-    let data = use_context::<Rc<StateProvider>>().unwrap();
-    let graph = data.state.parser.as_ref().and_then(|p| p.graph.as_ref());
-    let fc = |i| graph.as_ref().map(|g| *g.borrow().raw[i].kind()).unwrap();
+    let graph = props.analysis.borrow();
+    let fc = |i| *graph.graph.raw[i].kind();
     let icon = props.filter.icon();
     let hover = props.filter.long_text(fc, true);
     let filter_text = props.filter.short_text(fc);

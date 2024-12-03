@@ -17,5 +17,5 @@ impl RenderedGraph {
 pub enum GraphState {
     GraphToDot,
     RenderingGraph,
-    // Failed(String),
+    Failed(String),
 }

@@ -126,10 +126,8 @@ impl SimpleButton {
             ),
         };
         let id = self.text.to_lowercase().replace(" ", "_");
-        let onclick = onmousedown.is_some().then(|| {
-            Callback::from(move |ev: MouseEvent| {
-                ev.prevent_default();
-            })
+        let onclick = Callback::from(move |ev: MouseEvent| {
+            ev.prevent_default();
         });
         let class = self.disabled.then_some("disabled");
         html! {

@@ -1,12 +1,12 @@
 use std::num::NonZeroUsize;
 
-use yew::{html::Scope, Callback, Context};
+use yew::{Callback, Context};
 
 use crate::{
     commands::{Command, CommandRef, CommandsContext, ShortcutKey},
     filters::FiltersState,
     results::{filters::Filter, svg_result::GraphDimensions},
-    screen::Manager,
+    screen::{graph::Graph, Manager, Scope},
 };
 
 use super::GraphM;
@@ -50,7 +50,7 @@ impl RenderCommand {
 }
 
 impl FilterChain {
-    pub fn new(initial: Vec<Filter>, permissions: GraphDimensions, link: &Scope<Manager>) -> Self {
+    pub fn new(initial: Vec<Filter>, permissions: GraphDimensions, link: &Scope<Graph>) -> Self {
         let registerer = link.get_commands_registerer().unwrap();
         let undo = Command {
             name: "Undo".to_string(),
@@ -79,7 +79,7 @@ impl FilterChain {
         self_
     }
 
-    pub fn rerender(&self, link: &Scope<Manager>, first: bool) {
+    pub fn rerender(&self, link: &Scope<Graph>, first: bool) {
         link.send_message(GraphM::RenderCommand {
             cmd: RenderCommand::Full {
                 all: self.new_filter_chain.clone(),
@@ -109,7 +109,7 @@ impl FilterChain {
         }
     }
 
-    fn send_render_command(&self, link: &Scope<Manager>, filter_only: bool, from_undo: bool) {
+    fn send_render_command(&self, link: &Scope<Graph>, filter_only: bool, from_undo: bool) {
         let cmd = Self::rerender_command(self.applied_chain(), &self.new_filter_chain);
         link.send_message(GraphM::RenderCommand {
             cmd,
@@ -124,7 +124,7 @@ impl FilterChain {
             .set_disabled(self.filter_chain_history_idx + 1 >= self.filter_chain_history.len());
     }
 
-    pub fn send_updates(&mut self, link: &Scope<Manager>) -> bool {
+    pub fn send_updates(&mut self, link: &Scope<Graph>) -> bool {
         if &self.new_filter_chain == self.applied_chain() {
             return false;
         }
@@ -139,7 +139,7 @@ impl FilterChain {
         true
     }
 
-    pub fn undo_operation(&mut self, link: &Scope<Manager>, undo: bool, filter_only: bool) -> bool {
+    pub fn undo_operation(&mut self, link: &Scope<Graph>, undo: bool, filter_only: bool) -> bool {
         let new = if undo {
             if self.filter_chain_history_idx == 0 {
                 log::error!("Undoing when no history");

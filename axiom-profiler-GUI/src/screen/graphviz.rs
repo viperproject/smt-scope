@@ -157,9 +157,11 @@ impl
                 }
                 MatchKind::MBQI { quant, .. }
                 | MatchKind::Axiom { axiom: quant, .. }
-                | MatchKind::Quantifier { quant, .. } => {
-                    ctxt.parser[*quant].kind.with(&ctxt).to_string()
-                }
+                | MatchKind::Quantifier { quant, .. } => ctxt.parser[*quant]
+                    .kind
+                    .name(&ctxt.parser.strings)
+                    .unwrap()
+                    .to_string(),
             },
         }
     }

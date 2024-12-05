@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
+    screen::graph::RenderedGraph,
     state::{StateContext, StateProvider},
     utils::split_div::SplitDiv,
 };
@@ -14,7 +15,6 @@ use yew::prelude::*;
 use super::{
     graph::graph_container,
     node_info::{SelectedEdgesInfo, SelectedNodesInfo},
-    svg_result::RenderedGraph,
 };
 
 pub struct GraphInfo {
@@ -235,7 +235,7 @@ impl Component for GraphInfo {
                 let Some(graph_container) = &*self.graph_container.borrow() else {
                     return false;
                 };
-                let msg = graph_container::Msg::ScrollZoomSelection(
+                let msg = graph_container::SvgViewM::ScrollZoomSelection(
                     self.selected_nodes.keys().copied().collect(),
                     self.selected_edges.keys().copied().collect(),
                 );

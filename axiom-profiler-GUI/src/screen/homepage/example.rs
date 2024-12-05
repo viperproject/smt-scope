@@ -1,8 +1,6 @@
-use yew::html::Scope;
+use crate::screen::{file::File, Manager, Scope};
 
-use crate::screen::Manager;
-
-use super::{Action, ElementKind, HomepageM, SimpleButton};
+use super::{Action, ElementKind, Homepage, HomepageM, SimpleButton};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Example {
@@ -28,7 +26,7 @@ impl Example {
         format!("html/examples/{}.log", self.name())
     }
 
-    pub fn elements(link: &Scope<Manager>) -> impl Iterator<Item = ElementKind> + '_ {
+    pub fn elements(link: &Scope<Homepage>) -> impl Iterator<Item = ElementKind> + '_ {
         Self::all().iter().map(|&example| {
             ElementKind::Simple(SimpleButton {
                 icon: "description",

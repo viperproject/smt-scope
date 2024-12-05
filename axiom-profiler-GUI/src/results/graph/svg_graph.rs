@@ -7,7 +7,7 @@ use web_sys::{Element, SvgsvgElement};
 use yew::prelude::*;
 use yew::{function_component, html};
 
-use crate::results::svg_result::RenderedGraph;
+use crate::screen::graph::RenderedGraph;
 use crate::utils::svg::{SvgHelper, ViewBox};
 use crate::{mouse_position, PrecisePosition};
 
@@ -20,10 +20,6 @@ pub struct GraphProps {
     pub zoom_factor: f64,
     pub zoom_factor_delta: f64,
     pub zoom_with_mouse: bool,
-    /// The `RawNodeIndex` here refers to the original graph!
-    pub selected_nodes: Vec<RawNodeIndex>,
-    /// The `VisibleEdgeIndex` here refers to the VisibleGraph!
-    pub selected_edges: Vec<VisibleEdgeIndex>,
     pub scroll_position: PrecisePosition,
     pub set_scroll: Callback<(PrecisePosition, PrecisePosition)>,
     pub scroll_window: NodeRef,
@@ -33,10 +29,8 @@ pub struct GraphProps {
 #[function_component]
 pub fn Graph(props: &GraphProps) -> Html {
     let generation = props.rendered.graph.generation;
-    let div_ref = use_node_ref();
-
     {
-        let div_ref = div_ref.clone();
+        let svg_el = props.rendered.svg.clone();
         let zoom_factor = props.zoom_factor;
         let zoom_factor_delta = props.zoom_factor_delta;
         let zoom_with_mouse = props.zoom_with_mouse;
@@ -46,83 +40,71 @@ pub fn Graph(props: &GraphProps) -> Html {
         let set_scroll = props.set_scroll.clone();
         use_effect_with_deps(
             move |&(_generation, zoom_factor)| {
-                let div = div_ref
-                    .cast::<Element>()
-                    .expect("div_ref not attached to div element");
-                // setting the transform-origin to the top left corner of the surrounding div
-                // we know there is only a single SVG element, hence can just take item(0)
-                let svg_element = div.get_elements_by_tag_name("svg").item(0);
-                if let Some(el) = svg_element {
-                    let svg_el = el.dyn_into::<SvgsvgElement>().ok().unwrap();
-                    let view_box = svg_el.get_view_box().unwrap();
-                    let (svg_width, svg_height) = (
-                        view_box.width + 2.0 * view_box.x,
-                        view_box.height + 2.0 * view_box.y,
-                    );
+                let view_box = svg_el.get_view_box().unwrap();
+                let (svg_width, svg_height) = (
+                    view_box.width + 2.0 * view_box.x,
+                    view_box.height + 2.0 * view_box.y,
+                );
 
-                    let scroll_window = scroll_window.cast::<Element>().unwrap();
-                    let rect = scroll_window.get_bounding_client_rect();
-                    let (sw_x, sw_y, sw_w, sw_h) =
-                        (rect.x(), rect.y(), rect.width(), rect.height());
+                let scroll_window = scroll_window.cast::<Element>().unwrap();
+                let rect = scroll_window.get_bounding_client_rect();
+                let (sw_x, sw_y, sw_w, sw_h) = (rect.x(), rect.y(), rect.width(), rect.height());
 
-                    const MARGIN: f64 = 128.0;
-                    let (svg_width, svg_height) =
-                        (svg_width + 2.0 * MARGIN, svg_height + 2.0 * MARGIN);
-                    let view_box = ViewBox {
-                        x: -MARGIN,
-                        y: -MARGIN,
-                        width: svg_width,
-                        height: svg_height,
-                    };
-                    svg_el.set_view_box(view_box).unwrap();
+                const MARGIN: f64 = 128.0;
+                let (svg_width, svg_height) = (svg_width + 2.0 * MARGIN, svg_height + 2.0 * MARGIN);
+                let view_box = ViewBox {
+                    x: -MARGIN,
+                    y: -MARGIN,
+                    width: svg_width,
+                    height: svg_height,
+                };
+                svg_el.set_view_box(view_box).unwrap();
 
-                    let new_scroll = {
-                        let (x, y) = if zoom_with_mouse {
-                            let mouse = *mouse_position().read().unwrap();
-                            let (x, y) = (mouse.x as f64 - sw_x, mouse.y as f64 - sw_y);
-                            // How much of the edge should go to zooming in there
-                            const EDGE_ZOOM_BOUNDARY: f64 = 0.15;
-                            let (lower_x, upper_x) =
-                                (sw_w * EDGE_ZOOM_BOUNDARY, sw_w * (1.0 - EDGE_ZOOM_BOUNDARY));
-                            let (lower_y, upper_y) =
-                                (sw_h * EDGE_ZOOM_BOUNDARY, sw_h * (1.0 - EDGE_ZOOM_BOUNDARY));
-                            match (x < lower_x, x > upper_x, y < lower_y, y > upper_y) {
-                                (true, false, true, false) => (0.0, 0.0),
-                                (false, true, true, false) => (sw_w, 0.0),
-                                (true, false, false, true) => (0.0, sw_h),
-                                (false, true, false, true) => (sw_w, sw_h),
-                                _ => (x, y),
-                            }
-                        } else {
-                            (sw_w / 2.0, sw_h / 2.0)
-                        };
-
-                        if !*centered {
-                            // On first render, we want to center the graph
-                            centered.set(true);
-                            scroll_position = PrecisePosition {
-                                x: MARGIN - 10.0,
-                                y: MARGIN - 10.0,
-                            };
+                let new_scroll = {
+                    let (x, y) = if zoom_with_mouse {
+                        let mouse = *mouse_position().read().unwrap();
+                        let (x, y) = (mouse.x as f64 - sw_x, mouse.y as f64 - sw_y);
+                        // How much of the edge should go to zooming in there
+                        const EDGE_ZOOM_BOUNDARY: f64 = 0.15;
+                        let (lower_x, upper_x) =
+                            (sw_w * EDGE_ZOOM_BOUNDARY, sw_w * (1.0 - EDGE_ZOOM_BOUNDARY));
+                        let (lower_y, upper_y) =
+                            (sw_h * EDGE_ZOOM_BOUNDARY, sw_h * (1.0 - EDGE_ZOOM_BOUNDARY));
+                        match (x < lower_x, x > upper_x, y < lower_y, y > upper_y) {
+                            (true, false, true, false) => (0.0, 0.0),
+                            (false, true, true, false) => (sw_w, 0.0),
+                            (true, false, false, true) => (0.0, sw_h),
+                            (false, true, false, true) => (sw_w, sw_h),
+                            _ => (x, y),
                         }
-                        let zoom_factor_delta_chg = 1.0 - (1.0 / zoom_factor_delta);
-                        let (width, height) =
-                            (x * zoom_factor_delta_chg, y * zoom_factor_delta_chg);
-                        let left = (scroll_position.x + width) * zoom_factor_delta;
-                        let top = (scroll_position.y + height) * zoom_factor_delta;
-                        PrecisePosition { x: left, y: top }
+                    } else {
+                        (sw_w / 2.0, sw_h / 2.0)
                     };
 
-                    let (scaled_width, scaled_height) =
-                        (svg_width * zoom_factor, svg_height * zoom_factor);
-                    let _ = svg_el.set_attribute("width", scaled_width.to_string().as_str());
-                    let _ = svg_el.set_attribute("height", scaled_height.to_string().as_str());
-                    let graph_dims = PrecisePosition {
-                        x: scaled_width,
-                        y: scaled_height,
-                    };
-                    set_scroll.emit((new_scroll, graph_dims));
-                }
+                    if !*centered {
+                        // On first render, we want to center the graph
+                        centered.set(true);
+                        scroll_position = PrecisePosition {
+                            x: MARGIN - 10.0,
+                            y: MARGIN - 10.0,
+                        };
+                    }
+                    let zoom_factor_delta_chg = 1.0 - (1.0 / zoom_factor_delta);
+                    let (width, height) = (x * zoom_factor_delta_chg, y * zoom_factor_delta_chg);
+                    let left = (scroll_position.x + width) * zoom_factor_delta;
+                    let top = (scroll_position.y + height) * zoom_factor_delta;
+                    PrecisePosition { x: left, y: top }
+                };
+
+                let (scaled_width, scaled_height) =
+                    (svg_width * zoom_factor, svg_height * zoom_factor);
+                let _ = svg_el.set_attribute("width", scaled_width.to_string().as_str());
+                let _ = svg_el.set_attribute("height", scaled_height.to_string().as_str());
+                let graph_dims = PrecisePosition {
+                    x: scaled_width,
+                    y: scaled_height,
+                };
+                set_scroll.emit((new_scroll, graph_dims));
             },
             (generation, zoom_factor),
         )
@@ -130,14 +112,11 @@ pub fn Graph(props: &GraphProps) -> Html {
 
     {
         // Whenever selected nodes change, we want to update the visual representation of the nodes
-        let div_ref = div_ref.clone();
-        let selected_nodes: FxHashSet<_> = props.selected_nodes.iter().copied().collect();
+        let div = props.rendered.svg.clone();
+        let selected_nodes: FxHashSet<_> = props.rendered.selected_nodes.iter().copied().collect();
 
         use_effect_with_deps(
             move |(_generation, selected_nodes)| {
-                let div = div_ref
-                    .cast::<Element>()
-                    .expect("div_ref not attached to div element");
                 let descendant_nodes = div.get_elements_by_class_name("node");
                 for i in 0..descendant_nodes.length() {
                     let node = descendant_nodes.item(i).unwrap();
@@ -157,14 +136,11 @@ pub fn Graph(props: &GraphProps) -> Html {
 
     {
         // Whenever selected edges change, we want to update the visual representation of the edges
-        let div_ref = div_ref.clone();
-        let selected_edges: FxHashSet<_> = props.selected_edges.iter().copied().collect();
+        let div = props.rendered.svg.clone();
+        let selected_edges: FxHashSet<_> = props.rendered.selected_edges.iter().copied().collect();
 
         use_effect_with_deps(
             move |(_generation, selected_edges)| {
-                let div = div_ref
-                    .cast::<Element>()
-                    .expect("div_ref not attached to div element");
                 let descendant_edges = div.get_elements_by_class_name("edge");
                 for i in 0..descendant_edges.length() {
                     let edge = descendant_edges.item(i).unwrap();
@@ -187,14 +163,10 @@ pub fn Graph(props: &GraphProps) -> Html {
         let edges_callback = props.update_selected_edges.clone();
         let on_rerender = props.on_rerender.clone();
 
-        let div_ref = div_ref.clone();
+        let div = props.rendered.svg.clone();
         use_effect_with_deps(
             move |_generation| {
                 on_rerender.emit(());
-
-                let div = div_ref
-                    .cast::<Element>()
-                    .expect("div_ref not attached to div element");
 
                 // construct event_listeners that emit node indices (contained in title tags)
                 let descendant_nodes = div.get_elements_by_class_name("node");
@@ -351,7 +323,7 @@ pub fn Graph(props: &GraphProps) -> Html {
     }
 
     html! {
-        <div class="no-select" ref={div_ref}>
+        <div class="no-select">
             {props.children.clone()}
         </div>
     }
@@ -359,19 +331,16 @@ pub fn Graph(props: &GraphProps) -> Html {
 
 #[derive(Properties)]
 pub struct SvgProps {
-    pub svg: Option<(Html, u32)>,
+    pub svg: (SvgsvgElement, u32),
 }
 impl PartialEq for SvgProps {
     fn eq(&self, other: &Self) -> bool {
-        self.svg.as_ref().map(|(_, i)| *i) == other.svg.as_ref().map(|(_, i)| *i)
+        self.svg.1 == other.svg.1
     }
 }
 
 #[function_component]
 pub fn Svg(props: &SvgProps) -> Html {
-    props
-        .svg
-        .as_ref()
-        .map(|(g, _)| g.clone())
-        .unwrap_or_default()
+    let svg = props.svg.0.clone();
+    Html::VRef(svg.into())
 }

@@ -6,34 +6,105 @@ use std::{
 use material_yew::{icon::MatIcon, linear_progress::LinearProgressProps};
 use yew::{html, Callback, Html, MouseEvent, NodeRef};
 
+use crate::infobars::{OmniboxMessage, OmniboxMessageKind};
+
 pub type Sidebar = Vec<SidebarSection>;
 pub type Topbar = Vec<TopbarMenu>;
 
 #[derive(Clone, PartialEq)]
-pub struct Omnibox {
-    pub icon: &'static str,
-    pub icon_mousedown: Option<Callback<()>>,
-    pub disabled: bool,
-    pub placeholder: String,
-    pub progress: LinearProgressProps,
+pub enum Omnibox {
+    Search(OmniboxSearch),
+    Message(OmniboxMessage),
+    Loading(OmniboxLoading),
+    Select(OmniboxChoose),
 }
 
 impl Default for Omnibox {
     fn default() -> Self {
-        Self {
-            icon: "search",
-            icon_mousedown: None,
-            disabled: false,
-            placeholder: "Search or type '>' for commands".to_string(),
-            progress: LinearProgressProps {
-                indeterminate: false,
-                progress: 0.0,
-                buffer: 1.0,
-                reverse: false,
-                closed: true,
-            },
+        Self::Search(Default::default())
+    }
+}
+
+impl Omnibox {
+    pub fn enabled(&self) -> bool {
+        matches!(self, Self::Search(_))
+    }
+
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Self::Search(_) => "search",
+            Self::Message(msg) => msg.kind.icon(),
+            Self::Loading(loading) => loading.icon,
+            Self::Select(select) => select.icon,
         }
     }
+
+    pub fn icon_mousedown(&self) -> Option<&Callback<()>> {
+        match self {
+            Self::Search(_) | Self::Message(_) => None,
+            Self::Loading(loading) => loading.icon_mousedown.as_ref(),
+            Self::Select(select) => select.icon_mousedown.as_ref(),
+        }
+    }
+
+    pub fn message(&self) -> &str {
+        match self {
+            Self::Search(_) => "Search or type '>' for commands",
+            Self::Message(msg) => msg.message.as_str(),
+            Self::Loading(loading) => loading.message.as_str(),
+            Self::Select(select) => select.message.as_str(),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct OmniboxLoading {
+    pub icon: &'static str,
+    pub icon_mousedown: Option<Callback<()>>,
+    pub message: String,
+    pub loading: LinearProgressProps,
+}
+
+impl OmniboxLoading {
+    pub fn indeterminate() -> LinearProgressProps {
+        LinearProgressProps {
+            indeterminate: true,
+            progress: 0.0,
+            buffer: 1.0,
+            reverse: false,
+            closed: false,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct OmniboxChoose {
+    pub icon: &'static str,
+    pub icon_mousedown: Option<Callback<()>>,
+    pub message: String,
+    pub choose_from: usize,
+    pub choose: Callback<usize>,
+}
+
+pub type OmniboxSearch = Vec<OmniboxSearchCategory>;
+
+#[derive(Clone, PartialEq)]
+pub struct OmniboxSearchCategory {
+    pub name: String,
+    /// The ordering of these entries determines the order in which they are
+    /// displayed if the have the same search score.
+    pub entries: Vec<OmniboxSearchEntry>,
+}
+
+#[derive(Clone, PartialEq)]
+pub struct OmniboxSearchEntry {
+    pub pre_text: String,
+    pub search_text: String,
+    pub post_text: String,
+    pub info: Html,
+
+    pub select_from: usize,
+    pub select: Callback<usize>,
 }
 
 /// For sections which do not change, these should be generated once and saved.

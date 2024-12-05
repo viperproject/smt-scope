@@ -10,14 +10,14 @@ use wasm_bindgen::JsCast;
 use wasm_streams::ReadableStream;
 use wasm_timer::Instant;
 use web_sys::DataTransfer;
-use yew::{html::Scope, Callback, DragEvent};
+use yew::{Callback, DragEvent};
 
 use crate::{
     global_callbacks::GlobalCallbacks,
     infobars::{OmniboxMessage, OmniboxMessageKind},
-    screen::{homepage::HomepageM, Manager},
+    screen::{homepage::HomepageM, Manager, Scope},
     state::FileInfo,
-    utils::{colouring::QuantIdxToColourMap, lookup::StringLookupZ3},
+    utils::colouring::QuantIdxToColourMap,
     CallbackRef, OmniboxContext, PREVENT_DEFAULT_DRAG_OVER,
 };
 
@@ -42,10 +42,10 @@ impl Deref for RcParser {
 impl RcParser {
     pub fn new(parser: Z3Parser) -> Self {
         let colour_map = QuantIdxToColourMap::new(&parser);
-        let lookup = StringLookupZ3::init(&parser);
+        // let lookup = StringLookupZ3::init(&parser);
         let parser = Parser {
             parser: RefCell::new(parser),
-            lookup,
+            // lookup,
             colour_map,
         };
         Self(Rc::new(parser))
@@ -54,7 +54,7 @@ impl RcParser {
 
 pub struct Parser {
     pub parser: RefCell<Z3Parser>,
-    pub lookup: StringLookupZ3,
+    // pub lookup: StringLookupZ3,
     pub colour_map: QuantIdxToColourMap,
 }
 
@@ -140,10 +140,7 @@ impl Homepage {
     const BROWSER_MEM_LIMIT: usize = 2 * 1024 * 1024 * 1024;
     const MAX_PARSE_BYTES: usize = Self::BROWSER_MEM_LIMIT / 2;
 
-    pub(super) fn file_drag(
-        registerer: &GlobalCallbacks,
-        link: &Scope<Manager>,
-    ) -> [CallbackRef; 3] {
+    pub(super) fn file_drag(registerer: &GlobalCallbacks, link: &Scope<Self>) -> [CallbackRef; 3] {
         /// Detects if a file is being dragged over the window
         fn file_drag(event: &DragEvent) -> bool {
             event
@@ -209,7 +206,7 @@ impl Homepage {
         [drag_enter_ref, drag_leave_ref, drop_ref]
     }
 
-    fn pre_open_file(&mut self, file_info: FileInfo, link: &Scope<Manager>) {
+    fn pre_open_file(&mut self, file_info: FileInfo, link: &Scope<Self>) {
         // hide the flags page if shown
         self.toggle_flags.borrow().emit(Some(false));
         link.clear_omnibox();
@@ -226,7 +223,7 @@ impl Homepage {
         &mut self,
         example: Example,
         response: Response,
-        link: &Scope<Manager>,
+        link: &Scope<Self>,
     ) -> bool {
         let size = response
             .headers()
@@ -273,7 +270,7 @@ impl Homepage {
         true
     }
 
-    pub(super) fn load_opened_file(&mut self, file: File, link: &Scope<Manager>) -> bool {
+    pub(super) fn load_opened_file(&mut self, file: File, link: &Scope<Self>) -> bool {
         let file_info = FileInfo {
             name: file.name(),
             size: Some(file.size()),
@@ -339,7 +336,7 @@ impl Homepage {
         mut parser: EitherParser<'_, Z3Parser>,
         stop_loading: Rc<RefCell<bool>>,
         size: Option<u64>,
-        link: Scope<Manager>,
+        link: Scope<Self>,
         use_mem_limit: Option<usize>,
     ) {
         let limited_by_async = use_mem_limit.is_some_and(|l| l < Self::MAX_PARSE_BYTES);

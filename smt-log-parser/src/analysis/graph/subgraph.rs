@@ -24,6 +24,9 @@ pub struct Subgraphs {
 }
 
 impl Subgraphs {
+    pub fn topo_node_indices(&self) -> impl Iterator<Item = RawNodeIndex> + '_ {
+        self.in_subgraphs().chain(self.singletons())
+    }
     pub fn in_subgraphs(&self) -> impl Iterator<Item = RawNodeIndex> + '_ {
         self.subgraphs.iter().flat_map(|s| s.nodes.iter().copied())
     }
@@ -45,7 +48,7 @@ impl RawInstGraph {
         let mut discovered = VisitBox {
             dfs: self.graph.visit_map(),
         };
-        for node in self.graph.node_indices().map(RawNodeIndex) {
+        for node in self.node_indices() {
             let has_parents = self
                 .graph
                 .neighbors_directed(node.0, Incoming)

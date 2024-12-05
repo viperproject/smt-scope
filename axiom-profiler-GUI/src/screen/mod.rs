@@ -2,28 +2,30 @@ mod enums;
 pub mod extra;
 pub mod file;
 pub mod graph;
+pub mod graphviz;
 pub mod homepage;
 pub mod manager;
 pub mod ml;
 
-use manager::ManagerInner;
-use yew::{html::Scope, Component, Html};
+use yew::{Component, Html};
 
 use self::{
     extra::{Omnibox, Sidebar, Topbar},
     file::File,
     homepage::Homepage,
+    manager::ScreenManager,
 };
 
 pub use self::enums::*;
 
-pub struct Manager(ManagerInner);
+pub type Manager<S> = ScreenManager<S>;
+pub type Scope<S> = yew::html::Scope<Manager<S>>;
 
 pub trait Screen: Sized + 'static {
     /// Messages are used to make Components dynamic and interactive. Simple
     /// Component's can declare their Message type to be `()`. Complex Component's
     /// commonly use an enum to declare multiple Message types.
-    type Message: 'static;
+    type Message: ScreenMessage;
 
     /// The Component's properties.
     ///
@@ -32,7 +34,7 @@ pub trait Screen: Sized + 'static {
     type Properties: PartialEq;
 
     /// Called when component is created.
-    fn create(link: &Scope<Manager>, props: &Self::Properties) -> Self;
+    fn create(link: &Scope<Self>, props: &Self::Properties) -> Self;
 
     /// Called when a new message is sent to the component via its scope.
     ///
@@ -43,12 +45,7 @@ pub trait Screen: Sized + 'static {
     ///
     /// By default, this function will return true and thus make the component re-render.
     #[allow(unused_variables)]
-    fn update(
-        &mut self,
-        link: &Scope<Manager>,
-        props: &Self::Properties,
-        msg: Self::Message,
-    ) -> bool {
+    fn update(&mut self, link: &Scope<Self>, props: &Self::Properties, msg: Self::Message) -> bool {
         true
     }
 
@@ -60,26 +57,26 @@ pub trait Screen: Sized + 'static {
     #[allow(unused_variables)]
     fn changed(
         &mut self,
-        link: &Scope<Manager>,
+        link: &Scope<Self>,
         props: &Self::Properties,
         _old_props: &Self::Properties,
     ) -> bool {
         true
     }
 
-    /// Called when the properties passed in from the container of the screen
-    /// change and indicate a desire to change the screen. Return `true` to
-    /// accept the screen change and `false` to reject it and keep the
-    /// `old_props`.
-    #[allow(unused_variables)]
-    fn parent_changed(
-        &mut self,
-        link: &Scope<Manager>,
-        props: &Change,
-        _old_props: &Self::Properties,
-    ) -> bool {
-        true
-    }
+    // /// Called when the properties passed in from the container of the screen
+    // /// change and indicate a desire to change the screen. Return `true` to
+    // /// accept the screen change and `false` to reject it and keep the
+    // /// `old_props`.
+    // #[allow(unused_variables)]
+    // fn parent_changed(
+    //     &mut self,
+    //     link: &Scope<Self>,
+    //     props: &Change,
+    //     _old_props: &Self::Properties,
+    // ) -> bool {
+    //     true
+    // }
 
     /// Components define their visual layout using a JSX-style syntax through the use of the
     /// `html!` procedural macro. The full guide to using the macro can be found in [Yew's
@@ -88,15 +85,15 @@ pub trait Screen: Sized + 'static {
     /// Note that `view()` calls do not always follow a render request from `update()` or
     /// `changed()`. Yew may optimize some calls out to reduce virtual DOM tree generation overhead.
     /// The `create()` call is always followed by a call to `view()`.
-    fn view(&self, link: &Scope<Manager>, props: &Self::Properties) -> Html;
+    fn view(&self, link: &Scope<Self>, props: &Self::Properties) -> Html;
 
     #[allow(unused_variables)]
-    fn view_sidebar(&self, link: &Scope<Manager>, props: &Self::Properties) -> Sidebar {
+    fn view_sidebar(&self, link: &Scope<Self>, props: &Self::Properties) -> Sidebar {
         Vec::new()
     }
 
     #[allow(unused_variables)]
-    fn view_topbar(&self, link: &Scope<Manager>, props: &Self::Properties) -> Topbar {
+    fn view_topbar(&self, link: &Scope<Self>, props: &Self::Properties) -> Topbar {
         Vec::new()
     }
 
@@ -104,7 +101,7 @@ pub trait Screen: Sized + 'static {
     /// temporary message in the omnibox use `link.omnibox_message(message,
     /// ms_duration)` instead.
     #[allow(unused_variables)]
-    fn view_omnibox(&self, link: &Scope<Manager>, props: &Self::Properties) -> Omnibox {
+    fn view_omnibox(&self, link: &Scope<Self>, props: &Self::Properties) -> Omnibox {
         Omnibox::default()
     }
 
@@ -115,7 +112,7 @@ pub trait Screen: Sized + 'static {
     /// `changed()`. Yew may optimize some calls out to reduce virtual DOM tree generation overhead.
     /// The `create()` call is always followed by a call to `view()` and later `rendered()`.
     #[allow(unused_variables)]
-    fn rendered(&mut self, link: &Scope<Manager>, props: &Self::Properties, first_render: bool) {}
+    fn rendered(&mut self, link: &Scope<Self>, props: &Self::Properties, first_render: bool) {}
 
     /// Prepares the state during server side rendering.
     ///
@@ -129,5 +126,5 @@ pub trait Screen: Sized + 'static {
 
     /// Called right before a Component is unmounted.
     #[allow(unused_variables)]
-    fn destroy(&mut self, link: &Scope<Manager>, props: &Self::Properties) {}
+    fn destroy(&mut self, link: &Scope<Self>, props: &Self::Properties) {}
 }

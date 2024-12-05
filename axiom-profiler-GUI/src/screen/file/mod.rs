@@ -3,25 +3,26 @@ mod analysis;
 use std::rc::Rc;
 
 use smt_log_parser::{analysis::InstGraph, parsers::ParseState};
-use yew::{html, html::Scope, Html};
+use yew::{html, Html};
 
 use crate::{
     filters::byte_size_display,
     infobars::{OmniboxMessage, OmniboxMessageKind},
     results::filters::{DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN},
+    screen::{graph::Graph, ml::MatchingLoop},
     state::FileInfo,
     OmniboxContext,
 };
 
 use super::{
     extra::{
-        Action, ElementKind, Omnibox, Sidebar, SidebarSection, SidebarSectionRef, SimpleButton,
-        Topbar,
+        Action, ElementKind, Omnibox, OmniboxLoading, Sidebar, SidebarSection, SidebarSectionRef,
+        SimpleButton, Topbar,
     },
     graph::GraphProps,
     homepage::OpenedFileInfo,
     ml::MatchingLoopProps,
-    Change, Manager, Screen,
+    Manager, Scope, Screen,
 };
 
 pub use self::analysis::*;
@@ -43,10 +44,16 @@ pub struct File {
     analysis: Result<AnalysisState, RcAnalysis>,
     current_trace: SidebarSection,
 
-    view: Option<Change>,
+    view: Option<ViewProps>,
     nested_sidebar: Rc<Sidebar>,
     nested_topbar: Rc<Topbar>,
     nested_omnibox: Rc<Omnibox>,
+}
+
+#[derive(Clone)]
+enum ViewProps {
+    Graph(GraphProps),
+    MatchingLoop(MatchingLoopProps),
 }
 
 impl File {
@@ -74,7 +81,7 @@ impl Screen for File {
     type Message = FileM;
     type Properties = FileProps;
 
-    fn create(link: &Scope<Manager>, props: &Self::Properties) -> Self {
+    fn create(link: &Scope<Self>, props: &Self::Properties) -> Self {
         let current_trace = Self::current_trace(link, props);
 
         let link = link.clone();
@@ -96,7 +103,7 @@ impl Screen for File {
 
     fn changed(
         &mut self,
-        link: &Scope<Manager>,
+        link: &Scope<Self>,
         props: &Self::Properties,
         old_props: &Self::Properties,
     ) -> bool {
@@ -106,12 +113,7 @@ impl Screen for File {
         true
     }
 
-    fn update(
-        &mut self,
-        link: &Scope<Manager>,
-        props: &Self::Properties,
-        msg: Self::Message,
-    ) -> bool {
+    fn update(&mut self, link: &Scope<Self>, props: &Self::Properties, msg: Self::Message) -> bool {
         match msg {
             FileM::StartAnalysis => {
                 let old =
@@ -149,14 +151,14 @@ impl Screen for File {
                             link.omnibox_message(message, 1000);
                             return false;
                         };
-                        Change::Graph(GraphProps {
+                        ViewProps::Graph(GraphProps {
                             parser: props.opened_file.parser.clone(),
                             analysis: analysis.clone(),
                             default_filters: DEFAULT_FILTER_CHAIN.to_vec(),
                             default_disablers: DEFAULT_DISABLER_CHAIN.to_vec(),
                         })
                     }
-                    ViewChoice::MatchingLoop => Change::MatchingLoop(MatchingLoopProps {}),
+                    ViewChoice::MatchingLoop => ViewProps::MatchingLoop(MatchingLoopProps {}),
                 };
                 self.view = Some(view);
                 true
@@ -177,51 +179,59 @@ impl Screen for File {
         }
     }
 
-    fn view(&self, link: &Scope<Manager>, props: &Self::Properties) -> Html {
-        if let Some(initial) = self.view.clone() {
-            let sidebar = link.callback(FileM::NestedSidebar);
-            let topbar = link.callback(FileM::NestedTopbar);
-            let omnibox = link.callback(FileM::NestedOmnibox);
-            html! {<Manager {sidebar} {topbar} {omnibox} {initial} />}
-        } else {
-            html! {"Overview"}
+    fn view(&self, link: &Scope<Self>, _props: &Self::Properties) -> Html {
+        let Some(view_props) = &self.view else {
+            return html! {"Overview"};
+        };
+        let sidebar = link.callback(FileM::NestedSidebar);
+        let topbar = link.callback(FileM::NestedTopbar);
+        let omnibox = link.callback(FileM::NestedOmnibox);
+        match view_props.clone() {
+            ViewProps::Graph(initial) => {
+                html! {<Manager<Graph> {sidebar} {topbar} {omnibox} {initial} />}
+            }
+            ViewProps::MatchingLoop(initial) => {
+                html! {<Manager<MatchingLoop> {sidebar} {topbar} {omnibox} {initial} />}
+            }
         }
     }
 
-    fn view_sidebar(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Sidebar {
+    fn view_sidebar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Sidebar {
         [self.get_current_trace()]
             .into_iter()
             .chain(self.nested_sidebar.iter().cloned())
             .collect()
     }
 
-    fn view_topbar(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Topbar {
+    fn view_topbar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Topbar {
         (*self.nested_topbar).clone()
     }
 
-    fn view_omnibox(&self, _link: &Scope<Manager>, props: &Self::Properties) -> Omnibox {
+    fn view_omnibox(&self, _link: &Scope<Self>, props: &Self::Properties) -> Omnibox {
         let Ok(analysis) = &self.analysis else {
             return (*self.nested_omnibox).clone();
         };
-        let mut omnibox = Omnibox::default();
-        omnibox.disabled = true;
-        omnibox.progress.progress = 1.0;
         match analysis {
             AnalysisState::ConstructingGraph => {
-                omnibox.placeholder = if props.timeout() {
+                let message = if props.timeout() {
                     "Analysing partial trace".to_string()
                 } else {
                     "Analysing trace".to_string()
                 };
-                omnibox.progress.indeterminate = true;
-                omnibox.progress.closed = false;
+                let mut loading = OmniboxLoading::indeterminate();
+                loading.progress = 1.0;
+                Omnibox::Loading(OmniboxLoading {
+                    icon: "pending",
+                    icon_mousedown: None,
+                    message,
+                    loading,
+                })
             }
-            AnalysisState::Failed(error) => {
-                omnibox.icon = "error";
-                omnibox.placeholder = error.clone();
-            }
+            AnalysisState::Failed(error) => Omnibox::Message(OmniboxMessage {
+                message: error.clone(),
+                kind: OmniboxMessageKind::Error,
+            }),
         }
-        omnibox
     }
 }
 
@@ -238,10 +248,7 @@ impl File {
         current_trace
     }
 
-    fn current_trace(
-        link: &Scope<Manager>,
-        props: &<Self as Screen>::Properties,
-    ) -> SidebarSection {
+    fn current_trace(link: &Scope<Self>, props: &<Self as Screen>::Properties) -> SidebarSection {
         let size = props
             .file_info
             .size

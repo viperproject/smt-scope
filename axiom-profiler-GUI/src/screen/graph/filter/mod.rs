@@ -9,7 +9,7 @@ use smt_log_parser::{
     analysis::{InstGraph, RawNodeIndex},
     Z3Parser,
 };
-use yew::{html::Scope, html, Callback, Context, MouseEvent, NodeRef};
+use yew::{html, Callback, Context, MouseEvent, NodeRef};
 
 use crate::{
     commands::{Command, CommandRef, CommandsContext, ShortcutKey},
@@ -18,13 +18,16 @@ use crate::{
         svg_result::GraphDimensions,
     },
     screen::{
-        extra::{ElementKind, SidebarSection, SidebarSectionRef, Topbar, TopbarMenu}, file::RcAnalysis, Manager
-    }, utils::toggle_list::ToggleList,
+        extra::{ElementKind, SidebarSection, SidebarSectionRef, Topbar, TopbarMenu},
+        file::RcAnalysis,
+        Manager, Scope,
+    },
+    utils::toggle_list::ToggleList,
 };
 
 use self::add_filter::AddFilter;
 
-use super::GraphM;
+use super::{Graph, GraphM};
 
 pub use chain::*;
 pub use manage_filter::*;
@@ -48,7 +51,7 @@ pub struct FiltersState {
 }
 
 impl FiltersState {
-    pub fn new(initial: Vec<Filter>, permissions: GraphDimensions, link: &Scope<Manager>) -> Self {
+    pub fn new(initial: Vec<Filter>, permissions: GraphDimensions, link: &Scope<Graph>) -> Self {
         let chain = FilterChain::new(initial, permissions, link);
         FiltersState {
             chain,
@@ -86,11 +89,13 @@ impl FiltersState {
         }
     }
 
-    pub fn update(&mut self, link: &Scope<Manager>, msg: FilterM) -> bool {
+    pub fn update(&mut self, link: &Scope<Graph>, msg: FilterM) -> bool {
         match msg {
             FilterM::Drag(drag) => {
                 self.dragging = drag.is_none();
                 let Some(drag) = drag else {
+                    self.edit_filter = None;
+                    self.selected_filter = None;
                     // Drag start
                     return true;
                 };
@@ -172,7 +177,12 @@ impl FiltersState {
         }
     }
 
-    pub fn sidebar(&self, dims: Option<GraphDimensions>, link: &Scope<Manager>, analysis: &RcAnalysis) -> SidebarSection {
+    pub fn sidebar(
+        &self,
+        dims: Option<GraphDimensions>,
+        link: &Scope<Graph>,
+        analysis: &RcAnalysis,
+    ) -> SidebarSection {
         let dims = dims.unwrap_or_default();
         let class = if self.dragging { "display-none" } else { "" };
         let details = format!("{} node, {} edge", dims.node_count, dims.edge_count);
@@ -262,10 +272,14 @@ impl DisablersState {
     }
 
     pub fn disablers(&self) -> impl Iterator<Item = Disabler> + Clone + '_ {
-        self.disablers.iter().filter(|(_, b)| *b).map(|(d, _)| d).copied()
+        self.disablers
+            .iter()
+            .filter(|(_, b)| *b)
+            .map(|(d, _)| d)
+            .copied()
     }
 
-    pub fn sidebar(&self, link: &Scope<Manager>) -> SidebarSection {
+    pub fn sidebar(&self, link: &Scope<Graph>) -> SidebarSection {
         let toggle = link.callback(GraphM::ToggleDisabler);
         let selected: Vec<_> = self.disablers.iter().map(|(_, b)| *b).collect();
         let disablers = self.disablers.iter().map(|(d, b)| {

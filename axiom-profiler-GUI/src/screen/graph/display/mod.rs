@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     results::{
-        graph::graph_container,
+        graph::graph_container::GraphContainer,
         node_info::{SelectedEdgesInfo, SelectedNodesInfo},
     },
     screen::{file::RcAnalysis, homepage::RcParser},
@@ -11,7 +11,6 @@ use crate::{
 };
 use indexmap::map::{Entry, IndexMap};
 use material_yew::{icon::MatIcon, WeakComponentLink};
-// use smt_log_parser::parsers::z3::inst_graph::{EdgeType, NodeInfo};
 use smt_log_parser::{
     analysis::{RawNodeIndex, VisibleEdgeIndex},
     FxHashSet,
@@ -27,7 +26,6 @@ pub struct GraphInfo {
     collapsed_edges: FxHashSet<VisibleEdgeIndex>,
 
     generalized_terms: Vec<String>,
-    // graph_container: WeakComponentLink<graph_container::GraphContainer>,
     displayed_matching_loop_graph: Option<MatchingLoopGraphData>,
     in_ml_viewer_mode: bool,
     ml_graph_div: NodeRef,
@@ -100,10 +98,10 @@ pub struct GraphInfoProps {
     pub parser: RcParser,
     pub analysis: RcAnalysis,
     pub rendered: RenderedGraph,
-    pub selected_nodes: Vec<RawNodeIndex>,
-    pub selected_edges: Vec<VisibleEdgeIndex>,
     pub update_selected: Callback<SelectionM>,
     pub outdated: bool,
+
+    pub svg_view: WeakComponentLink<GraphContainer>,
 }
 
 impl Component for GraphInfo {
@@ -112,10 +110,6 @@ impl Component for GraphInfo {
     type Properties = GraphInfoProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        // ctx.props()
-        //     .weak_link
-        //     .borrow_mut()
-        //     .replace(ctx.link().clone());
         let (state, context_listener) = ctx
             .link()
             .context(ctx.link().callback(GraphInfoM::ContextUpdated))
@@ -124,7 +118,6 @@ impl Component for GraphInfo {
             collapsed_nodes: FxHashSet::default(),
             collapsed_edges: FxHashSet::default(),
             generalized_terms: Vec::new(),
-            // graph_container: WeakComponentLink::default(),
             displayed_matching_loop_graph: None,
             in_ml_viewer_mode: state.state.ml_viewer_mode,
             ml_graph_div: NodeRef::default(),
@@ -132,22 +125,14 @@ impl Component for GraphInfo {
         }
     }
 
-    // fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
-    //     let new_nodes = FxHashSet::from_iter(ctx.props().selected_nodes.iter().copied());
-    //     self.collapsed_nodes.retain(|n| new_nodes.contains(n));
-    //     let new_edges = FxHashSet::from_iter(ctx.props().selected_edges.iter().copied());
-    //     self.collapsed_edges.retain(|e| new_edges.contains(e));
-
-    //     true
-    // }
-
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             GraphInfoM::UserSelection(sel) => match sel {
                 UserSelectionM::ToggleNode(node_index) => {
-                    if !ctx.props().selected_nodes.contains(&node_index) {
-                        self.collapsed_nodes =
-                            FxHashSet::from_iter(ctx.props().selected_nodes.iter().copied());
+                    if !ctx.props().rendered.selected_nodes.contains(&node_index) {
+                        self.collapsed_nodes = FxHashSet::from_iter(
+                            ctx.props().rendered.selected_nodes.iter().copied(),
+                        );
                     } else {
                         self.collapsed_nodes.remove(&node_index);
                     }
@@ -157,9 +142,10 @@ impl Component for GraphInfo {
                     true
                 }
                 UserSelectionM::ToggleEdge(edge_index) => {
-                    if !ctx.props().selected_edges.contains(&edge_index) {
-                        self.collapsed_edges =
-                            FxHashSet::from_iter(ctx.props().selected_edges.iter().copied());
+                    if !ctx.props().rendered.selected_edges.contains(&edge_index) {
+                        self.collapsed_edges = FxHashSet::from_iter(
+                            ctx.props().rendered.selected_edges.iter().copied(),
+                        );
                     } else {
                         self.collapsed_edges.remove(&edge_index);
                     }
@@ -283,8 +269,8 @@ impl Component for GraphInfo {
             .props()
             .outdated
             .then(|| html! {<div class="outdated"></div>});
-        let hide_right_bar =
-            ctx.props().selected_nodes.is_empty() && ctx.props().selected_edges.is_empty();
+        let hide_right_bar = ctx.props().rendered.selected_nodes.is_empty()
+            && ctx.props().rendered.selected_edges.is_empty();
         let left_bound = if self.in_ml_viewer_mode && self.displayed_matching_loop_graph.is_some() {
             0.15
         } else if !hide_right_bar {
@@ -336,12 +322,14 @@ impl Component for GraphInfo {
         };
         let selected_nodes: Vec<_> = ctx
             .props()
+            .rendered
             .selected_nodes
             .iter()
             .map(|n| (*n, !self.collapsed_nodes.contains(n)))
             .collect();
         let selected_edges: Vec<_> = ctx
             .props()
+            .rendered
             .selected_edges
             .iter()
             .map(|e| (*e, !self.collapsed_edges.contains(e)))
@@ -351,16 +339,15 @@ impl Component for GraphInfo {
         html! {
             <>
             <SplitDiv initial_position={0.7} {left_bound} right_bound={1.0} snap_positions={vec![0.3, 0.7, 1.0]}>
-                <graph_container::GraphContainer
+                <GraphContainer
                     rendered={ctx.props().rendered.clone()}
                     selection={ctx.link().callback(GraphInfoM::UserSelection)}
-                    selected_nodes={ctx.props().selected_nodes.clone()}
-                    selected_edges={ctx.props().selected_edges.clone()}
+                    svg_view={ctx.props().svg_view.clone()}
                 />
 
                 <div style="width:100%; height:100%; overflow-wrap:anywhere; overflow:clip auto;">
                     <SelectedNodesInfo parser={parser.clone()} analysis={analysis.clone()} {selected_nodes} on_click={on_node_click} />
-                    <SelectedEdgesInfo {parser} {analysis} {selected_edges} rendered={ctx.props().rendered.clone()} on_click={on_edge_click} />
+                    <SelectedEdgesInfo {parser} {analysis} {selected_edges} rendered={ctx.props().rendered.graph.clone()} on_click={on_edge_click} />
                     {ml_graph}
                 </div>
             </SplitDiv>

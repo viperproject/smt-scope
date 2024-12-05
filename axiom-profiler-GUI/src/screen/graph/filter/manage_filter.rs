@@ -10,7 +10,8 @@ use yew::{
 };
 
 use crate::{
-    mouse_position, results::filters::Filter, screen::file::RcAnalysis, state::StateProvider, PREVENT_DEFAULT_DRAG_OVER
+    mouse_position, results::filters::Filter, screen::file::RcAnalysis, state::StateProvider,
+    PREVENT_DEFAULT_DRAG_OVER,
 };
 
 pub enum Msg {
@@ -54,19 +55,17 @@ impl DraggableList {
     }
 
     pub fn drag_offset(&self, idx: usize) -> usize {
-        self.drag
-            .map(|d| {
-                if idx == d.idx {
-                    d.start_idx
-                } else if d.idx < idx && idx <= d.start_idx {
-                    idx - 1
-                } else if d.start_idx <= idx && idx < d.idx {
-                    idx + 1
-                } else {
-                    idx
-                }
-            })
-            .unwrap_or(idx)
+        self.drag.map_or(idx, |d| {
+            if idx == d.idx {
+                d.start_idx
+            } else if d.idx < idx && idx <= d.start_idx {
+                idx - 1
+            } else if d.start_idx <= idx && idx < d.idx {
+                idx + 1
+            } else {
+                idx
+            }
+        })
     }
 
     pub fn mouse_within(&self, idx: usize) -> bool {

@@ -14,9 +14,11 @@ use infobars::OmniboxMessageKind;
 use material_yew::{MatDialog, MatIcon, MatIconButton, WeakComponentLink};
 use petgraph::visit::EdgeRef;
 use results::graph_info;
-use results::svg_result::{Msg as SVGMsg, RenderedGraph, RenderingState, SVGResult};
+use results::svg_result::{Msg as SVGMsg, RenderingState, SVGResult};
 use screen::extra::SimpleButton;
-use screen::{Change, Manager};
+use screen::graph::RenderedGraph;
+use screen::homepage::Homepage;
+use screen::{Manager, Screen};
 use smt_log_parser::analysis::{InstGraph, RawNodeIndex, VisibleEdgeIndex};
 use smt_log_parser::parsers::z3::z3parser::Z3Parser;
 use smt_log_parser::parsers::{ParseState, ReaderState};
@@ -31,12 +33,12 @@ use crate::commands::CommandsProvider;
 use crate::configuration::ConfigurationProvider;
 use crate::filters::FiltersState;
 
-use crate::infobars::{OmniboxMessage, SearchActionResult, SidebarSectionHeader, Topbar};
+use crate::infobars::{OmniboxMessage, SidebarSectionHeader, Topbar};
 use crate::results::filters::Filter;
 use crate::results::svg_result::GraphState;
 use crate::screen::extra;
 use crate::state::StateProviderContext;
-use crate::utils::{lookup::StringLookupZ3, overlay_page::SetVisibleCallback};
+use crate::utils::overlay_page::SetVisibleCallback;
 
 pub use global_callbacks::{CallbackRef, GlobalCallbacksContext, GlobalCallbacksProvider};
 pub use utils::position::*;
@@ -68,7 +70,7 @@ pub trait OmniboxContext {
     fn clear_omnibox(&self);
 }
 
-impl OmniboxContext for Scope<Manager> {
+impl<S: Screen> OmniboxContext for Scope<Manager<S>> {
     fn omnibox_message(&self, message: OmniboxMessage, millis: u32) {
         let sender: OmniboxMessageContext = self.context(Callback::noop()).unwrap().0;
         sender.send.emit((message, millis));
@@ -167,11 +169,9 @@ impl ParseProgress {
         let time_delta = self.time - old.time;
         self.time_delta = Some(time_delta);
         let speed = bytes_delta as f64 / time_delta.as_secs_f64();
-        self.speed = Some(
-            old.speed
-                .map(|old| (speed + SPEED_SMOOTHING * old) / (SPEED_SMOOTHING + 1.0))
-                .unwrap_or(speed),
-        );
+        self.speed = Some(old.speed.map_or(speed, |old| {
+            (speed + SPEED_SMOOTHING * old) / (SPEED_SMOOTHING + 1.0)
+        }));
     }
 }
 
@@ -604,37 +604,37 @@ impl Component for FileDataComponent {
             })
             .collect();
 
-        let parser = self.state.state.parser.clone();
-        let parser_ref = parser.clone();
-        let visible = self
-            .file
-            .as_ref()
-            .and_then(|f| f.rendered.as_ref().map(|r| r.graph.clone()));
-        let visible_ref = visible.clone();
-        let search = Callback::from(move |query: String| {
-            let parser = parser_ref.as_ref()?;
-            let matches = parser.lookup.get_fuzzy(&query);
-            Some(SearchActionResult::new(
-                query,
-                matches,
-                parser,
-                visible_ref.as_deref(),
-            ))
-        });
-        let pick = Callback::from(move |(name, kind): (String, _)| {
-            let parser = parser.as_ref()?;
-            let entry = parser.lookup.get_exact(&name)?.get(&kind)?;
-            Some(entry.get_visible(&parser.graph.as_ref()?.borrow(), visible.as_deref()?))
-        });
-        let insts_info_link = self.insts_info_link.clone();
-        let select = Callback::from(move |idx: RawNodeIndex| {
-            let Some(insts_info_link) = &*insts_info_link.borrow() else {
-                return;
-            };
-            insts_info_link.send_message(graph_info::Msg::DeselectAll);
-            insts_info_link.send_message(graph_info::Msg::UserSelectedNode(idx));
-            insts_info_link.send_message(graph_info::Msg::ScrollZoomSelection);
-        });
+        // let parser = self.state.state.parser.clone();
+        // let parser_ref = parser.clone();
+        // let visible = self
+        //     .file
+        //     .as_ref()
+        //     .and_then(|f| f.rendered.as_ref().map(|r| r.graph.clone()));
+        // let visible_ref = visible.clone();
+        // let search = Callback::from(move |query: String| {
+        //     let parser = parser_ref.as_ref()?;
+        //     let matches = parser.lookup.get_fuzzy(&query);
+        //     Some(SearchActionResult::new(
+        //         query,
+        //         matches,
+        //         parser,
+        //         visible_ref.as_deref(),
+        //     ))
+        // });
+        // let pick = Callback::from(move |(name, kind): (String, _)| {
+        //     let parser = parser.as_ref()?;
+        //     let entry = parser.lookup.get_exact(&name)?.get(&kind)?;
+        //     Some(entry.get_visible(&parser.graph.as_ref()?.borrow(), visible.as_deref()?))
+        // });
+        // let insts_info_link = self.insts_info_link.clone();
+        // let select = Callback::from(move |idx: RawNodeIndex| {
+        //     let Some(insts_info_link) = &*insts_info_link.borrow() else {
+        //         return;
+        //     };
+        //     insts_info_link.send_message(graph_info::Msg::DeselectAll);
+        //     insts_info_link.send_message(graph_info::Msg::UserSelectedNode(idx));
+        //     insts_info_link.send_message(graph_info::Msg::ScrollZoomSelection);
+        // });
         let filters_state_link = self.filters_state_link.clone();
         let pick_nth_ml = Callback::from({
             let _file = self.file.clone();
@@ -679,7 +679,7 @@ impl Component for FileDataComponent {
         let sidebar = ctx.link().callback(Msg::UpdateSidebar);
         let topbar = ctx.link().callback(Msg::UpdateTopbar);
         let omnibox = ctx.link().callback(Msg::UpdateOmnibox);
-        let initial = Change::Homepage(self.help_dialog.clone());
+        let initial = self.help_dialog.clone();
 
         html! {<>
             <nav class="sidebar" ref={&self.sidebar_ref}>
@@ -693,12 +693,12 @@ impl Component for FileDataComponent {
                     </div>
                 </div></div>
             </nav>
-            <Topbar omnibox={self.omnibox.clone()} {message} {search} {pick} {select} {pick_nth_ml} {dropdowns} />
+            <Topbar omnibox={self.omnibox.clone()} {message} {pick_nth_ml} {dropdowns} />
             <div class="alerts"></div>
             <ContextProvider<OmniboxMessageContext> context={self.omc.clone()}>
             <div class="page">
                 // {page}
-                <Manager {sidebar} {topbar} {omnibox} {initial} />
+                <Manager<Homepage> {sidebar} {topbar} {omnibox} {initial} />
             </div>
             </ContextProvider<OmniboxMessageContext>>
 
@@ -732,7 +732,6 @@ impl MlData {
 
 pub struct RcParser {
     parser: Rc<RefCell<Z3Parser>>,
-    lookup: Rc<StringLookupZ3>,
     colour_map: Rc<QuantIdxToColourMap>,
     graph: Option<Rc<RefCell<InstGraph>>>,
     ml_data: Option<MlData>,
@@ -742,7 +741,6 @@ impl Clone for RcParser {
     fn clone(&self) -> Self {
         Self {
             parser: self.parser.clone(),
-            lookup: self.lookup.clone(),
             colour_map: self.colour_map.clone(),
             graph: self.graph.clone(),
             ml_data: self.ml_data,
@@ -762,10 +760,8 @@ impl Eq for RcParser {}
 impl RcParser {
     fn new(parser: Z3Parser) -> Self {
         let colour_map = QuantIdxToColourMap::new(&parser);
-        let lookup = StringLookupZ3::init(&parser);
         Self {
             parser: Rc::new(RefCell::new(parser)),
-            lookup: Rc::new(lookup),
             colour_map: Rc::new(colour_map),
             graph: None,
             ml_data: None,

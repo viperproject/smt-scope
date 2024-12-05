@@ -482,9 +482,6 @@ table {
 	--section-background: hsl(213, 26%, 87%);
 	--hover-background: hsl(216, 15%, 75%);
 	--topbar-background: hsl(215, 1%, 95%);
-	--topbar-ml-background: hsl(215, 1%, 95%);
-	/* switch to this to change topbar color in ML mode:
-	--topbar-ml-background: hsl(243, 92%, 95%); */
 	--flags-accent-color: rgb(10, 75, 165);
 	--menu-text-color: hsl(210, 4%, 28%);
 	--menu-text-disabled-color: #aaa;

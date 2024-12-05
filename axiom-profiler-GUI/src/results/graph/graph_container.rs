@@ -5,18 +5,17 @@ use smt_log_parser::analysis::{RawNodeIndex, VisibleEdgeIndex};
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_timer::Instant;
-use web_sys::{Element, HtmlInputElement, ResizeObserver, ResizeObserverEntry};
+use web_sys::{Element, HtmlInputElement, ResizeObserver, ResizeObserverEntry, SvgsvgElement};
 use yew::prelude::*;
 
 use crate::commands::{Command, CommandRef, CommandsContext, Key, ShortcutKey};
-use crate::results::svg_result::RenderedGraph;
-use crate::screen::graph::UserSelectionM;
+use crate::screen::graph::{RenderedGraph, UserSelectionM};
 use crate::state::StateContext;
 use crate::{CallbackRef, GlobalCallbacksContext, PagePosition, PrecisePosition};
 
 use super::svg_graph::{Graph, Svg};
 
-pub enum Msg {
+pub enum SvgViewM {
     SetValueTo(f64),
     SetScrollTo((PrecisePosition, PrecisePosition)),
     Wheel(WheelEvent),
@@ -34,7 +33,7 @@ pub enum Msg {
 }
 
 pub struct GraphContainer {
-    graph: (Html, u32),
+    graph: (SvgsvgElement, u32),
     window: GraphWindow,
 
     mouse_closures: Option<Closure<dyn Fn(MouseEvent)>>,
@@ -140,32 +139,29 @@ impl GraphWindow {
 pub struct GraphContainerProps {
     pub rendered: RenderedGraph,
     pub selection: Callback<UserSelectionM>,
-    pub selected_nodes: Vec<RawNodeIndex>,
-    pub selected_edges: Vec<VisibleEdgeIndex>,
+    pub svg_view: WeakComponentLink<GraphContainer>,
 }
 
 impl Component for GraphContainer {
-    type Message = Msg;
+    type Message = SvgViewM;
     type Properties = GraphContainerProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        // ctx.props()
-        //     .weak_link
-        //     .borrow_mut()
-        //     .replace(ctx.link().clone());
+        ctx.props()
+            .svg_view
+            .borrow_mut()
+            .replace(ctx.link().clone());
 
         let rendered = &ctx.props().rendered;
-        let graph = (
-            Html::from_html_unchecked(rendered.svg_text.clone()),
-            rendered.graph.generation,
-        );
+        let graph = (rendered.svg.clone(), rendered.graph.generation);
 
         // Global callbacks
         let registerer = ctx.link().get_callbacks_registerer().unwrap();
-        let mouse_move_ref = (registerer.register_mouse_move)(ctx.link().callback(Msg::MouseMove));
-        let mouse_up_ref = (registerer.register_mouse_up)(ctx.link().callback(Msg::MouseUp));
-        let keydown = (registerer.register_keyboard_down)(ctx.link().callback(Msg::KeyDown));
-        let keyup = (registerer.register_keyboard_up)(ctx.link().callback(Msg::KeyUp));
+        let mouse_move_ref =
+            (registerer.register_mouse_move)(ctx.link().callback(SvgViewM::MouseMove));
+        let mouse_up_ref = (registerer.register_mouse_up)(ctx.link().callback(SvgViewM::MouseUp));
+        let keydown = (registerer.register_keyboard_down)(ctx.link().callback(SvgViewM::KeyDown));
+        let keyup = (registerer.register_keyboard_up)(ctx.link().callback(SvgViewM::KeyUp));
         let _callback_refs = [mouse_move_ref, mouse_up_ref, keydown, keyup];
 
         // Commands
@@ -189,7 +185,7 @@ impl Component for GraphContainer {
         let deselect_all = (commands)(deselect_all);
         let focus_selection = Command {
             name: "Focus selection".to_string(),
-            execute: ctx.link().callback(|_| Msg::FocusSelection),
+            execute: ctx.link().callback(|_| SvgViewM::FocusSelection),
             keyboard_shortcut: ShortcutKey::empty('f'),
             disabled: true,
         };
@@ -218,15 +214,12 @@ impl Component for GraphContainer {
         self.zoom_factor_delta = 1.0;
         if self.graph.1 != ctx.props().rendered.graph.generation {
             let rendered = &ctx.props().rendered;
-            self.graph = (
-                Html::from_html_unchecked(rendered.svg_text.clone()),
-                rendered.graph.generation,
-            );
+            self.graph = (rendered.svg.clone(), rendered.graph.generation);
         }
-        let old_no_selection =
-            old_props.selected_nodes.is_empty() && old_props.selected_edges.is_empty();
-        let new_no_selection =
-            ctx.props().selected_nodes.is_empty() && ctx.props().selected_edges.is_empty();
+        let old_no_selection = old_props.rendered.selected_nodes.is_empty()
+            && old_props.rendered.selected_edges.is_empty();
+        let new_no_selection = ctx.props().rendered.selected_nodes.is_empty()
+            && ctx.props().rendered.selected_edges.is_empty();
         if old_no_selection != new_no_selection {
             for c in &self._command_selection {
                 c.set_disabled(new_no_selection);
@@ -237,16 +230,16 @@ impl Component for GraphContainer {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::SetValueTo(value) => {
+            SvgViewM::SetValueTo(value) => {
                 self.set_zoom(value, false);
                 true
             }
-            Msg::SetScrollTo((pos, graph_dims)) => {
+            SvgViewM::SetScrollTo((pos, graph_dims)) => {
                 self.window.graph_dims = graph_dims;
                 self.window.scroll_to(pos, Some(self.zoom_factor_delta));
                 false
             }
-            Msg::Wheel(ev) => {
+            SvgViewM::Wheel(ev) => {
                 if ev.ctrl_key() {
                     ev.prevent_default();
                     let need_to_flip = ev.delta_y() >= 0.0;
@@ -274,16 +267,16 @@ impl Component for GraphContainer {
                     false
                 }
             }
-            Msg::Scroll(_) => {
+            SvgViewM::Scroll(_) => {
                 self.window.read_scroll_position();
                 false
             }
-            Msg::MouseDown(ev) => {
+            SvgViewM::MouseDown(ev) => {
                 let pos = PagePosition::from(&ev);
                 self.drag_start = Some((pos, pos, false));
                 false
             }
-            Msg::MouseMove(ev) => {
+            SvgViewM::MouseMove(ev) => {
                 if ev.buttons() != 1 {
                     self.drag_start = None;
                 } else if let Some((start, last, drag)) = &mut self.drag_start {
@@ -303,7 +296,7 @@ impl Component for GraphContainer {
                 }
                 false
             }
-            Msg::MouseUp(_) => {
+            SvgViewM::MouseUp(_) => {
                 if let Some((_, _, drag)) = self.drag_start.take() {
                     if !drag {
                         ctx.props().selection.emit(UserSelectionM::DeselectAll);
@@ -311,14 +304,14 @@ impl Component for GraphContainer {
                 }
                 false
             }
-            Msg::Resize(_resizes) => {
+            SvgViewM::Resize(_resizes) => {
                 self.window.read_window_dimensions();
                 self.window.read_scroll_position();
                 // If we are not doing the initial resize where all the dims are setup
                 // if !resizes.is_empty() { do_scrolling_here_if_necessary }
                 false
             }
-            Msg::KeyDown(ev) => {
+            SvgViewM::KeyDown(ev) => {
                 if ev.meta_key() || ev.ctrl_key() || ev.shift_key() || ev.alt_key() {
                     return false;
                 }
@@ -338,7 +331,7 @@ impl Component for GraphContainer {
                             *held = new_help;
                         }
                         self.timeout.get_or_insert_with(|| {
-                            let hold = ctx.link().callback(Msg::KeyHold);
+                            let hold = ctx.link().callback(SvgViewM::KeyHold);
                             Interval::new(10, move || hold.emit(()))
                         });
                         false
@@ -346,14 +339,14 @@ impl Component for GraphContainer {
                     _ => false,
                 }
             }
-            Msg::KeyUp(ev) => {
+            SvgViewM::KeyUp(ev) => {
                 let key = ev.key();
                 if let Some((_, _, released)) = self.held_keys.get_mut(&key) {
                     released.get_or_insert_with(Instant::now);
                 }
                 false
             }
-            Msg::KeyHold(()) => {
+            SvgViewM::KeyHold(()) => {
                 if ctx.link().get_state().unwrap().state.overlay_visible {
                     return false;
                 }
@@ -392,15 +385,15 @@ impl Component for GraphContainer {
                 }
                 dz != 0.0
             }
-            Msg::FocusSelection => {
-                let msg = Msg::ScrollZoomSelection(
-                    ctx.props().selected_nodes.clone(),
-                    ctx.props().selected_edges.clone(),
+            SvgViewM::FocusSelection => {
+                let msg = SvgViewM::ScrollZoomSelection(
+                    ctx.props().rendered.selected_nodes.clone(),
+                    ctx.props().rendered.selected_edges.clone(),
                 );
                 ctx.link().send_message(msg);
                 false
             }
-            Msg::ScrollZoomSelection(selected_nodes, selected_edges) => {
+            SvgViewM::ScrollZoomSelection(selected_nodes, selected_edges) => {
                 let Some((min, max)) = get_bounding_rect(&selected_nodes, &selected_edges) else {
                     return false;
                 };
@@ -412,12 +405,12 @@ impl Component for GraphContainer {
                 // Call `Msg::ScrollSelection` in 10ms
                 let link = ctx.link().clone();
                 Timeout::new(10, move || {
-                    link.send_message(Msg::ScrollSelection(selected_nodes, selected_edges))
+                    link.send_message(SvgViewM::ScrollSelection(selected_nodes, selected_edges))
                 })
                 .forget();
                 true
             }
-            Msg::ScrollSelection(selected_nodes, selected_edges) => {
+            SvgViewM::ScrollSelection(selected_nodes, selected_edges) => {
                 let Some((min, max)) = get_bounding_rect(&selected_nodes, &selected_edges) else {
                     return false;
                 };
@@ -441,8 +434,8 @@ impl Component for GraphContainer {
                     .dyn_into()
                     .unwrap_throw();
                 match target.value().to_string().parse::<f64>() {
-                    Ok(value) => Msg::SetValueTo(value),
-                    Err(_) => Msg::SetValueTo(1.0),
+                    Ok(value) => SvgViewM::SetValueTo(value),
+                    Err(_) => SvgViewM::SetValueTo(1.0),
                 }
             }
         };
@@ -452,8 +445,8 @@ impl Component for GraphContainer {
             if key_event.key() == "Enter" {
                 let target = input_ref.cast::<HtmlInputElement>().unwrap_throw();
                 let msg = match target.value().parse::<f64>() {
-                    Ok(value) => Msg::SetValueTo(value),
-                    Err(_) => Msg::SetValueTo(1.0),
+                    Ok(value) => SvgViewM::SetValueTo(value),
+                    Err(_) => SvgViewM::SetValueTo(1.0),
                 };
                 link.send_message(msg);
             }
@@ -462,8 +455,8 @@ impl Component for GraphContainer {
             let event: Event = blur_event.clone().into();
             set_value(event)
         });
-        let onwheel = ctx.link().callback(Msg::Wheel);
-        let onscroll = ctx.link().callback(Msg::Scroll);
+        let onwheel = ctx.link().callback(SvgViewM::Wheel);
+        let onscroll = ctx.link().callback(SvgViewM::Scroll);
         let zoom_factor = format!("{:.3}", self.zoom_factor);
         let idx = zoom_factor
             .chars()
@@ -471,7 +464,7 @@ impl Component for GraphContainer {
             .position(|c| c != '0' && c != '.')
             .unwrap_or(zoom_factor.len() - 1);
         let zoom_factor = zoom_factor[0..zoom_factor.len() - idx].to_string();
-        let set_scroll = ctx.link().callback(Msg::SetScrollTo);
+        let set_scroll = ctx.link().callback(SvgViewM::SetScrollTo);
         let selection = ctx.props().selection.clone();
         let update_selected_nodes =
             Callback::from(move |node| selection.emit(UserSelectionM::ToggleNode(node)));
@@ -486,14 +479,12 @@ impl Component for GraphContainer {
             </div>
             <Graph
                 rendered={ctx.props().rendered.clone()}
-                on_rerender={ctx.link().callback(|_| Msg::Resize(Vec::new()))}
+                on_rerender={ctx.link().callback(|_| SvgViewM::Resize(Vec::new()))}
                 {update_selected_nodes}
                 {update_selected_edges}
                 zoom_factor={self.zoom_factor}
                 zoom_factor_delta={self.zoom_factor_delta}
                 zoom_with_mouse={self.zoom_with_mouse}
-                selected_nodes={ctx.props().selected_nodes.clone()}
-                selected_edges={ctx.props().selected_edges.clone()}
                 scroll_position={self.window.graph_position}
                 {set_scroll}
                 scroll_window={self.window.scroll_window.clone()}
@@ -504,7 +495,7 @@ impl Component for GraphContainer {
 
     fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
         if first_render {
-            let mouse_down = ctx.link().callback(Msg::MouseDown);
+            let mouse_down = ctx.link().callback(SvgViewM::MouseDown);
             let mouse_down: Closure<dyn Fn(MouseEvent)> =
                 Closure::new(move |ev| mouse_down.emit(ev));
             // attach event listener to node
@@ -514,7 +505,7 @@ impl Component for GraphContainer {
             self.mouse_closures = Some(mouse_down);
 
             // Resize observer
-            let resize_closure = ctx.link().callback(Msg::Resize);
+            let resize_closure = ctx.link().callback(SvgViewM::Resize);
             resize_closure.emit(Vec::new());
             let resize_closure =
                 Closure::new(move |entries: Vec<ResizeObserverEntry>| resize_closure.emit(entries));

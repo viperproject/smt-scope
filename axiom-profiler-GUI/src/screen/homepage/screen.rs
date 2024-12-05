@@ -12,6 +12,7 @@ fn hints() -> Vec<Html> {
     vec![
         html! {<div>{"Drag a log file onto this window to open it."}</div>},
         html! {<div>{"Press "}<div class="keycap">{"?"}</div>{" to toggle the help popup."}</div>},
+        html! {<div>{"Drag and drop operations to reorder them."}</div>},
     ]
 }
 

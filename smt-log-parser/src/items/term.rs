@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
@@ -104,6 +106,16 @@ impl QuantKind {
             _ => None,
         }
     }
+
+    pub fn name<'a>(&self, strings: &'a StringTable) -> Option<Cow<'a, str>> {
+        match self {
+            Self::NamedQuant(name) => Some(Cow::Borrowed(&strings[**name])),
+            Self::UnnamedQuant { name, id } => {
+                Some(Cow::Owned(format!("{}!{id}", &strings[**name])))
+            }
+            Self::Lambda(_) => None,
+        }
+    }
 }
 
 enum QuantKindParse<'a> {
@@ -121,8 +133,7 @@ impl<'a> QuantKindParse<'a> {
         split
             .next()
             .and_then(|id| id.parse::<usize>().ok())
-            .map(|id| Self::Unnamed { name, id })
-            .unwrap_or(Self::Named(name))
+            .map_or(Self::Named(name), |id| Self::Unnamed { name, id })
     }
 }
 

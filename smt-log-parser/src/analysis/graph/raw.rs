@@ -43,6 +43,10 @@ impl RawInstGraph {
         let edges_lower_bound =
             parser.insts.insts.len() + parser.egraph.equalities.transitive.len();
         let mut graph = DiGraph::with_capacity(total_nodes, edges_lower_bound);
+        let inst_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
+        for inst in parser.insts.insts.keys() {
+            graph.add_node(Node::new(NodeKind::Instantiation(inst)));
+        }
         let enode_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
         for enode in parser.egraph.enodes.keys() {
             graph.add_node(Node::new(NodeKind::ENode(enode)));
@@ -50,10 +54,6 @@ impl RawInstGraph {
         let eq_trans_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
         for eq_trans in parser.egraph.equalities.transitive.keys() {
             graph.add_node(Node::new(NodeKind::TransEquality(eq_trans)));
-        }
-        let inst_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
-        for inst in parser.insts.insts.keys() {
-            graph.add_node(Node::new(NodeKind::Instantiation(inst)));
         }
         let mut eq_given_idx = FxHashMap::default();
         eq_given_idx.try_reserve(parser.egraph.equalities.given.len())?;
@@ -333,6 +333,11 @@ impl Node {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Copy)]
 pub enum NodeKind {
+    /// Corresponds to `InstIdx`.
+    ///
+    /// **Parents:** arbitrary count, will always be `ENode` or `TransEquality`.\
+    /// **Children:** arbitrary count, will always be `ENode`.
+    Instantiation(InstIdx),
     /// Corresponds to `ENodeIdx`.
     ///
     /// **Parents:** will always have 0 or 1 parents, if 1 then this will be an `Instantiation`.\
@@ -354,11 +359,6 @@ pub enum NodeKind {
     /// **Children:** arbitrary count, can be `GivenEquality`, `TransEquality`
     /// or `Instantiation`.
     TransEquality(EqTransIdx),
-    /// Corresponds to `InstIdx`.
-    ///
-    /// **Parents:** arbitrary count, will always be `ENode` or `TransEquality`.\
-    /// **Children:** arbitrary count, will always be `ENode`.
-    Instantiation(InstIdx),
 }
 
 impl fmt::Display for NodeKind {

@@ -26,15 +26,28 @@ pub struct EGraph {
     pub equalities: Equalities,
 }
 
-impl EGraph {
-    pub fn walk_trans(&self, eq: EqTransIdx, mut f: impl FnMut(&EqualityExpl, bool)) {
-        let mut walker = TransEqSimpleWalker {
-            equalities: &self.equalities,
-            simple: |eq, fwd| {
-                f(eq, fwd);
-            },
+impl Equalities {
+    pub fn from_to(&self, eq: EqTransIdx) -> (ENodeIdx, ENodeIdx) {
+        let from = self.walk_trans(eq, |eq, fwd| {
+            let from = if fwd { eq.from() } else { eq.to() };
+            Err(from)
+        });
+        let eq = &self.transitive[eq];
+        (from.err().unwrap_or(eq.to), eq.to)
+    }
+
+    /// Walk the given equalities of a transitive equality, returning early with
+    /// the error if the closure returns one.
+    pub fn walk_trans<E>(
+        &self,
+        eq: EqTransIdx,
+        mut f: impl FnMut(&EqualityExpl, bool) -> core::result::Result<(), E>,
+    ) -> core::result::Result<(), E> {
+        let mut walker = TransEqStopWalker {
+            equalities: self,
+            simple: |eq, fwd| f(eq, fwd),
         };
-        walker.walk_trans(eq, true).unwrap();
+        walker.walk_trans(eq, true)
     }
 }
 
@@ -471,39 +484,6 @@ pub trait EqualityWalker<'a> {
     }
 }
 
-impl Equalities {
-    pub fn from_to(&self, eq: EqTransIdx) -> (ENodeIdx, ENodeIdx) {
-        let eq = &self.transitive[eq];
-        let from = eq
-            .path
-            .first()
-            .map(|seg| match seg {
-                TransitiveExplSegment {
-                    kind: TransitiveExplSegmentKind::Given((eq, _)),
-                    forward,
-                } => {
-                    if *forward {
-                        self.given[*eq].from()
-                    } else {
-                        self.given[*eq].to()
-                    }
-                }
-                TransitiveExplSegment {
-                    kind: TransitiveExplSegmentKind::Transitive(eq),
-                    forward,
-                } => {
-                    if *forward {
-                        self.from_to(*eq).0
-                    } else {
-                        self.transitive[*eq].to
-                    }
-                }
-            })
-            .unwrap_or(eq.to);
-        (from, eq.to)
-    }
-}
-
 struct TransEqChecker<'a, I: Iterator<Item = (EqGivenUse, bool)>> {
     equalities: &'a Equalities,
     simple: I,
@@ -545,7 +525,10 @@ impl Equalities {
     }
 }
 
-pub struct TransEqSimpleWalker<'a, F: FnMut(&'a EqualityExpl, bool)> {
+pub type TransEqSimpleWalker<'a, F> = TransEqStopWalker<'a, Never, F>;
+
+pub struct TransEqStopWalker<'a, E, F: FnMut(&'a EqualityExpl, bool) -> core::result::Result<(), E>>
+{
     equalities: &'a Equalities,
     simple: F,
 }
@@ -553,8 +536,10 @@ pub struct TransEqSimpleWalker<'a, F: FnMut(&'a EqualityExpl, bool)> {
 #[derive(Debug)]
 pub enum Never {}
 
-impl<'a, F: FnMut(&'a EqualityExpl, bool)> EqualityWalker<'a> for TransEqSimpleWalker<'a, F> {
-    type Error = Never;
+impl<'a, E, F: FnMut(&'a EqualityExpl, bool) -> core::result::Result<(), E>> EqualityWalker<'a>
+    for TransEqStopWalker<'a, E, F>
+{
+    type Error = E;
     fn equalities(&self) -> &'a Equalities {
         self.equalities
     }
@@ -563,8 +548,7 @@ impl<'a, F: FnMut(&'a EqualityExpl, bool)> EqualityWalker<'a> for TransEqSimpleW
         (eq, _): EqGivenUse,
         forward: bool,
     ) -> core::result::Result<(), Self::Error> {
-        (self.simple)(&self.equalities.given[eq], forward);
-        Ok(())
+        (self.simple)(&self.equalities.given[eq], forward)
     }
 }
 
@@ -574,6 +558,7 @@ impl Equalities {
             equalities: self,
             simple: |eq, fwd| {
                 from = eq.walk(from, fwd).unwrap();
+                Ok(())
             },
         };
         walker.walk_trans(eq, true).unwrap();
@@ -586,6 +571,7 @@ impl Equalities {
             simple: |eq, fwd| {
                 let from = if fwd { eq.from() } else { eq.to() };
                 path.push(from);
+                Ok(())
             },
         };
         walker.walk_trans(eq, true).unwrap();

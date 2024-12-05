@@ -117,10 +117,6 @@ mwc-dialog {
     --mdc-dialog-max-width: 850px;
 }
 
-.topbar.ml-mode {
-	background-color: var(--topbar-ml-background);
-}
-
 .topbar .menu-bar {
     display: flex;
     --menu-bar-margin: calc((var(--topbar-height) - 34px) / 2);

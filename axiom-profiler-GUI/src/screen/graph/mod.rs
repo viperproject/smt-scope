@@ -1,18 +1,24 @@
 mod display;
 mod filter;
 mod render;
+mod search;
 mod visible;
 
-use std::rc::Rc;
+use std::{cell::Ref, rc::Rc};
 
 use filter::DisablersState;
 use material_yew::{dialog::MatDialog, WeakComponentLink};
-use smt_log_parser::analysis::{visible::VisibleInstGraph, RawNodeIndex, VisibleEdgeIndex};
-use yew::{html, html::Scope, Html};
+use smt_log_parser::{
+    analysis::{visible::VisibleInstGraph, RawNodeIndex, VisibleEdgeIndex},
+    Z3Parser,
+};
+use yew::{html, Html};
 
 use crate::{
+    infobars::{OmniboxMessage, OmniboxMessageKind},
     results::{
         filters::{Disabler, Filter, FilterOutput, FilterOutputKind},
+        graph::graph_container::{GraphContainer, SvgViewM},
         render_warning::{Warning, WarningChoice},
         svg_result::GraphDimensions,
     },
@@ -20,19 +26,22 @@ use crate::{
 };
 
 use super::{
-    extra::{Omnibox, Sidebar, Topbar},
-    file::RcAnalysis,
+    extra::{Omnibox, OmniboxLoading, OmniboxSearch, Sidebar, Topbar},
+    file::{AnalysisData, RcAnalysis},
     homepage::RcParser,
-    Manager, Screen,
+    Manager, Scope, Screen,
 };
 
 use self::{
     display::GraphInfo,
     filter::{FilterM, FiltersState, RenderCommand},
-    visible::{GraphState, RenderedGraph},
+    visible::GraphState,
 };
 
-pub use self::display::UserSelectionM;
+pub use self::{
+    display::UserSelectionM,
+    visible::{RcVisibleGraph, RenderedGraph},
+};
 
 #[derive(Clone, PartialEq)]
 pub struct GraphProps {
@@ -42,17 +51,24 @@ pub struct GraphProps {
     pub default_disablers: Vec<(Disabler, bool)>,
 }
 
+impl GraphProps {
+    fn borrow(&self) -> (Ref<'_, Z3Parser>, Ref<'_, AnalysisData>) {
+        (self.parser.parser.borrow(), self.analysis.borrow())
+    }
+}
+
 pub struct Graph {
     state: Result<GraphState, RenderedGraph>,
     /// Either waiting for render or permissions (so the state could be either
     /// of the two)
-    waiting: Option<(bool, Rc<VisibleInstGraph>)>,
+    waiting: Option<(bool, RcVisibleGraph)>,
 
     filter: FiltersState,
     disabler: DisablersState,
 
     nodes_to_select: Vec<RawNodeIndex>,
 
+    svg_view: WeakComponentLink<GraphContainer>,
     graph_warning: WeakComponentLink<MatDialog>,
 }
 
@@ -87,6 +103,7 @@ pub enum GraphM {
 pub enum SelectionM {
     SetSelection(Vec<RawNodeIndex>, Vec<VisibleEdgeIndex>),
     ToggleNode(RawNodeIndex),
+    SelectAndScrollTo(RawNodeIndex),
     ToggleEdge(VisibleEdgeIndex),
     DeselectAll,
 }
@@ -95,7 +112,7 @@ impl Screen for Graph {
     type Message = GraphM;
     type Properties = GraphProps;
 
-    fn create(link: &Scope<Manager>, props: &Self::Properties) -> Self {
+    fn create(link: &Scope<Self>, props: &Self::Properties) -> Self {
         // let link = link.clone();
         // gloo::timers::callback::Timeout::new(10, move || {
         //     link.send_message(GraphM::RenderInitial);
@@ -112,13 +129,14 @@ impl Screen for Graph {
             ),
             disabler: DisablersState::new(props.default_disablers.clone()),
             nodes_to_select: Vec::new(),
+            svg_view: WeakComponentLink::default(),
             graph_warning: WeakComponentLink::default(),
         }
     }
 
     fn changed(
         &mut self,
-        link: &Scope<Manager>,
+        link: &Scope<Self>,
         props: &Self::Properties,
         old_props: &Self::Properties,
     ) -> bool {
@@ -134,12 +152,7 @@ impl Screen for Graph {
         true
     }
 
-    fn update(
-        &mut self,
-        link: &Scope<Manager>,
-        props: &Self::Properties,
-        msg: Self::Message,
-    ) -> bool {
+    fn update(&mut self, link: &Scope<Self>, props: &Self::Properties, msg: Self::Message) -> bool {
         match msg {
             GraphM::RenderCommand {
                 cmd,
@@ -180,8 +193,7 @@ impl Screen for Graph {
                         log::error!("UserPermission: could not find graph-to-render to apply");
                         return false;
                     };
-                    let parser = props.parser.parser.borrow();
-                    let analysis = props.analysis.borrow();
+                    let (parser, analysis) = props.borrow();
                     self.render(
                         visible,
                         link,
@@ -229,6 +241,20 @@ impl Screen for Graph {
                         }
                         true
                     }
+                    SelectionM::SelectAndScrollTo(node) => {
+                        if let Some(svg) = &*self.svg_view.borrow() {
+                            rendered.selected_nodes.clear();
+                            rendered.selected_edges.clear();
+                            rendered.selected_nodes.push(node);
+                            svg.send_message(SvgViewM::ScrollZoomSelection(
+                                rendered.selected_nodes.clone(),
+                                rendered.selected_edges.clone(),
+                            ));
+                            true
+                        } else {
+                            false
+                        }
+                    }
                     SelectionM::ToggleEdge(edge) => {
                         let idx = rendered.selected_edges.iter().position(|&e| e == edge);
                         if let Some(idx) = idx {
@@ -239,7 +265,8 @@ impl Screen for Graph {
                         true
                     }
                     SelectionM::DeselectAll => {
-                        if rendered.selected_nodes.is_empty() && rendered.selected_edges.is_empty() {
+                        if rendered.selected_nodes.is_empty() && rendered.selected_edges.is_empty()
+                        {
                             return false;
                         }
                         rendered.selected_nodes.clear();
@@ -251,62 +278,68 @@ impl Screen for Graph {
         }
     }
 
-    fn view(&self, link: &Scope<Manager>, props: &Self::Properties) -> Html {
+    fn view(&self, link: &Scope<Self>, props: &Self::Properties) -> Html {
         let Some(rendered) = self.rendered_graph() else {
             return html! {};
         };
         let dimensions = self
             .waiting()
-            .map(GraphDimensions::of_graph)
-            .unwrap_or(rendered.dims());
+            .map_or(rendered.dims(), GraphDimensions::of_graph);
         html! {<>
             <GraphInfo
                 parser={props.parser.clone()}
                 analysis={props.analysis.clone()}
                 rendered={rendered.clone()}
                 outdated={self.waiting.is_some()}
-                selected_nodes={rendered.selected_nodes.clone()}
-                selected_edges={rendered.selected_edges.clone()}
                 update_selected={link.callback(GraphM::Selection)}
+                svg_view={self.svg_view.clone()}
             />
             <Warning noderef={self.graph_warning.clone()} onclosed={link.callback(GraphM::UserPermission)} {dimensions}/>
         </>}
     }
 
-    fn view_sidebar(&self, link: &Scope<Manager>, props: &Self::Properties) -> Sidebar {
+    fn view_sidebar(&self, link: &Scope<Self>, props: &Self::Properties) -> Sidebar {
         let waiting = self.waiting().map(GraphDimensions::of_graph);
         let rendered = self.rendered_graph().map(RenderedGraph::dims);
         let dims = waiting.or(rendered);
-        vec![self.filter.sidebar(dims, link, &props.analysis), self.disabler.sidebar(link)]
+        vec![
+            self.filter.sidebar(dims, link, &props.analysis),
+            self.disabler.sidebar(link),
+        ]
     }
 
-    fn view_topbar(&self, link: &Scope<Manager>, props: &Self::Properties) -> Topbar {
-        let parser = props.parser.parser.borrow();
-        let graph = props.analysis.borrow();
-        let selected = self.rendered_graph().map(|r| r.selected_nodes.as_slice()).unwrap_or_default();
+    fn view_topbar(&self, link: &Scope<Self>, props: &Self::Properties) -> Topbar {
+        let (parser, analysis) = props.borrow();
+        let selected = self
+            .rendered_graph()
+            .map(|r| r.selected_nodes.as_slice())
+            .unwrap_or_default();
         FiltersState::topbar(
             &*parser,
-            &graph.graph,
+            &analysis.graph,
             &link.callback(|f| GraphM::Filter(FilterM::AddFilter(f))),
             selected,
         )
     }
 
-    fn view_omnibox(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Omnibox {
-        let mut omnibox = Omnibox::default();
-        omnibox.disabled = self.state.is_ok();
+    fn view_omnibox(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Omnibox {
         match &self.state {
             Ok(GraphState::GraphToDot | GraphState::RenderingGraph) => {
-                omnibox.placeholder = "Rendering trace".to_string();
-                omnibox.progress.indeterminate = true;
-                omnibox.progress.closed = false;
+                let message = "Rendering trace".to_string();
+                let mut loading = OmniboxLoading::indeterminate();
+                loading.progress = 1.0;
+                Omnibox::Loading(OmniboxLoading {
+                    icon: "pending",
+                    icon_mousedown: None,
+                    message,
+                    loading,
+                })
             }
-            Ok(GraphState::Failed(err)) => {
-                omnibox.icon = "error";
-                omnibox.placeholder = err.clone();
-            }
-            Err(_) => (),
+            Ok(GraphState::Failed(error)) => Omnibox::Message(OmniboxMessage {
+                message: error.clone(),
+                kind: OmniboxMessageKind::Error,
+            }),
+            Err(rendered) => Omnibox::Search((*rendered.search).clone()),
         }
-        omnibox
     }
 }

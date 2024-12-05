@@ -3,7 +3,7 @@ use std::rc::Rc;
 use smt_log_parser::{
     analysis::{
         raw::{EdgeKind, Node, NodeKind},
-        visible::{VisibleEdge, VisibleEdgeKind},
+        visible::{VisibleEdge, VisibleEdgeKind, VisibleInstGraph},
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
@@ -16,13 +16,13 @@ use yew::{
 
 use crate::{
     configuration::ConfigurationProvider,
-    screen::{file::RcAnalysis, homepage::RcParser},
+    screen::{
+        file::RcAnalysis,
+        graph::{RcVisibleGraph, RenderedGraph},
+        graphviz::{DotEdgeProperties, DotNodeProperties},
+        homepage::RcParser,
+    },
     state::StateProvider,
-};
-
-use super::{
-    graphviz::{DotEdgeProperties, DotNodeProperties},
-    svg_result::RenderedGraph,
 };
 
 #[derive(Properties, PartialEq)]
@@ -360,7 +360,7 @@ pub struct SelectedEdgesInfoProps {
     pub parser: RcParser,
     pub analysis: RcAnalysis,
     pub selected_edges: Vec<(VisibleEdgeIndex, bool)>,
-    pub rendered: RenderedGraph,
+    pub rendered: RcVisibleGraph,
     pub on_click: Callback<VisibleEdgeIndex>,
 }
 
@@ -395,9 +395,9 @@ pub fn SelectedEdgesInfo(
             let on_click = on_click.clone();
             Callback::from(move |_| on_click.emit(edge))
         };
-        let (from, to) = rendered.graph.graph.edge_endpoints(edge.0).unwrap();
-        let (from, to) = (rendered.graph.graph[from].idx, rendered.graph.graph[to].idx);
-        let edge = &rendered.graph[edge];
+        let (from, to) = rendered.graph.edge_endpoints(edge.0).unwrap();
+        let (from, to) = (rendered.graph[from].idx, rendered.graph[to].idx);
+        let edge = &rendered[edge];
         let kind = &edge.kind(&graph);
         let info = EdgeInfo {
             edge,

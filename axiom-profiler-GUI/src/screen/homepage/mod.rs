@@ -9,18 +9,18 @@ use gloo::net::http::Response;
 use material_yew::{dialog::MatDialog, WeakComponentLink};
 use smt_log_parser::{parsers::ParseState, Z3Parser};
 use web_sys::HtmlInputElement;
-use yew::{html, html::Scope, Callback, DragEvent, Html, NodeRef};
+use yew::{html, Callback, DragEvent, Html, NodeRef};
 
 use crate::commands::{Command, CommandRef, CommandsContext, ShortcutKey};
 use crate::configuration::Flags;
 use crate::filters::byte_size_display;
 use crate::infobars::{OmniboxMessage, OmniboxMessageKind};
-use crate::screen::{file::FileProps, Change};
+use crate::screen::file::FileProps;
 use crate::state::FileInfo;
 use crate::utils::overlay_page::{Overlay, SetVisibleCallback};
 use crate::{CallbackRef, GlobalCallbacksContext, OmniboxContext, PREVENT_DEFAULT_DRAG_OVER};
 
-use super::{extra::*, Manager, Screen};
+use super::{extra::*, Manager, Scope, Screen};
 
 pub use self::file::*;
 use self::{example::Example, screen::HomepageScreen};
@@ -73,7 +73,7 @@ impl Screen for Homepage {
     type Message = HomepageM;
     type Properties = WeakComponentLink<MatDialog>;
 
-    fn create(link: &Scope<Manager>, props: &Self::Properties) -> Self {
+    fn create(link: &Scope<Self>, props: &Self::Properties) -> Self {
         let toggle_flags = SetVisibleCallback::default();
         let file_select = NodeRef::default();
 
@@ -133,7 +133,7 @@ impl Screen for Homepage {
 
     fn update(
         &mut self,
-        link: &Scope<Manager>,
+        link: &Scope<Self>,
         _props: &Self::Properties,
         msg: Self::Message,
     ) -> bool {
@@ -199,6 +199,7 @@ impl Screen for Homepage {
                     return false;
                 }
 
+                self.progress = LoadingState::FileDisplayed;
                 file.opened = Some(OpenedFileInfo {
                     parser: RcParser::new(*parser),
                     state,
@@ -234,7 +235,7 @@ impl Screen for Homepage {
         }
     }
 
-    fn view(&self, link: &Scope<Manager>, _props: &Self::Properties) -> Html {
+    fn view(&self, link: &Scope<Self>, _props: &Self::Properties) -> Html {
         let file_select = self.file_select.clone();
         let onchange = link.callback(move |_| {
             let files = file_select.cast::<HtmlInputElement>().unwrap().files();
@@ -252,13 +253,12 @@ impl Screen for Homepage {
                 let sidebar = link.callback(HomepageM::NestedSidebar);
                 let topbar = link.callback(HomepageM::NestedTopbar);
                 let omnibox = link.callback(HomepageM::NestedOmnibox);
-                let props = FileProps {
+                let initial = FileProps {
                     file_info: info.clone(),
                     opened_file: opened.clone(),
                     overlay_visible: self.overlay_visible,
                 };
-                let initial = Change::File(props);
-                html! {<Manager {sidebar} {topbar} {omnibox} {initial} />}
+                html! {<Manager<super::file::File> {sidebar} {topbar} {omnibox} {initial} />}
             }
             _ => html! {<HomepageScreen />},
         };
@@ -270,7 +270,7 @@ impl Screen for Homepage {
         </>}
     }
 
-    fn view_sidebar(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Sidebar {
+    fn view_sidebar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Sidebar {
         [self.get_navigation()]
             .into_iter()
             .chain(self.nested_sidebar.iter().cloned())
@@ -278,33 +278,35 @@ impl Screen for Homepage {
             .collect()
     }
 
-    fn view_topbar(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Topbar {
+    fn view_topbar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Topbar {
         (*self.nested_topbar).clone()
     }
 
-    fn view_omnibox(&self, _link: &Scope<Manager>, _props: &Self::Properties) -> Omnibox {
+    fn view_omnibox(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Omnibox {
         if self.opened_file().is_some() {
             (*self.nested_omnibox).clone()
         } else {
-            let mut omnibox = Omnibox::default();
+            let icon;
+            let message;
+            let mut icon_mousedown = None;
+            let mut loading = OmniboxLoading::indeterminate();
 
             match &self.progress {
-                LoadingState::NoFileSelected => (),
+                LoadingState::NoFileSelected => return Omnibox::default(),
                 LoadingState::ReadingToString => {
-                    omnibox.placeholder = "Loading trace".to_string();
-                    omnibox.progress.indeterminate = true;
-                    omnibox.progress.closed = false;
+                    icon = "pending";
+                    message = "Loading trace".to_string();
                 }
                 LoadingState::StartParsing => {
-                    omnibox.placeholder = "Parsing trace".to_string();
-                    omnibox.progress.progress = 0.0;
-                    omnibox.progress.closed = false;
+                    icon = "stop_circle";
+                    message = "Parsing trace".to_string();
+                    loading.indeterminate = false;
                 }
                 LoadingState::Parsing(parsing, cancel) => {
-                    omnibox.icon = "stop_circle";
-                    omnibox.icon_mousedown = Some(cancel.clone());
+                    icon = "stop_circle";
+                    icon_mousedown = Some(cancel.clone());
 
-                    let progress = parsing
+                    let percent = parsing
                         .file_size
                         .map(|size| {
                             let progress = parsing.reader.bytes_read as f64 / size as f64;
@@ -317,30 +319,31 @@ impl Screen for Homepage {
                         .map(|(speed, unit)| format!(" - {speed:.0} {unit}/s",));
                     let (memory_use, unit) = byte_size_display(parsing.memory_use as f64);
                     let info = format!(
-                        "Parsing trace {progress}{} | Use {memory_use:.0}{unit}",
+                        "Parsing trace {percent}{} | Use {memory_use:.0}{unit}",
                         speed.unwrap_or_default()
                     );
-                    omnibox.placeholder = info;
+                    message = info;
 
                     if let Some(size) = parsing.file_size {
-                        omnibox.progress.progress =
-                            (parsing.reader.bytes_read as f64 / size as f64) as f32;
-                    } else {
-                        omnibox.progress.indeterminate = true;
+                        loading.indeterminate = false;
+                        loading.progress = (parsing.reader.bytes_read as f64 / size as f64) as f32;
                     }
-                    omnibox.progress.closed = false;
                 }
                 LoadingState::DoneParsing(..) => {
-                    omnibox.progress.progress = 1.0;
-                    omnibox.progress.closed = false;
+                    icon = "stop_circle";
+                    message = "Finished parsing".to_string();
+                    loading.indeterminate = false;
+                    loading.progress = 1.0;
                 }
-                LoadingState::FileDisplayed => omnibox.progress.progress = 1.0,
+                // Should never be reached
+                LoadingState::FileDisplayed => return Omnibox::default(),
             };
-            omnibox.disabled = !matches!(
-                self.progress,
-                LoadingState::NoFileSelected | LoadingState::FileDisplayed
-            );
-            omnibox
+            Omnibox::Loading(OmniboxLoading {
+                icon,
+                icon_mousedown,
+                message,
+                loading,
+            })
         }
     }
 }
@@ -355,7 +358,7 @@ impl Homepage {
         navigation
     }
 
-    fn navigation(link: &Scope<Manager>, file_select: NodeRef) -> SidebarSection {
+    fn navigation(link: &Scope<Self>, file_select: NodeRef) -> SidebarSection {
         let open_file = Callback::from(move |_| {
             let input = file_select.cast::<HtmlInputElement>().unwrap();
             input.click();

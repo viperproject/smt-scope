@@ -4,6 +4,9 @@ use crate::{
     results::{
         filters::{FilterOutput, FilterOutputKind},
         graph_info::{GraphInfo, MatchingLoopGraphData, Msg as GraphInfoMsg},
+    },
+    screen::{
+        graph::RenderedGraph,
         graphviz::{DotEdgeProperties, DotNodeProperties},
     },
     state::StateContext,
@@ -30,29 +33,13 @@ use smt_log_parser::{
 };
 use std::{cell::RefCell, cmp::Ordering, rc::Rc};
 use viz_js::VizInstance;
-use web_sys::window;
+use web_sys::{window, SvgsvgElement};
 use yew::prelude::*;
 
 pub const EDGE_LIMIT: usize = 2000;
 pub const NODE_LIMIT: usize = 4000;
 pub const DEFAULT_NODE_COUNT: usize = 300;
 pub const AST_DEPTH_LIMIT: NonMaxU32 = unsafe { NonMaxU32::new_unchecked(5) };
-
-#[derive(Clone)]
-pub struct RenderedGraph {
-    pub graph: Rc<VisibleInstGraph>,
-    pub svg_text: AttrValue,
-
-    pub selected_nodes: Vec<RawNodeIndex>,
-    pub selected_edges: Vec<VisibleEdgeIndex>,
-}
-
-impl PartialEq for RenderedGraph {
-    fn eq(&self, other: &Self) -> bool {
-        self.graph.generation == other.graph.generation
-    }
-}
-impl Eq for RenderedGraph {}
 
 pub enum Msg {
     ConstructedGraph(Rc<RefCell<InstGraph>>),
@@ -456,15 +443,16 @@ impl Component for SVGResult {
                     false
                 }
             },
-            Msg::UpdateSvgText(svg_text, rendered) => {
-                let rendered = RenderedGraph {
-                    graph: Rc::new(rendered),
-                    svg_text,
-                    selected_nodes: Vec::new(),
-                    selected_edges: Vec::new(),
-                };
-                self.rendered = Some(rendered.clone());
-                ctx.props().progress.emit(GraphState::Constructed(rendered));
+            Msg::UpdateSvgText(svg, rendered) => {
+                todo!();
+                // let rendered = RenderedGraph {
+                //     graph: Rc::new(rendered),
+                //     svg,
+                //     selected_nodes: Vec::new(),
+                //     selected_edges: Vec::new(),
+                // };
+                // self.rendered = Some(rendered.clone());
+                // ctx.props().progress.emit(GraphState::Constructed(rendered));
                 true
             }
             Msg::RenderMLGraph(ml_idx, graph) => {

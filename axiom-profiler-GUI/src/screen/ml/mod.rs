@@ -1,6 +1,6 @@
-use yew::{html, html::Scope, Html};
+use yew::{html, Html};
 
-use super::Screen;
+use super::{Scope, Screen};
 
 #[derive(Clone, PartialEq)]
 pub struct MatchingLoopProps {}
@@ -13,11 +13,11 @@ impl Screen for MatchingLoop {
     type Message = MatchingLoopM;
     type Properties = MatchingLoopProps;
 
-    fn create(link: &Scope<super::Manager>, props: &Self::Properties) -> Self {
+    fn create(link: &Scope<Self>, props: &Self::Properties) -> Self {
         Self {}
     }
 
-    fn view(&self, link: &Scope<super::Manager>, props: &Self::Properties) -> Html {
+    fn view(&self, link: &Scope<Self>, props: &Self::Properties) -> Html {
         html! {"Matching loop"}
     }
 }

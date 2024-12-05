@@ -875,6 +875,10 @@ impl Z3Parser {
         self.terms.meaning(tidx)
     }
 
+    pub fn from_to(&self, eq: EqTransIdx) -> (ENodeIdx, ENodeIdx) {
+        self.egraph.equalities.from_to(eq)
+    }
+
     pub fn quant_count_incl_theory_solving(&self) -> (usize, bool) {
         (self.quantifiers.len(), self.insts.has_theory_solving_inst())
     }

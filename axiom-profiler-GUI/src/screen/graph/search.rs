@@ -56,6 +56,9 @@ impl Graph {
             idx: RawNodeIndex,
             visible: bool,
         ) {
+            let tidx = parser[eidx].owner;
+            // TODO: display meaning in search?
+            if let Some(_meaning) = parser.meaning(tidx) {}
             let term = &parser[parser[eidx].owner];
             let Some(name) = term.kind.app_name() else {
                 return;

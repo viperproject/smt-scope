@@ -326,9 +326,9 @@ impl
                 Some(false) => "output".to_owned(),
                 None => "const".to_owned(),
             },
-            QI(ref sig, pattern) => pattern
+            QI(_, quantifier, term) | InstBody(quantifier, term) => term
                 .simp
-                .with_data(&ctxt, &mut Some(sig.qpat.quant))
+                .with_data(&ctxt, &mut Some(quantifier))
                 .to_string(),
             FixedENode(matched_term) => matched_term.simp.with(&ctxt).to_string(),
             RecurringENode(matched_term, input) => {
@@ -362,7 +362,9 @@ impl
                     "Fixed nodes which do not change but are used in each iteration.".to_owned()
                 }
             },
-            QI(ref sig, _) => ctxt.parser[sig.qpat.quant].kind.with(&ctxt).to_string(),
+            QI(_, quantifier, _) | InstBody(quantifier, _) => {
+                ctxt.parser[*quantifier].kind.with(&ctxt).to_string()
+            }
             FixedENode(matched_term) => matched_term.orig.with(&ctxt).to_string(),
             RecurringENode(matched_term, input) => {
                 ctxt.config.input = input.rec_input();
@@ -382,7 +384,7 @@ impl
         use MLGraphNode::*;
         match self {
             HiddenNode(..) => "",
-            QI(..) | RecurringENode(..) | RecurringEquality(..) => "filled",
+            QI(..) | InstBody(..) | RecurringENode(..) | RecurringEquality(..) => "filled",
             FixedENode(..) | FixedEquality(..) => "filled,dashed",
         }
     }
@@ -398,8 +400,8 @@ impl
         use MLGraphNode::*;
         match self {
             HiddenNode(..) => Default::default(),
-            QI(sig, _) => {
-                let hue = ctx.get_rbg_hue(Some(sig.qpat.quant)).unwrap() / 360.0;
+            QI(_, quantifier, _) | InstBody(quantifier, _) => {
+                let hue = ctx.get_rbg_hue(Some(*quantifier)).unwrap() / 360.0;
                 format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
             }
             FixedENode(..) | RecurringENode(..) => ENODE_COLOUR.to_owned(),
@@ -421,7 +423,7 @@ impl
                 Some(false) => "output",
                 None => "fixed",
             },
-            QI(..) => "middle",
+            QI(..) | InstBody(..) => "middle",
         };
         class.to_string()
     }
@@ -741,7 +743,7 @@ impl DotEdgeProperties<bool, (), (), (), (), (), (), (), ()> for MLGraphEdge {
         use MLGraphEdge::*;
         match self {
             HiddenEdge(..) => "none",
-            Blame(..) | Yield => "normal",
+            Instantiation | Blame(..) | Yield => "normal",
             BlameEq(..) | YieldEq | CombineEq => "empty",
         }
     }

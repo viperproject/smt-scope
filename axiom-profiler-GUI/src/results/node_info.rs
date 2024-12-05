@@ -3,7 +3,7 @@ use std::rc::Rc;
 use smt_log_parser::{
     analysis::{
         raw::{EdgeKind, Node, NodeKind},
-        visible::{VisibleEdge, VisibleEdgeKind, VisibleInstGraph},
+        visible::{VisibleEdge, VisibleEdgeKind},
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
@@ -18,7 +18,7 @@ use crate::{
     configuration::ConfigurationProvider,
     screen::{
         file::RcAnalysis,
-        graph::{RcVisibleGraph, RenderedGraph},
+        graph::RcVisibleGraph,
         graphviz::{DotEdgeProperties, DotNodeProperties},
         homepage::RcParser,
     },
@@ -398,19 +398,19 @@ pub fn SelectedEdgesInfo(
         let (from, to) = rendered.graph.edge_endpoints(edge.0).unwrap();
         let (from, to) = (rendered.graph[from].idx, rendered.graph[to].idx);
         let edge = &rendered[edge];
-        let kind = &edge.kind(&graph);
+        let kind = &edge.kind(graph);
         let info = EdgeInfo {
             edge,
             kind,
             from,
             to,
-            graph: &graph,
+            graph,
             ctxt,
         };
 
         let summary = format!("[{}] {}", info.index(), info.kind());
         // Get info about blamed node
-        let blame = graph.raw.index(info.kind.blame(&graph));
+        let blame = graph.raw.index(info.kind.blame(graph));
         let blame = graph.raw[blame].kind().tooltip((*ctxt, true, None));
         html! {
             <details {open} {onclick}>

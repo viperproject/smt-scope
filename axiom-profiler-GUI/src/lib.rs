@@ -4,17 +4,15 @@ use std::sync::{Mutex, OnceLock, RwLock};
 
 use commands::{Command, CommandRef, CommandsContext, ShortcutKey};
 use example::Example;
-use filters::AddFilterSidebar;
 use fxhash::{FxHashMap, FxHashSet};
 use gloo::timers::callback::Timeout;
 use gloo_file::callbacks::FileReader;
 use gloo_file::File;
 use gloo_net::http::Response;
 use infobars::OmniboxMessageKind;
-use material_yew::{MatDialog, MatIcon, MatIconButton, WeakComponentLink};
+use material_yew::{MatDialog, MatIconButton, WeakComponentLink};
 use petgraph::visit::EdgeRef;
-use results::graph_info;
-use results::svg_result::{Msg as SVGMsg, RenderingState, SVGResult};
+use results::svg_result::{Msg as SVGMsg, RenderingState};
 use screen::extra::SimpleButton;
 use screen::graph::RenderedGraph;
 use screen::homepage::Homepage;
@@ -35,7 +33,6 @@ use crate::filters::FiltersState;
 
 use crate::infobars::{OmniboxMessage, SidebarSectionHeader, Topbar};
 use crate::results::filters::Filter;
-use crate::results::svg_result::GraphState;
 use crate::screen::extra;
 use crate::state::StateProviderContext;
 use crate::utils::overlay_page::SetVisibleCallback;
@@ -178,7 +175,7 @@ impl ParseProgress {
 #[derive(Clone)]
 pub struct OpenedFileInfo {
     parser_state: ParseState<bool>,
-    parser_cancelled: bool,
+    // parser_cancelled: bool,
     update: Rc<RefCell<Result<Callback<SVGMsg>, Vec<SVGMsg>>>>,
     filter: WeakComponentLink<FiltersState>,
     selected_nodes: Vec<RawNodeIndex>,
@@ -230,7 +227,7 @@ pub struct FileDataComponent {
     cancel: Rc<RefCell<bool>>,
     navigation_section: NodeRef,
     help_dialog: WeakComponentLink<MatDialog>,
-    insts_info_link: WeakComponentLink<graph_info::GraphInfo>,
+    // insts_info_link: WeakComponentLink<graph_info::GraphInfo>,
     filters_state_link: WeakComponentLink<FiltersState>,
     showing_help: bool,
     sidebar_ref: NodeRef,
@@ -322,7 +319,7 @@ impl Component for FileDataComponent {
             cancel: Rc::default(),
             navigation_section: NodeRef::default(),
             help_dialog,
-            insts_info_link: WeakComponentLink::default(),
+            // insts_info_link: WeakComponentLink::default(),
             filters_state_link: WeakComponentLink::default(),
             showing_help: false,
             sidebar_ref: NodeRef::default(),
@@ -489,7 +486,7 @@ impl Component for FileDataComponent {
                 }
                 true
             }
-            Msg::LoadedFile(parser, parser_state, parser_cancelled) => {
+            Msg::LoadedFile(parser, parser_state, _parser_cancelled) => {
                 drop(self.reader.take());
                 let parser = RcParser::new(*parser);
                 self.state.update_parser(move |p| {
@@ -498,7 +495,7 @@ impl Component for FileDataComponent {
                 });
                 let file = OpenedFileInfo {
                     parser_state,
-                    parser_cancelled,
+                    // parser_cancelled,
                     filter: WeakComponentLink::default(),
                     update: Rc::new(RefCell::new(Err(Vec::new()))),
                     selected_nodes: Vec::new(),
@@ -657,20 +654,20 @@ impl Component for FileDataComponent {
         });
         let onopened = ctx.link().callback(|_| Msg::ShowHelpToggled(true));
         let onclosed = ctx.link().callback(|_| Msg::ShowHelpToggled(false));
-        let at_homepage = self.file.is_none();
-        let page = self.file.as_ref().map(|f| {
-            let (timeout, cancel) = (f.parser_state.is_timeout(), f.parser_cancelled);
-            let progress = ctx.link().callback(move |rs| match rs {
-                GraphState::Rendering(rs) => Msg::LoadingState(LoadingState::Rendering(rs, timeout, cancel)),
-                GraphState::Constructed(rendered) => Msg::RenderedGraph(rendered),
-                GraphState::Failed(error) => Msg::FailedOpening(error),
-            });
-            let selected_nodes = ctx.link().callback(Msg::SelectedNodes);
-            let selected_edges = ctx.link().callback(Msg::SelectedEdges);
-            html! {<SVGResult file={f.clone()} {progress} {selected_nodes} {selected_edges} insts_info_link={self.insts_info_link.clone()}/>}
-        }).unwrap_or_else(|| {
-            html!{<homepage::Homepage {is_canary}/>}
-        });
+        // let at_homepage = self.file.is_none();
+        // let page = self.file.as_ref().map(|f| {
+        //     let (timeout, cancel) = (f.parser_state.is_timeout(), f.parser_cancelled);
+        //     let progress = ctx.link().callback(move |rs| match rs {
+        //         GraphState::Rendering(rs) => Msg::LoadingState(LoadingState::Rendering(rs, timeout, cancel)),
+        //         GraphState::Constructed(rendered) => Msg::RenderedGraph(rendered),
+        //         GraphState::Failed(error) => Msg::FailedOpening(error),
+        //     });
+        //     let selected_nodes = ctx.link().callback(Msg::SelectedNodes);
+        //     let selected_edges = ctx.link().callback(Msg::SelectedEdges);
+        //     html! {<SVGResult file={f.clone()} {progress} {selected_nodes} {selected_edges} insts_info_link={self.insts_info_link.clone()}/>}
+        // }).unwrap_or_else(|| {
+        //     html!{<homepage::Homepage {is_canary}/>}
+        // });
         let message = self.message.as_ref().map(|(_, message)| message).cloned();
         let header_class = if is_canary { "canary" } else { "stable" };
 

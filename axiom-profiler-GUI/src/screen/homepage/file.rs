@@ -15,7 +15,7 @@ use yew::{Callback, DragEvent};
 use crate::{
     global_callbacks::GlobalCallbacks,
     infobars::{OmniboxMessage, OmniboxMessageKind},
-    screen::{homepage::HomepageM, Manager, Scope},
+    screen::{homepage::HomepageM, Scope},
     state::FileInfo,
     utils::colouring::QuantIdxToColourMap,
     CallbackRef, OmniboxContext, PREVENT_DEFAULT_DRAG_OVER,

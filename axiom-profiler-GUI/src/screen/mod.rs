@@ -7,12 +7,10 @@ pub mod homepage;
 pub mod manager;
 pub mod ml;
 
-use yew::{Component, Html};
+use yew::Html;
 
 use self::{
     extra::{Omnibox, Sidebar, Topbar},
-    file::File,
-    homepage::Homepage,
     manager::ScreenManager,
 };
 

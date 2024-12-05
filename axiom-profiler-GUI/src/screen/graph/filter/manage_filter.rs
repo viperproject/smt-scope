@@ -1,17 +1,13 @@
-use std::{cell::RefCell, rc::Rc};
-
 use gloo::timers::callback::Timeout;
-use material_yew::{icon::MatIcon, WeakComponentLink};
+use material_yew::icon::MatIcon;
 use smt_log_parser::items::QuantIdx;
 use web_sys::{Element, HtmlElement, HtmlInputElement};
 use yew::{
-    function_component, html, use_context, Callback, Children, Component, Context, Html, NodeRef,
-    Properties,
+    function_component, html, Callback, Children, Component, Context, Html, NodeRef, Properties,
 };
 
 use crate::{
-    mouse_position, results::filters::Filter, screen::file::RcAnalysis, state::StateProvider,
-    PREVENT_DEFAULT_DRAG_OVER,
+    mouse_position, results::filters::Filter, screen::file::RcAnalysis, PREVENT_DEFAULT_DRAG_OVER,
 };
 
 pub enum Msg {
@@ -107,7 +103,7 @@ impl Component for DraggableList {
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         if ctx.props().children.len() != old_props.children.len() {
             self.display
-                .resize_with(ctx.props().children.len(), || NodeRef::default());
+                .resize_with(ctx.props().children.len(), NodeRef::default);
         }
         true
     }

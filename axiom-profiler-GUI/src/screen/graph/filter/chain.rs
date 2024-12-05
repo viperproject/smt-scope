@@ -1,12 +1,7 @@
-use std::num::NonZeroUsize;
-
-use yew::{Callback, Context};
-
 use crate::{
     commands::{Command, CommandRef, CommandsContext, ShortcutKey},
-    filters::FiltersState,
     results::{filters::Filter, svg_result::GraphDimensions},
-    screen::{graph::Graph, Manager, Scope},
+    screen::{graph::Graph, Scope},
 };
 
 use super::GraphM;

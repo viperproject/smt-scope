@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use gloo::timers::callback::Timeout;
 use material_yew::icon::MatIcon;
-use smt_log_parser::items::QuantIdx;
 use web_sys::{Element, HtmlElement, HtmlInputElement};
 use yew::{
     function_component, html, use_context, Callback, Children, Component, Context, Html, NodeRef,

@@ -4,7 +4,7 @@ mod render;
 mod search;
 mod visible;
 
-use std::{cell::Ref, rc::Rc};
+use std::cell::Ref;
 
 use filter::DisablersState;
 use material_yew::{dialog::MatDialog, WeakComponentLink};
@@ -17,19 +17,18 @@ use yew::{html, Html};
 use crate::{
     infobars::{OmniboxMessage, OmniboxMessageKind},
     results::{
-        filters::{Disabler, Filter, FilterOutput, FilterOutputKind},
+        filters::{Disabler, Filter},
         graph::graph_container::{GraphContainer, SvgViewM},
         render_warning::{Warning, WarningChoice},
         svg_result::GraphDimensions,
     },
-    screen::extra::{ElementKind, SidebarSection, SidebarSectionRef},
 };
 
 use super::{
-    extra::{Omnibox, OmniboxLoading, OmniboxSearch, Sidebar, Topbar},
+    extra::{Omnibox, OmniboxLoading, Sidebar, Topbar},
     file::{AnalysisData, RcAnalysis},
     homepage::RcParser,
-    Manager, Scope, Screen,
+    Scope, Screen,
 };
 
 use self::{
@@ -163,13 +162,13 @@ impl Screen for Graph {
                 let mut analysis = props.analysis.borrow_mut();
 
                 let (is_first, modified, update_view) =
-                    self.apply_filter(&*parser, &mut analysis.graph, cmd);
+                    self.apply_filter(&parser, &mut analysis.graph, cmd);
                 if !modified || filter_only {
                     return update_view;
                 }
                 self.render_careful(
                     link,
-                    &*parser,
+                    &parser,
                     &analysis.graph,
                     &props.parser.colour_map,
                     is_first,
@@ -197,7 +196,7 @@ impl Screen for Graph {
                     self.render(
                         visible,
                         link,
-                        &*parser,
+                        &parser,
                         &analysis.graph,
                         &props.parser.colour_map,
                     )
@@ -315,7 +314,7 @@ impl Screen for Graph {
             .map(|r| r.selected_nodes.as_slice())
             .unwrap_or_default();
         FiltersState::topbar(
-            &*parser,
+            &parser,
             &analysis.graph,
             &link.callback(|f| GraphM::Filter(FilterM::AddFilter(f))),
             selected,

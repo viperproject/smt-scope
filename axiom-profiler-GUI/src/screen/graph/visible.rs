@@ -2,7 +2,6 @@ use std::{ops::Deref, rc::Rc};
 
 use smt_log_parser::analysis::{visible::VisibleInstGraph, RawNodeIndex, VisibleEdgeIndex};
 use web_sys::SvgsvgElement;
-use yew::AttrValue;
 
 use crate::{results::svg_result::GraphDimensions, screen::extra::OmniboxSearch};
 

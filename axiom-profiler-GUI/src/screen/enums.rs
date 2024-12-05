@@ -1,9 +1,4 @@
-use yew::{Component, Html};
-
-use super::{
-    file::File, graph::Graph, homepage::Homepage, ml::MatchingLoop, Manager, Omnibox, Scope,
-    Screen, Sidebar, Topbar,
-};
+use super::{file::File, graph::Graph, homepage::Homepage, ml::MatchingLoop, Screen};
 
 macro_rules! screen_enum {
     (pub enum ScreenKind { $($name:ident),*$(,)? }) => {

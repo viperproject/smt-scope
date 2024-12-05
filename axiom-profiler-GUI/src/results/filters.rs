@@ -8,7 +8,6 @@ use smt_log_parser::{
         raw::{IndexesInstGraph, Node, NodeKind, RawInstGraph},
         InstGraph, RawNodeIndex,
     },
-    display_with::{DisplayCtxt, DisplayWithCtxt},
     items::{QuantIdx, QuantKind},
     Z3Parser,
 };
@@ -46,7 +45,7 @@ pub enum Filter {
 }
 
 impl Filter {
-    pub fn apply<'a>(&self, graph: &mut InstGraph, parser: &'a Z3Parser) -> FilterOutput {
+    pub fn apply(&self, graph: &mut InstGraph, parser: &Z3Parser) -> FilterOutput {
         let mut kind = FilterOutputKind::Other;
         let modified = match *self {
             Filter::MaxNodeIdx(max) => graph
@@ -115,7 +114,7 @@ impl Filter {
                 modified
             }
             Filter::ShowNamedQuantifier(ref name) => {
-                if let Some(name) = QuantKind::parse_existing(&parser.strings, &name) {
+                if let Some(name) = QuantKind::parse_existing(&parser.strings, name) {
                     graph
                         .raw
                         .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {

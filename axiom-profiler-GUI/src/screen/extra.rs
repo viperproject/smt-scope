@@ -1,12 +1,9 @@
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-};
+use std::{cell::Cell, rc::Rc};
 
 use material_yew::{icon::MatIcon, linear_progress::LinearProgressProps};
 use yew::{html, Callback, Html, MouseEvent, NodeRef};
 
-use crate::infobars::{OmniboxMessage, OmniboxMessageKind};
+use crate::infobars::OmniboxMessage;
 
 pub type Sidebar = Vec<SidebarSection>;
 pub type Topbar = Vec<TopbarMenu>;

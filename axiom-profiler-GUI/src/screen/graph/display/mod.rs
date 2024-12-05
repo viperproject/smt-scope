@@ -9,7 +9,6 @@ use crate::{
     state::{StateContext, StateProvider},
     utils::split_div::SplitDiv,
 };
-use indexmap::map::{Entry, IndexMap};
 use material_yew::{icon::MatIcon, WeakComponentLink};
 use smt_log_parser::{
     analysis::{RawNodeIndex, VisibleEdgeIndex},
@@ -30,33 +29,6 @@ pub struct GraphInfo {
     in_ml_viewer_mode: bool,
     ml_graph_div: NodeRef,
     _context_listener: ContextHandle<Rc<StateProvider>>,
-}
-
-fn toggle_selected<T: Copy + Eq + std::hash::Hash>(
-    map: &mut IndexMap<T, bool>,
-    entry: T,
-) -> Vec<T> {
-    let added = match map.entry(entry) {
-        Entry::Occupied(o) => {
-            o.swap_remove();
-            false
-        }
-        Entry::Vacant(v) => {
-            v.insert(true);
-            true
-        }
-    };
-    if added {
-        // When adding a single new node,
-        // close all
-        for (other, val) in map.iter_mut() {
-            // except the added node
-            if *other != entry {
-                *val = false;
-            }
-        }
-    }
-    map.keys().copied().collect()
 }
 
 pub enum GraphInfoM {
@@ -92,9 +64,6 @@ pub enum MatchingLoopGraphAction {
 
 #[derive(Properties, PartialEq)]
 pub struct GraphInfoProps {
-    // pub weak_link: WeakComponentLink<GraphInfo>,
-    // pub node_info: Callback<(RawNodeIndex, bool, RcParser), NodeInfo>,
-    // pub edge_info: Callback<(VisibleEdgeIndex, bool, RcParser), EdgeInfo>,
     pub parser: RcParser,
     pub analysis: RcAnalysis,
     pub rendered: RenderedGraph,

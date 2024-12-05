@@ -1,30 +1,12 @@
-use std::{
-    cmp::Ordering,
-    ops::{Deref, DerefMut},
-    rc::Rc,
-};
+use std::rc::Rc;
 
-use fxhash::FxHashMap;
 use gloo::timers::callback::Timeout;
-use smt_log_parser::analysis::{visible::VisibleInstGraph, RawNodeIndex};
 use web_sys::{HtmlElement, HtmlInputElement};
-use yew::{
-    function_component, html, prelude::Context, Callback, Children, Component, ContextHandle, Html,
-    InputEvent, KeyboardEvent, MouseEvent, NodeRef, Properties,
-};
+use yew::{prelude::Context, Component, Html, InputEvent, KeyboardEvent, NodeRef, Properties};
 
-use crate::{
-    commands::{Command, CommandId, CommandRef, Commands, Key, ShortcutKey},
-    infobars::{topbar::OmniboxMessage, DropdownButton, OmniboxMessageKind},
-    screen::extra,
-    RcParser,
-};
+use crate::{commands::Commands, infobars::topbar::OmniboxMessage, screen::extra};
 
-use self::{
-    commands::CommandsContext,
-    mode::{OmniboxMode, SearchMode},
-    search::SuggestionResults,
-};
+use self::{commands::CommandsContext, mode::OmniboxMode};
 
 use super::{DropdownContext, DropdownIdx};
 

@@ -1,18 +1,8 @@
-use std::{
-    ops::{Deref, DerefMut},
-    sync::Mutex,
-};
+use std::sync::Mutex;
 
 use fxhash::FxHashMap;
 use nucleo_matcher::{Config, Matcher, Utf32String};
-use smt_log_parser::{
-    analysis::{raw::IndexesInstGraph, visible::VisibleInstGraph, InstGraph, RawNodeIndex},
-    items::{ENodeIdx, InstIdx, QuantIdx, TermIdx, TermKind},
-    Z3Parser,
-};
 use yew::{html, Html};
-
-use crate::commands::{Command, CommandId};
 
 pub struct StringLookup<T> {
     matcher: Mutex<Matcher>,
@@ -52,9 +42,6 @@ impl<T> StringLookup<T> {
             .or_insert_with(default)
     }
 
-    pub fn get_exact(&self, key: &str) -> Option<&T> {
-        self.values.get(&Utf32String::from(key))
-    }
     pub fn get_fuzzy<'a>(&'a self, needle: &str) -> Matches<'a, T> {
         let original_needle = needle;
         let needle = Utf32String::from(needle.to_lowercase());

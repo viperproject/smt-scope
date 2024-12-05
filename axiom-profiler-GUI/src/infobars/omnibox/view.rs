@@ -11,7 +11,6 @@ use crate::{
 
 use super::{
     mode::{OmniboxMode, SearchKind, SearchMode},
-    search::SuggestionResults,
     Omnibox, OmniboxM, OmniboxProps,
 };
 
@@ -223,7 +222,7 @@ impl SearchMode {
 
     fn stepthrough(&self, omnibox: &extra::OmniboxSearch) -> Option<(Option<usize>, usize)> {
         let (results, select) = self.kind.get_chosen()?;
-        let entry = results.index(omnibox, select.ridx).unwrap();
+        let entry = select.index(results, omnibox);
         Some((select.choice_idx, entry.select_from))
     }
 }

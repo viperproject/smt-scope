@@ -24,12 +24,14 @@ pub trait DropdownContext {
 impl<T: Component> DropdownContext for html::Scope<T> {
     fn toggle_dropdown(&self, set: Option<bool>) -> Option<()> {
         let (c, _) = self.context::<DropdownCtxt>(Callback::noop())?;
-        Some(c.toggle.emit(set))
+        c.toggle.emit(set);
+        Some(())
     }
     fn toggle_dropdown_idx(&self, set: Option<bool>, idx: DropdownIdx) -> Option<()> {
         let (c, _) = self.context::<DropdownCtxt>(Callback::noop())?;
         c.set_dropdown.emit(Some(idx));
-        Some(c.toggle.emit(set))
+        c.toggle.emit(set);
+        Some(())
     }
 }
 

@@ -6,8 +6,6 @@ use crate::{
     utils::lookup::{HighlightedString, Matches, StringLookup},
 };
 
-use super::Omnibox;
-
 pub type OmniboxSearch = StringLookup<Vec<(usize, usize)>>;
 
 #[derive(Debug, Clone, Copy)]
@@ -110,7 +108,7 @@ impl SuggestionResults {
         }
     }
 
-    pub fn index<'a>(
+    fn index<'a>(
         &self,
         omnibox: &'a extra::OmniboxSearch,
         ridx: usize,

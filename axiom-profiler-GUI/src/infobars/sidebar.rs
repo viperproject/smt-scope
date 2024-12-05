@@ -1,6 +1,5 @@
 use material_yew::icon::MatIcon;
-use web_sys::HtmlElement;
-use yew::{function_component, html, use_effect, Callback, Children, Html, NodeRef, Properties};
+use yew::{function_component, html, use_effect, Callback, Children, Html, Properties};
 
 use crate::screen::extra::SidebarSectionRef;
 

@@ -5,7 +5,7 @@ use yew::{Callback, Component, Context, Html, Properties};
 use super::{
     enums::ScreenMessage,
     extra::{Omnibox, Sidebar, Topbar},
-    Manager, ManagerM, Screen,
+    ManagerM, Screen,
 };
 
 #[derive(Properties, Clone)]

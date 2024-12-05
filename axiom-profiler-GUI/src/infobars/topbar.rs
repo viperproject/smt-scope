@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use material_yew::linear_progress::{LinearProgressProps, MatLinearProgress};
-use smt_log_parser::analysis::RawNodeIndex;
 use yew::{function_component, html, use_context, use_node_ref, Callback, Html, Properties};
 
 use crate::{

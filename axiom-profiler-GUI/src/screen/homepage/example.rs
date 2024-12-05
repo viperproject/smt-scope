@@ -1,4 +1,4 @@
-use crate::screen::{file::File, Manager, Scope};
+use crate::screen::Scope;
 
 use super::{Action, ElementKind, Homepage, HomepageM, SimpleButton};
 

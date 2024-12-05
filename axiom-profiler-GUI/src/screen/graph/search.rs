@@ -1,6 +1,6 @@
 use smt_log_parser::{
-    analysis::{raw::NodeKind, visible::VisibleInstGraph, InstGraph, RawNodeIndex},
-    items::{ENodeIdx, EqTransIdx, QuantIdx, TermIdx},
+    analysis::{raw::NodeKind, InstGraph, RawNodeIndex},
+    items::{ENodeIdx, EqTransIdx, QuantIdx},
     FxHashMap, IString, Z3Parser,
 };
 use yew::html;
@@ -14,7 +14,7 @@ use crate::{
     utils::colouring::QuantIdxToColourMap,
 };
 
-use super::{visible::RenderedGraph, Graph};
+use super::Graph;
 
 #[derive(Default)]
 struct EntryCounter {
@@ -134,10 +134,10 @@ impl Graph {
             entries: quantifiers,
         };
 
-        let mut terms = terms.into_iter().filter_map(|((name, children), counter)| {
+        let mut terms = terms.into_iter().map(|((name, children), counter)| {
             let search_text = parser[name].to_string();
             let post_text = (0..children).map(|_| " _").chain([")"]).collect();
-            Some(OmniboxSearchEntry {
+            OmniboxSearchEntry {
                 pre_text: "(".to_string(),
                 search_text,
                 post_text,
@@ -146,7 +146,7 @@ impl Graph {
                 </>},
                 select_from: counter.visible.len(),
                 select: link.callback(move |idx| GraphM::Selection(SelectionM::SelectAndScrollTo(counter.visible[idx]))),
-            })
+            }
         }).collect::<Vec<_>>();
         terms.sort_by(|a, b| a.order().cmp(&b.order()));
         let terms = OmniboxSearchCategory {

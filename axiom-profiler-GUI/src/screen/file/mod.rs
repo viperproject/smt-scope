@@ -121,7 +121,7 @@ impl Screen for File {
                 drop(old);
 
                 let parser = props.opened_file.parser.parser.borrow();
-                match InstGraph::new(&*parser) {
+                match InstGraph::new(&parser) {
                     Ok(graph) => {
                         let data = AnalysisData { graph };
                         self.analysis = Err(RcAnalysis::new(data));

@@ -2,17 +2,14 @@ mod add_filter;
 mod chain;
 mod manage_filter;
 
-use std::{cell::RefCell, num::NonZeroUsize, rc::Rc};
-
 use material_yew::icon::MatIcon;
 use smt_log_parser::{
     analysis::{InstGraph, RawNodeIndex},
     Z3Parser,
 };
-use yew::{html, Callback, Context, MouseEvent, NodeRef};
+use yew::{html, Callback, MouseEvent};
 
 use crate::{
-    commands::{Command, CommandRef, CommandsContext, ShortcutKey},
     results::{
         filters::{Disabler, Filter},
         svg_result::GraphDimensions,
@@ -20,7 +17,7 @@ use crate::{
     screen::{
         extra::{ElementKind, SidebarSection, SidebarSectionRef, Topbar, TopbarMenu},
         file::RcAnalysis,
-        Manager, Scope,
+        Scope,
     },
     utils::toggle_list::ToggleList,
 };
@@ -208,7 +205,7 @@ impl FiltersState {
             let analysis = analysis.clone();
             html!{<ExistingFilter filter={filter.clone()} {onclick} {selected} {editing} {delete} {edit} {end_edit} {analysis} />}
         }).collect();
-        let no_drag = self.selected_filter.or_else(|| self.edit_filter);
+        let no_drag = self.selected_filter.or(self.edit_filter);
         let list = ElementKind::Custom(html! {
             <DraggableList {classes} drag={drag} {no_drag}>
                 {for elements}

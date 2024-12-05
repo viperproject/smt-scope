@@ -12,10 +12,7 @@ use smt_log_parser::analysis::{RawNodeIndex, VisibleEdgeIndex};
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
 
-use super::{
-    graph::graph_container,
-    node_info::{SelectedEdgesInfo, SelectedNodesInfo},
-};
+use super::graph::graph_container;
 
 pub struct GraphInfo {
     selected_nodes: IndexMap<RawNodeIndex, bool>,

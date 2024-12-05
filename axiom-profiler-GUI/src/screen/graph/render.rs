@@ -1,20 +1,16 @@
 use std::rc::Rc;
 
-use gloo::utils::window;
 use petgraph::{
     dot::{Config, Dot},
     visit::EdgeRef,
 };
 use smt_log_parser::{
-    analysis::{
-        visible::VisibleInstGraph, InstGraph, RawNodeIndex, VisibleEdgeIndex, VisibleNodeIndex,
-    },
+    analysis::{visible::VisibleInstGraph, InstGraph, RawNodeIndex, VisibleEdgeIndex},
     display_with::DisplayCtxt,
     FxHashMap, FxHashSet, Z3Parser,
 };
 use viz_js::VizInstance;
 use wasm_timer::Instant;
-use yew::AttrValue;
 
 use crate::{
     configuration::ConfigurationContext,
@@ -25,7 +21,7 @@ use crate::{
     screen::{
         graph::visible::{GraphState, RenderedGraph},
         graphviz::{DotEdgeProperties, DotNodeProperties},
-        Manager, Scope, Screen,
+        Scope,
     },
     state::StateContext,
     utils::colouring::QuantIdxToColourMap,
@@ -85,7 +81,7 @@ impl Graph {
                 (modified, &mut rendered.selected_nodes)
             }
         };
-        if &to_select == &*nodes {
+        if to_select == *nodes {
             modified
         } else {
             *nodes = to_select;
@@ -139,7 +135,7 @@ impl Graph {
         let cfg = link.get_configuration().unwrap();
         let data = link.get_state().unwrap();
         let ctxt = DisplayCtxt {
-            parser: &*parser,
+            parser,
             term_display: &data.state.term_display,
             config: cfg.config.display,
         };

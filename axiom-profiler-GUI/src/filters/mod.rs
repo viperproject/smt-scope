@@ -9,17 +9,14 @@ use smt_log_parser::analysis::{raw::NodeKind, RawNodeIndex};
 use smt_log_parser::parsers::ParseState;
 use yew::{html, Callback, Component, Context, Html, MouseEvent, NodeRef, Properties};
 
-pub use self::add_filter::AddFilterSidebar;
 use crate::commands::{Command, CommandRef, CommandsContext, ShortcutKey};
 use crate::{
-    filters::manage_filter::{DraggableList, ExistingFilter},
-    infobars::SidebarSectionHeader,
+    filters::manage_filter::ExistingFilter,
     results::{
         filters::{Disabler, Filter, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN},
         svg_result::Msg as SVGMsg,
     },
     state::StateContext,
-    utils::toggle_list::ToggleList,
     OpenedFileInfo, SIZE_NAMES,
 };
 

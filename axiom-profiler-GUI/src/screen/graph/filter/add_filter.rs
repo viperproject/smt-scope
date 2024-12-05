@@ -13,10 +13,7 @@ use yew::{function_component, html, use_context, Callback, Html, MouseEvent, Pro
 
 use crate::{
     results::{filters::Filter, svg_result::DEFAULT_NODE_COUNT},
-    screen::{
-        extra::{Action, SimpleButton},
-        homepage::{Parser, RcParser},
-    },
+    screen::extra::{Action, SimpleButton},
     state::StateProvider,
     MlData,
 };

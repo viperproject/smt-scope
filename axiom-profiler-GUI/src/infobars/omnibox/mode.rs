@@ -1,13 +1,11 @@
-use std::ops::{Deref, DerefMut};
-
-use yew::{html::Scope, Context};
+use yew::html::Scope;
 
 use crate::{infobars::DropdownContext, screen::extra};
 
 use super::{
     commands::{CommandSearchResults, CommandsContext},
     search::{OmniboxSearch, PickedSuggestion, SuggestionResults},
-    Omnibox, OmniboxM, OmniboxProps,
+    Omnibox, OmniboxM,
 };
 
 use OmniboxMode::*;
@@ -15,7 +13,7 @@ use SearchKind::*;
 
 pub enum OmniboxMode {
     Disabled,
-    Search(SearchMode),
+    Search(Box<SearchMode>),
     Selecting(Option<usize>),
 }
 
@@ -25,11 +23,11 @@ impl OmniboxMode {
             extra::Omnibox::Search(omnibox) => {
                 commands.can_search(true);
                 commands.can_select(false);
-                Search(SearchMode {
+                Search(Box::new(SearchMode {
                     search: SearchMode::mk_search(omnibox),
                     input: String::new(),
                     kind: BlurNone,
-                })
+                }))
             }
             extra::Omnibox::Select(..) => {
                 commands.can_search(false);
@@ -221,7 +219,7 @@ impl SearchMode {
                 true
             }
             BlurNone => {
-                self.to_empty_focus_search(commands);
+                self.move_to_empty_focus_search(commands);
                 true
             }
             FocusSearch { .. } | FocusCommand { .. } => {
@@ -297,10 +295,10 @@ impl SearchMode {
         match key {
             "Backspace" if self.input.is_empty() && !search => {
                 assert!(matches!(self.kind, FocusCommand { .. }));
-                self.to_empty_focus_search(commands)
+                self.move_to_empty_focus_search(commands)
             }
             "Escape" => match self.kind {
-                FocusCommand { .. } => self.to_empty_focus_search(commands),
+                FocusCommand { .. } => self.move_to_empty_focus_search(commands),
                 FocusSearch { .. } => link
                     .toggle_dropdown(Some(false))
                     .expect("Internal error E190: failed to disable dropdown"),
@@ -310,7 +308,7 @@ impl SearchMode {
                 link.send_message(OmniboxM::Picked(*highlighted));
                 return false;
             }
-            ">" if self.input.is_empty() && search => self.to_empty_command(commands),
+            ">" if self.input.is_empty() && search => self.move_to_empty_command(commands),
             "ArrowUp" => *highlighted = highlighted.saturating_sub(1),
             "ArrowDown" => *highlighted = highlighted.saturating_add(1).min(max_val),
             _ => return false,
@@ -331,14 +329,15 @@ impl SearchMode {
             FocusSearch {
                 results, select, ..
             } => {
-                let entry = results.index(omnibox, ridx).unwrap();
-                self.input = entry.search_text.clone();
-
                 let default = PickedSuggestion {
                     ridx,
                     choice_idx: None,
                 };
-                *select = Some(select.filter(|s| s.ridx == ridx).unwrap_or(default));
+                let new = select.filter(|s| s.ridx == ridx).unwrap_or(default);
+                *select = Some(new);
+
+                let entry = new.index(results, omnibox);
+                self.input = entry.search_text.clone();
             }
             FocusCommand { results, .. } => {
                 let c = &results.commands[ridx];
@@ -352,7 +351,7 @@ impl SearchMode {
         let Some((results, select)) = self.kind.get_chosen_mut() else {
             unreachable!()
         };
-        let result = results.index(omnibox, select.ridx).unwrap();
+        let result = select.index(results, omnibox);
         let Some(max_val) = result.select_from.checked_sub(1) else {
             return;
         };
@@ -372,7 +371,7 @@ impl SearchMode {
 
     // Internal methods
 
-    fn to_empty_focus_search(&mut self, commands: &CommandsContext) {
+    fn move_to_empty_focus_search(&mut self, commands: &CommandsContext) {
         assert!(self.input.is_empty());
 
         let matches = self.search.get_fuzzy(&self.input);
@@ -395,7 +394,7 @@ impl SearchMode {
         }
     }
 
-    fn to_empty_command(&mut self, commands: &CommandsContext) {
+    fn move_to_empty_command(&mut self, commands: &CommandsContext) {
         let FocusSearch { select, .. } = self.kind else {
             unreachable!()
         };

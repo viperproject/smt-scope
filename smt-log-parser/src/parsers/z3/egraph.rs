@@ -41,11 +41,11 @@ impl Equalities {
     pub fn walk_trans<E>(
         &self,
         eq: EqTransIdx,
-        mut f: impl FnMut(&EqualityExpl, bool) -> core::result::Result<(), E>,
+        f: impl FnMut(&EqualityExpl, bool) -> core::result::Result<(), E>,
     ) -> core::result::Result<(), E> {
         let mut walker = TransEqStopWalker {
             equalities: self,
-            simple: |eq, fwd| f(eq, fwd),
+            simple: f,
         };
         walker.walk_trans(eq, true)
     }

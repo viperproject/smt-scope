@@ -2,7 +2,7 @@ use crate::{
     configuration::ConfigurationContext,
     filters,
     results::{
-        filters::{FilterOutput, FilterOutputKind},
+        filters::FilterOutputKind,
         graph_info::{GraphInfo, MatchingLoopGraphData, Msg as GraphInfoMsg},
     },
     screen::{
@@ -33,7 +33,7 @@ use smt_log_parser::{
 };
 use std::{cell::RefCell, cmp::Ordering, rc::Rc};
 use viz_js::VizInstance;
-use web_sys::{window, SvgsvgElement};
+use web_sys::window;
 use yew::prelude::*;
 
 pub const EDGE_LIMIT: usize = 2000;

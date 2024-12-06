@@ -27,7 +27,7 @@ impl Omnibox {
             (OmniboxMode::Search(search), extra::Omnibox::Search(omnibox)) => {
                 Search(search, omnibox, self)
             }
-            (OmniboxMode::Selecting(chosen), extra::Omnibox::Select(omnibox)) => {
+            (OmniboxMode::Choose(chosen), extra::Omnibox::Choose(omnibox)) => {
                 Choose(*chosen, omnibox)
             }
             _ => unreachable!(),

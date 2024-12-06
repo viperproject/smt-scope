@@ -1,21 +1,24 @@
 mod add_filter;
+mod apply;
 mod chain;
+mod display;
 mod manage_filter;
 
 use material_yew::icon::MatIcon;
+use petgraph::Direction;
 use smt_log_parser::{
     analysis::{InstGraph, RawNodeIndex},
+    items::QuantIdx,
     Z3Parser,
 };
 use yew::{html, Callback, MouseEvent};
 
 use crate::{
-    results::{
-        filters::{Disabler, Filter},
-        svg_result::GraphDimensions,
-    },
     screen::{
-        extra::{ElementKind, SidebarSection, SidebarSectionRef, Topbar, TopbarMenu},
+        extra::{
+            Action, ElementKind, SidebarSection, SidebarSectionRef, SimpleButton, Topbar,
+            TopbarMenu,
+        },
         file::RcAnalysis,
         Scope,
     },
@@ -24,10 +27,50 @@ use crate::{
 
 use self::add_filter::AddFilter;
 
-use super::{Graph, GraphM};
+use super::{Graph, GraphDimensions, GraphM};
 
 pub use chain::*;
 pub use manage_filter::*;
+
+pub const DEFAULT_NODE_COUNT: usize = 300;
+
+pub const DEFAULT_FILTER_CHAIN: &[Filter] = &[
+    Filter::IgnoreTheorySolving,
+    Filter::MaxInsts(DEFAULT_NODE_COUNT),
+];
+pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
+    (Disabler::Smart, true),
+    (Disabler::ENodes, false),
+    (Disabler::GivenEqualities, false),
+    (Disabler::AllEqualities, false),
+];
+
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub enum Filter {
+    MaxNodeIdx(usize),
+    MinNodeIdx(usize),
+    IgnoreTheorySolving,
+    IgnoreQuantifier(Option<QuantIdx>),
+    IgnoreAllButQuantifier(Option<QuantIdx>),
+    MaxInsts(usize),
+    MaxBranching(usize),
+    ShowNeighbours(RawNodeIndex, Direction),
+    VisitSourceTree(RawNodeIndex, bool),
+    VisitSubTreeWithRoot(RawNodeIndex, bool),
+    MaxDepth(usize),
+    ShowLongestPath(RawNodeIndex),
+    ShowNamedQuantifier(String),
+    SelectNthMatchingLoop(usize),
+    ShowMatchingLoopSubgraph,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Disabler {
+    Smart,
+    ENodes,
+    GivenEqualities,
+    AllEqualities,
+}
 
 pub enum FilterM {
     Drag(Option<DragState>),
@@ -57,6 +100,10 @@ impl FiltersState {
             selected_filter: None,
             edit_filter: None,
         }
+    }
+
+    pub fn can_reset(&self, initial: &[Filter]) -> bool {
+        self.chain.new_filter_chain != initial
     }
 
     fn filter_chain(&self) -> impl Iterator<Item = (usize, bool, &Filter)> + '_ {
@@ -131,38 +178,10 @@ impl FiltersState {
                     self.edit_filter = None;
                     modified = true;
                 }
-                // TODO:
-                // if let Filter::SelectNthMatchingLoop(n) = &filter {
-                //     let state = ctx.link().get_state().unwrap();
-                //     let graph = &state.state.parser.as_ref().unwrap().graph;
-                //     if !graph.as_ref().is_some_and(|g| {
-                //         (**g)
-                //             .borrow()
-                //             .found_matching_loops()
-                //             .is_some_and(|(sure, maybe)| sure + maybe > *n)
-                //     }) {
-                //         return modified;
-                //     }
-                // }
                 self.chain.new_filter_chain[idx] = filter;
                 self.chain.send_updates(link) || modified
             }
             FilterM::AddFilter(filter) => {
-                // TODO:
-                // if let Filter::SelectNthMatchingLoop(n) = &filter {
-                //     let state = ctx.link().get_state().unwrap();
-                //     let graph = &state.state.parser.as_ref().unwrap().graph;
-                //     // This relies on the fact that the graph is updated before the `AddFilter` is
-                //     if !graph.as_ref().is_some_and(|g| {
-                //         (**g)
-                //             .borrow()
-                //             .found_matching_loops()
-                //             .is_some_and(|(sure, maybe)| sure + maybe > *n)
-                //     }) {
-                //         return false;
-                //     }
-                // }
-
                 let edit = filter.is_editable();
                 self.edit_filter = edit.then_some(self.chain.new_filter_chain.len());
                 self.chain.new_filter_chain.push(filter);
@@ -227,6 +246,7 @@ impl FiltersState {
         graph: &InstGraph,
         new_filter: &Callback<Filter>,
         selected: &[RawNodeIndex],
+        reset: Option<Callback<()>>,
     ) -> Topbar {
         let add_filter = AddFilter {
             parser,
@@ -234,9 +254,17 @@ impl FiltersState {
             new_filter,
         };
 
+        let mut dropdown = add_filter.general();
+        dropdown.push(SimpleButton {
+            icon: "restore",
+            text: "Reset operations".to_string(),
+            hover_text: Some("Reset all operations applied to the graph".to_string()),
+            disabled: reset.is_none(),
+            click: Action::MouseDown(reset.unwrap_or_default()),
+        });
         let general = TopbarMenu {
             button_text: "View",
-            dropdown: add_filter.general(),
+            dropdown,
         };
         let selection = TopbarMenu {
             button_text: "Selection",

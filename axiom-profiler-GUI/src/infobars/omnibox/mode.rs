@@ -14,7 +14,7 @@ use SearchKind::*;
 pub enum OmniboxMode {
     Disabled,
     Search(Box<SearchMode>),
-    Selecting(Option<usize>),
+    Choose(Option<usize>),
 }
 
 impl OmniboxMode {
@@ -29,10 +29,10 @@ impl OmniboxMode {
                     kind: BlurNone,
                 }))
             }
-            extra::Omnibox::Select(..) => {
+            extra::Omnibox::Choose(choose) => {
                 commands.can_search(false);
                 commands.can_select(true);
-                Selecting(None)
+                Choose(choose.initial)
             }
             extra::Omnibox::Loading(..) | extra::Omnibox::Message(..) => {
                 commands.can_search(false);
@@ -47,8 +47,10 @@ impl OmniboxMode {
             (Search(sm), extra::Omnibox::Search(omnibox)) => {
                 sm.update(omnibox, commands);
             }
-            (Selecting(selection), extra::Omnibox::Select(select)) => {
-                *selection = selection.map(|s| s.min(select.choose_from));
+            (Choose(selection), extra::Omnibox::Choose(select)) if selection.is_some() => {
+                if selection.unwrap() >= select.choose_from {
+                    *selection = select.initial;
+                }
             }
             _ => *self = Self::new(omnibox, commands),
         }
@@ -64,34 +66,34 @@ impl OmniboxMode {
     pub fn focus(&mut self, commands: &CommandsContext) -> bool {
         match self {
             Search(sm) => sm.focus(commands),
-            Disabled | Selecting(..) => false,
+            Disabled | Choose(..) => false,
         }
     }
 
     pub fn blur(&mut self) -> bool {
         match self {
             Search(sm) => sm.blur(),
-            Disabled | Selecting(..) => false,
+            Disabled | Choose(..) => false,
         }
     }
 
     pub fn on_input(&mut self, commands: &CommandsContext, text: String) {
         match self {
-            Disabled | Selecting(..) => unreachable!(),
+            Disabled | Choose(..) => unreachable!(),
             Search(sm) => sm.on_input(commands, text),
         }
     }
 
     pub fn on_key(&mut self, link: &Scope<Omnibox>, commands: &CommandsContext, key: &str) -> bool {
         match self {
-            Disabled | Selecting(..) => unreachable!(),
+            Disabled | Choose(..) => unreachable!(),
             Search(sm) => sm.on_key(link, commands, key),
         }
     }
 
     pub fn pick(&mut self, omnibox: &extra::Omnibox, commands: &mut CommandsContext, ridx: usize) {
         match self {
-            Disabled | Selecting(..) => unreachable!(),
+            Disabled | Choose(..) => unreachable!(),
             Search(sm) => {
                 let extra::Omnibox::Search(omnibox) = omnibox else {
                     unreachable!()
@@ -110,8 +112,8 @@ impl OmniboxMode {
                 };
                 sm.select(omnibox, left);
             }
-            Selecting(chosen) => {
-                let extra::Omnibox::Select(omnibox) = omnibox else {
+            Choose(chosen) => {
+                let extra::Omnibox::Choose(omnibox) = omnibox else {
                     unreachable!()
                 };
                 let Some(max_val) = omnibox.choose_from.checked_sub(1) else {
@@ -340,7 +342,10 @@ impl SearchMode {
                 self.input = entry.search_text.clone();
             }
             FocusCommand { results, .. } => {
-                let c = &results.commands[ridx];
+                let mut enabled = results.commands.iter().filter(|c| !c.command.disabled);
+                let Some(c) = enabled.nth(ridx) else {
+                    return;
+                };
                 commands.use_command(c.id);
                 c.command.execute.emit(());
             }

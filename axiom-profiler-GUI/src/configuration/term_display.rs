@@ -10,18 +10,18 @@ use smt_log_parser::{
 };
 use web_sys::HtmlInputElement;
 use yew::{
-    function_component, prelude::Context, use_context, Callback, Component, Event, Html, NodeRef,
-    Properties,
+    function_component, prelude::Context, Callback, Component, Event, Html, NodeRef, Properties,
 };
 
 use crate::{
     configuration::{ConfigurationProvider, TermDisplayContextFiles},
-    state::{FileInfo, StateProvider},
+    screen::homepage::FileInfo,
 };
 
 #[derive(Properties, Clone)]
 pub struct TermDisplayFlagProps {
     pub cfg: Rc<ConfigurationProvider>,
+    pub file: Option<FileInfo>,
 }
 
 impl PartialEq for TermDisplayFlagProps {
@@ -34,8 +34,7 @@ impl PartialEq for TermDisplayFlagProps {
 pub fn TermDisplayFlag(props: &TermDisplayFlagProps) -> Html {
     let term_display = &props.cfg.config.term_display;
     let mut default = TermDisplayContextFiles::default();
-    let data = use_context::<Rc<StateProvider>>().unwrap();
-    let file = data.state.file_info.as_ref();
+    let file = props.file.as_ref();
 
     let term_display_general = &term_display.general;
     let cfg = props.cfg.clone();

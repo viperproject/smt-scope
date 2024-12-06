@@ -9,8 +9,9 @@ use web_sys::{Element, HtmlInputElement, ResizeObserver, ResizeObserverEntry, Sv
 use yew::prelude::*;
 
 use crate::commands::{Command, CommandRef, CommandsContext, Key, ShortcutKey};
-use crate::screen::graph::{RenderedGraph, UserSelectionM};
-use crate::state::StateContext;
+use crate::screen::homepage::OverlayVisible;
+use crate::screen::inst_graph::{RenderedGraph, UserSelectionM};
+// use crate::state::StateContext;
 use crate::{CallbackRef, GlobalCallbacksContext, PagePosition, PrecisePosition};
 
 use super::svg_graph::{Graph, Svg};
@@ -267,7 +268,7 @@ impl Component for GraphContainer {
                     false
                 }
             }
-            SvgViewM::Scroll(_) => {
+            SvgViewM::Scroll(_ev) => {
                 self.window.read_scroll_position();
                 false
             }
@@ -296,7 +297,7 @@ impl Component for GraphContainer {
                 }
                 false
             }
-            SvgViewM::MouseUp(_) => {
+            SvgViewM::MouseUp(_ev) => {
                 if let Some((_, _, drag)) = self.drag_start.take() {
                     if !drag {
                         ctx.props().selection.emit(UserSelectionM::DeselectAll);
@@ -315,7 +316,7 @@ impl Component for GraphContainer {
                 if ev.meta_key() || ev.ctrl_key() || ev.shift_key() || ev.alt_key() {
                     return false;
                 }
-                if ctx.link().get_state().unwrap().state.overlay_visible {
+                if OverlayVisible::get(ctx.link()) {
                     return false;
                 }
 
@@ -347,7 +348,7 @@ impl Component for GraphContainer {
                 false
             }
             SvgViewM::KeyHold(()) => {
-                if ctx.link().get_state().unwrap().state.overlay_visible {
+                if OverlayVisible::get(ctx.link()) {
                     return false;
                 }
 
@@ -472,8 +473,8 @@ impl Component for GraphContainer {
         let update_selected_edges =
             Callback::from(move |edge| selection.emit(UserSelectionM::ToggleEdge(edge)));
         html! {
-        <div ref={&self.window.scroll_window} style="height: 100%; overflow: auto; overscroll-behavior-x: none;" {onwheel} {onscroll}>
-            <div style="position: absolute; bottom: 0; left: 0; z-index: 1;">
+        <div ref={&self.window.scroll_window} class="graph-container" {onwheel} {onscroll}>
+            <div class="graph-zoom">
                 <label for="input">{"Zoom factor: "}</label>
                 <input ref={input} onkeypress={set_value_on_enter} onblur={set_value_on_blur} id="input" size="5" value={zoom_factor}/>
             </div>

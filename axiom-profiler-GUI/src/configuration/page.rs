@@ -2,9 +2,14 @@ use std::rc::Rc;
 
 use smt_log_parser::display_with::SymbolReplacement;
 use wasm_bindgen::JsCast;
-use yew::{function_component, use_context, use_effect_with_deps, Callback, Event, Html};
+use yew::{
+    function_component, use_context, use_effect_with_deps, Callback, Event, Html, Properties,
+};
 
-use crate::configuration::{Configuration, ConfigurationProvider, TermDisplayFlag};
+use crate::{
+    configuration::{Configuration, ConfigurationProvider, TermDisplayFlag},
+    screen::homepage::FileInfo,
+};
 
 macro_rules! flag_widget {
     ($cfg:ident, $default:ident, $($access:ident).+, $title:expr, $description:expr, $($from:ident => $to:literal),+$(,)?) => {
@@ -60,8 +65,13 @@ macro_rules! flag_widget {
     };
 }
 
+#[derive(Properties, Clone, PartialEq)]
+pub struct FlagsProps {
+    pub file: Option<FileInfo>,
+}
+
 #[function_component]
-pub fn Flags(_props: &()) -> Html {
+pub fn Flags(props: &FlagsProps) -> Html {
     let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
     let cfg_update = cfg.update.clone();
     let reset = Callback::from(move |_| cfg_update.reset());
@@ -95,7 +105,7 @@ pub fn Flags(_props: &()) -> Html {
             <button onclick={reset}>{"Reset configuration"}</button>
             {debug}
             {replace_symbols}
-            <TermDisplayFlag cfg={cfg.clone()} />
+            <TermDisplayFlag cfg={cfg.clone()} file={props.file.clone()} />
         </div></div>
     }
 }

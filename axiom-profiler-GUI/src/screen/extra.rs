@@ -13,7 +13,7 @@ pub enum Omnibox {
     Search(OmniboxSearch),
     Message(OmniboxMessage),
     Loading(OmniboxLoading),
-    Select(OmniboxChoose),
+    Choose(OmniboxChoose),
 }
 
 impl Default for Omnibox {
@@ -23,6 +23,15 @@ impl Default for Omnibox {
 }
 
 impl Omnibox {
+    pub fn loading_indeterminate(message: String) -> Self {
+        Self::Loading(OmniboxLoading {
+            icon: "pending",
+            icon_mousedown: None,
+            message,
+            loading: OmniboxLoading::indeterminate(),
+        })
+    }
+
     pub fn enabled(&self) -> bool {
         matches!(self, Self::Search(_))
     }
@@ -32,7 +41,7 @@ impl Omnibox {
             Self::Search(_) => "search",
             Self::Message(msg) => msg.kind.icon(),
             Self::Loading(loading) => loading.icon,
-            Self::Select(select) => select.icon,
+            Self::Choose(select) => select.icon,
         }
     }
 
@@ -40,7 +49,7 @@ impl Omnibox {
         match self {
             Self::Search(_) | Self::Message(_) => None,
             Self::Loading(loading) => loading.icon_mousedown.as_ref(),
-            Self::Select(select) => select.icon_mousedown.as_ref(),
+            Self::Choose(select) => select.icon_mousedown.as_ref(),
         }
     }
 
@@ -49,7 +58,7 @@ impl Omnibox {
             Self::Search(_) => "Search or type '>' for commands",
             Self::Message(msg) => msg.message.as_str(),
             Self::Loading(loading) => loading.message.as_str(),
-            Self::Select(select) => select.message.as_str(),
+            Self::Choose(select) => select.message.as_str(),
         }
     }
 }
@@ -79,6 +88,8 @@ pub struct OmniboxChoose {
     pub icon: &'static str,
     pub icon_mousedown: Option<Callback<()>>,
     pub message: String,
+
+    pub initial: Option<usize>,
     pub choose_from: usize,
     pub choose: Callback<usize>,
 }

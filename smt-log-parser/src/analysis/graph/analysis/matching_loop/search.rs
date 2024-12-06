@@ -6,7 +6,7 @@ use crate::{
     Z3Parser,
 };
 
-use super::{MatchingLoop, MlData, MlOutput, MIN_MATCHING_LOOP_LENGTH};
+use super::{MatchingLoop, MlData, MIN_MATCHING_LOOP_LENGTH};
 
 impl InstGraph {
     pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> &MlData {
@@ -35,19 +35,8 @@ impl InstGraph {
             .into_iter_enumerated()
             .filter_map(|(i, v)| self.raw[i].kind().inst().map(|i| (i, v)))
             .collect();
-        let analysis = analysis.finalise(&topo, MIN_MATCHING_LOOP_LENGTH);
+        let analysis = analysis.finalise(topo, MIN_MATCHING_LOOP_LENGTH);
         let ml_data = analysis.ml_graphs(parser);
-        for (i, ml) in ml_data.matching_loops.iter().enumerate() {
-            let mut last = None;
-            for &member in ml.members.iter() {
-                self.raw[member].part_of_ml.insert(i);
-                if let Some(last) = last.replace(member) {
-                    for between in MlOutput::others_between(&topo, member, last) {
-                        self.raw[between].part_of_ml.insert(i);
-                    }
-                }
-            }
-        }
         self.analysis.ml_data = Some(ml_data);
 
         // make sure the enabled and disabled nodes stay the same as before calling the ML search
@@ -111,12 +100,11 @@ impl InstGraph {
         })
     }
 
-    pub fn nth_matching_loop_graph(&mut self, n: usize) -> Option<MatchingLoop> {
+    pub fn nth_matching_loop_graph(&self, n: usize) -> Option<&MatchingLoop> {
         self.analysis
             .ml_data
             .as_ref()
             .and_then(|mls| mls.matching_loops.get(n))
-            .cloned()
     }
 
     fn _get_blame_term(&self, edge: &VisibleEdge, parser: &Z3Parser) -> Option<TermIdx> {

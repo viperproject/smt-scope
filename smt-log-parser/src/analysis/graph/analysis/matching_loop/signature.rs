@@ -1,14 +1,12 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use fxhash::FxHashSet;
-
 use crate::{
     analysis::InstGraph,
     display_with::{DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
     items::{ENodeIdx, GraphIdx, InstIdx, QuantIdx, TermIdx},
-    FxHashMap, Z3Parser,
+    FxHashMap, FxHashSet, Z3Parser,
 };
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]

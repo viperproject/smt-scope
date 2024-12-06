@@ -1,5 +1,6 @@
+mod dimensions;
 mod display;
-mod filter;
+pub mod filter;
 mod render;
 mod search;
 mod visible;
@@ -16,28 +17,26 @@ use yew::{html, Html};
 
 use crate::{
     infobars::{OmniboxMessage, OmniboxMessageKind},
-    results::{
-        filters::{Disabler, Filter},
-        graph::graph_container::{GraphContainer, SvgViewM},
-        render_warning::{Warning, WarningChoice},
-        svg_result::GraphDimensions,
-    },
+    utils::split_div::SplitDivProps,
 };
 
 use super::{
     extra::{Omnibox, OmniboxLoading, Sidebar, Topbar},
     file::{AnalysisData, RcAnalysis},
     homepage::RcParser,
+    maybe_rc::MaybeRc,
     Scope, Screen,
 };
 
 use self::{
-    display::GraphInfo,
-    filter::{FilterM, FiltersState, RenderCommand},
+    display::{GraphContainer, GraphInfo, SvgViewM},
+    filter::{Disabler, Filter, FilterM, FiltersState, RenderCommand},
+    render::warning::{Warning, WarningChoice},
     visible::GraphState,
 };
 
 pub use self::{
+    dimensions::GraphDimensions,
     display::UserSelectionM,
     visible::{RcVisibleGraph, RenderedGraph},
 };
@@ -48,12 +47,20 @@ pub struct GraphProps {
     pub analysis: RcAnalysis,
     pub default_filters: Vec<Filter>,
     pub default_disablers: Vec<(Disabler, bool)>,
+    pub extra: Option<GraphExtraProps>,
 }
 
 impl GraphProps {
     fn borrow(&self) -> (Ref<'_, Z3Parser>, Ref<'_, AnalysisData>) {
         (self.parser.parser.borrow(), self.analysis.borrow())
     }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct GraphExtraProps {
+    pub split: SplitDivProps,
+    pub swap_split: bool,
+    pub info_top: Html,
 }
 
 pub struct Graph {
@@ -94,6 +101,7 @@ pub enum GraphM {
     RenderFailed(String),
     RenderedGraph(RenderedGraph),
     Filter(FilterM),
+    ResetFilters,
     ToggleDisabler(usize),
 
     Selection(SelectionM),
@@ -112,12 +120,6 @@ impl Screen for Graph {
     type Properties = GraphProps;
 
     fn create(link: &Scope<Self>, props: &Self::Properties) -> Self {
-        // let link = link.clone();
-        // gloo::timers::callback::Timeout::new(10, move || {
-        //     link.send_message(GraphM::RenderInitial);
-        // })
-        // .forget();
-
         Self {
             state: Ok(GraphState::GraphToDot),
             waiting: None,
@@ -141,12 +143,20 @@ impl Screen for Graph {
     ) -> bool {
         if props.parser != old_props.parser || props.analysis != old_props.analysis {
             *self = Self::create(link, props);
-        } else if props.default_filters != old_props.default_filters {
+            return true;
+        }
+        let disablers_changed = props.default_disablers != old_props.default_disablers;
+        if disablers_changed {
+            self.disabler = DisablersState::new(props.default_disablers.clone());
+        }
+        if props.default_filters != old_props.default_filters {
             self.filter = FiltersState::new(
                 props.default_filters.clone(),
                 Self::default_permissions(),
                 link,
             );
+        } else if disablers_changed {
+            self.filter.chain.rerender(link, true);
         }
         true
     }
@@ -213,6 +223,14 @@ impl Screen for Graph {
                 true
             }
             GraphM::Filter(filter) => self.filter.update(link, filter),
+            GraphM::ResetFilters => {
+                self.filter = FiltersState::new(
+                    props.default_filters.clone(),
+                    Self::default_permissions(),
+                    link,
+                );
+                true
+            }
             GraphM::ToggleDisabler(idx) => {
                 self.disabler.toggle(idx);
                 self.filter.chain.rerender(link, false);
@@ -292,11 +310,13 @@ impl Screen for Graph {
                 outdated={self.waiting.is_some()}
                 update_selected={link.callback(GraphM::Selection)}
                 svg_view={self.svg_view.clone()}
+                extra={props.extra.clone()}
             />
             <Warning noderef={self.graph_warning.clone()} onclosed={link.callback(GraphM::UserPermission)} {dimensions}/>
         </>}
     }
 
+    #[allow(refining_impl_trait)]
     fn view_sidebar(&self, link: &Scope<Self>, props: &Self::Properties) -> Sidebar {
         let waiting = self.waiting().map(GraphDimensions::of_graph);
         let rendered = self.rendered_graph().map(RenderedGraph::dims);
@@ -307,21 +327,26 @@ impl Screen for Graph {
         ]
     }
 
+    #[allow(refining_impl_trait)]
     fn view_topbar(&self, link: &Scope<Self>, props: &Self::Properties) -> Topbar {
         let (parser, analysis) = props.borrow();
         let selected = self
             .rendered_graph()
             .map(|r| r.selected_nodes.as_slice())
             .unwrap_or_default();
+        let can_reset = self.filter.can_reset(&props.default_filters);
+        let reset = can_reset.then(|| link.callback(|()| GraphM::ResetFilters));
         FiltersState::topbar(
             &parser,
             &analysis.graph,
             &link.callback(|f| GraphM::Filter(FilterM::AddFilter(f))),
             selected,
+            reset,
         )
     }
 
-    fn view_omnibox(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Omnibox {
+    #[allow(refining_impl_trait)]
+    fn view_omnibox(&self, _link: &Scope<Self>, _props: &Self::Properties) -> MaybeRc<Omnibox> {
         match &self.state {
             Ok(GraphState::GraphToDot | GraphState::RenderingGraph) => {
                 let message = "Rendering trace".to_string();
@@ -333,12 +358,14 @@ impl Screen for Graph {
                     message,
                     loading,
                 })
+                .into()
             }
             Ok(GraphState::Failed(error)) => Omnibox::Message(OmniboxMessage {
                 message: error.clone(),
                 kind: OmniboxMessageKind::Error,
-            }),
-            Err(rendered) => Omnibox::Search((*rendered.search).clone()),
+            })
+            .into(),
+            Err(rendered) => rendered.search.clone().into(),
         }
     }
 }

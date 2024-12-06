@@ -56,7 +56,9 @@ impl Component for Omnibox {
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         debug_assert!(ctx.props() != old_props);
-        self.mode.update(&ctx.props().omnibox, &self.commands);
+        if !Rc::ptr_eq(&ctx.props().omnibox, &old_props.omnibox) {
+            self.mode.update(&ctx.props().omnibox, &self.commands);
+        }
         true
     }
 

@@ -197,6 +197,11 @@ impl TermId {
     pub fn order(&self) -> u32 {
         self.id.map(|id| id.get() + 1).unwrap_or_default()
     }
+    pub fn to_string(&self, strings: &StringTable) -> String {
+        let namespace = &strings[*self.namespace];
+        let id = self.id.map(|id| id.to_string()).unwrap_or_default();
+        format!("{}#{}", namespace, id)
+    }
 }
 
 /// Remapping from `TermId` to `TermIdx`. We want to have a single flat vector

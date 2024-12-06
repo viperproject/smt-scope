@@ -4,49 +4,19 @@ use petgraph::{
 };
 use smt_log_parser::{
     analysis::{
-        analysis::matching_loop::MatchingLoop,
+        analysis::matching_loop::{MatchingLoop, MlData},
         raw::{IndexesInstGraph, Node, NodeKind, RawInstGraph},
         InstGraph, RawNodeIndex,
     },
-    items::{QuantIdx, QuantKind},
+    items::{InstIdx, QuantKind},
     Z3Parser,
 };
 
-use super::svg_result::DEFAULT_NODE_COUNT;
-
-pub const DEFAULT_FILTER_CHAIN: &[Filter] = &[
-    Filter::IgnoreTheorySolving,
-    Filter::MaxInsts(DEFAULT_NODE_COUNT),
-];
-pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
-    (Disabler::Smart, true),
-    (Disabler::ENodes, false),
-    (Disabler::GivenEqualities, false),
-    (Disabler::AllEqualities, false),
-];
-
-#[derive(Debug, Clone, PartialEq, Hash)]
-pub enum Filter {
-    MaxNodeIdx(usize),
-    MinNodeIdx(usize),
-    IgnoreTheorySolving,
-    IgnoreQuantifier(Option<QuantIdx>),
-    IgnoreAllButQuantifier(Option<QuantIdx>),
-    MaxInsts(usize),
-    MaxBranching(usize),
-    ShowNeighbours(RawNodeIndex, Direction),
-    VisitSourceTree(RawNodeIndex, bool),
-    VisitSubTreeWithRoot(RawNodeIndex, bool),
-    MaxDepth(usize),
-    ShowLongestPath(RawNodeIndex),
-    ShowNamedQuantifier(String),
-    SelectNthMatchingLoop(usize),
-    ShowMatchingLoopSubgraph,
-}
+use super::{Disabler, Filter};
 
 impl Filter {
     pub fn apply(&self, graph: &mut InstGraph, parser: &Z3Parser) -> FilterOutput {
-        let mut kind = FilterOutputKind::Other;
+        let mut select = None;
         let modified = match *self {
             Filter::MaxNodeIdx(max) => graph
                 .raw
@@ -86,7 +56,7 @@ impl Filter {
             Filter::ShowNeighbours(nidx, direction) => {
                 let nodes: Vec<_> = graph.raw.neighbors_directed(nidx, direction).collect();
                 let modified = graph.raw.set_visibility_many(false, nodes.iter().copied());
-                kind = FilterOutputKind::SelectNodes(nodes);
+                select = Some(nodes);
                 modified
             }
             Filter::VisitSubTreeWithRoot(nidx, retain) => {
@@ -110,7 +80,7 @@ impl Filter {
                 }),
             Filter::ShowLongestPath(nidx) => {
                 let (modified, nodes) = graph.raw.show_longest_path_through(nidx);
-                kind = FilterOutputKind::SelectNodes(nodes);
+                select = Some(nodes);
                 modified
             }
             Filter::ShowNamedQuantifier(ref name) => {
@@ -129,108 +99,70 @@ impl Filter {
                     false
                 }
             }
-            // TODO: implement
             Filter::SelectNthMatchingLoop(n) => {
-                graph.raw.reset_visibility_to(true);
-                let Some(ml_graph) = graph.nth_matching_loop_graph(n) else {
-                    return FilterOutput {
-                        modified: false,
-                        kind: FilterOutputKind::Other,
-                    };
+                let Some(ml_data) = &graph.analysis.ml_data else {
+                    return FilterOutput::default();
                 };
-                let nodes_of_nth_matching_loop = graph
-                    .raw
-                    .node_indices()
-                    .flat_map(|nx| {
-                        let node = &graph.raw[nx];
-                        match *node.kind() {
-                            NodeKind::Instantiation(iidx) => {
-                                node.part_of_ml.contains(&n).then_some(iidx)
-                            }
-                            _ => None,
-                        }
-                    })
-                    .collect::<fxhash::FxHashSet<_>>();
-                let start = ml_graph.leaves.0[0].1.index(&graph.raw).0;
-                let relevant_non_qi_nodes: Vec<_> = Dfs::new(&*graph.raw.graph, start)
-                    .iter(graph.raw.rev())
-                    .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
-                    .filter(|nx| {
-                        graph.raw.graph[*nx]
-                            .inst_children
-                            .nodes
-                            .intersection(&nodes_of_nth_matching_loop)
-                            .count()
-                            > 0
-                            && graph.raw.graph[*nx]
-                                .inst_parents
-                                .nodes
-                                .intersection(&nodes_of_nth_matching_loop)
-                                .count()
-                                > 0
-                    })
-                    .map(RawNodeIndex)
-                    .collect();
+                let Some(ml) = ml_data.matching_loops.get(n) else {
+                    return FilterOutput::default();
+                };
+                graph.raw.reset_visibility_to(true);
+                let (ml_nodes, related_nodes) = Self::ml_nodes(ml, ml_data, graph);
+                graph.raw.set_visibility_many(false, ml_nodes.into_iter());
                 graph
                     .raw
-                    .set_visibility_many(false, relevant_non_qi_nodes.into_iter());
-                graph
-                    .raw
-                    .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
-                        node.kind().inst().is_some() && node.part_of_ml.contains(&n)
-                    });
-                graph
-                    .raw
-                    .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
-                        node.kind().inst().is_some() && !node.part_of_ml.contains(&n)
-                    });
-                kind = FilterOutputKind::MatchingLoopGraph(n, ml_graph);
+                    .set_visibility_many(false, related_nodes.into_iter());
                 true
             }
             Filter::ShowMatchingLoopSubgraph => {
-                // graph.raw.reset_visibility_to(true);
-                graph
-                    .raw
-                    .set_visibility_when(false, |_: RawNodeIndex, node: &Node| {
-                        node.kind().inst().is_some() && !node.part_of_ml.is_empty()
-                    });
-                graph
-                    .raw
-                    .set_visibility_when(true, |_: RawNodeIndex, node: &Node| {
-                        node.kind().inst().is_some() && node.part_of_ml.is_empty()
-                    })
-                // if let Some(nodes) = &graph.analysis.matching_loop_end_nodes {
-                //     graph.raw.reset_visibility_to(true);
-                //     for nidx in nodes {
-                //         let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0).iter(graph.raw.rev()).map(RawNodeIndex).collect();
-                //         graph.raw.set_visibility_many(false, nodes.into_iter())
-                //     }
-                // }
+                let Some(ml_data) = &graph.analysis.ml_data else {
+                    return FilterOutput::default();
+                };
+                graph.raw.reset_visibility_to(false);
+                for ml in &ml_data.matching_loops {
+                    let (ml_nodes, related_nodes) = Self::ml_nodes(ml, ml_data, graph);
+                    graph.raw.set_visibility_many(false, ml_nodes.into_iter());
+                    graph
+                        .raw
+                        .set_visibility_many(false, related_nodes.into_iter());
+                }
+                true
             }
         };
-        FilterOutput { modified, kind }
+        FilterOutput { modified, select }
+    }
+
+    fn ml_nodes(
+        ml: &MatchingLoop,
+        ml_data: &MlData,
+        graph: &InstGraph,
+    ) -> (Vec<InstIdx>, Vec<RawNodeIndex>) {
+        let members = ml.members(ml_data);
+        let nodes_of_nth_matching_loop = members.collect::<Vec<_>>();
+        let start = ml.leaves.0[0].1.index(&graph.raw).0;
+        let rev_graph = graph.raw.rev();
+        let relevant_non_qi_nodes: Vec<_> = Dfs::new(rev_graph, start)
+            .iter(rev_graph)
+            .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
+            .filter(|nx| {
+                let node = &graph.raw.graph[*nx];
+                nodes_of_nth_matching_loop
+                    .iter()
+                    .any(|n| node.inst_children.nodes.contains(n))
+                // && nodes_of_nth_matching_loop.iter().any(|n| {
+                //     node.inst_parents.nodes.contains(&n)
+                // })
+            })
+            .map(RawNodeIndex)
+            .collect();
+        (nodes_of_nth_matching_loop, relevant_non_qi_nodes)
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct FilterOutput {
     pub modified: bool,
-    pub kind: FilterOutputKind,
-}
-
-#[derive(Debug)]
-pub enum FilterOutputKind {
-    SelectNodes(Vec<RawNodeIndex>),
-    MatchingLoopGraph(usize, MatchingLoop),
-    Other,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Disabler {
-    Smart,
-    ENodes,
-    GivenEqualities,
-    AllEqualities,
+    pub select: Option<Vec<RawNodeIndex>>,
 }
 
 impl Disabler {
@@ -290,22 +222,5 @@ impl Disabler {
         graph.reset_disabled_to(parser, |node, graph| {
             many.clone().any(|d| d.disable(node, graph, parser))
         });
-    }
-
-    pub fn description(&self) -> &'static str {
-        match self {
-            Disabler::Smart => "trivial nodes",
-            Disabler::ENodes => "yield terms",
-            Disabler::GivenEqualities => "yield equalities",
-            Disabler::AllEqualities => "all equalities",
-        }
-    }
-    pub fn icon(&self) -> &'static str {
-        match self {
-            Disabler::Smart => "low_priority",
-            Disabler::ENodes => "functions",
-            Disabler::GivenEqualities => "compare_arrows",
-            Disabler::AllEqualities => "compare_arrows",
-        }
     }
 }

@@ -1,18 +1,81 @@
 use std::rc::Rc;
 
-use yew::{Callback, Component, Context, Html, Properties};
+use yew::{html, Callback, Component, Context, Html, Properties};
 
 use super::{
-    enums::ScreenMessage,
     extra::{Omnibox, Sidebar, Topbar},
-    ManagerM, Screen,
+    Screen,
 };
+
+pub enum NestedScreenM {
+    Sidebar(Rc<Sidebar>),
+    Topbar(Rc<Topbar>),
+    Omnibox(Rc<Omnibox>),
+}
+
+pub struct NestedScreen {
+    nested_sidebar_updated: Callback<Rc<Sidebar>>,
+    sidebar: Rc<Sidebar>,
+    nested_topbar_updated: Callback<Rc<Topbar>>,
+    topbar: Rc<Topbar>,
+    nested_omnibox_updated: Callback<Rc<Omnibox>>,
+    omnibox: Rc<Omnibox>,
+}
+
+impl NestedScreen {
+    pub fn new(update: Callback<NestedScreenM>) -> Self {
+        let update_sidebar = update.clone();
+        let update_topbar = update.clone();
+        let update_omnibox = update;
+        Self {
+            nested_sidebar_updated: Callback::from(move |sidebar| {
+                update_sidebar.emit(NestedScreenM::Sidebar(sidebar));
+            }),
+            sidebar: Default::default(),
+            nested_topbar_updated: Callback::from(move |topbar| {
+                update_topbar.emit(NestedScreenM::Topbar(topbar));
+            }),
+            topbar: Default::default(),
+            nested_omnibox_updated: Callback::from(move |omnibox| {
+                update_omnibox.emit(NestedScreenM::Omnibox(omnibox));
+            }),
+            omnibox: Default::default(),
+        }
+    }
+
+    pub fn update(&mut self, mut update: NestedScreenM) -> NestedScreenM {
+        match &mut update {
+            NestedScreenM::Sidebar(sidebar) => core::mem::swap(&mut self.sidebar, sidebar),
+            NestedScreenM::Topbar(topbar) => core::mem::swap(&mut self.topbar, topbar),
+            NestedScreenM::Omnibox(omnibox) => core::mem::swap(&mut self.omnibox, omnibox),
+        }
+        update
+    }
+
+    pub fn view<S: Screen>(&self, initial: S::Properties) -> Html {
+        html! {
+            <ScreenManager<S> sidebar={self.nested_sidebar_updated.clone()} topbar={self.nested_topbar_updated.clone()} omnibox={self.nested_omnibox_updated.clone()} {initial} />
+        }
+    }
+
+    pub fn sidebar(&self) -> &Rc<Sidebar> {
+        &self.sidebar
+    }
+
+    pub fn topbar(&self) -> &Rc<Topbar> {
+        &self.topbar
+    }
+
+    pub fn omnibox(&self) -> &Rc<Omnibox> {
+        &self.omnibox
+    }
+}
 
 #[derive(Properties, Clone)]
 pub struct ManagerProps<S: Screen> {
-    pub sidebar: Callback<Rc<Sidebar>>,
-    pub topbar: Callback<Rc<Topbar>>,
-    pub omnibox: Callback<Rc<Omnibox>>,
+    pub sidebar: Option<Callback<Rc<Sidebar>>>,
+    pub topbar: Option<Callback<Rc<Topbar>>>,
+    pub omnibox: Option<Callback<Rc<Omnibox>>>,
     pub initial: S::Properties,
 }
 
@@ -26,24 +89,68 @@ impl<S: Screen> PartialEq for ManagerProps<S> {
 }
 
 pub struct ScreenManager<S: Screen> {
-    sidebar: Rc<Sidebar>,
-    topbar: Rc<Topbar>,
-    omnibox: Rc<Omnibox>,
+    sidebar: Option<Rc<Sidebar>>,
+    topbar: Option<Rc<Topbar>>,
+    omnibox: Option<Rc<Omnibox>>,
     screen: S,
 }
 
+impl<S: Screen> ScreenManager<S> {
+    fn sidebar(ctx: &Context<Self>, screen: &S, sidebar: &mut Option<Rc<Sidebar>>) -> bool {
+        let Some(cb) = &ctx.props().sidebar else {
+            return sidebar.take().is_some();
+        };
+        let new = screen.view_sidebar(ctx.link(), &ctx.props().initial).into();
+        if sidebar.as_deref() == Some(&*new) {
+            return false;
+        }
+        let new = new.into_rc();
+        cb.emit(Rc::clone(&new));
+        *sidebar = Some(new);
+        true
+    }
+
+    fn topbar(ctx: &Context<Self>, screen: &S, topbar: &mut Option<Rc<Topbar>>) -> bool {
+        let Some(cb) = &ctx.props().topbar else {
+            return topbar.take().is_some();
+        };
+        let new = screen.view_topbar(ctx.link(), &ctx.props().initial).into();
+        if topbar.as_deref() == Some(&*new) {
+            return false;
+        }
+        let new = new.into_rc();
+        cb.emit(Rc::clone(&new));
+        *topbar = Some(new);
+        true
+    }
+
+    fn omnibox(ctx: &Context<Self>, screen: &S, omnibox: &mut Option<Rc<Omnibox>>) -> bool {
+        let Some(cb) = &ctx.props().omnibox else {
+            return omnibox.take().is_some();
+        };
+        let new = screen.view_omnibox(ctx.link(), &ctx.props().initial).into();
+        if omnibox.as_deref() == Some(&*new) {
+            return false;
+        }
+        let new = new.into_rc();
+        cb.emit(Rc::clone(&new));
+        *omnibox = Some(new);
+        true
+    }
+}
+
 impl<S: Screen> Component for ScreenManager<S> {
-    type Message = ManagerM;
+    type Message = S::Message;
     type Properties = ManagerProps<S>;
     fn create(ctx: &Context<Self>) -> Self {
         let props = &ctx.props().initial;
         let screen = S::create(ctx.link(), props);
-        let sidebar = Rc::new(screen.view_sidebar(ctx.link(), props));
-        ctx.props().sidebar.emit(Rc::clone(&sidebar));
-        let topbar = Rc::new(screen.view_topbar(ctx.link(), props));
-        ctx.props().topbar.emit(Rc::clone(&topbar));
-        let omnibox = Rc::new(screen.view_omnibox(ctx.link(), props));
-        ctx.props().omnibox.emit(Rc::clone(&omnibox));
+        let mut sidebar = None;
+        Self::sidebar(ctx, &screen, &mut sidebar);
+        let mut topbar = None;
+        Self::topbar(ctx, &screen, &mut topbar);
+        let mut omnibox = None;
+        Self::omnibox(ctx, &screen, &mut omnibox);
         Self {
             sidebar,
             topbar,
@@ -53,50 +160,35 @@ impl<S: Screen> Component for ScreenManager<S> {
     }
 
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        // Do not use old props as they may have been rejected are aren't up to
-        // date, use `self.screen.as_change()` instead.
+        let mut changed = false;
+        if ctx.props().initial != old_props.initial {
+            changed |= self
+                .screen
+                .changed(ctx.link(), &ctx.props().initial, &old_props.initial)
+        }
 
-        // let old_props = self.screen.as_change();
-        self.screen
-            .changed(ctx.link(), &ctx.props().initial, &old_props.initial)
-        // if changed {
-        //     log::info!("Manager changed {:?} -> {:?}", old_props.name(), ctx.props().initial.name());
-        // }
+        if changed || ctx.props().sidebar.is_none() != old_props.sidebar.is_none() {
+            Self::sidebar(ctx, &self.screen, &mut self.sidebar);
+        }
+        if changed || ctx.props().topbar.is_none() != old_props.topbar.is_none() {
+            Self::topbar(ctx, &self.screen, &mut self.topbar);
+        }
+        if changed || ctx.props().omnibox.is_none() != old_props.omnibox.is_none() {
+            Self::omnibox(ctx, &self.screen, &mut self.omnibox);
+        }
+        changed
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let props = &ctx.props().initial;
-        let msg = match S::Message::try_from(msg) {
-            Ok(msg) => msg,
-            Err(msg) => {
-                log::error!(
-                    "Got message for screen {:?} while on screen {:?}! Ignoring.",
-                    msg.name(),
-                    S::Message::name()
-                );
-                return false;
-            }
-        };
         let changed = self.screen.update(ctx.link(), props, msg);
         if !changed {
             return changed;
         }
 
-        let sidebar = self.screen.view_sidebar(ctx.link(), props);
-        if *self.sidebar != sidebar {
-            self.sidebar = Rc::new(sidebar);
-            ctx.props().sidebar.emit(Rc::clone(&self.sidebar));
-        }
-        let topbar = self.screen.view_topbar(ctx.link(), props);
-        if *self.topbar != topbar {
-            self.topbar = Rc::new(topbar);
-            ctx.props().topbar.emit(Rc::clone(&self.topbar));
-        }
-        let omnibox = self.screen.view_omnibox(ctx.link(), props);
-        if *self.omnibox != omnibox {
-            self.omnibox = Rc::new(omnibox);
-            ctx.props().omnibox.emit(Rc::clone(&self.omnibox));
-        }
+        Self::sidebar(ctx, &self.screen, &mut self.sidebar);
+        Self::topbar(ctx, &self.screen, &mut self.topbar);
+        Self::omnibox(ctx, &self.screen, &mut self.omnibox);
 
         changed
     }
@@ -116,8 +208,14 @@ impl<S: Screen> Component for ScreenManager<S> {
 
     fn destroy(&mut self, ctx: &Context<Self>) {
         self.screen.destroy(ctx.link(), &ctx.props().initial);
-        ctx.props().sidebar.emit(Default::default());
-        ctx.props().topbar.emit(Default::default());
-        ctx.props().omnibox.emit(Default::default());
+        if let Some(cb) = &ctx.props().sidebar {
+            cb.emit(Default::default());
+        }
+        if let Some(cb) = &ctx.props().topbar {
+            cb.emit(Default::default());
+        }
+        if let Some(cb) = &ctx.props().omnibox {
+            cb.emit(Default::default());
+        }
     }
 }

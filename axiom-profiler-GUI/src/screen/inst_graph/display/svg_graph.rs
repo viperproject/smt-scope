@@ -7,7 +7,7 @@ use web_sys::{Element, SvgsvgElement};
 use yew::prelude::*;
 use yew::{function_component, html};
 
-use crate::screen::graph::RenderedGraph;
+use crate::screen::inst_graph::RenderedGraph;
 use crate::utils::svg::{SvgHelper, ViewBox};
 use crate::{mouse_position, PrecisePosition};
 

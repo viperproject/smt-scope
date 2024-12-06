@@ -9,21 +9,35 @@ use gloo::net::http::Response;
 use material_yew::{dialog::MatDialog, WeakComponentLink};
 use smt_log_parser::{parsers::ParseState, Z3Parser};
 use web_sys::HtmlInputElement;
-use yew::{html, Callback, DragEvent, Html, NodeRef};
+use yew::{html, Callback, ContextProvider, DragEvent, Html, NodeRef};
 
 use crate::commands::{Command, CommandRef, CommandsContext, ShortcutKey};
 use crate::configuration::Flags;
-use crate::filters::byte_size_display;
 use crate::infobars::{OmniboxMessage, OmniboxMessageKind};
 use crate::screen::file::FileProps;
-use crate::state::FileInfo;
+use crate::utils::display_byte::byte_size_display;
 use crate::utils::overlay_page::{Overlay, SetVisibleCallback};
 use crate::{CallbackRef, GlobalCallbacksContext, OmniboxContext, PREVENT_DEFAULT_DRAG_OVER};
 
-use super::{extra::*, Manager, Scope, Screen};
+use super::manager::{NestedScreen, NestedScreenM};
+use super::maybe_rc::MaybeRc;
+use super::{extra::*, Scope, Screen};
 
 pub use self::file::*;
 use self::{example::Example, screen::HomepageScreen};
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct OverlayVisible {
+    pub overlay_visible: bool,
+}
+
+impl OverlayVisible {
+    pub fn get<C: yew::Component>(link: &yew::html::Scope<C>) -> bool {
+        link.context::<Self>(Callback::noop())
+            .map(|c| c.0.overlay_visible)
+            .unwrap_or_default()
+    }
+}
 
 pub struct Homepage {
     file_select: NodeRef,
@@ -37,15 +51,17 @@ pub struct Homepage {
 
     navigation: SidebarSection,
     support: SidebarSection,
-    nested_sidebar: Rc<Sidebar>,
-    nested_topbar: Rc<Topbar>,
-    nested_omnibox: Rc<Omnibox>,
+    nested_screen: NestedScreen,
 
     _callback_refs: [CallbackRef; 4],
     _command_refs: [CommandRef; 1],
 }
 
 impl Homepage {
+    pub fn file_info(&self) -> Option<&FileInfo> {
+        self.file.as_ref().map(|file| &file.file_info)
+    }
+
     pub fn opened_file(&self) -> Option<(&FileInfo, &OpenedFileInfo)> {
         self.file
             .as_ref()
@@ -64,9 +80,7 @@ pub enum HomepageM {
 
     OverlayVisible(bool),
 
-    NestedSidebar(Rc<Sidebar>),
-    NestedTopbar(Rc<Topbar>),
-    NestedOmnibox(Rc<Omnibox>),
+    NestedUpdate(NestedScreenM),
 }
 
 impl Screen for Homepage {
@@ -76,6 +90,7 @@ impl Screen for Homepage {
     fn create(link: &Scope<Self>, props: &Self::Properties) -> Self {
         let toggle_flags = SetVisibleCallback::default();
         let file_select = NodeRef::default();
+        let nested_screen = NestedScreen::new(link.callback(HomepageM::NestedUpdate));
 
         // Sidebar
 
@@ -122,9 +137,7 @@ impl Screen for Homepage {
 
             navigation,
             support,
-            nested_sidebar: Default::default(),
-            nested_topbar: Default::default(),
-            nested_omnibox: Default::default(),
+            nested_screen,
 
             _callback_refs,
             _command_refs,
@@ -220,16 +233,8 @@ impl Screen for Homepage {
                 true
             }
 
-            HomepageM::NestedSidebar(sidebar) => {
-                self.nested_sidebar = sidebar;
-                true
-            }
-            HomepageM::NestedTopbar(topbar) => {
-                self.nested_topbar = topbar;
-                true
-            }
-            HomepageM::NestedOmnibox(omnibox) => {
-                self.nested_omnibox = omnibox;
+            HomepageM::NestedUpdate(update) => {
+                self.nested_screen.update(update);
                 true
             }
         }
@@ -250,41 +255,46 @@ impl Screen for Homepage {
 
         let screen = match self.opened_file() {
             Some((info, opened)) => {
-                let sidebar = link.callback(HomepageM::NestedSidebar);
-                let topbar = link.callback(HomepageM::NestedTopbar);
-                let omnibox = link.callback(HomepageM::NestedOmnibox);
                 let initial = FileProps {
                     file_info: info.clone(),
                     opened_file: opened.clone(),
                     overlay_visible: self.overlay_visible,
                 };
-                html! {<Manager<super::file::File> {sidebar} {topbar} {omnibox} {initial} />}
+                self.nested_screen.view::<super::file::File>(initial)
             }
             _ => html! {<HomepageScreen />},
         };
-
+        let file = self.file_info().cloned();
+        let context = OverlayVisible {
+            overlay_visible: self.overlay_visible,
+        };
         html! {<>
             <input type="file" ref={&self.file_select} class="trace_file" accept=".log" {onchange} multiple=false/>
-            {screen}
-            <Overlay visible_changed={flags_visible_changed} set_visible={self.toggle_flags.clone()}><Flags /></Overlay>
+            <ContextProvider<OverlayVisible> {context}>
+                {screen}
+            </ContextProvider<OverlayVisible>>
+            <Overlay visible_changed={flags_visible_changed} set_visible={self.toggle_flags.clone()}><Flags {file} /></Overlay>
         </>}
     }
 
+    #[allow(refining_impl_trait)]
     fn view_sidebar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Sidebar {
         [self.get_navigation()]
             .into_iter()
-            .chain(self.nested_sidebar.iter().cloned())
+            .chain(self.nested_screen.sidebar().iter().cloned())
             .chain([self.support.clone()])
             .collect()
     }
 
-    fn view_topbar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Topbar {
-        (*self.nested_topbar).clone()
+    #[allow(refining_impl_trait)]
+    fn view_topbar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Rc<Topbar> {
+        self.nested_screen.topbar().clone()
     }
 
-    fn view_omnibox(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Omnibox {
+    #[allow(refining_impl_trait)]
+    fn view_omnibox(&self, _link: &Scope<Self>, _props: &Self::Properties) -> MaybeRc<Omnibox> {
         if self.opened_file().is_some() {
-            (*self.nested_omnibox).clone()
+            self.nested_screen.omnibox().clone().into()
         } else {
             let icon;
             let message;
@@ -292,7 +302,7 @@ impl Screen for Homepage {
             let mut loading = OmniboxLoading::indeterminate();
 
             match &self.progress {
-                LoadingState::NoFileSelected => return Omnibox::default(),
+                LoadingState::NoFileSelected => return Omnibox::default().into(),
                 LoadingState::ReadingToString => {
                     icon = "pending";
                     message = "Loading trace".to_string();
@@ -336,7 +346,7 @@ impl Screen for Homepage {
                     loading.progress = 1.0;
                 }
                 // Should never be reached
-                LoadingState::FileDisplayed => return Omnibox::default(),
+                LoadingState::FileDisplayed => return Omnibox::default().into(),
             };
             Omnibox::Loading(OmniboxLoading {
                 icon,
@@ -344,6 +354,7 @@ impl Screen for Homepage {
                 message,
                 loading,
             })
+            .into()
         }
     }
 }

@@ -16,7 +16,6 @@ use crate::{
     global_callbacks::GlobalCallbacks,
     infobars::{OmniboxMessage, OmniboxMessageKind},
     screen::{homepage::HomepageM, Scope},
-    state::FileInfo,
     utils::colouring::QuantIdxToColourMap,
     CallbackRef, OmniboxContext, PREVENT_DEFAULT_DRAG_OVER,
 };
@@ -119,6 +118,14 @@ impl ParseProgress {
 pub struct FileData {
     pub file_info: FileInfo,
     pub opened: Option<OpenedFileInfo>,
+}
+
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
+pub struct FileInfo {
+    pub name: String,
+    pub size: Option<u64>,
 }
 
 #[derive(Clone)]

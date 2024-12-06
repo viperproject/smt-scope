@@ -1,10 +1,12 @@
 use crate::{
     commands::{Command, CommandRef, CommandsContext, ShortcutKey},
-    results::{filters::Filter, svg_result::GraphDimensions},
-    screen::{graph::Graph, Scope},
+    screen::{
+        inst_graph::{Graph, GraphDimensions},
+        Scope,
+    },
 };
 
-use super::GraphM;
+use super::{Filter, GraphM};
 
 pub struct FilterChain {
     pub(super) new_filter_chain: Vec<Filter>,

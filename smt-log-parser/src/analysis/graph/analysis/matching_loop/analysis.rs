@@ -1,15 +1,13 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use fxhash::FxHashSet;
-
 use crate::{
     analysis::{analysis::TopoAnalysis, raw::Node, InstGraph, RawNodeIndex},
     idx,
     items::{Blame, ENodeIdx, EqTransIdx, InstIdx, TermIdx},
     mem_dbg::InternMap,
     parsers::z3::synthetic::SynthIdx,
-    FxHashMap, TiVec, Z3Parser,
+    FxHashMap, FxHashSet, TiVec, Z3Parser,
 };
 
 use super::{
@@ -18,22 +16,22 @@ use super::{
 
 idx!(GenIdx, "${}");
 
-pub struct MlOutput<'a> {
+pub struct MlOutput {
     pub(super) signatures: TiVec<MlSigIdx, MlSignature>,
     ml_leaves: TiVec<MlSigIdx, MlSigCollection>,
     pub(super) node_to_ml: FxHashMap<InstIdx, MlNodeInfo>,
     pub(super) gens: TiVec<GenIdx, Box<[GeneralisedBlame]>>,
-    pub(super) topo: &'a FxHashMap<InstIdx, MlAnalysisInfo>,
+    pub(super) topo: FxHashMap<InstIdx, MlAnalysisInfo>,
 }
 
-impl MlOutput<'_> {
+impl MlOutput {
     pub fn others_between(
         topo: &FxHashMap<InstIdx, MlAnalysisInfo>,
         ancestor: InstIdx,
         descendant: InstIdx,
     ) -> FxHashSet<InstIdx> {
         let mut others_between = topo[&descendant].ancestors.clone();
-        for above_all in &topo[&ancestor].ancestors {
+        for above_all in topo[&ancestor].ancestors.iter() {
             others_between.remove(above_all);
         }
         assert!(others_between.contains(&descendant));
@@ -94,6 +92,7 @@ impl MlOutput<'_> {
         });
         MlData {
             signatures: self.signatures,
+            per_inst: self.topo,
             matching_loops,
             sure_mls,
             maybe_mls,
@@ -144,11 +143,7 @@ impl<'a> MlAnalysis<'a> {
     /// Per each quantifier, finds the nodes that are part paths of length at
     /// least `MIN_MATCHING_LOOP_LENGTH`. Additionally, returns a list of the
     /// endpoints of these paths.
-    pub fn finalise(
-        self,
-        topo: &FxHashMap<InstIdx, MlAnalysisInfo>,
-        min_depth: u32,
-    ) -> MlOutput<'_> {
+    pub fn finalise(self, topo: FxHashMap<InstIdx, MlAnalysisInfo>, min_depth: u32) -> MlOutput {
         let mut ml_leaves: TiVec<MlSigIdx, MlSigCollection> = self
             .data
             .iter()
@@ -500,6 +495,7 @@ impl MlNodeInfo {
     }
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default, Clone)]
 pub struct MlAnalysisInfo {
     ancestors: FxHashSet<InstIdx>,
@@ -508,7 +504,7 @@ pub struct MlAnalysisInfo {
 
 impl MlAnalysisInfo {
     fn extend(&mut self, incoming: &Self) {
-        for banned in &incoming.banned {
+        for banned in incoming.banned.iter() {
             self.ancestors.remove(banned);
         }
         self.ancestors.extend(

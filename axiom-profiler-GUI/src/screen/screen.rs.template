@@ -1,0 +1,29 @@
+use yew::prelude::*;
+
+use super::{Scope, Screen};
+
+#[derive(Clone, PartialEq)]
+pub struct TemplateProps {
+
+}
+
+pub struct Template {
+
+}
+
+pub enum TemplateM {
+
+}
+
+impl Screen for Template {
+    type Message = TemplateM;
+    type Properties = TemplateProps;
+
+    fn create(link: &Scope<Self>, props: &Self::Properties) -> Self {
+        Self {}
+    }
+
+    fn view(&self, link: &Scope<Self>, props: &Self::Properties) -> Html {
+        html! {"Template"}
+    }
+}

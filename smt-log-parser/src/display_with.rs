@@ -411,6 +411,8 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for EqGivenIdx {
         data: &mut (),
     ) -> fmt::Result {
         let eq = &ctxt.parser[self];
+        // let kind = eq.kind_str(&ctxt.parser.strings);
+        // write!(f, "{kind}: ")?;
         eq.from().fmt_with(f, ctxt, data)?;
         write!(f, " = ")?;
         eq.to().fmt_with(f, ctxt, data)
@@ -446,7 +448,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &MatchKind {
     ) -> fmt::Result {
         match self {
             MatchKind::MBQI { quant, .. } => {
-                write!(f, "[MBQI]")?;
+                write!(f, "[MBQI] ")?;
                 quant.fmt_with(f, ctxt, data)
             }
             MatchKind::TheorySolving { axiom_id, .. } => {
@@ -457,7 +459,7 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &MatchKind {
                 Ok(())
             }
             MatchKind::Axiom { axiom, .. } => {
-                write!(f, "[Ax]")?;
+                write!(f, "[Ax] ")?;
                 axiom.fmt_with(f, ctxt, data)
             }
             MatchKind::Quantifier { quant, .. } => quant.fmt_with(f, ctxt, data),

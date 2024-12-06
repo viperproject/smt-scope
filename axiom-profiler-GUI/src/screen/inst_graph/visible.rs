@@ -3,7 +3,9 @@ use std::{ops::Deref, rc::Rc};
 use smt_log_parser::analysis::{visible::VisibleInstGraph, RawNodeIndex, VisibleEdgeIndex};
 use web_sys::SvgsvgElement;
 
-use crate::{results::svg_result::GraphDimensions, screen::extra::OmniboxSearch};
+use crate::screen::extra::Omnibox;
+
+use super::GraphDimensions;
 
 #[derive(Clone)]
 pub struct RcVisibleGraph(Rc<VisibleInstGraph>);
@@ -35,7 +37,7 @@ pub struct RenderedGraph {
     pub selected_nodes: Vec<RawNodeIndex>,
     /// The `VisibleEdgeIndex` here refers to the VisibleGraph!
     pub selected_edges: Vec<VisibleEdgeIndex>,
-    pub search: Rc<OmniboxSearch>,
+    pub search: Rc<Omnibox>,
 }
 
 impl PartialEq for RenderedGraph {

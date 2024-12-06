@@ -9,7 +9,7 @@ use crate::{
     CallbackRef, GlobalCallbacksContext, PagePosition,
 };
 
-#[derive(Properties, Debug, PartialEq)]
+#[derive(Properties, Debug, Clone, PartialEq)]
 pub struct SplitDivProps {
     /// 0.0 to 1.0
     pub initial_position: f64,
@@ -17,7 +17,6 @@ pub struct SplitDivProps {
     pub right_bound: f64,
     /// Must be spaced apart by at least 0.05
     pub snap_positions: Vec<f64>,
-    pub children: Children,
 }
 
 impl SplitDivProps {
@@ -30,6 +29,12 @@ impl SplitDivProps {
         }
         position
     }
+}
+
+#[derive(Properties, Debug, PartialEq)]
+pub struct SplitDivPropsFull {
+    pub inner: SplitDivProps,
+    pub children: Children,
 }
 
 pub struct SplitDiv {
@@ -54,9 +59,11 @@ pub enum Msg {
 impl Component for SplitDiv {
     type Message = Msg;
 
-    type Properties = SplitDivProps;
+    type Properties = SplitDivPropsFull;
 
     fn create(ctx: &Context<Self>) -> Self {
+        let props = &ctx.props().inner;
+
         let registerer = ctx.link().get_callbacks_registerer().unwrap();
         let mouse_move_ref = (registerer.register_mouse_move)(ctx.link().callback(Msg::MouseMove));
         let mouse_up_ref = (registerer.register_mouse_up)(ctx.link().callback(Msg::MouseUp));
@@ -67,14 +74,14 @@ impl Component for SplitDiv {
             name: "Toggle right drawer".to_string(),
             execute: ctx.link().callback(|_| Msg::ToggleDrawer),
             keyboard_shortcut: ShortcutKey::empty('r'),
-            disabled: ctx.props().left_bound == ctx.props().right_bound,
+            disabled: props.left_bound == props.right_bound,
         };
         let toggle = (commands)(toggle);
         let _command_refs = [toggle];
 
         Self {
-            position: ctx.props().initial_position,
-            old_position: ctx.props().initial_position,
+            position: props.initial_position,
+            old_position: props.initial_position,
             dragging: false,
             container: NodeRef::default(),
             _callback_refs,
@@ -83,19 +90,23 @@ impl Component for SplitDiv {
     }
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         debug_assert!(ctx.props() != old_props);
-        let new_pros = ctx.props();
-        let new_disabled = ctx.props().left_bound == ctx.props().right_bound;
-        let old_disabled = old_props.left_bound == old_props.right_bound;
+        let new_pros = &ctx.props().inner;
+        let new_disabled = new_pros.left_bound == new_pros.right_bound;
+        let old_disabled = old_props.inner.left_bound == old_props.inner.right_bound;
         if new_disabled != old_disabled {
             self._command_refs[0].set_disabled(new_disabled);
         }
 
         // If the window should appear but was previously hidden, show it
-        let position = old_props.snap(self.position);
-        if old_props.left_bound == position && new_pros.left_bound != old_props.left_bound {
+        let position = old_props.inner.snap(self.position);
+        if old_props.inner.left_bound == position
+            && new_pros.left_bound != old_props.inner.left_bound
+        {
             self.position = new_pros.initial_position;
         }
-        if old_props.right_bound == position && new_pros.right_bound != old_props.right_bound {
+        if old_props.inner.right_bound == position
+            && new_pros.right_bound != old_props.inner.right_bound
+        {
             self.position = new_pros.initial_position;
         }
         true
@@ -138,11 +149,10 @@ impl Component for SplitDiv {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let middle_width = 6.0;
         let onmousedown = ctx.link().callback(Msg::MouseDown);
+        let props = &ctx.props().inner;
 
-        let position = &ctx.props().snap(self.position);
-        let position = position
-            .min(ctx.props().right_bound)
-            .max(ctx.props().left_bound);
+        let position = &props.snap(self.position);
+        let position = position.min(props.right_bound).max(props.left_bound);
         let style_left = format!(
             "width:calc({}% - {}px); height:100%;",
             position * 100.0,

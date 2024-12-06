@@ -8,7 +8,7 @@ use yew::html;
 use crate::{
     screen::{
         extra::{OmniboxSearch, OmniboxSearchCategory, OmniboxSearchEntry},
-        graph::{GraphM, SelectionM},
+        inst_graph::{GraphM, SelectionM},
         Scope,
     },
     utils::colouring::QuantIdxToColourMap,
@@ -61,6 +61,7 @@ impl Graph {
             if let Some(_meaning) = parser.meaning(tidx) {}
             let term = &parser[parser[eidx].owner];
             let Some(name) = term.kind.app_name() else {
+                log::error!("ENode without name: {:?}", term);
                 return;
             };
             terms

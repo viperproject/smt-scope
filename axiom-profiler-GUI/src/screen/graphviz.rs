@@ -7,8 +7,8 @@ use smt_log_parser::{
         visible::VisibleEdge,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::MatchKind,
-    NonMaxU32, Z3Parser,
+    items::{ENodeIdx, MatchKind},
+    Z3Parser,
 };
 
 use crate::utils::colouring::QuantIdxToColourMap;
@@ -120,7 +120,7 @@ pub trait DotNodeProperties<LabelCtx, TooltipCtx, StyleCtx, ShapeCtx, ColCtx, Cl
 impl
     DotNodeProperties<
         (),
-        (DisplayCtxt<'_>, bool, Option<NonMaxU32>),
+        &'_ Z3Parser,
         &'_ Z3Parser,
         (u32, u32),
         (&'_ Z3Parser, &'_ QuantIdxToColourMap),
@@ -132,34 +132,37 @@ impl
         self.to_string()
     }
 
-    fn tooltip(
-        &self,
-        (mut ctxt, html, char_limit): (DisplayCtxt<'_>, bool, Option<NonMaxU32>),
-    ) -> String {
-        ctxt.config.html = html;
-        ctxt.config.enode_char_limit = char_limit;
+    fn tooltip(&self, parser: &'_ Z3Parser) -> String {
         use NodeKind::*;
+        fn get_name(parser: &Z3Parser, enode: ENodeIdx) -> &str {
+            let name = parser[parser[enode].owner].kind.app_name();
+            name.map(|n| &parser[n]).unwrap_or_default()
+        }
         match *self {
-            ENode(enode) => {
-                ctxt.config.enode_char_limit = ctxt
-                    .config
-                    .enode_char_limit
-                    .and_then(|limit| NonMaxU32::new(limit.get() * 2));
-                enode.with(&ctxt).to_string()
+            ENode(enode) => get_name(parser, enode).to_string(),
+            GivenEquality(eq, _) => {
+                let eq = &parser[eq];
+                let kind = eq.kind_str(&parser.strings);
+                let (from, to) = (get_name(parser, eq.from()), get_name(parser, eq.to()));
+                format!("{kind}: {from} = {to}")
             }
-            GivenEquality(eq, _) => eq.with(&ctxt).to_string(),
-            TransEquality(eq) => eq.with(&ctxt).to_string(),
-            Instantiation(inst) => match &ctxt.parser[ctxt.parser[inst].match_].kind {
+            TransEquality(eq) => {
+                let (from, to) = parser.from_to(eq);
+                let (from, to) = (get_name(parser, from), get_name(parser, to));
+                let len = parser[eq].given_len;
+                format!("{from} =[{len}] {to}")
+            }
+            Instantiation(inst) => match &parser[parser[inst].match_].kind {
                 MatchKind::TheorySolving { axiom_id, .. } => {
-                    let namespace = &ctxt.parser[axiom_id.namespace];
-                    let id = axiom_id.id.map(|id| id.to_string()).unwrap_or_default();
-                    format!("{namespace}[{id}]")
+                    let namespace = &parser[axiom_id.namespace];
+                    let id = axiom_id.id.map(|id| format!("[{id}]")).unwrap_or_default();
+                    format!("{namespace}{id}")
                 }
                 MatchKind::MBQI { quant, .. }
                 | MatchKind::Axiom { axiom: quant, .. }
-                | MatchKind::Quantifier { quant, .. } => ctxt.parser[*quant]
+                | MatchKind::Quantifier { quant, .. } => parser[*quant]
                     .kind
-                    .name(&ctxt.parser.strings)
+                    .name(&parser.strings)
                     .unwrap()
                     .to_string(),
             },

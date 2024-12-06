@@ -7,8 +7,8 @@ use smt_log_parser::{
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
+    formatter::TermDisplayContext,
     items::{MatchKind, VarNames},
-    NonMaxU32,
 };
 use yew::{
     function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties,
@@ -18,11 +18,10 @@ use crate::{
     configuration::ConfigurationProvider,
     screen::{
         file::RcAnalysis,
-        graph::RcVisibleGraph,
         graphviz::{DotEdgeProperties, DotNodeProperties},
         homepage::RcParser,
+        inst_graph::RcVisibleGraph,
     },
-    state::StateProvider,
 };
 
 #[derive(Properties, PartialEq)]
@@ -70,20 +69,34 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             }
         }
     }
-    pub fn description(&self, char_limit: Option<NonMaxU32>) -> Html {
-        let description = self.node.kind().tooltip((*self.ctxt, true, char_limit));
+    pub fn description(&self) -> Html {
+        // TODO:
+        // let description = self.node.kind().tooltip((*self.ctxt, true, char_limit));
+        let description = self.node.kind().tooltip(self.ctxt.parser);
         let description = format!("<code>{description}</code>");
         Html::from_html_unchecked(AttrValue::from(description))
     }
 
-    pub fn quantifier_body(&self) -> Option<String> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
-            return None;
-        };
-        let quant_idx = self.ctxt.parser[self.ctxt.parser[inst].match_]
-            .kind
-            .quant_idx()?;
-        Some(quant_idx.with(self.ctxt).to_string())
+    pub fn detail(&self) -> (&'static str, String) {
+        match *self.node.kind() {
+            NodeKind::Instantiation(inst) => {
+                let match_ = &self.ctxt.parser[self.ctxt.parser[inst].match_];
+                let detail = match_.kind.with(self.ctxt).to_string();
+                ("Body", detail)
+            }
+            NodeKind::ENode(enode) => {
+                let detail = enode.with(self.ctxt).to_string();
+                ("Term", detail)
+            }
+            NodeKind::GivenEquality(eq, _) => {
+                let detail = eq.with(self.ctxt).to_string();
+                ("Equality", detail)
+            }
+            NodeKind::TransEquality(eq) => {
+                let detail = eq.with(self.ctxt).to_string();
+                ("Equality", detail)
+            }
+        }
     }
     pub fn blame(&self) -> Option<Vec<(String, String, Vec<String>)>> {
         let NodeKind::Instantiation(inst) = *self.node.kind() else {
@@ -190,7 +203,7 @@ pub fn SelectedNodesInfo(
     }: &SelectedNodesInfoProps,
 ) -> Html {
     let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let data = use_context::<Rc<StateProvider>>().unwrap();
+    let term_display = use_context::<Rc<TermDisplayContext>>().unwrap();
 
     if selected_nodes.is_empty() {
         return html! {};
@@ -201,7 +214,7 @@ pub fn SelectedNodesInfo(
     let graph = &graph.graph;
     let ctxt = &DisplayCtxt {
         parser,
-        term_display: &data.state.term_display,
+        term_display: &term_display,
         config: cfg.config.display,
     };
 
@@ -218,12 +231,10 @@ pub fn SelectedNodesInfo(
             let info = NodeInfo { node: &graph.raw[node], ctxt };
             let index = info.index();
             let header_text = info.kind();
-            let summary = format!("[{index}] {header_text}: ");
-            let description = info.description((!open).then(|| NonMaxU32::new(10).unwrap()));
+            let summary = format!("[{index}] {header_text} ");
+            let description = info.description();
+            let (detail_header, detail) = info.detail();
 
-            let quantifier_body = info.quantifier_body().map(|body| html! {
-                <><InfoLine header="Body" text={body} code=true /><hr/></>
-            });
             let blame: Option<Html> = info.blame().map(|blame| blame.into_iter().enumerate().map(|(idx, (trigger, enode, equalities))| {
                 let equalities: Html = equalities.into_iter().map(|equality| html! {
                     <InfoLine header="Equality" text={equality} code=true />
@@ -260,8 +271,9 @@ pub fn SelectedNodesInfo(
             html! {
                 <details {open}>
                 <summary {onclick}>{summary}{description}</summary>
-                <ul>
-                    {quantifier_body}
+                <ul class="selected-info">
+                    <InfoLine header={detail_header} text={detail} code=true />
+                    <hr/>
                     {blame}
                     {bound_terms}
                     {resulting_term}
@@ -283,7 +295,7 @@ pub fn SelectedNodesInfo(
     html! {
     <>
         <h2>{"Selected Nodes"}</h2>
-        <div>
+        <div class="selected-info-box">
             {for infos}
         </div>
     </>
@@ -375,7 +387,7 @@ pub fn SelectedEdgesInfo(
     }: &SelectedEdgesInfoProps,
 ) -> Html {
     let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
-    let data = use_context::<Rc<StateProvider>>().unwrap();
+    let term_display = use_context::<Rc<TermDisplayContext>>().unwrap();
 
     if selected_edges.is_empty() {
         return html! {};
@@ -386,7 +398,7 @@ pub fn SelectedEdgesInfo(
     let graph = &graph.graph;
     let ctxt = &DisplayCtxt {
         parser,
-        term_display: &data.state.term_display,
+        term_display: &term_display,
         config: cfg.config.display,
     };
 
@@ -411,11 +423,13 @@ pub fn SelectedEdgesInfo(
         let summary = format!("[{}] {}", info.index(), info.kind());
         // Get info about blamed node
         let blame = graph.raw.index(info.kind.blame(graph));
-        let blame = graph.raw[blame].kind().tooltip((*ctxt, true, None));
+        // TODO:
+        // let blame = graph.raw[blame].kind().tooltip((*ctxt, true, None));
+        let blame = graph.raw[blame].kind().tooltip(ctxt.parser);
         html! {
             <details {open} {onclick}>
                 <summary>{summary}</summary>
-                <ul>
+                <ul class="selected-info">
                     <InfoLine header="Blamed" text={blame} code=true />
                 </ul>
             </details>
@@ -424,7 +438,7 @@ pub fn SelectedEdgesInfo(
     html! {
     <>
         <h2>{"Selected Dependencies"}</h2>
-        <div>
+        <div class="selected-info-box">
             {for infos}
         </div>
     </>

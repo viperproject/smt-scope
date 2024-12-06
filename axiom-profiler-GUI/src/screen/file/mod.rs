@@ -2,15 +2,14 @@ mod analysis;
 
 use std::rc::Rc;
 
-use smt_log_parser::{analysis::InstGraph, parsers::ParseState};
-use yew::{html, Html};
+use smt_log_parser::{analysis::InstGraph, formatter::TermDisplayContext, parsers::ParseState};
+use yew::{html, ContextHandle, ContextProvider, Html};
 
 use crate::{
-    filters::byte_size_display,
+    configuration::ConfigurationProvider,
     infobars::{OmniboxMessage, OmniboxMessageKind},
-    results::filters::{DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN},
-    screen::{graph::Graph, ml::MatchingLoop},
-    state::FileInfo,
+    screen::{inst_graph::Graph, ml::MatchingLoop},
+    utils::display_byte::byte_size_display,
     OmniboxContext,
 };
 
@@ -19,10 +18,15 @@ use super::{
         Action, ElementKind, Omnibox, OmniboxLoading, Sidebar, SidebarSection, SidebarSectionRef,
         SimpleButton, Topbar,
     },
-    graph::GraphProps,
-    homepage::OpenedFileInfo,
+    homepage::{FileInfo, OpenedFileInfo},
+    inst_graph::{
+        filter::{DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN},
+        GraphProps,
+    },
+    manager::{NestedScreen, NestedScreenM},
+    maybe_rc::MaybeRc,
     ml::MatchingLoopProps,
-    Manager, Scope, Screen,
+    Scope, Screen,
 };
 
 pub use self::analysis::*;
@@ -41,17 +45,19 @@ impl FileProps {
 }
 
 pub struct File {
+    term_display: Rc<TermDisplayContext>,
     analysis: Result<AnalysisState, RcAnalysis>,
     current_trace: SidebarSection,
 
-    view: Option<ViewProps>,
-    nested_sidebar: Rc<Sidebar>,
-    nested_topbar: Rc<Topbar>,
-    nested_omnibox: Rc<Omnibox>,
+    view: ViewProps,
+    nested_screen: NestedScreen,
+
+    _handle: ContextHandle<Rc<ConfigurationProvider>>,
 }
 
 #[derive(Clone)]
 enum ViewProps {
+    Overview,
     Graph(GraphProps),
     MatchingLoop(MatchingLoopProps),
 }
@@ -60,15 +66,26 @@ impl File {
     fn analysis(&self) -> Option<&RcAnalysis> {
         self.analysis.as_ref().err()
     }
+
+    fn analysis_or_error(&self, link: &Scope<Self>, code: u16) -> Option<&RcAnalysis> {
+        let analysis = self.analysis();
+        if analysis.is_none() {
+            let message = OmniboxMessage {
+                message: format!("Internal error E{code}"),
+                kind: OmniboxMessageKind::Error,
+            };
+            link.omnibox_message(message, 1000);
+        }
+        analysis
+    }
 }
 
 pub enum FileM {
     StartAnalysis,
     ChangeView(ViewChoice),
+    ConfigChanged(Rc<ConfigurationProvider>),
 
-    NestedSidebar(Rc<Sidebar>),
-    NestedTopbar(Rc<Topbar>),
-    NestedOmnibox(Rc<Omnibox>),
+    NestedUpdate(NestedScreenM),
 }
 
 pub enum ViewChoice {
@@ -82,6 +99,10 @@ impl Screen for File {
     type Properties = FileProps;
 
     fn create(link: &Scope<Self>, props: &Self::Properties) -> Self {
+        let nested_screen = NestedScreen::new(link.callback(FileM::NestedUpdate));
+        let (cfg, _handle) = link.context(link.callback(FileM::ConfigChanged)).unwrap();
+        let term_display = cfg.config.term_display.for_file(&props.file_info);
+
         let current_trace = Self::current_trace(link, props);
 
         let link = link.clone();
@@ -92,12 +113,12 @@ impl Screen for File {
 
         let analysis = Ok(AnalysisState::ConstructingGraph);
         Self {
+            term_display: Rc::new(term_display),
             analysis,
             current_trace,
-            view: None,
-            nested_sidebar: Default::default(),
-            nested_topbar: Default::default(),
-            nested_omnibox: Default::default(),
+            view: ViewProps::Overview,
+            nested_screen,
+            _handle,
         }
     }
 
@@ -141,14 +162,9 @@ impl Screen for File {
             }
             FileM::ChangeView(view) => {
                 let view = match view {
-                    ViewChoice::Overview => return self.view.take().is_some(),
+                    ViewChoice::Overview => ViewProps::Overview,
                     ViewChoice::Graph => {
-                        let Some(analysis) = self.analysis() else {
-                            let message = OmniboxMessage {
-                                message: "Internal error E1".to_string(),
-                                kind: OmniboxMessageKind::Error,
-                            };
-                            link.omnibox_message(message, 1000);
+                        let Some(analysis) = self.analysis_or_error(link, 12) else {
                             return false;
                         };
                         ViewProps::Graph(GraphProps {
@@ -156,60 +172,66 @@ impl Screen for File {
                             analysis: analysis.clone(),
                             default_filters: DEFAULT_FILTER_CHAIN.to_vec(),
                             default_disablers: DEFAULT_DISABLER_CHAIN.to_vec(),
+                            extra: None,
                         })
                     }
-                    ViewChoice::MatchingLoop => ViewProps::MatchingLoop(MatchingLoopProps {}),
+                    ViewChoice::MatchingLoop => {
+                        let Some(analysis) = self.analysis_or_error(link, 13) else {
+                            return false;
+                        };
+                        ViewProps::MatchingLoop(MatchingLoopProps {
+                            file: props.file_info.clone(),
+                            parser: props.opened_file.parser.clone(),
+                            analysis: analysis.clone(),
+                        })
+                    }
                 };
-                self.view = Some(view);
+                self.view = view;
+                true
+            }
+            FileM::ConfigChanged(cfg) => {
+                self.term_display = Rc::new(cfg.config.term_display.for_file(&props.file_info));
                 true
             }
 
-            FileM::NestedSidebar(sidebar) => {
-                self.nested_sidebar = sidebar;
-                true
-            }
-            FileM::NestedTopbar(topbar) => {
-                self.nested_topbar = topbar;
-                true
-            }
-            FileM::NestedOmnibox(omnibox) => {
-                self.nested_omnibox = omnibox;
+            FileM::NestedUpdate(update) => {
+                self.nested_screen.update(update);
                 true
             }
         }
     }
 
-    fn view(&self, link: &Scope<Self>, _props: &Self::Properties) -> Html {
-        let Some(view_props) = &self.view else {
-            return html! {"Overview"};
+    fn view(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Html {
+        let screen = match self.view.clone() {
+            ViewProps::Overview => {
+                html! { "Overview" }
+            }
+            ViewProps::Graph(initial) => self.nested_screen.view::<Graph>(initial),
+            ViewProps::MatchingLoop(initial) => self.nested_screen.view::<MatchingLoop>(initial),
         };
-        let sidebar = link.callback(FileM::NestedSidebar);
-        let topbar = link.callback(FileM::NestedTopbar);
-        let omnibox = link.callback(FileM::NestedOmnibox);
-        match view_props.clone() {
-            ViewProps::Graph(initial) => {
-                html! {<Manager<Graph> {sidebar} {topbar} {omnibox} {initial} />}
-            }
-            ViewProps::MatchingLoop(initial) => {
-                html! {<Manager<MatchingLoop> {sidebar} {topbar} {omnibox} {initial} />}
-            }
-        }
+        html! {<ContextProvider<Rc<TermDisplayContext>> context={self.term_display.clone()}>
+            {screen}
+        </ContextProvider<Rc<TermDisplayContext>>>}
     }
 
+    #[allow(refining_impl_trait_reachable)]
     fn view_sidebar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Sidebar {
         [self.get_current_trace()]
             .into_iter()
-            .chain(self.nested_sidebar.iter().cloned())
+            .chain(self.nested_screen.sidebar().iter().cloned())
             .collect()
     }
 
-    fn view_topbar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Topbar {
-        (*self.nested_topbar).clone()
+    #[allow(refining_impl_trait_reachable)]
+    fn view_topbar(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Rc<Topbar> {
+        self.nested_screen.topbar().clone()
     }
 
-    fn view_omnibox(&self, _link: &Scope<Self>, props: &Self::Properties) -> Omnibox {
+    #[allow(refining_impl_trait_reachable)]
+    fn view_omnibox(&self, _link: &Scope<Self>, props: &Self::Properties) -> MaybeRc<Omnibox> {
         let Ok(analysis) = &self.analysis else {
-            return (*self.nested_omnibox).clone();
+            let omnibox: Rc<Omnibox> = self.nested_screen.omnibox().clone();
+            return omnibox.into();
         };
         match analysis {
             AnalysisState::ConstructingGraph => {
@@ -226,11 +248,13 @@ impl Screen for File {
                     message,
                     loading,
                 })
+                .into()
             }
             AnalysisState::Failed(error) => Omnibox::Message(OmniboxMessage {
                 message: error.clone(),
                 kind: OmniboxMessageKind::Error,
-            }),
+            })
+            .into(),
         }
     }
 }

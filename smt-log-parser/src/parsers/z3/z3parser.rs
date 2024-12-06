@@ -531,6 +531,7 @@ impl Z3LogParser for Z3Parser {
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
 
+        debug_assert!(self[idx].kind.app_name().is_some());
         let created_by = self.inst_stack.last_mut();
         let iidx = created_by.as_ref().map(|(i, _)| *i);
         let enode = self

@@ -260,7 +260,6 @@ pub struct Node {
     kind: NodeKind,
     pub inst_parents: NextInsts,
     pub inst_children: NextInsts,
-    pub part_of_ml: FxHashSet<usize>,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -298,7 +297,6 @@ impl Node {
             kind,
             inst_parents: NextInsts::default(),
             inst_children: NextInsts::default(),
-            part_of_ml: FxHashSet::default(),
         }
     }
     pub fn kind(&self) -> &NodeKind {

@@ -1,10 +1,10 @@
-mod enums;
 pub mod extra;
 pub mod file;
-pub mod graph;
 pub mod graphviz;
 pub mod homepage;
+pub mod inst_graph;
 pub mod manager;
+pub mod maybe_rc;
 pub mod ml;
 
 use yew::Html;
@@ -12,9 +12,8 @@ use yew::Html;
 use self::{
     extra::{Omnibox, Sidebar, Topbar},
     manager::ScreenManager,
+    maybe_rc::MaybeRc,
 };
-
-pub use self::enums::*;
 
 pub type Manager<S> = ScreenManager<S>;
 pub type Scope<S> = yew::html::Scope<Manager<S>>;
@@ -23,7 +22,7 @@ pub trait Screen: Sized + 'static {
     /// Messages are used to make Components dynamic and interactive. Simple
     /// Component's can declare their Message type to be `()`. Complex Component's
     /// commonly use an enum to declare multiple Message types.
-    type Message: ScreenMessage;
+    type Message: 'static;
 
     /// The Component's properties.
     ///
@@ -86,12 +85,22 @@ pub trait Screen: Sized + 'static {
     fn view(&self, link: &Scope<Self>, props: &Self::Properties) -> Html;
 
     #[allow(unused_variables)]
-    fn view_sidebar(&self, link: &Scope<Self>, props: &Self::Properties) -> Sidebar {
+    #[allow(refining_impl_trait)]
+    fn view_sidebar(
+        &self,
+        link: &Scope<Self>,
+        props: &Self::Properties,
+    ) -> impl Into<MaybeRc<Sidebar>> {
         Vec::new()
     }
 
     #[allow(unused_variables)]
-    fn view_topbar(&self, link: &Scope<Self>, props: &Self::Properties) -> Topbar {
+    #[allow(refining_impl_trait)]
+    fn view_topbar(
+        &self,
+        link: &Scope<Self>,
+        props: &Self::Properties,
+    ) -> impl Into<MaybeRc<Topbar>> {
         Vec::new()
     }
 
@@ -99,7 +108,12 @@ pub trait Screen: Sized + 'static {
     /// temporary message in the omnibox use `link.omnibox_message(message,
     /// ms_duration)` instead.
     #[allow(unused_variables)]
-    fn view_omnibox(&self, link: &Scope<Self>, props: &Self::Properties) -> Omnibox {
+    #[allow(refining_impl_trait)]
+    fn view_omnibox(
+        &self,
+        link: &Scope<Self>,
+        props: &Self::Properties,
+    ) -> impl Into<MaybeRc<Omnibox>> {
         Omnibox::default()
     }
 

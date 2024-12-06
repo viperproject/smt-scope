@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
 use material_yew::linear_progress::{LinearProgressProps, MatLinearProgress};
-use yew::{function_component, html, use_context, use_node_ref, Callback, Html, Properties};
+use yew::{function_component, html, use_node_ref, Html, Properties};
 
 use crate::{
     infobars::{Dropdown, DropdownButton, DropdownContainer, History, MenuButton, Omnibox},
-    screen::extra::{self, OmniboxLoading},
-    state::StateProvider,
+    screen::extra::{self, OmniboxLoading, SimpleButton},
+    // state::StateProvider,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,14 +34,10 @@ impl OmniboxMessageKind {
 
 #[derive(PartialEq, Properties)]
 pub struct TopbarProps {
+    pub topbar: Rc<extra::Topbar>,
     pub omnibox: Rc<extra::Omnibox>,
     pub message: Option<OmniboxMessage>,
-
-    // pub search: Callback<String, Option<SearchActionResult>>,
-    // pub pick: Callback<(String, Kind), Option<Vec<RawNodeIndex>>>,
-    // pub select: Callback<RawNodeIndex>,
-    pub pick_nth_ml: Callback<usize>,
-    pub dropdowns: Vec<(&'static str, Html)>,
+    pub sidebar_closed: bool,
 }
 
 #[function_component]
@@ -75,16 +71,22 @@ pub fn Topbar(props: &TopbarProps) -> Html {
     let (dl, dm, dr) = (use_node_ref(), use_node_ref(), use_node_ref());
     let mut dropdown_left = Vec::<Html>::new();
     let mut dropdown_right = Vec::<Html>::new();
-    for (idx, &(label, ref html)) in props.dropdowns.iter().enumerate() {
+
+    for (idx, topbar_menu) in props.topbar.iter().enumerate() {
+        let elements = topbar_menu
+            .dropdown
+            .clone()
+            .into_iter()
+            .map(SimpleButton::to_html)
+            .collect::<Html>();
         dropdown_left.push(html! {<DropdownButton idx={idx as u32}>
-            <MenuButton {label} />
-            <Dropdown>{html.clone()}</Dropdown>
+            <MenuButton label={topbar_menu.button_text} />
+            <Dropdown>{elements}</Dropdown>
         </DropdownButton>});
     }
     dropdown_right.push(html! {<History />});
 
-    let state = use_context::<std::rc::Rc<StateProvider>>().expect("no ctx found");
-    let dl_class = if state.state.sidebar_closed {
+    let dl_class = if props.sidebar_closed {
         "menu-bar pad"
     } else {
         "menu-bar"

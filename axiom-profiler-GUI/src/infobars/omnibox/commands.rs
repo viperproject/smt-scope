@@ -153,16 +153,12 @@ impl CommandSearchResults {
         scroll_into_view: &'a NodeRef,
         onmousedown: &'a F,
     ) -> impl Iterator<Item = Html> + 'a {
-        let mut idx = 0;
-        let new_i = move || {
-            let i = idx;
-            idx += 1;
-            i
-        };
+        let mut numbers = 0..;
+        let mut next = move || numbers.next().unwrap();
         let query_len = self.query.len();
 
         self.commands.iter().map(move |command| {
-            let i = (!command.command.disabled).then(new_i);
+            let i = (!command.command.disabled).then(&mut next);
             let highlighted = Some(highlighted) == i;
             let class = if highlighted {
                 "omnibox-highlighted"

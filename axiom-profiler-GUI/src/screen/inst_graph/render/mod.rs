@@ -1,3 +1,5 @@
+pub mod warning;
+
 use std::rc::Rc;
 
 use petgraph::{
@@ -6,28 +8,29 @@ use petgraph::{
 };
 use smt_log_parser::{
     analysis::{visible::VisibleInstGraph, InstGraph, RawNodeIndex, VisibleEdgeIndex},
-    display_with::DisplayCtxt,
     FxHashMap, FxHashSet, Z3Parser,
 };
 use viz_js::VizInstance;
 use wasm_timer::Instant;
 
 use crate::{
-    configuration::ConfigurationContext,
-    results::{
-        filters::{Disabler, FilterOutputKind},
-        svg_result::GraphDimensions,
-    },
     screen::{
-        graph::visible::{GraphState, RenderedGraph},
+        extra::Omnibox,
         graphviz::{DotEdgeProperties, DotNodeProperties},
+        inst_graph::{
+            visible::{GraphState, RenderedGraph},
+            GraphDimensions,
+        },
         Scope,
     },
-    state::StateContext,
     utils::colouring::QuantIdxToColourMap,
 };
 
-use super::{filter::RenderCommand, visible::RcVisibleGraph, Graph, GraphM};
+use super::{
+    filter::{Disabler, RenderCommand},
+    visible::RcVisibleGraph,
+    Graph, GraphM,
+};
 
 impl Graph {
     pub(super) fn apply_filter(
@@ -55,18 +58,8 @@ impl Graph {
                 update_view = true;
                 self.filter.no_effects.push(idx);
             }
-            match output.kind {
-                FilterOutputKind::SelectNodes(to_select) => {
-                    if can_select {
-                        update_view |= self.set_to_select(to_select);
-                    }
-                }
-                FilterOutputKind::MatchingLoopGraph(ml_idx, graph) => {
-                    update_view = true;
-                    todo!()
-                    // ctx.link().send_message(Msg::RenderMLGraph(ml_idx, graph));
-                }
-                FilterOutputKind::Other => (),
+            if let Some(to_select) = output.select.filter(|_| can_select) {
+                update_view |= self.set_to_select(to_select);
             }
         }
         (cmd.is_first(), modified, update_view)
@@ -132,13 +125,6 @@ impl Graph {
         // further down the control chain.
         self.state = Ok(GraphState::GraphToDot);
         let filtered_graph = &visible.graph;
-        let cfg = link.get_configuration().unwrap();
-        let data = link.get_state().unwrap();
-        let ctxt = DisplayCtxt {
-            parser,
-            term_display: &data.state.term_display,
-            config: cfg.config.display,
-        };
 
         // Performance observations (default value is in [])
         //  - splines=false -> 38s | [splines=true] -> ??
@@ -189,10 +175,10 @@ impl Graph {
                     let node_data = &graph.raw[data.idx];
                     let all = node_data.kind().all(
                         (),
-                        (ctxt, false, None),
-                        ctxt.parser,
+                        parser,
+                        parser,
                         (data.hidden_parents, data.hidden_children),
-                        (ctxt.parser, colour_map),
+                        (parser, colour_map),
                         (),
                         (),
                     );
@@ -219,7 +205,7 @@ impl Graph {
                 }
             };
             let elapsed = start.elapsed();
-            log::info!(
+            log::trace!(
                 "Graph: Converting dot-String to SVG took {} seconds",
                 elapsed.as_secs()
             );
@@ -228,7 +214,7 @@ impl Graph {
                 svg,
                 selected_nodes,
                 selected_edges,
-                search: Rc::new(search),
+                search: Rc::new(Omnibox::Search(search)),
             };
             link.send_message(GraphM::RenderedGraph(rendered));
         });

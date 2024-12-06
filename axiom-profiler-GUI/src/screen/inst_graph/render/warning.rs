@@ -5,7 +5,7 @@ use material_yew::{
 use num_format::{Locale, ToFormattedString};
 use yew::{function_component, html, Callback, Html, Properties};
 
-use super::svg_result::GraphDimensions;
+use crate::screen::inst_graph::GraphDimensions;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct WarningProps {

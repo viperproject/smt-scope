@@ -1,4 +1,5 @@
 pub mod colouring;
+pub mod display_byte;
 pub mod indexer;
 pub mod lookup;
 pub mod overlay_page;

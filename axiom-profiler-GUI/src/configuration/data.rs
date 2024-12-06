@@ -4,7 +4,7 @@ use smt_log_parser::{
     formatter::TermDisplayContext,
 };
 
-use crate::state::FileInfo;
+use crate::screen::homepage::FileInfo;
 
 use super::ConfigurationProvider;
 
@@ -85,5 +85,15 @@ impl Default for TermDisplayContextFiles {
             general: TermDisplayContext::basic(),
             per_file: FxHashMap::default(),
         }
+    }
+}
+
+impl TermDisplayContextFiles {
+    pub fn for_file(&self, file: &FileInfo) -> TermDisplayContext {
+        let mut term_display = self.general.clone();
+        if let Some(per_file) = self.per_file.get(&file.name) {
+            term_display.extend(per_file);
+        }
+        term_display
     }
 }

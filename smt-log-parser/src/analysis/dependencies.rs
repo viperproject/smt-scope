@@ -37,13 +37,12 @@ impl QuantifierAnalysis {
                 .map(|_| QuantifierInfo::default())
                 .collect(),
         );
-        for (iidx, inst) in parser.insts.insts.iter_enumerated() {
-            let match_ = &parser.insts[inst.match_];
-            let Some(qidx) = match_.kind.quant_idx() else {
+        for data in parser.instantiations_data() {
+            let Some(qidx) = data.match_.kind.quant_idx() else {
                 continue;
             };
             let qinfo = &mut self_.0[qidx];
-            let ginst = &inst_graph.raw[iidx];
+            let ginst = &inst_graph.raw[data.iidx];
             qinfo.costs += ginst.cost;
             for &parent_iidx in ginst.parents.insts.iter() {
                 let parent_inst = &parser.insts[parent_iidx];

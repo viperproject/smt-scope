@@ -13,7 +13,7 @@ use crate::{
         inst_graph::{GraphM, SelectionM},
         Scope,
     },
-    utils::colouring::QuantIdxToColourMap,
+    utils::colouring::{QuantColourBox, QuantIdxToColourMap},
 };
 
 use super::Graph;
@@ -127,7 +127,7 @@ impl Graph {
                 search_text: search_text.to_string(),
                 post_text: String::new(),
                 info: html! {<>
-                    <div class="node-colour" style={format!("background-color: hsl({hue}, 79%, 76%)")}></div>
+                    <QuantColourBox {hue} />
                     {counter.visible.len().to_string()}{" shown / "}{counter.total().to_string()}
                 </>},
                 select_from: counter.visible.len(),

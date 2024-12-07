@@ -15,6 +15,7 @@ pub mod analysis;
 
 mod error;
 mod mem_dbg;
+mod util;
 
 pub use error::{Error, FResult, FatalError, Result};
 pub use mem_dbg::{
@@ -23,3 +24,4 @@ pub use mem_dbg::{
 };
 pub use parsers::z3::z3parser::Z3Parser;
 pub use parsers::LogParser;
+pub use util::*;

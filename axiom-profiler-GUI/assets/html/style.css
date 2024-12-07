@@ -247,11 +247,11 @@ mwc-dialog {
 .omnibox-dropdown .omnibox-options-container li .option-arguments {
     color: #ccc;
 }
-.omnibox-dropdown .omnibox-options-container li .node-colour {
+.node-colour {
     width: 0.5lh;
     height: 0.5lh;
     border: 1px solid #000;
-    margin-right: 0.25lh;
+    margin: 0 0.25lh;
 }
 .omnibox-dropdown .omnibox-options-container li .tag {
     border-radius: 10px;
@@ -364,6 +364,22 @@ li input.td-matcher, li input.td-formatter {
 .td-buttons {
     float: right;
 }
+
+/* Summary view */
+
+.summary {
+    display: inline;
+    padding: 10px;
+}
+.summary-all-data {
+    display: flex;
+}
+.summary-row {
+    display: flex;
+    align-items: center;
+}
+
+/* Graph view */
 
 .graph-info {
     width: 100%;

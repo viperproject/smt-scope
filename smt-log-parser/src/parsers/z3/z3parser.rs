@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     egraph::EGraph,
-    inst::Insts,
+    inst::{InstData, Insts},
     inter_line::{InterLine, LineKind},
     stack::Stack,
     stm2::EventLog,
@@ -891,6 +891,9 @@ impl Z3Parser {
     }
     pub fn instantiations(&self) -> &TiSlice<InstIdx, Instantiation> {
         &self.insts.insts
+    }
+    pub fn instantiations_data(&self) -> impl Iterator<Item = InstData<'_>> + '_ {
+        self.insts.instantiations()
     }
     pub fn terms(&self) -> &TiSlice<TermIdx, Term> {
         self.terms.app_terms.terms()

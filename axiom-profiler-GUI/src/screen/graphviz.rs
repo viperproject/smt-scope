@@ -197,7 +197,8 @@ impl
         match self {
             Instantiation(inst_idx) => {
                 let match_ = &parser[parser[*inst_idx].match_];
-                let hue = colour_map.get_rbg_hue(match_.kind.quant_idx()) / 360.0;
+                let hue = colour_map.get_rbg_hue(match_.kind.quant_idx());
+                let hue = hue.unwrap() / 360.0;
                 format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
             }
             ENode(..) => ENODE_COLOUR.to_owned(),
@@ -297,7 +298,7 @@ impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), &'_ QuantIdxToC
         match self {
             HiddenNode(..) => Default::default(),
             QI(sig, _) => {
-                let hue = ctx.get_rbg_hue(Some(sig.quantifier)) / 360.0;
+                let hue = ctx.get_rbg_hue(Some(sig.quantifier)).unwrap() / 360.0;
                 format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
             }
             FixedENode(..) | RecurringENode(..) => ENODE_COLOUR.to_owned(),

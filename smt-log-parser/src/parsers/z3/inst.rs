@@ -6,6 +6,13 @@ use crate::{
     FxHashMap, Result, TiVec,
 };
 
+pub struct InstData<'a> {
+    pub iidx: InstIdx,
+    pub inst: &'a Instantiation,
+    pub midx: MatchIdx,
+    pub match_: &'a Match,
+}
+
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
 pub struct Insts {
@@ -56,6 +63,27 @@ impl Insts {
 
     pub fn has_theory_solving_inst(&self) -> bool {
         self.has_theory_solving_inst
+    }
+
+    pub fn instantiations(&self) -> impl Iterator<Item = InstData<'_>> {
+        self.insts
+            .iter_enumerated()
+            .map(move |(iidx, inst)| self.get_inst_inner(iidx, inst))
+    }
+
+    pub fn get_inst(&self, iidx: InstIdx) -> InstData<'_> {
+        let inst = &self.insts[iidx];
+        self.get_inst_inner(iidx, inst)
+    }
+
+    fn get_inst_inner<'a>(&'a self, iidx: InstIdx, inst: &'a Instantiation) -> InstData<'a> {
+        let match_ = &self.matches[inst.match_];
+        InstData {
+            iidx,
+            inst,
+            midx: inst.match_,
+            match_,
+        }
     }
 }
 

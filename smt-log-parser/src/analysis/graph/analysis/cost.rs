@@ -5,10 +5,26 @@ use crate::{
         raw::{Node, NodeKind},
         RawNodeIndex,
     },
-    Z3Parser,
+    items::QuantIdx,
+    TiVec, Z3Parser,
 };
 
 use super::run::{Initialiser, TransferInitialiser};
+
+pub struct QuantCosts(pub(super) TiVec<QuantIdx, f64>);
+
+impl core::ops::Deref for QuantCosts {
+    type Target = TiVec<QuantIdx, f64>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl core::ops::DerefMut for QuantCosts {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 pub trait CostInitialiser {
     /// The starting value for a node.

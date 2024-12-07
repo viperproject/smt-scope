@@ -35,7 +35,7 @@ impl MlSignature {
         parser: &Z3Parser,
     ) -> FxHashMap<MlSignature, FxHashSet<InstIdx>> {
         let mut signatures = FxHashMap::<_, FxHashSet<_>>::default();
-        for (iidx, _) in parser.instantiations().iter_enumerated() {
+        for iidx in parser.instantiations().keys() {
             let Some(ml_sig) = MlSignature::new(parser, iidx) else {
                 continue;
             };

@@ -66,13 +66,12 @@ impl LogInfo {
     pub fn new(parser: &Z3Parser) -> Self {
         let mut quants = QuantsInfo(parser.quantifiers.iter().map(|_| 0).collect());
         let mut match_ = MatchesInfo::default();
-        for inst in parser.instantiations().iter() {
-            let match_i = &parser[inst.match_];
-            if let Some(qidx) = match_i.kind.quant_idx() {
+        for data in parser.instantiations_data() {
+            if let Some(qidx) = data.match_.kind.quant_idx() {
                 quants.0[qidx] += 1;
             }
             use crate::items::MatchKind::*;
-            match &match_i.kind {
+            match &data.match_.kind {
                 MBQI { .. } => match_.mbqi += 1,
                 TheorySolving { .. } => match_.theory_solving += 1,
                 Axiom { .. } => match_.axioms += 1,

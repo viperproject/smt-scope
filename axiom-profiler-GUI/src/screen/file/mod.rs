@@ -152,7 +152,10 @@ impl Screen for File {
                 let parser = props.parser.parser.borrow();
                 match InstGraph::new(&parser) {
                     Ok(graph) => {
-                        let data = AnalysisData { graph };
+                        let data = AnalysisData {
+                            costs: graph.quant_costs(&parser),
+                            graph,
+                        };
                         self.analysis = Err(RcAnalysis::new(data));
                     }
                     Err(err) => {
@@ -212,7 +215,7 @@ impl Screen for File {
     fn view(&self, _link: &Scope<Self>, props: &Self::Properties) -> Html {
         let screen = match self.view.clone() {
             ViewProps::Overview => {
-                html! { <Summary parser={props.parser.clone()} /> }
+                html! { <Summary parser={props.parser.clone()} analysis={self.analysis().cloned()} /> }
             }
             ViewProps::Graph(initial) => self.nested_screen.view::<Graph>(initial),
             ViewProps::MatchingLoop(initial) => self.nested_screen.view::<MatchingLoop>(initial),

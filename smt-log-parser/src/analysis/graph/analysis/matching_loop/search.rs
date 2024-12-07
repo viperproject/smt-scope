@@ -6,14 +6,12 @@ use crate::{
     Z3Parser,
 };
 
-use super::{MatchingLoop, MlData, MIN_MATCHING_LOOP_LENGTH};
+use super::{MatchingLoop, MlData, MlSignature, MIN_MATCHING_LOOP_LENGTH};
 
 impl InstGraph {
+    /// Search for matching loops in the graph.
     pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> &MlData {
-        let currently_disabled_nodes = self.disabled_nodes();
-        self.reset_disabled_to(parser, |_, _| false);
-
-        let signatures = self.collect_ml_signatures(parser);
+        let signatures = MlSignature::collect_ml_signatures(parser);
         // Collect all signatures instantiated at least `MIN_MATCHING_LOOP_LENGTH` times
         let mut signatures: Vec<_> = signatures
             .into_iter()
@@ -37,10 +35,8 @@ impl InstGraph {
             .collect();
         let analysis = analysis.finalise(topo, MIN_MATCHING_LOOP_LENGTH);
         let ml_data = analysis.ml_graphs(parser);
-        self.analysis.ml_data = Some(ml_data);
 
-        // make sure the enabled and disabled nodes stay the same as before calling the ML search
-        self.reset_disabled_to(parser, |nx, _| currently_disabled_nodes.contains(&nx));
+        self.analysis.ml_data = Some(ml_data);
         self.analysis.ml_data.as_ref().unwrap()
     }
 

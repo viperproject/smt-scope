@@ -148,7 +148,7 @@ impl Filter {
                 let node = &graph.raw.graph[*nx];
                 nodes_of_nth_matching_loop
                     .iter()
-                    .any(|n| node.inst_children.nodes.contains(n))
+                    .any(|n| node.children.insts.contains(n))
                 // && nodes_of_nth_matching_loop.iter().any(|n| {
                 //     node.inst_parents.nodes.contains(&n)
                 // })

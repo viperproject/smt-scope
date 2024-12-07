@@ -8,7 +8,7 @@ use crate::{
     Z3Parser,
 };
 
-use super::{Initialiser, TransferInitialiser};
+use super::run::{Initialiser, TransferInitialiser};
 
 pub trait CostInitialiser {
     /// The starting value for a node.

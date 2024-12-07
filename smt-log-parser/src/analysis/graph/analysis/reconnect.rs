@@ -5,7 +5,7 @@ use crate::{
     TiVec,
 };
 
-use super::TopoAnalysis;
+use super::run::TopoAnalysis;
 
 pub struct BwdReachableVisAnalysis;
 

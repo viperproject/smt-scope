@@ -258,8 +258,8 @@ pub struct Node {
     pub bwd_depth: Depth,
     pub subgraph: Option<(GraphIdx, u32)>,
     kind: NodeKind,
-    pub inst_parents: NextInsts,
-    pub inst_children: NextInsts,
+    pub parents: NextNodes,
+    pub children: NextNodes,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -281,9 +281,12 @@ pub struct Depth {
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Default)]
-pub struct NextInsts {
+pub struct NextNodes {
     /// What are the immediate next instantiation nodes
-    pub nodes: FxHashSet<InstIdx>,
+    pub insts: FxHashSet<InstIdx>,
+    /// How many parents/children does this node have (not-necessarily
+    /// instantiation nodes), walking through disabled nodes.
+    pub count: u32,
 }
 
 impl Node {
@@ -295,8 +298,8 @@ impl Node {
             bwd_depth: Depth::default(),
             subgraph: None,
             kind,
-            inst_parents: NextInsts::default(),
-            inst_children: NextInsts::default(),
+            parents: NextNodes::default(),
+            children: NextNodes::default(),
         }
     }
     pub fn kind(&self) -> &NodeKind {

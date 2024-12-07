@@ -9,15 +9,17 @@ use super::{
 };
 
 impl RawInstGraph {
-    pub fn reset_visibility_to(&mut self, hidden: bool) {
+    pub fn reset_visibility_to(&mut self, hidden: bool) -> bool {
         let state = if hidden {
             NodeState::Hidden
         } else {
             NodeState::Visible
         };
+        let mut modified = false;
         for node in self.graph.node_weights_mut().filter(|n| !n.disabled()) {
-            self.stats.set_state(node, state);
+            modified |= self.stats.set_state(node, state);
         }
+        modified
     }
     pub fn set_visibility(&mut self, hidden: bool, node: RawNodeIndex) -> bool {
         let node = &mut self.graph[node.0];
@@ -160,21 +162,21 @@ impl RawInstGraph {
 
 impl InstGraph {
     pub fn keep_first_n_cost(&mut self, n: usize) -> bool {
-        let cost = self.analysis.cost.iter().copied();
+        let (top_cost, other) = self.analysis.first_n_cost(&self.raw, n);
+        let cost = top_cost.iter().chain(other).copied();
         let cost = cost.chain(self.subgraphs.singletons());
         self.raw.keep_first_n(cost, n)
     }
     pub fn keep_first_n_children(&mut self, n: usize) -> bool {
-        let children = self.analysis.children.iter().copied();
+        let (top_children, other) = self.analysis.first_n_children(&self.raw, n);
+        let children = top_children.iter().chain(other).copied();
         let children = children.chain(self.subgraphs.singletons());
         self.raw.keep_first_n(children, n)
     }
     pub fn keep_first_n_fwd_depth_min(&mut self, n: usize) -> bool {
-        let fwd_depth_min = self.analysis.fwd_depth_min.iter().copied();
+        let (top_fwd_depth_min, other) = self.analysis.first_n_fwd_depth_min(&self.raw, n);
+        let fwd_depth_min = top_fwd_depth_min.iter().chain(other).copied();
         let fwd_depth_min = fwd_depth_min.chain(self.subgraphs.singletons());
         self.raw.keep_first_n(fwd_depth_min, n)
     }
-    // pub fn keep_first_n_max_depth(&mut self, n: usize) {
-    //     self.raw.keep_first_n(self.analysis.max_depth.iter().copied(), n)
-    // }
 }

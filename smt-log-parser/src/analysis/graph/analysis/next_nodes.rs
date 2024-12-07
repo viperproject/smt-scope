@@ -2,17 +2,17 @@ use petgraph::Direction;
 
 use crate::{
     analysis::{
-        raw::{NextInsts, Node, NodeKind},
+        raw::{NextNodes, Node, NodeKind},
         RawNodeIndex,
     },
     Z3Parser,
 };
 
-use super::{Initialiser, TransferInitialiser};
+use super::run::{Initialiser, TransferInitialiser};
 
 pub trait NextInstsInitialiser<const FORWARD: bool> {
     /// The starting value for a node.
-    fn base(&mut self, node: &Node, parser: &Z3Parser) -> NextInsts;
+    fn base(&mut self, node: &Node, parser: &Z3Parser) -> NextNodes;
     /// Called between initialisations of different subgraphs.
     fn reset(&mut self) {}
     type Observed;
@@ -23,10 +23,10 @@ pub trait NextInstsInitialiser<const FORWARD: bool> {
         from_idx: RawNodeIndex,
         to_idx: usize,
         to_all: &[Self::Observed],
-    ) -> NextInsts;
+    ) -> NextNodes;
 }
 impl<C: NextInstsInitialiser<FORWARD>, const FORWARD: bool> Initialiser<FORWARD, 2> for C {
-    type Value = NextInsts;
+    type Value = NextNodes;
     fn direction() -> Direction {
         if FORWARD {
             Direction::Outgoing
@@ -35,13 +35,13 @@ impl<C: NextInstsInitialiser<FORWARD>, const FORWARD: bool> Initialiser<FORWARD,
         }
     }
     fn base(&mut self, _node: &Node, _parser: &Z3Parser) -> Self::Value {
-        NextInsts::default()
+        NextNodes::default()
     }
     fn assign(&mut self, node: &mut Node, value: Self::Value) {
         if FORWARD {
-            node.inst_parents = value;
+            node.parents = value;
         } else {
-            node.inst_children = value;
+            node.children = value;
         }
     }
     fn reset(&mut self) {
@@ -63,18 +63,20 @@ impl<C: NextInstsInitialiser<FORWARD>, const FORWARD: bool> TransferInitialiser<
         NextInstsInitialiser::transfer(self, from, from_idx, to_idx, to_all)
     }
     fn add(&mut self, node: &mut Node, value: Self::Value) {
-        if FORWARD {
-            node.inst_parents.nodes.extend(value.nodes);
+        let node = if FORWARD {
+            &mut node.parents
         } else {
-            node.inst_children.nodes.extend(value.nodes);
-        }
+            &mut node.children
+        };
+        node.insts.extend(value.insts);
+        node.count += value.count;
     }
 }
 
 pub struct DefaultNextInsts<const FORWARD: bool>;
 impl<const FORWARD: bool> NextInstsInitialiser<FORWARD> for DefaultNextInsts<FORWARD> {
-    fn base(&mut self, _node: &Node, _parser: &Z3Parser) -> NextInsts {
-        NextInsts::default()
+    fn base(&mut self, _node: &Node, _parser: &Z3Parser) -> NextNodes {
+        NextNodes::default()
     }
     type Observed = ();
     fn observe(&mut self, _node: &Node, _parser: &Z3Parser) -> Self::Observed {}
@@ -84,18 +86,22 @@ impl<const FORWARD: bool> NextInstsInitialiser<FORWARD> for DefaultNextInsts<FOR
         _from_idx: RawNodeIndex,
         _idx: usize,
         _incoming: &[Self::Observed],
-    ) -> NextInsts {
-        match *node.kind() {
-            NodeKind::Instantiation(iidx) => NextInsts {
-                nodes: std::iter::once(iidx).collect(),
-            },
+    ) -> NextNodes {
+        let kind = *node.kind();
+        let nodes = match kind {
+            NodeKind::Instantiation(iidx) => std::iter::once(iidx).collect(),
             _ => {
                 if FORWARD {
-                    node.inst_parents.clone()
+                    node.parents.insts.clone()
                 } else {
-                    node.inst_children.clone()
+                    node.children.insts.clone()
                 }
             }
+        };
+        let count = if node.disabled() { 0 } else { 1 };
+        NextNodes {
+            insts: nodes,
+            count,
         }
     }
 }

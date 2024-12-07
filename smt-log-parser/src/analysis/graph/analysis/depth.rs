@@ -5,7 +5,7 @@ use crate::{
     Z3Parser,
 };
 
-use super::{CollectInitialiser, Initialiser};
+use super::run::{CollectInitialiser, Initialiser};
 
 pub trait DepthInitialiser<const FORWARD: bool> {
     /// The starting value for a node.

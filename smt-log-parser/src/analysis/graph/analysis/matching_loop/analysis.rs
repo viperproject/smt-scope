@@ -4,7 +4,7 @@ use std::cmp::Reverse;
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    analysis::{analysis::TopoAnalysis, raw::Node, InstGraph, RawNodeIndex},
+    analysis::{analysis::run::TopoAnalysis, raw::Node, InstGraph, RawNodeIndex},
     idx,
     items::{Blame, ENodeIdx, EqTransIdx, InstIdx, TermIdx},
     mem_dbg::InternMap,

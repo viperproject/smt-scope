@@ -1,4 +1,7 @@
-use std::{cmp::{Ordering, Reverse}, rc::Rc};
+use std::{
+    cmp::{Ordering, Reverse},
+    rc::Rc,
+};
 
 use gloo::timers::callback::Timeout;
 use yew::{html, Callback, Context, ContextHandle, Html, MouseEvent, NodeRef};

@@ -2,6 +2,7 @@ use std::{cell::RefCell, ops::Deref, rc::Rc};
 
 use gloo::file::File;
 use gloo_net::http::Response;
+use serde::{Deserialize, Serialize};
 use smt_log_parser::{
     parsers::{AsyncBufferRead, AsyncParser, ParseState, ReaderState, StreamParser},
     LogParser, Z3Parser,
@@ -15,7 +16,7 @@ use yew::{Callback, DragEvent};
 use crate::{
     global_callbacks::GlobalCallbacks,
     infobars::{OmniboxMessage, OmniboxMessageKind},
-    screen::{homepage::HomepageM, Scope},
+    screen::{file::SummaryAnalysis, homepage::HomepageM, Scope},
     utils::colouring::QuantIdxToColourMap,
     CallbackRef, OmniboxContext, PREVENT_DEFAULT_DRAG_OVER,
 };
@@ -39,10 +40,12 @@ impl Deref for RcParser {
 }
 
 impl RcParser {
-    pub fn new(parser: Z3Parser) -> Self {
+    pub fn new(parser: Box<Z3Parser>) -> Self {
         let colour_map = QuantIdxToColourMap::new(&parser);
+        let summary = SummaryAnalysis::new(&parser);
         let parser = Parser {
-            parser: RefCell::new(parser),
+            parser: RefCell::new(*parser),
+            summary,
             colour_map,
         };
         Self(Rc::new(parser))
@@ -51,6 +54,7 @@ impl RcParser {
 
 pub struct Parser {
     pub parser: RefCell<Z3Parser>,
+    pub summary: SummaryAnalysis,
     pub colour_map: QuantIdxToColourMap,
 }
 
@@ -63,6 +67,7 @@ pub enum LoadingState {
     Parsing(ParseProgress, Callback<()>),
     /// Stopped early, cancelled?
     DoneParsing(bool, bool),
+    SimpleAnalysis,
     FileDisplayed,
 }
 
@@ -111,31 +116,31 @@ impl ParseProgress {
     }
 }
 
-#[derive(Clone)]
 pub struct FileData {
     pub file_info: FileInfo,
-    pub opened: Option<OpenedFileInfo>,
+    pub opened: Option<Parse>,
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct FileInfo {
     pub name: String,
     pub size: Option<u64>,
 }
 
-#[derive(Clone)]
-pub struct OpenedFileInfo {
-    pub parser: RcParser,
+pub struct Parse {
+    pub parser: Result<Box<Z3Parser>, RcParser>,
+    pub info: ParseInfo,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParseInfo {
     pub state: ParseState<bool>,
     pub cancelled: bool,
 }
 
-impl PartialEq for OpenedFileInfo {
+impl PartialEq for ParseInfo {
     fn eq(&self, other: &Self) -> bool {
-        self.parser == other.parser
-            && core::mem::discriminant(&self.state) == core::mem::discriminant(&other.state)
+        core::mem::discriminant(&self.state) == core::mem::discriminant(&other.state)
             && self.cancelled == other.cancelled
     }
 }

@@ -6,6 +6,7 @@ use std::{cell::RefCell, rc::Rc, sync::Mutex};
 
 use gloo::file::{callbacks::FileReader, File, FileList};
 use gloo::net::http::Response;
+use gloo::timers::callback::Timeout;
 use material_yew::{dialog::MatDialog, WeakComponentLink};
 use smt_log_parser::{parsers::ParseState, Z3Parser};
 use web_sys::HtmlInputElement;
@@ -39,6 +40,13 @@ impl OverlayVisible {
     }
 }
 
+macro_rules! failed_opening {
+    ($link:expr, $s:tt$(; $e:expr)?) => {{
+        $link.send_message(HomepageM::FailedOpening(format!($s)));
+        $(return $e;)?
+    }};
+}
+
 pub struct Homepage {
     file_select: NodeRef,
     stop_loading: Rc<RefCell<bool>>,
@@ -62,10 +70,11 @@ impl Homepage {
         self.file.as_ref().map(|file| &file.file_info)
     }
 
-    pub fn opened_file(&self) -> Option<(&FileInfo, &OpenedFileInfo)> {
+    pub fn opened_file(&self) -> Option<(&FileInfo, &ParseInfo, &RcParser)> {
         self.file
             .as_ref()
-            .and_then(|file| file.opened.as_ref().map(|opened| (&file.file_info, opened)))
+            .and_then(|file| Some(&file.file_info).zip(file.opened.as_ref()))
+            .and_then(|(fi, opened)| opened.parser.as_ref().err().map(|p| (fi, &opened.info, p)))
     }
 }
 
@@ -76,6 +85,7 @@ pub enum HomepageM {
     LoadingState(LoadingState),
     FailedOpening(String),
     LoadedFile(Box<Z3Parser>, ParseState<bool>, bool),
+    SimpleAnalysis,
     CloseFile,
 
     OverlayVisible(bool),
@@ -165,8 +175,7 @@ impl Screen for Homepage {
                         Ok(response) => {
                             link.send_message(HomepageM::OpenedExample(example, response))
                         }
-                        Err(e) => link
-                            .send_message(HomepageM::FailedOpening(format!("Failed to load: {e}"))),
+                        Err(e) => failed_opening!(link, "Failed to load example: {e}"),
                     };
                 });
                 false
@@ -200,25 +209,42 @@ impl Screen for Homepage {
             HomepageM::LoadedFile(parser, state, cancelled) => {
                 drop(self.reader.take());
                 let Some(file) = &mut self.file else {
-                    link.send_message(HomepageM::FailedOpening(
-                        "Internal error, no file info found".to_string(),
-                    ));
-                    return false;
+                    failed_opening!(link, "Internal error, no file info found after parsing"; false);
                 };
                 if file.opened.is_some() {
-                    link.send_message(HomepageM::FailedOpening(
-                        "Internal error, file already loaded".to_string(),
-                    ));
-                    return false;
+                    failed_opening!(link, "Internal error, file already loaded"; false);
                 }
 
-                self.progress = LoadingState::FileDisplayed;
-                file.opened = Some(OpenedFileInfo {
-                    parser: RcParser::new(*parser),
-                    state,
-                    cancelled,
+                self.progress = LoadingState::SimpleAnalysis;
+                file.opened = Some(Parse {
+                    parser: Ok(parser),
+                    info: ParseInfo { state, cancelled },
                 });
                 let _ = self.navigation.ref_.collapse();
+
+                let link = link.clone();
+                Timeout::new(1, move || {
+                    link.send_message(HomepageM::SimpleAnalysis);
+                })
+                .forget();
+                true
+            }
+            HomepageM::SimpleAnalysis => {
+                let Some(FileData {
+                    opened: opened @ Some(_),
+                    ..
+                }) = &mut self.file
+                else {
+                    failed_opening!(link, "Internal error, no file info found for analysis"; false);
+                };
+                let mut parse = opened.take().unwrap();
+                let Ok(parser) = parse.parser else {
+                    *opened = Some(parse);
+                    failed_opening!(link, "Internal error, parser already analysed"; false);
+                };
+                parse.parser = Err(RcParser::new(parser));
+                self.progress = LoadingState::FileDisplayed;
+                *opened = Some(parse);
                 true
             }
             HomepageM::CloseFile => {
@@ -254,10 +280,11 @@ impl Screen for Homepage {
         let flags_visible_changed = link.callback(HomepageM::OverlayVisible);
 
         let screen = match self.opened_file() {
-            Some((info, opened)) => {
+            Some((file_info, parse_info, parser)) => {
                 let initial = FileProps {
-                    file_info: info.clone(),
-                    opened_file: opened.clone(),
+                    file_info: file_info.clone(),
+                    parse_info: parse_info.clone(),
+                    parser: parser.clone(),
                     overlay_visible: self.overlay_visible,
                 };
                 self.nested_screen.view::<super::file::File>(initial)
@@ -344,6 +371,10 @@ impl Screen for Homepage {
                     message = "Finished parsing".to_string();
                     loading.indeterminate = false;
                     loading.progress = 1.0;
+                }
+                LoadingState::SimpleAnalysis => {
+                    icon = "pending";
+                    message = "Analysing for summary".to_string();
                 }
                 // Should never be reached
                 LoadingState::FileDisplayed => return Omnibox::default().into(),

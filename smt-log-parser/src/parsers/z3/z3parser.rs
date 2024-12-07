@@ -841,7 +841,9 @@ impl Z3LogParser for Z3Parser {
         let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
+
         let from_cdcl = matches!(self.comm.prev().last_line_kind, LineKind::DecideAndOr);
+        let from_cdcl = from_cdcl || self.stack.is_speculative();
         self.stack.new_frame(scope, from_cdcl)?;
         self.events.new_push()?;
         Ok(())
@@ -865,7 +867,7 @@ impl Z3LogParser for Z3Parser {
     fn begin_check<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let scope = l.next().ok_or(Error::UnexpectedNewline)?;
         let scope = scope.parse::<usize>().map_err(Error::InvalidFrameInteger)?;
-        self.stack.ensure_height(scope, false)?;
+        self.stack.ensure_height(scope)?;
         self.events.new_begin_check()?;
         Ok(())
     }
@@ -1001,7 +1003,7 @@ impl std::ops::Index<EqTransIdx> for Z3Parser {
 impl std::ops::Index<StackIdx> for Z3Parser {
     type Output = StackFrame;
     fn index(&self, idx: StackIdx) -> &Self::Output {
-        &self.stack.stack_frames[idx]
+        &self.stack[idx]
     }
 }
 impl std::ops::Index<IString> for Z3Parser {

@@ -1,4 +1,5 @@
 mod analysis;
+mod summary;
 
 use std::rc::Rc;
 
@@ -18,7 +19,7 @@ use super::{
         Action, ElementKind, Omnibox, OmniboxLoading, Sidebar, SidebarSection, SidebarSectionRef,
         SimpleButton, Topbar,
     },
-    homepage::{FileInfo, OpenedFileInfo},
+    homepage::{FileInfo, ParseInfo, RcParser},
     inst_graph::{
         filter::{DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN},
         GraphProps,
@@ -29,18 +30,25 @@ use super::{
     Scope, Screen,
 };
 
-pub use self::analysis::*;
+pub use self::{analysis::*, summary::*};
 
 #[derive(Clone, PartialEq)]
 pub struct FileProps {
     pub file_info: FileInfo,
-    pub opened_file: OpenedFileInfo,
+    pub parse_info: ParseInfo,
+    pub parser: RcParser,
     pub overlay_visible: bool,
 }
 
 impl FileProps {
     pub fn timeout(&self) -> bool {
-        self.opened_file.state.is_timeout()
+        self.parse_info.state.is_timeout()
+    }
+
+    fn is_same_file(&self, other: &Self) -> bool {
+        self.file_info == other.file_info
+            && self.parse_info == other.parse_info
+            && self.parser == other.parser
     }
 }
 
@@ -128,7 +136,7 @@ impl Screen for File {
         props: &Self::Properties,
         old_props: &Self::Properties,
     ) -> bool {
-        if props.file_info != old_props.file_info || props.opened_file != old_props.opened_file {
+        if !props.is_same_file(old_props) {
             *self = Self::create(link, props);
         }
         true
@@ -141,7 +149,7 @@ impl Screen for File {
                     core::mem::replace(&mut self.analysis, Ok(AnalysisState::ConstructingGraph));
                 drop(old);
 
-                let parser = props.opened_file.parser.parser.borrow();
+                let parser = props.parser.parser.borrow();
                 match InstGraph::new(&parser) {
                     Ok(graph) => {
                         let data = AnalysisData { graph };
@@ -168,7 +176,7 @@ impl Screen for File {
                             return false;
                         };
                         ViewProps::Graph(GraphProps {
-                            parser: props.opened_file.parser.clone(),
+                            parser: props.parser.clone(),
                             analysis: analysis.clone(),
                             default_filters: DEFAULT_FILTER_CHAIN.to_vec(),
                             default_disablers: DEFAULT_DISABLER_CHAIN.to_vec(),
@@ -181,7 +189,7 @@ impl Screen for File {
                         };
                         ViewProps::MatchingLoop(MatchingLoopProps {
                             file: props.file_info.clone(),
-                            parser: props.opened_file.parser.clone(),
+                            parser: props.parser.clone(),
                             analysis: analysis.clone(),
                         })
                     }
@@ -201,10 +209,10 @@ impl Screen for File {
         }
     }
 
-    fn view(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Html {
+    fn view(&self, _link: &Scope<Self>, props: &Self::Properties) -> Html {
         let screen = match self.view.clone() {
             ViewProps::Overview => {
-                html! { "Overview" }
+                html! { <Summary parser={props.parser.clone()} /> }
             }
             ViewProps::Graph(initial) => self.nested_screen.view::<Graph>(initial),
             ViewProps::MatchingLoop(initial) => self.nested_screen.view::<MatchingLoop>(initial),
@@ -240,8 +248,7 @@ impl Screen for File {
                 } else {
                     "Analysing trace".to_string()
                 };
-                let mut loading = OmniboxLoading::indeterminate();
-                loading.progress = 1.0;
+                let loading = OmniboxLoading::indeterminate();
                 Omnibox::Loading(OmniboxLoading {
                     icon: "pending",
                     icon_mousedown: None,
@@ -281,7 +288,7 @@ impl File {
                 format!("{size:.0} {unit}")
             })
             .unwrap_or_else(|| "?".to_string());
-        let trace_info = match &props.opened_file.state {
+        let trace_info = match &props.parse_info.state {
             ParseState::Paused(_, state) => {
                 let (parse_size, parse_unit) = byte_size_display(state.bytes_read as f64);
                 format!(

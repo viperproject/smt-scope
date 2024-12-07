@@ -10,7 +10,7 @@ use super::MlgrOutput;
 
 impl MlgViewer {
     pub fn no_graph() -> Html {
-        html! { <h2>{"Failed to generalise repeating chain, likely not a matching loop."}</h2> }
+        html! { <h2>{"Failed to generalise repeating chain, might not be a matching loop."}</h2> }
     }
 }
 

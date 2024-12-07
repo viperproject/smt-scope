@@ -47,6 +47,9 @@ pub enum EqualityExpl {
 }
 
 impl EqualityExpl {
+    pub fn is_trivial(&self) -> bool {
+        self.from() == self.to()
+    }
     pub fn from(&self) -> ENodeIdx {
         use EqualityExpl::*;
         match *self {

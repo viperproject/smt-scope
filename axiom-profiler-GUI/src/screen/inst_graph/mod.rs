@@ -350,8 +350,7 @@ impl Screen for Graph {
         match &self.state {
             Ok(GraphState::GraphToDot | GraphState::RenderingGraph) => {
                 let message = "Rendering trace".to_string();
-                let mut loading = OmniboxLoading::indeterminate();
-                loading.progress = 1.0;
+                let loading = OmniboxLoading::indeterminate();
                 Omnibox::Loading(OmniboxLoading {
                     icon: "pending",
                     icon_mousedown: None,

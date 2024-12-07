@@ -1,0 +1,846 @@
+(set-option :print-success false)
+(set-info :smt-lib-version 2.6)
+(set-option :smt.AUTO_CONFIG false)
+(set-option :smt.PHASE_SELECTION 0)
+(set-option :smt.RESTART_STRATEGY 0)
+(set-option :smt.RESTART_FACTOR |1.5|)
+(set-option :smt.ARITH.RANDOM_INITIAL_VALUE true)
+(set-option :smt.CASE_SPLIT 3)
+(set-option :smt.DELAY_UNITS true)
+(set-option :NNF.SK_HACK true)
+(set-option :smt.MBQI false)
+(set-option :smt.QI.EAGER_THRESHOLD 100)
+(set-option :smt.BV.REFLECT true)
+(set-option :smt.qi.max_multi_patterns 1000)
+(set-option :smt.mbqi false)
+(set-option :model.compact false)
+(set-option :model.v2 true)
+(set-option :pp.bv_literals false)
+; done setting options
+
+
+(set-info :category "industrial")
+(declare-sort |T@U| 0)
+(declare-sort |T@T| 0)
+(declare-fun real_pow (Real Real) Real)
+(declare-fun UOrdering2 (|T@U| |T@U|) Bool)
+(declare-fun UOrdering3 (|T@T| |T@U| |T@U|) Bool)
+(declare-fun tickleBool (Bool) Bool)
+(assert (and (tickleBool true) (tickleBool false)))
+(declare-fun U_2_int (T@U) Int)
+(declare-fun U_2_bool (T@U) Bool)
+(declare-fun Ctor (T@T) Int)
+(declare-fun intType () T@T)
+(declare-fun realType () T@T)
+(declare-fun boolType () T@T)
+(declare-fun rmodeType () T@T)
+(declare-fun stringType () T@T)
+(declare-fun regexType () T@T)
+(declare-fun int_2_U (Int) T@U)
+(declare-fun type (T@U) T@T)
+(declare-fun real_2_U (Real) T@U)
+(declare-fun U_2_real (T@U) Real)
+(declare-fun bool_2_U (Bool) T@U)
+(declare-fun rmode_2_U (RoundingMode) T@U)
+(declare-fun U_2_rmode (T@U) RoundingMode)
+(declare-fun string_2_U (String) T@U)
+(declare-fun U_2_string (T@U) String)
+(declare-fun regex_2_U ((RegEx String)) T@U)
+(declare-fun U_2_regex (T@U) (RegEx String))
+(declare-fun $allocated () T@U)
+(declare-fun demo__ar () T@U)
+(declare-fun demo__tmp () T@U)
+(declare-fun Ref__Integer_value () T@U)
+(declare-fun FieldType (T@T T@T) T@T)
+(declare-fun FieldTypeInv0 (T@T) T@T)
+(declare-fun FieldTypeInv1 (T@T) T@T)
+(declare-fun NormalFieldType () T@T)
+(declare-fun SeqType (T@T) T@T)
+(declare-fun SeqTypeInv0 (T@T) T@T)
+(declare-fun RefType () T@T)
+(declare-fun |Seq#Length| (T@U) Int)
+(declare-fun |Seq#Drop| (T@U Int) T@U)
+(declare-fun succHeap (T@U T@U) Bool)
+(declare-fun MapType0Type (T@T) T@T)
+(declare-fun succHeapTrans (T@U T@U) Bool)
+(declare-fun MapType0TypeInv0 (T@T) T@T)
+(declare-fun MapType0Select (T@U T@U T@U) T@U)
+(declare-fun MapType0Store (T@U T@U T@U T@U) T@U)
+(declare-fun state (T@U T@U) Bool)
+(declare-fun MapType1Type (T@T T@T) T@T)
+(declare-fun GoodMask (T@U) Bool)
+(declare-fun MapType1TypeInv0 (T@T) T@T)
+(declare-fun MapType1TypeInv1 (T@T) T@T)
+(declare-fun MapType1Select (T@U T@U T@U) T@U)
+(declare-fun MapType1Store (T@U T@U T@U T@U) T@U)
+(declare-fun |demo__bin'| (T@U Int Int) Int)
+(declare-fun dummyFunction (T@U) Bool)
+(declare-fun |demo__bin#triggerStateless| (Int Int) Int)
+(declare-fun |Seq#Index| (T@U Int) T@U)
+(declare-fun |Seq#Sub| (Int Int) Int)
+(declare-fun |Seq#Add| (Int Int) Int)
+(declare-fun IdenticalOnKnownLocations (T@U T@U T@U) Bool)
+(declare-fun IsPredicateField (T@U) Bool)
+(declare-fun null () T@U)
+(declare-fun PredicateMaskField (T@U) T@U)
+(declare-fun FrameTypeType () T@T)
+(declare-fun HasDirectPerm (T@U T@U T@U) Bool)
+(declare-fun IsWandField (T@U) Bool)
+(declare-fun WandMaskField (T@U) T@U)
+(declare-fun |demo__bin#frame| (T@U Int Int) Int)
+(declare-fun EmptyFrame () T@U)
+(declare-fun |Seq#Update| (T@U Int T@U) T@U)
+(declare-fun |Seq#Take| (T@U Int) T@U)
+(declare-fun |Seq#Contains| (T@U T@U) Bool)
+(declare-fun |Seq#Range| (Int Int) T@U)
+(declare-fun |Seq#Skolem| (T@U T@U) Int)
+(declare-fun |Seq#Singleton| (T@U) T@U)
+(declare-fun |Seq#Empty| (T@T) T@U)
+(declare-fun dummyHeap () T@U)
+(declare-fun ZeroMask () T@U)
+(declare-fun InsidePredicate (T@U T@U T@U T@U) Bool)
+(declare-fun |Seq#Append| (T@U T@U) T@U)
+(declare-fun sumMask (T@U T@U T@U) Bool)
+(declare-fun ConditionalFrame (Real T@U) T@U)
+(declare-fun NoPerm () Real)
+(declare-fun demo__bin (T@U Int Int) Int)
+(declare-fun |Seq#Equal| (T@U T@U) Bool)
+(declare-fun |Seq#ContainsTrigger| (T@U T@U) Bool)
+(declare-fun FullPerm () Real)
+(declare-fun AssumeFunctionsAbove () Int)
+(declare-fun ZeroPMask () T@U)
+(declare-fun |Seq#SkolemDiff| (T@U T@U) Int)
+(assert  (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (= (Ctor intType) 0) (= (Ctor realType) 1)) (= (Ctor boolType) 2)) (= (Ctor rmodeType) 3)) (= (Ctor stringType) 4)) (= (Ctor regexType) 5)) (forall ((arg0 Int) ) (! (= (U_2_int (int_2_U arg0)) arg0)
+ :qid |typeInv:U_2_int|
+ :pattern ( (int_2_U arg0))
+))) (forall ((x T@U) ) (!  (=> (= (type x) intType) (= (int_2_U (U_2_int x)) x))
+ :qid |cast:U_2_int|
+ :pattern ( (U_2_int x))
+))) (forall ((arg0@@0 Int) ) (! (= (type (int_2_U arg0@@0)) intType)
+ :qid |funType:int_2_U|
+ :pattern ( (int_2_U arg0@@0))
+))) (forall ((arg0@@1 Real) ) (! (= (U_2_real (real_2_U arg0@@1)) arg0@@1)
+ :qid |typeInv:U_2_real|
+ :pattern ( (real_2_U arg0@@1))
+))) (forall ((x@@0 T@U) ) (!  (=> (= (type x@@0) realType) (= (real_2_U (U_2_real x@@0)) x@@0))
+ :qid |cast:U_2_real|
+ :pattern ( (U_2_real x@@0))
+))) (forall ((arg0@@2 Real) ) (! (= (type (real_2_U arg0@@2)) realType)
+ :qid |funType:real_2_U|
+ :pattern ( (real_2_U arg0@@2))
+))) (forall ((arg0@@3 Bool) ) (! (= (U_2_bool (bool_2_U arg0@@3)) arg0@@3)
+ :qid |typeInv:U_2_bool|
+ :pattern ( (bool_2_U arg0@@3))
+))) (forall ((x@@1 T@U) ) (!  (=> (= (type x@@1) boolType) (= (bool_2_U (U_2_bool x@@1)) x@@1))
+ :qid |cast:U_2_bool|
+ :pattern ( (U_2_bool x@@1))
+))) (forall ((arg0@@4 Bool) ) (! (= (type (bool_2_U arg0@@4)) boolType)
+ :qid |funType:bool_2_U|
+ :pattern ( (bool_2_U arg0@@4))
+))) (forall ((arg0@@5 RoundingMode) ) (! (= (U_2_rmode (rmode_2_U arg0@@5)) arg0@@5)
+ :qid |typeInv:U_2_rmode|
+ :pattern ( (rmode_2_U arg0@@5))
+))) (forall ((x@@2 T@U) ) (!  (=> (= (type x@@2) rmodeType) (= (rmode_2_U (U_2_rmode x@@2)) x@@2))
+ :qid |cast:U_2_rmode|
+ :pattern ( (U_2_rmode x@@2))
+))) (forall ((arg0@@6 RoundingMode) ) (! (= (type (rmode_2_U arg0@@6)) rmodeType)
+ :qid |funType:rmode_2_U|
+ :pattern ( (rmode_2_U arg0@@6))
+))) (forall ((arg0@@7 String) ) (! (= (U_2_string (string_2_U arg0@@7)) arg0@@7)
+ :qid |typeInv:U_2_string|
+ :pattern ( (string_2_U arg0@@7))
+))) (forall ((x@@3 T@U) ) (!  (=> (= (type x@@3) stringType) (= (string_2_U (U_2_string x@@3)) x@@3))
+ :qid |cast:U_2_string|
+ :pattern ( (U_2_string x@@3))
+))) (forall ((arg0@@8 String) ) (! (= (type (string_2_U arg0@@8)) stringType)
+ :qid |funType:string_2_U|
+ :pattern ( (string_2_U arg0@@8))
+))) (forall ((arg0@@9 (RegEx String)) ) (! (= (U_2_regex (regex_2_U arg0@@9)) arg0@@9)
+ :qid |typeInv:U_2_regex|
+ :pattern ( (regex_2_U arg0@@9))
+))) (forall ((x@@4 T@U) ) (!  (=> (= (type x@@4) regexType) (= (regex_2_U (U_2_regex x@@4)) x@@4))
+ :qid |cast:U_2_regex|
+ :pattern ( (U_2_regex x@@4))
+))) (forall ((arg0@@10 (RegEx String)) ) (! (= (type (regex_2_U arg0@@10)) regexType)
+ :qid |funType:regex_2_U|
+ :pattern ( (regex_2_U arg0@@10))
+))))
+(assert (forall ((x@@5 T@U) ) (! (UOrdering2 x@@5 x@@5)
+ :qid |bg:subtype-refl|
+ :no-pattern (U_2_int x@@5)
+ :no-pattern (U_2_bool x@@5)
+)))
+(assert (forall ((x@@6 T@U) (y T@U) (z T@U) ) (! (let ((alpha (type x@@6)))
+ (=> (and (and (= (type y) alpha) (= (type z) alpha)) (and (UOrdering2 x@@6 y) (UOrdering2 y z))) (UOrdering2 x@@6 z)))
+ :qid |bg:subtype-trans|
+ :pattern ( (UOrdering2 x@@6 y) (UOrdering2 y z))
+)))
+(assert (forall ((x@@7 T@U) (y@@0 T@U) ) (! (let ((alpha@@0 (type x@@7)))
+ (=> (= (type y@@0) alpha@@0) (=> (and (UOrdering2 x@@7 y@@0) (UOrdering2 y@@0 x@@7)) (= x@@7 y@@0))))
+ :qid |bg:subtype-antisymm|
+ :pattern ( (UOrdering2 x@@7 y@@0) (UOrdering2 y@@0 x@@7))
+)))
+(assert  (and (and (and (and (and (and (and (and (and (and (forall ((arg0@@11 T@T) (arg1 T@T) ) (! (= (Ctor (FieldType arg0@@11 arg1)) 6)
+ :qid |ctor:FieldType|
+)) (forall ((arg0@@12 T@T) (arg1@@0 T@T) ) (! (= (FieldTypeInv0 (FieldType arg0@@12 arg1@@0)) arg0@@12)
+ :qid |typeInv:FieldTypeInv0|
+ :pattern ( (FieldType arg0@@12 arg1@@0))
+))) (forall ((arg0@@13 T@T) (arg1@@1 T@T) ) (! (= (FieldTypeInv1 (FieldType arg0@@13 arg1@@1)) arg1@@1)
+ :qid |typeInv:FieldTypeInv1|
+ :pattern ( (FieldType arg0@@13 arg1@@1))
+))) (= (Ctor NormalFieldType) 7)) (= (type $allocated) (FieldType NormalFieldType boolType))) (forall ((arg0@@14 T@T) ) (! (= (Ctor (SeqType arg0@@14)) 8)
+ :qid |ctor:SeqType|
+))) (forall ((arg0@@15 T@T) ) (! (= (SeqTypeInv0 (SeqType arg0@@15)) arg0@@15)
+ :qid |typeInv:SeqTypeInv0|
+ :pattern ( (SeqType arg0@@15))
+))) (= (Ctor RefType) 9)) (= (type demo__ar) (FieldType NormalFieldType (SeqType RefType)))) (= (type demo__tmp) (FieldType NormalFieldType (SeqType RefType)))) (= (type Ref__Integer_value) (FieldType NormalFieldType intType))))
+(assert (distinct $allocated demo__ar demo__tmp Ref__Integer_value)
+)
+(assert (forall ((arg0@@16 T@U) (arg1@@2 Int) ) (! (let ((T (SeqTypeInv0 (type arg0@@16))))
+(= (type (|Seq#Drop| arg0@@16 arg1@@2)) (SeqType T)))
+ :qid |funType:Seq#Drop|
+ :pattern ( (|Seq#Drop| arg0@@16 arg1@@2))
+)))
+(assert (forall ((s T@U) (n Int) ) (! (let ((T@@0 (SeqTypeInv0 (type s))))
+ (=> (= (type s) (SeqType T@@0)) (and (=> (<= 0 n) (and (=> (<= n (|Seq#Length| s)) (= (|Seq#Length| (|Seq#Drop| s n)) (- (|Seq#Length| s) n))) (=> (< (|Seq#Length| s) n) (= (|Seq#Length| (|Seq#Drop| s n)) 0)))) (=> (< n 0) (= (|Seq#Length| (|Seq#Drop| s n)) (|Seq#Length| s))))))
+ :qid |stdinbpl.334:18|
+ :skolemid |38|
+ :pattern ( (|Seq#Length| (|Seq#Drop| s n)))
+ :pattern ( (|Seq#Length| s) (|Seq#Drop| s n))
+)))
+(assert  (and (and (and (and (and (forall ((arg0@@17 T@T) ) (! (= (Ctor (MapType0Type arg0@@17)) 10)
+ :qid |ctor:MapType0Type|
+)) (forall ((arg0@@18 T@T) ) (! (= (MapType0TypeInv0 (MapType0Type arg0@@18)) arg0@@18)
+ :qid |typeInv:MapType0TypeInv0|
+ :pattern ( (MapType0Type arg0@@18))
+))) (forall ((arg0@@19 T@U) (arg1@@3 T@U) (arg2 T@U) ) (! (let ((B (FieldTypeInv1 (type arg2))))
+(= (type (MapType0Select arg0@@19 arg1@@3 arg2)) B))
+ :qid |funType:MapType0Select|
+ :pattern ( (MapType0Select arg0@@19 arg1@@3 arg2))
+))) (forall ((arg0@@20 T@U) (arg1@@4 T@U) (arg2@@0 T@U) (arg3 T@U) ) (! (let ((aVar0 (type arg1@@4)))
+(= (type (MapType0Store arg0@@20 arg1@@4 arg2@@0 arg3)) (MapType0Type aVar0)))
+ :qid |funType:MapType0Store|
+ :pattern ( (MapType0Store arg0@@20 arg1@@4 arg2@@0 arg3))
+))) (forall ((m T@U) (x0 T@U) (x1 T@U) (val T@U) ) (! (let ((B@@0 (FieldTypeInv1 (type x1))))
+ (=> (= (type val) B@@0) (= (MapType0Select (MapType0Store m x0 x1 val) x0 x1) val)))
+ :qid |mapAx0:MapType0Select|
+ :weight 0
+))) (and (and (forall ((val@@0 T@U) (m@@0 T@U) (x0@@0 T@U) (x1@@0 T@U) (y0 T@U) (y1 T@U) ) (!  (or (= x0@@0 y0) (= (MapType0Select (MapType0Store m@@0 x0@@0 x1@@0 val@@0) y0 y1) (MapType0Select m@@0 y0 y1)))
+ :qid |mapAx1:MapType0Select:0|
+ :weight 0
+)) (forall ((val@@1 T@U) (m@@1 T@U) (x0@@1 T@U) (x1@@1 T@U) (y0@@0 T@U) (y1@@0 T@U) ) (!  (or (= x1@@1 y1@@0) (= (MapType0Select (MapType0Store m@@1 x0@@1 x1@@1 val@@1) y0@@0 y1@@0) (MapType0Select m@@1 y0@@0 y1@@0)))
+ :qid |mapAx1:MapType0Select:1|
+ :weight 0
+))) (forall ((val@@2 T@U) (m@@2 T@U) (x0@@2 T@U) (x1@@2 T@U) (y0@@1 T@U) (y1@@1 T@U) ) (!  (or true (= (MapType0Select (MapType0Store m@@2 x0@@2 x1@@2 val@@2) y0@@1 y1@@1) (MapType0Select m@@2 y0@@1 y1@@1)))
+ :qid |mapAx2:MapType0Select|
+ :weight 0
+)))))
+(assert (forall ((Heap0 T@U) (Heap1 T@U) ) (!  (=> (and (and (= (type Heap0) (MapType0Type RefType)) (= (type Heap1) (MapType0Type RefType))) (succHeap Heap0 Heap1)) (succHeapTrans Heap0 Heap1))
+ :qid |stdinbpl.88:15|
+ :skolemid |11|
+ :pattern ( (succHeap Heap0 Heap1))
+)))
+(assert  (and (and (and (and (and (and (forall ((arg0@@21 T@T) (arg1@@5 T@T) ) (! (= (Ctor (MapType1Type arg0@@21 arg1@@5)) 11)
+ :qid |ctor:MapType1Type|
+)) (forall ((arg0@@22 T@T) (arg1@@6 T@T) ) (! (= (MapType1TypeInv0 (MapType1Type arg0@@22 arg1@@6)) arg0@@22)
+ :qid |typeInv:MapType1TypeInv0|
+ :pattern ( (MapType1Type arg0@@22 arg1@@6))
+))) (forall ((arg0@@23 T@T) (arg1@@7 T@T) ) (! (= (MapType1TypeInv1 (MapType1Type arg0@@23 arg1@@7)) arg1@@7)
+ :qid |typeInv:MapType1TypeInv1|
+ :pattern ( (MapType1Type arg0@@23 arg1@@7))
+))) (forall ((arg0@@24 T@U) (arg1@@8 T@U) (arg2@@1 T@U) ) (! (let ((aVar1 (MapType1TypeInv1 (type arg0@@24))))
+(= (type (MapType1Select arg0@@24 arg1@@8 arg2@@1)) aVar1))
+ :qid |funType:MapType1Select|
+ :pattern ( (MapType1Select arg0@@24 arg1@@8 arg2@@1))
+))) (forall ((arg0@@25 T@U) (arg1@@9 T@U) (arg2@@2 T@U) (arg3@@0 T@U) ) (! (let ((aVar1@@0 (type arg3@@0)))
+(let ((aVar0@@0 (type arg1@@9)))
+(= (type (MapType1Store arg0@@25 arg1@@9 arg2@@2 arg3@@0)) (MapType1Type aVar0@@0 aVar1@@0))))
+ :qid |funType:MapType1Store|
+ :pattern ( (MapType1Store arg0@@25 arg1@@9 arg2@@2 arg3@@0))
+))) (forall ((m@@3 T@U) (x0@@3 T@U) (x1@@3 T@U) (val@@3 T@U) ) (! (let ((aVar1@@1 (MapType1TypeInv1 (type m@@3))))
+ (=> (= (type val@@3) aVar1@@1) (= (MapType1Select (MapType1Store m@@3 x0@@3 x1@@3 val@@3) x0@@3 x1@@3) val@@3)))
+ :qid |mapAx0:MapType1Select|
+ :weight 0
+))) (and (and (forall ((val@@4 T@U) (m@@4 T@U) (x0@@4 T@U) (x1@@4 T@U) (y0@@2 T@U) (y1@@2 T@U) ) (!  (or (= x0@@4 y0@@2) (= (MapType1Select (MapType1Store m@@4 x0@@4 x1@@4 val@@4) y0@@2 y1@@2) (MapType1Select m@@4 y0@@2 y1@@2)))
+ :qid |mapAx1:MapType1Select:0|
+ :weight 0
+)) (forall ((val@@5 T@U) (m@@5 T@U) (x0@@5 T@U) (x1@@5 T@U) (y0@@3 T@U) (y1@@3 T@U) ) (!  (or (= x1@@5 y1@@3) (= (MapType1Select (MapType1Store m@@5 x0@@5 x1@@5 val@@5) y0@@3 y1@@3) (MapType1Select m@@5 y0@@3 y1@@3)))
+ :qid |mapAx1:MapType1Select:1|
+ :weight 0
+))) (forall ((val@@6 T@U) (m@@6 T@U) (x0@@6 T@U) (x1@@6 T@U) (y0@@4 T@U) (y1@@4 T@U) ) (!  (or true (= (MapType1Select (MapType1Store m@@6 x0@@6 x1@@6 val@@6) y0@@4 y1@@4) (MapType1Select m@@6 y0@@4 y1@@4)))
+ :qid |mapAx2:MapType1Select|
+ :weight 0
+)))))
+(assert (forall ((Heap T@U) (Mask T@U) ) (!  (=> (and (and (= (type Heap) (MapType0Type RefType)) (= (type Mask) (MapType1Type RefType realType))) (state Heap Mask)) (GoodMask Mask))
+ :qid |stdinbpl.124:15|
+ :skolemid |15|
+ :pattern ( (state Heap Mask))
+)))
+(assert (forall ((Heap0@@0 T@U) (Heap1@@0 T@U) (Heap2 T@U) ) (!  (=> (and (and (and (= (type Heap0@@0) (MapType0Type RefType)) (= (type Heap1@@0) (MapType0Type RefType))) (= (type Heap2) (MapType0Type RefType))) (and (succHeapTrans Heap0@@0 Heap1@@0) (succHeap Heap1@@0 Heap2))) (succHeapTrans Heap0@@0 Heap2))
+ :qid |stdinbpl.93:15|
+ :skolemid |12|
+ :pattern ( (succHeapTrans Heap0@@0 Heap1@@0) (succHeap Heap1@@0 Heap2))
+)))
+(assert (forall ((Heap@@0 T@U) (N Int) (k Int) ) (!  (=> (= (type Heap@@0) (MapType0Type RefType)) (dummyFunction (int_2_U (|demo__bin#triggerStateless| N k))))
+ :qid |stdinbpl.625:15|
+ :skolemid |59|
+ :pattern ( (|demo__bin'| Heap@@0 N k))
+)))
+(assert (forall ((arg0@@26 T@U) (arg1@@10 Int) ) (! (let ((T@@1 (SeqTypeInv0 (type arg0@@26))))
+(= (type (|Seq#Index| arg0@@26 arg1@@10)) T@@1))
+ :qid |funType:Seq#Index|
+ :pattern ( (|Seq#Index| arg0@@26 arg1@@10))
+)))
+(assert (forall ((s@@0 T@U) (n@@0 Int) (j Int) ) (! (let ((T@@2 (SeqTypeInv0 (type s@@0))))
+ (=> (= (type s@@0) (SeqType T@@2)) (=> (and (and (< 0 n@@0) (<= 0 j)) (< j (- (|Seq#Length| s@@0) n@@0))) (and (= (|Seq#Sub| (|Seq#Add| j n@@0) n@@0) j) (= (|Seq#Index| (|Seq#Drop| s@@0 n@@0) j) (|Seq#Index| s@@0 (|Seq#Add| j n@@0)))))))
+ :qid |stdinbpl.355:18|
+ :skolemid |39|
+ :pattern ( (|Seq#Index| (|Seq#Drop| s@@0 n@@0) j))
+)))
+(assert  (and (and (= (Ctor FrameTypeType) 12) (= (type null) RefType)) (forall ((arg0@@27 T@U) ) (! (let ((A (FieldTypeInv0 (type arg0@@27))))
+(= (type (PredicateMaskField arg0@@27)) (FieldType A (MapType1Type RefType boolType))))
+ :qid |funType:PredicateMaskField|
+ :pattern ( (PredicateMaskField arg0@@27))
+))))
+(assert (forall ((Heap@@1 T@U) (ExhaleHeap T@U) (Mask@@0 T@U) (pm_f T@U) ) (! (let ((C (FieldTypeInv0 (type pm_f))))
+ (=> (and (and (and (and (and (= (type Heap@@1) (MapType0Type RefType)) (= (type ExhaleHeap) (MapType0Type RefType))) (= (type Mask@@0) (MapType1Type RefType realType))) (= (type pm_f) (FieldType C FrameTypeType))) (IdenticalOnKnownLocations Heap@@1 ExhaleHeap Mask@@0)) (and (HasDirectPerm Mask@@0 null pm_f) (IsPredicateField pm_f))) (= (MapType0Select Heap@@1 null (PredicateMaskField pm_f)) (MapType0Select ExhaleHeap null (PredicateMaskField pm_f)))))
+ :qid |stdinbpl.47:19|
+ :skolemid |2|
+ :pattern ( (IdenticalOnKnownLocations Heap@@1 ExhaleHeap Mask@@0) (IsPredicateField pm_f) (MapType0Select ExhaleHeap null (PredicateMaskField pm_f)))
+)))
+(assert (forall ((arg0@@28 T@U) ) (! (let ((A@@0 (FieldTypeInv0 (type arg0@@28))))
+(= (type (WandMaskField arg0@@28)) (FieldType A@@0 (MapType1Type RefType boolType))))
+ :qid |funType:WandMaskField|
+ :pattern ( (WandMaskField arg0@@28))
+)))
+(assert (forall ((Heap@@2 T@U) (ExhaleHeap@@0 T@U) (Mask@@1 T@U) (pm_f@@0 T@U) ) (! (let ((C@@0 (FieldTypeInv0 (type pm_f@@0))))
+ (=> (and (and (and (and (and (= (type Heap@@2) (MapType0Type RefType)) (= (type ExhaleHeap@@0) (MapType0Type RefType))) (= (type Mask@@1) (MapType1Type RefType realType))) (= (type pm_f@@0) (FieldType C@@0 FrameTypeType))) (IdenticalOnKnownLocations Heap@@2 ExhaleHeap@@0 Mask@@1)) (and (HasDirectPerm Mask@@1 null pm_f@@0) (IsWandField pm_f@@0))) (= (MapType0Select Heap@@2 null (WandMaskField pm_f@@0)) (MapType0Select ExhaleHeap@@0 null (WandMaskField pm_f@@0)))))
+ :qid |stdinbpl.60:19|
+ :skolemid |5|
+ :pattern ( (IdenticalOnKnownLocations Heap@@2 ExhaleHeap@@0 Mask@@1) (IsWandField pm_f@@0) (MapType0Select ExhaleHeap@@0 null (WandMaskField pm_f@@0)))
+)))
+(assert (= (type EmptyFrame) FrameTypeType))
+(assert (forall ((Heap@@3 T@U) (Mask@@2 T@U) (N@@0 Int) (k@@0 Int) ) (!  (=> (and (and (= (type Heap@@3) (MapType0Type RefType)) (= (type Mask@@2) (MapType1Type RefType realType))) (state Heap@@3 Mask@@2)) (= (|demo__bin'| Heap@@3 N@@0 k@@0) (|demo__bin#frame| EmptyFrame N@@0 k@@0)))
+ :qid |stdinbpl.638:15|
+ :skolemid |61|
+ :pattern ( (state Heap@@3 Mask@@2) (|demo__bin'| Heap@@3 N@@0 k@@0))
+)))
+(assert (forall ((arg0@@29 T@U) (arg1@@11 Int) (arg2@@3 T@U) ) (! (let ((T@@3 (type arg2@@3)))
+(= (type (|Seq#Update| arg0@@29 arg1@@11 arg2@@3)) (SeqType T@@3)))
+ :qid |funType:Seq#Update|
+ :pattern ( (|Seq#Update| arg0@@29 arg1@@11 arg2@@3))
+)))
+(assert (forall ((s@@1 T@U) (i Int) (v T@U) (n@@1 Int) ) (! (let ((T@@4 (type v)))
+ (=> (= (type s@@1) (SeqType T@@4)) (=> (and (<= 0 n@@1) (< n@@1 (|Seq#Length| s@@1))) (and (=> (= i n@@1) (= (|Seq#Index| (|Seq#Update| s@@1 i v) n@@1) v)) (=> (not (= i n@@1)) (= (|Seq#Index| (|Seq#Update| s@@1 i v) n@@1) (|Seq#Index| s@@1 n@@1)))))))
+ :qid |stdinbpl.310:18|
+ :skolemid |35|
+ :pattern ( (|Seq#Index| (|Seq#Update| s@@1 i v) n@@1))
+ :pattern ( (|Seq#Index| s@@1 n@@1) (|Seq#Update| s@@1 i v))
+)))
+(assert (forall ((arg0@@30 T@U) (arg1@@12 Int) ) (! (let ((T@@5 (SeqTypeInv0 (type arg0@@30))))
+(= (type (|Seq#Take| arg0@@30 arg1@@12)) (SeqType T@@5)))
+ :qid |funType:Seq#Take|
+ :pattern ( (|Seq#Take| arg0@@30 arg1@@12))
+)))
+(assert (forall ((s@@2 T@U) (n@@2 Int) ) (! (let ((T@@6 (SeqTypeInv0 (type s@@2))))
+ (=> (= (type s@@2) (SeqType T@@6)) (and (=> (<= 0 n@@2) (and (=> (<= n@@2 (|Seq#Length| s@@2)) (= (|Seq#Length| (|Seq#Take| s@@2 n@@2)) n@@2)) (=> (< (|Seq#Length| s@@2) n@@2) (= (|Seq#Length| (|Seq#Take| s@@2 n@@2)) (|Seq#Length| s@@2))))) (=> (< n@@2 0) (= (|Seq#Length| (|Seq#Take| s@@2 n@@2)) 0)))))
+ :qid |stdinbpl.321:18|
+ :skolemid |36|
+ :pattern ( (|Seq#Length| (|Seq#Take| s@@2 n@@2)))
+ :pattern ( (|Seq#Take| s@@2 n@@2) (|Seq#Length| s@@2))
+)))
+(assert (forall ((arg0@@31 Int) (arg1@@13 Int) ) (! (= (type (|Seq#Range| arg0@@31 arg1@@13)) (SeqType intType))
+ :qid |funType:Seq#Range|
+ :pattern ( (|Seq#Range| arg0@@31 arg1@@13))
+)))
+(assert (forall ((q@min Int) (q@max Int) (v@@0 T@U) ) (!  (=> (= (type v@@0) intType) (= (|Seq#Contains| (|Seq#Range| q@min q@max) v@@0)  (and (<= q@min (U_2_int v@@0)) (< (U_2_int v@@0) q@max))))
+ :qid |stdinbpl.594:15|
+ :skolemid |57|
+ :pattern ( (|Seq#Contains| (|Seq#Range| q@min q@max) v@@0))
+)))
+(assert (forall ((s@@3 T@U) (x@@8 T@U) ) (! (let ((T@@7 (type x@@8)))
+ (=> (and (= (type s@@3) (SeqType T@@7)) (|Seq#Contains| s@@3 x@@8)) (and (and (<= 0 (|Seq#Skolem| s@@3 x@@8)) (< (|Seq#Skolem| s@@3 x@@8) (|Seq#Length| s@@3))) (= (|Seq#Index| s@@3 (|Seq#Skolem| s@@3 x@@8)) x@@8))))
+ :qid |stdinbpl.452:18|
+ :skolemid |47|
+ :pattern ( (|Seq#Contains| s@@3 x@@8))
+)))
+(assert (forall ((Heap@@4 T@U) (ExhaleHeap@@1 T@U) (Mask@@3 T@U) (o_1 T@U) ) (!  (=> (and (and (and (and (and (= (type Heap@@4) (MapType0Type RefType)) (= (type ExhaleHeap@@1) (MapType0Type RefType))) (= (type Mask@@3) (MapType1Type RefType realType))) (= (type o_1) RefType)) (IdenticalOnKnownLocations Heap@@4 ExhaleHeap@@1 Mask@@3)) (U_2_bool (MapType0Select Heap@@4 o_1 $allocated))) (U_2_bool (MapType0Select ExhaleHeap@@1 o_1 $allocated)))
+ :qid |stdinbpl.73:15|
+ :skolemid |8|
+ :pattern ( (IdenticalOnKnownLocations Heap@@4 ExhaleHeap@@1 Mask@@3) (MapType0Select ExhaleHeap@@1 o_1 $allocated))
+)))
+(assert (forall ((s@@4 T@U) (n@@3 Int) ) (! (let ((T@@8 (SeqTypeInv0 (type s@@4))))
+ (=> (and (= (type s@@4) (SeqType T@@8)) (<= n@@3 0)) (= (|Seq#Drop| s@@4 n@@3) s@@4)))
+ :qid |stdinbpl.436:18|
+ :skolemid |45|
+ :pattern ( (|Seq#Drop| s@@4 n@@3))
+)))
+(assert (forall ((i@@0 Int) (j@@0 Int) ) (! (= (|Seq#Sub| i@@0 j@@0) (- i@@0 j@@0))
+ :qid |stdinbpl.290:15|
+ :skolemid |30|
+ :pattern ( (|Seq#Sub| i@@0 j@@0))
+)))
+(assert (forall ((i@@1 Int) (j@@1 Int) ) (! (= (|Seq#Add| i@@1 j@@1) (+ i@@1 j@@1))
+ :qid |stdinbpl.288:15|
+ :skolemid |29|
+ :pattern ( (|Seq#Add| i@@1 j@@1))
+)))
+(assert (forall ((arg0@@32 T@U) ) (! (let ((T@@9 (type arg0@@32)))
+(= (type (|Seq#Singleton| arg0@@32)) (SeqType T@@9)))
+ :qid |funType:Seq#Singleton|
+ :pattern ( (|Seq#Singleton| arg0@@32))
+)))
+(assert (forall ((x@@9 T@U) (y@@1 T@U) ) (! (let ((T@@10 (type x@@9)))
+ (=> (= (type y@@1) T@@10) (= (|Seq#Contains| (|Seq#Singleton| x@@9) y@@1) (= x@@9 y@@1))))
+ :qid |stdinbpl.577:18|
+ :skolemid |54|
+ :pattern ( (|Seq#Contains| (|Seq#Singleton| x@@9) y@@1))
+)))
+(assert (forall ((s@@5 T@U) (n@@4 Int) (j@@2 Int) ) (! (let ((T@@11 (SeqTypeInv0 (type s@@5))))
+ (=> (= (type s@@5) (SeqType T@@11)) (=> (and (and (<= 0 j@@2) (< j@@2 n@@4)) (< j@@2 (|Seq#Length| s@@5))) (= (|Seq#Index| (|Seq#Take| s@@5 n@@4) j@@2) (|Seq#Index| s@@5 j@@2)))))
+ :qid |stdinbpl.329:18|
+ :skolemid |37|
+ :pattern ( (|Seq#Index| (|Seq#Take| s@@5 n@@4) j@@2))
+ :pattern ( (|Seq#Index| s@@5 j@@2) (|Seq#Take| s@@5 n@@4))
+)))
+(assert (forall ((Heap@@5 T@U) (ExhaleHeap@@2 T@U) (Mask@@4 T@U) (o_1@@0 T@U) (f_2 T@U) ) (! (let ((B@@1 (FieldTypeInv1 (type f_2))))
+(let ((A@@1 (FieldTypeInv0 (type f_2))))
+ (=> (and (and (and (and (and (and (= (type Heap@@5) (MapType0Type RefType)) (= (type ExhaleHeap@@2) (MapType0Type RefType))) (= (type Mask@@4) (MapType1Type RefType realType))) (= (type o_1@@0) RefType)) (= (type f_2) (FieldType A@@1 B@@1))) (IdenticalOnKnownLocations Heap@@5 ExhaleHeap@@2 Mask@@4)) (HasDirectPerm Mask@@4 o_1@@0 f_2)) (= (MapType0Select Heap@@5 o_1@@0 f_2) (MapType0Select ExhaleHeap@@2 o_1@@0 f_2)))))
+ :qid |stdinbpl.42:22|
+ :skolemid |1|
+ :pattern ( (IdenticalOnKnownLocations Heap@@5 ExhaleHeap@@2 Mask@@4) (MapType0Select ExhaleHeap@@2 o_1@@0 f_2))
+)))
+(assert (forall ((T@@12 T@T) ) (! (= (type (|Seq#Empty| T@@12)) (SeqType T@@12))
+ :qid |funType:Seq#Empty|
+ :pattern ( (|Seq#Empty| T@@12))
+)))
+(assert (forall ((T@@13 T@T) ) (! (= (|Seq#Length| (|Seq#Empty| T@@13)) 0)
+ :skolemid |23|
+)))
+(assert  (and (= (type dummyHeap) (MapType0Type RefType)) (= (type ZeroMask) (MapType1Type RefType realType))))
+(assert (state dummyHeap ZeroMask))
+(assert (forall ((p T@U) (v_1 T@U) (w T@U) ) (! (let ((A@@2 (FieldTypeInv0 (type p))))
+ (=> (and (and (= (type p) (FieldType A@@2 FrameTypeType)) (= (type v_1) FrameTypeType)) (= (type w) FrameTypeType)) (not (InsidePredicate p v_1 p w))))
+ :qid |stdinbpl.233:19|
+ :skolemid |21|
+ :pattern ( (InsidePredicate p v_1 p w))
+)))
+(assert (forall ((arg0@@33 T@U) (arg1@@14 T@U) ) (! (let ((T@@14 (SeqTypeInv0 (type arg0@@33))))
+(= (type (|Seq#Append| arg0@@33 arg1@@14)) (SeqType T@@14)))
+ :qid |funType:Seq#Append|
+ :pattern ( (|Seq#Append| arg0@@33 arg1@@14))
+)))
+(assert (forall ((s0 T@U) (s1 T@U) (n@@5 Int) ) (! (let ((T@@15 (SeqTypeInv0 (type s0))))
+ (=> (and (= (type s0) (SeqType T@@15)) (= (type s1) (SeqType T@@15))) (=> (and (and (and (not (= s0 (|Seq#Empty| T@@15))) (not (= s1 (|Seq#Empty| T@@15)))) (<= (|Seq#Length| s0) n@@5)) (< n@@5 (|Seq#Length| (|Seq#Append| s0 s1)))) (and (= (|Seq#Add| (|Seq#Sub| n@@5 (|Seq#Length| s0)) (|Seq#Length| s0)) n@@5) (= (|Seq#Index| (|Seq#Append| s0 s1) n@@5) (|Seq#Index| s1 (|Seq#Sub| n@@5 (|Seq#Length| s0))))))))
+ :qid |stdinbpl.301:18|
+ :skolemid |32|
+ :pattern ( (|Seq#Index| (|Seq#Append| s0 s1) n@@5))
+)))
+(assert  (not (IsPredicateField demo__ar)))
+(assert  (not (IsWandField demo__ar)))
+(assert  (not (IsPredicateField demo__tmp)))
+(assert  (not (IsWandField demo__tmp)))
+(assert  (not (IsPredicateField Ref__Integer_value)))
+(assert  (not (IsWandField Ref__Integer_value)))
+(assert (forall ((Heap@@6 T@U) (ExhaleHeap@@3 T@U) (Mask@@5 T@U) ) (!  (=> (and (and (and (= (type Heap@@6) (MapType0Type RefType)) (= (type ExhaleHeap@@3) (MapType0Type RefType))) (= (type Mask@@5) (MapType1Type RefType realType))) (IdenticalOnKnownLocations Heap@@6 ExhaleHeap@@3 Mask@@5)) (succHeap Heap@@6 ExhaleHeap@@3))
+ :qid |stdinbpl.83:15|
+ :skolemid |10|
+ :pattern ( (IdenticalOnKnownLocations Heap@@6 ExhaleHeap@@3 Mask@@5))
+)))
+(assert (forall ((ResultMask T@U) (SummandMask1 T@U) (SummandMask2 T@U) (o_2 T@U) (f_4 T@U) ) (! (let ((B@@2 (FieldTypeInv1 (type f_4))))
+(let ((A@@3 (FieldTypeInv0 (type f_4))))
+ (=> (and (and (and (and (and (= (type ResultMask) (MapType1Type RefType realType)) (= (type SummandMask1) (MapType1Type RefType realType))) (= (type SummandMask2) (MapType1Type RefType realType))) (= (type o_2) RefType)) (= (type f_4) (FieldType A@@3 B@@2))) (sumMask ResultMask SummandMask1 SummandMask2)) (= (U_2_real (MapType1Select ResultMask o_2 f_4)) (+ (U_2_real (MapType1Select SummandMask1 o_2 f_4)) (U_2_real (MapType1Select SummandMask2 o_2 f_4)))))))
+ :qid |stdinbpl.138:22|
+ :skolemid |18|
+ :pattern ( (sumMask ResultMask SummandMask1 SummandMask2) (MapType1Select ResultMask o_2 f_4))
+ :pattern ( (sumMask ResultMask SummandMask1 SummandMask2) (MapType1Select SummandMask1 o_2 f_4))
+ :pattern ( (sumMask ResultMask SummandMask1 SummandMask2) (MapType1Select SummandMask2 o_2 f_4))
+)))
+(assert (forall ((arg0@@34 Real) (arg1@@15 T@U) ) (! (= (type (ConditionalFrame arg0@@34 arg1@@15)) FrameTypeType)
+ :qid |funType:ConditionalFrame|
+ :pattern ( (ConditionalFrame arg0@@34 arg1@@15))
+)))
+(assert (forall ((p@@0 Real) (f_6 T@U) ) (!  (=> (= (type f_6) FrameTypeType) (= (ConditionalFrame p@@0 f_6) (ite (> p@@0 0.0) f_6 EmptyFrame)))
+ :qid |stdinbpl.221:15|
+ :skolemid |19|
+ :pattern ( (ConditionalFrame p@@0 f_6))
+)))
+(assert (forall ((q@min@@0 Int) (q@max@@0 Int) (j@@3 Int) ) (!  (=> (and (<= 0 j@@3) (< j@@3 (- q@max@@0 q@min@@0))) (= (U_2_int (|Seq#Index| (|Seq#Range| q@min@@0 q@max@@0) j@@3)) (+ q@min@@0 j@@3)))
+ :qid |stdinbpl.592:15|
+ :skolemid |56|
+ :pattern ( (|Seq#Index| (|Seq#Range| q@min@@0 q@max@@0) j@@3))
+)))
+(assert (forall ((Mask@@6 T@U) (o_2@@0 T@U) (f_4@@0 T@U) ) (! (let ((B@@3 (FieldTypeInv1 (type f_4@@0))))
+(let ((A@@4 (FieldTypeInv0 (type f_4@@0))))
+ (=> (and (and (= (type Mask@@6) (MapType1Type RefType realType)) (= (type o_2@@0) RefType)) (= (type f_4@@0) (FieldType A@@4 B@@3))) (= (HasDirectPerm Mask@@6 o_2@@0 f_4@@0) (> (U_2_real (MapType1Select Mask@@6 o_2@@0 f_4@@0)) NoPerm)))))
+ :qid |stdinbpl.133:22|
+ :skolemid |17|
+ :pattern ( (HasDirectPerm Mask@@6 o_2@@0 f_4@@0))
+)))
+(assert (forall ((s0@@0 T@U) (s1@@0 T@U) ) (! (let ((T@@16 (SeqTypeInv0 (type s0@@0))))
+ (=> (and (and (= (type s0@@0) (SeqType T@@16)) (= (type s1@@0) (SeqType T@@16))) (and (not (= s0@@0 (|Seq#Empty| T@@16))) (not (= s1@@0 (|Seq#Empty| T@@16))))) (= (|Seq#Length| (|Seq#Append| s0@@0 s1@@0)) (+ (|Seq#Length| s0@@0) (|Seq#Length| s1@@0)))))
+ :qid |stdinbpl.270:18|
+ :skolemid |26|
+ :pattern ( (|Seq#Length| (|Seq#Append| s0@@0 s1@@0)))
+)))
+(assert (forall ((s@@6 T@U) (t T@U) (n@@6 Int) ) (! (let ((T@@17 (SeqTypeInv0 (type s@@6))))
+ (=> (and (and (= (type s@@6) (SeqType T@@17)) (= (type t) (SeqType T@@17))) (and (> n@@6 0) (> n@@6 (|Seq#Length| s@@6)))) (and (= (|Seq#Add| (|Seq#Sub| n@@6 (|Seq#Length| s@@6)) (|Seq#Length| s@@6)) n@@6) (= (|Seq#Drop| (|Seq#Append| s@@6 t) n@@6) (|Seq#Drop| t (|Seq#Sub| n@@6 (|Seq#Length| s@@6)))))))
+ :qid |stdinbpl.426:18|
+ :skolemid |44|
+ :pattern ( (|Seq#Drop| (|Seq#Append| s@@6 t) n@@6))
+)))
+(assert (forall ((Heap@@7 T@U) (N@@1 Int) (k@@1 Int) ) (!  (=> (= (type Heap@@7) (MapType0Type RefType)) (and (= (demo__bin Heap@@7 N@@1 k@@1) (|demo__bin'| Heap@@7 N@@1 k@@1)) (dummyFunction (int_2_U (|demo__bin#triggerStateless| N@@1 k@@1)))))
+ :qid |stdinbpl.621:15|
+ :skolemid |58|
+ :pattern ( (demo__bin Heap@@7 N@@1 k@@1))
+)))
+(assert (forall ((o_2@@1 T@U) (f_4@@1 T@U) ) (! (let ((B@@4 (FieldTypeInv1 (type f_4@@1))))
+(let ((A@@5 (FieldTypeInv0 (type f_4@@1))))
+ (=> (and (= (type o_2@@1) RefType) (= (type f_4@@1) (FieldType A@@5 B@@4))) (= (U_2_real (MapType1Select ZeroMask o_2@@1 f_4@@1)) NoPerm))))
+ :qid |stdinbpl.106:22|
+ :skolemid |13|
+ :pattern ( (MapType1Select ZeroMask o_2@@1 f_4@@1))
+)))
+(assert (forall ((s@@7 T@U) (t@@0 T@U) (n@@7 Int) ) (! (let ((T@@18 (SeqTypeInv0 (type s@@7))))
+ (=> (and (and (= (type s@@7) (SeqType T@@18)) (= (type t@@0) (SeqType T@@18))) (and (> n@@7 0) (> n@@7 (|Seq#Length| s@@7)))) (and (= (|Seq#Add| (|Seq#Sub| n@@7 (|Seq#Length| s@@7)) (|Seq#Length| s@@7)) n@@7) (= (|Seq#Take| (|Seq#Append| s@@7 t@@0) n@@7) (|Seq#Append| s@@7 (|Seq#Take| t@@0 (|Seq#Sub| n@@7 (|Seq#Length| s@@7))))))))
+ :qid |stdinbpl.413:18|
+ :skolemid |42|
+ :pattern ( (|Seq#Take| (|Seq#Append| s@@7 t@@0) n@@7))
+)))
+(assert (forall ((q@min@@1 Int) (q@max@@1 Int) ) (!  (and (=> (< q@min@@1 q@max@@1) (= (|Seq#Length| (|Seq#Range| q@min@@1 q@max@@1)) (- q@max@@1 q@min@@1))) (=> (<= q@max@@1 q@min@@1) (= (|Seq#Length| (|Seq#Range| q@min@@1 q@max@@1)) 0)))
+ :qid |stdinbpl.591:15|
+ :skolemid |55|
+ :pattern ( (|Seq#Length| (|Seq#Range| q@min@@1 q@max@@1)))
+)))
+(assert (forall ((a T@U) (b T@U) ) (! (let ((T@@19 (SeqTypeInv0 (type a))))
+ (=> (and (and (= (type a) (SeqType T@@19)) (= (type b) (SeqType T@@19))) (|Seq#Equal| a b)) (= a b)))
+ :qid |stdinbpl.564:18|
+ :skolemid |53|
+ :pattern ( (|Seq#Equal| a b))
+)))
+(assert (forall ((s@@8 T@U) (i@@2 Int) ) (! (let ((T@@20 (SeqTypeInv0 (type s@@8))))
+ (=> (= (type s@@8) (SeqType T@@20)) (=> (and (<= 0 i@@2) (< i@@2 (|Seq#Length| s@@8))) (|Seq#ContainsTrigger| s@@8 (|Seq#Index| s@@8 i@@2)))))
+ :qid |stdinbpl.457:18|
+ :skolemid |49|
+ :pattern ( (|Seq#Index| s@@8 i@@2))
+)))
+(assert (forall ((s0@@1 T@U) (s1@@1 T@U) ) (! (let ((T@@21 (SeqTypeInv0 (type s0@@1))))
+ (=> (and (= (type s0@@1) (SeqType T@@21)) (= (type s1@@1) (SeqType T@@21))) (and (=> (= s0@@1 (|Seq#Empty| T@@21)) (= (|Seq#Append| s0@@1 s1@@1) s1@@1)) (=> (= s1@@1 (|Seq#Empty| T@@21)) (= (|Seq#Append| s0@@1 s1@@1) s0@@1)))))
+ :qid |stdinbpl.276:18|
+ :skolemid |27|
+ :pattern ( (|Seq#Append| s0@@1 s1@@1))
+)))
+(assert (forall ((t@@1 T@U) ) (! (= (|Seq#Index| (|Seq#Singleton| t@@1) 0) t@@1)
+ :qid |stdinbpl.280:18|
+ :skolemid |28|
+ :pattern ( (|Seq#Singleton| t@@1))
+)))
+(assert (forall ((s@@9 T@U) ) (! (let ((T@@22 (SeqTypeInv0 (type s@@9))))
+ (=> (= (type s@@9) (SeqType T@@22)) (<= 0 (|Seq#Length| s@@9))))
+ :qid |stdinbpl.259:18|
+ :skolemid |22|
+ :pattern ( (|Seq#Length| s@@9))
+)))
+(assert (forall ((s0@@2 T@U) (s1@@2 T@U) ) (! (let ((T@@23 (SeqTypeInv0 (type s0@@2))))
+ (=> (and (and (= (type s0@@2) (SeqType T@@23)) (= (type s1@@2) (SeqType T@@23))) (|Seq#Equal| s0@@2 s1@@2)) (and (= (|Seq#Length| s0@@2) (|Seq#Length| s1@@2)) (forall ((j@@4 Int) ) (!  (=> (and (<= 0 j@@4) (< j@@4 (|Seq#Length| s0@@2))) (= (|Seq#Index| s0@@2 j@@4) (|Seq#Index| s1@@2 j@@4)))
+ :qid |stdinbpl.554:13|
+ :skolemid |50|
+ :pattern ( (|Seq#Index| s0@@2 j@@4))
+ :pattern ( (|Seq#Index| s1@@2 j@@4))
+)))))
+ :qid |stdinbpl.551:18|
+ :skolemid |51|
+ :pattern ( (|Seq#Equal| s0@@2 s1@@2))
+)))
+(assert (forall ((Heap@@8 T@U) (ExhaleHeap@@4 T@U) (Mask@@7 T@U) (pm_f@@1 T@U) ) (! (let ((C@@1 (FieldTypeInv0 (type pm_f@@1))))
+ (=> (and (and (and (and (and (= (type Heap@@8) (MapType0Type RefType)) (= (type ExhaleHeap@@4) (MapType0Type RefType))) (= (type Mask@@7) (MapType1Type RefType realType))) (= (type pm_f@@1) (FieldType C@@1 FrameTypeType))) (IdenticalOnKnownLocations Heap@@8 ExhaleHeap@@4 Mask@@7)) (and (HasDirectPerm Mask@@7 null pm_f@@1) (IsPredicateField pm_f@@1))) (forall ((o2 T@U) (f_2@@0 T@U) ) (! (let ((B@@5 (FieldTypeInv1 (type f_2@@0))))
+(let ((A@@6 (FieldTypeInv0 (type f_2@@0))))
+ (=> (and (and (= (type o2) RefType) (= (type f_2@@0) (FieldType A@@6 B@@5))) (U_2_bool (MapType1Select (MapType0Select Heap@@8 null (PredicateMaskField pm_f@@1)) o2 f_2@@0))) (= (MapType0Select Heap@@8 o2 f_2@@0) (MapType0Select ExhaleHeap@@4 o2 f_2@@0)))))
+ :qid |stdinbpl.54:134|
+ :skolemid |3|
+ :pattern ( (MapType0Select ExhaleHeap@@4 o2 f_2@@0))
+))))
+ :qid |stdinbpl.52:19|
+ :skolemid |4|
+ :pattern ( (IdenticalOnKnownLocations Heap@@8 ExhaleHeap@@4 Mask@@7) (IsPredicateField pm_f@@1))
+)))
+(assert (forall ((Heap@@9 T@U) (ExhaleHeap@@5 T@U) (Mask@@8 T@U) (pm_f@@2 T@U) ) (! (let ((C@@2 (FieldTypeInv0 (type pm_f@@2))))
+ (=> (and (and (and (and (and (= (type Heap@@9) (MapType0Type RefType)) (= (type ExhaleHeap@@5) (MapType0Type RefType))) (= (type Mask@@8) (MapType1Type RefType realType))) (= (type pm_f@@2) (FieldType C@@2 FrameTypeType))) (IdenticalOnKnownLocations Heap@@9 ExhaleHeap@@5 Mask@@8)) (and (HasDirectPerm Mask@@8 null pm_f@@2) (IsWandField pm_f@@2))) (forall ((o2@@0 T@U) (f_2@@1 T@U) ) (! (let ((B@@6 (FieldTypeInv1 (type f_2@@1))))
+(let ((A@@7 (FieldTypeInv0 (type f_2@@1))))
+ (=> (and (and (= (type o2@@0) RefType) (= (type f_2@@1) (FieldType A@@7 B@@6))) (U_2_bool (MapType1Select (MapType0Select Heap@@9 null (WandMaskField pm_f@@2)) o2@@0 f_2@@1))) (= (MapType0Select Heap@@9 o2@@0 f_2@@1) (MapType0Select ExhaleHeap@@5 o2@@0 f_2@@1)))))
+ :qid |stdinbpl.67:129|
+ :skolemid |6|
+ :pattern ( (MapType0Select ExhaleHeap@@5 o2@@0 f_2@@1))
+))))
+ :qid |stdinbpl.65:19|
+ :skolemid |7|
+ :pattern ( (IdenticalOnKnownLocations Heap@@9 ExhaleHeap@@5 Mask@@8) (IsWandField pm_f@@2))
+)))
+(assert (forall ((t@@2 T@U) ) (! (= (|Seq#Length| (|Seq#Singleton| t@@2)) 1)
+ :qid |stdinbpl.267:18|
+ :skolemid |25|
+ :pattern ( (|Seq#Singleton| t@@2))
+)))
+(assert (forall ((Mask@@9 T@U) (o_2@@2 T@U) (f_4@@2 T@U) ) (! (let ((B@@7 (FieldTypeInv1 (type f_4@@2))))
+(let ((A@@8 (FieldTypeInv0 (type f_4@@2))))
+ (=> (and (and (and (= (type Mask@@9) (MapType1Type RefType realType)) (= (type o_2@@2) RefType)) (= (type f_4@@2) (FieldType A@@8 B@@7))) (GoodMask Mask@@9)) (and (>= (U_2_real (MapType1Select Mask@@9 o_2@@2 f_4@@2)) NoPerm) (=> (and (and (GoodMask Mask@@9) (not (IsPredicateField f_4@@2))) (not (IsWandField f_4@@2))) (<= (U_2_real (MapType1Select Mask@@9 o_2@@2 f_4@@2)) FullPerm))))))
+ :qid |stdinbpl.128:22|
+ :skolemid |16|
+ :pattern ( (GoodMask Mask@@9) (MapType1Select Mask@@9 o_2@@2 f_4@@2))
+)))
+(assert (forall ((o T@U) (f T@U) (Heap@@10 T@U) ) (!  (=> (and (and (and (= (type o) RefType) (= (type f) (FieldType NormalFieldType RefType))) (= (type Heap@@10) (MapType0Type RefType))) (U_2_bool (MapType0Select Heap@@10 o $allocated))) (U_2_bool (MapType0Select Heap@@10 (MapType0Select Heap@@10 o f) $allocated)))
+ :qid |stdinbpl.31:15|
+ :skolemid |0|
+ :pattern ( (MapType0Select Heap@@10 o f))
+)))
+(assert (forall ((s@@10 T@U) (t@@3 T@U) (n@@8 Int) ) (! (let ((T@@24 (SeqTypeInv0 (type s@@10))))
+ (=> (and (and (= (type s@@10) (SeqType T@@24)) (= (type t@@3) (SeqType T@@24))) (and (< 0 n@@8) (<= n@@8 (|Seq#Length| s@@10)))) (= (|Seq#Take| (|Seq#Append| s@@10 t@@3) n@@8) (|Seq#Take| s@@10 n@@8))))
+ :qid |stdinbpl.409:18|
+ :skolemid |41|
+ :pattern ( (|Seq#Take| (|Seq#Append| s@@10 t@@3) n@@8))
+)))
+(assert (forall ((s@@11 T@U) (i@@3 Int) (v@@1 T@U) ) (! (let ((T@@25 (type v@@1)))
+ (=> (= (type s@@11) (SeqType T@@25)) (=> (and (<= 0 i@@3) (< i@@3 (|Seq#Length| s@@11))) (= (|Seq#Length| (|Seq#Update| s@@11 i@@3 v@@1)) (|Seq#Length| s@@11)))))
+ :qid |stdinbpl.308:18|
+ :skolemid |34|
+ :pattern ( (|Seq#Length| (|Seq#Update| s@@11 i@@3 v@@1)))
+ :pattern ( (|Seq#Length| s@@11) (|Seq#Update| s@@11 i@@3 v@@1))
+)))
+(assert (forall ((Heap@@11 T@U) (Mask@@10 T@U) (N@@2 Int) (k@@2 Int) ) (!  (=> (and (and (and (= (type Heap@@11) (MapType0Type RefType)) (= (type Mask@@10) (MapType1Type RefType realType))) (and (state Heap@@11 Mask@@10) (< AssumeFunctionsAbove 0))) (and (and (>= N@@2 0) (<= 0 k@@2)) (<= k@@2 N@@2))) (= (demo__bin Heap@@11 N@@2 k@@2) (ite  (or (= k@@2 0) (or (= k@@2 N@@2) (<= N@@2 0))) 1 (+ (|demo__bin'| Heap@@11 (- N@@2 1) (- k@@2 1)) (|demo__bin'| Heap@@11 (- N@@2 1) k@@2)))))
+ :qid |stdinbpl.631:15|
+ :skolemid |60|
+ :pattern ( (state Heap@@11 Mask@@10) (demo__bin Heap@@11 N@@2 k@@2))
+)))
+(assert (forall ((s@@12 T@U) (t@@4 T@U) (n@@9 Int) ) (! (let ((T@@26 (SeqTypeInv0 (type s@@12))))
+ (=> (and (and (= (type s@@12) (SeqType T@@26)) (= (type t@@4) (SeqType T@@26))) (and (< 0 n@@9) (<= n@@9 (|Seq#Length| s@@12)))) (= (|Seq#Drop| (|Seq#Append| s@@12 t@@4) n@@9) (|Seq#Append| (|Seq#Drop| s@@12 n@@9) t@@4))))
+ :qid |stdinbpl.422:18|
+ :skolemid |43|
+ :pattern ( (|Seq#Drop| (|Seq#Append| s@@12 t@@4) n@@9))
+)))
+(assert (forall ((s@@13 T@U) (n@@10 Int) (i@@4 Int) ) (! (let ((T@@27 (SeqTypeInv0 (type s@@13))))
+ (=> (= (type s@@13) (SeqType T@@27)) (=> (and (and (< 0 n@@10) (<= n@@10 i@@4)) (< i@@4 (|Seq#Length| s@@13))) (and (= (|Seq#Add| (|Seq#Sub| i@@4 n@@10) n@@10) i@@4) (= (|Seq#Index| (|Seq#Drop| s@@13 n@@10) (|Seq#Sub| i@@4 n@@10)) (|Seq#Index| s@@13 i@@4))))))
+ :qid |stdinbpl.359:18|
+ :skolemid |40|
+ :pattern ( (|Seq#Drop| s@@13 n@@10) (|Seq#Index| s@@13 i@@4))
+)))
+(assert (forall ((s0@@3 T@U) (s1@@3 T@U) (n@@11 Int) ) (! (let ((T@@28 (SeqTypeInv0 (type s0@@3))))
+ (=> (and (= (type s0@@3) (SeqType T@@28)) (= (type s1@@3) (SeqType T@@28))) (=> (and (and (and (not (= s0@@3 (|Seq#Empty| T@@28))) (not (= s1@@3 (|Seq#Empty| T@@28)))) (<= 0 n@@11)) (< n@@11 (|Seq#Length| s0@@3))) (= (|Seq#Index| (|Seq#Append| s0@@3 s1@@3) n@@11) (|Seq#Index| s0@@3 n@@11)))))
+ :qid |stdinbpl.299:18|
+ :skolemid |31|
+ :pattern ( (|Seq#Index| (|Seq#Append| s0@@3 s1@@3) n@@11))
+ :pattern ( (|Seq#Index| s0@@3 n@@11) (|Seq#Append| s0@@3 s1@@3))
+)))
+(assert (forall ((Heap@@12 T@U) (o@@0 T@U) (f_3 T@U) (v@@2 T@U) ) (! (let ((B@@8 (type v@@2)))
+(let ((A@@9 (FieldTypeInv0 (type f_3))))
+ (=> (and (and (= (type Heap@@12) (MapType0Type RefType)) (= (type o@@0) RefType)) (= (type f_3) (FieldType A@@9 B@@8))) (succHeap Heap@@12 (MapType0Store Heap@@12 o@@0 f_3 v@@2)))))
+ :qid |stdinbpl.78:22|
+ :skolemid |9|
+ :pattern ( (MapType0Store Heap@@12 o@@0 f_3 v@@2))
+)))
+(assert (forall ((s0@@4 T@U) (s1@@4 T@U) (m@@7 Int) ) (! (let ((T@@29 (SeqTypeInv0 (type s0@@4))))
+ (=> (and (= (type s0@@4) (SeqType T@@29)) (= (type s1@@4) (SeqType T@@29))) (=> (and (and (and (not (= s0@@4 (|Seq#Empty| T@@29))) (not (= s1@@4 (|Seq#Empty| T@@29)))) (<= 0 m@@7)) (< m@@7 (|Seq#Length| s1@@4))) (and (= (|Seq#Sub| (|Seq#Add| m@@7 (|Seq#Length| s0@@4)) (|Seq#Length| s0@@4)) m@@7) (= (|Seq#Index| (|Seq#Append| s0@@4 s1@@4) (|Seq#Add| m@@7 (|Seq#Length| s0@@4))) (|Seq#Index| s1@@4 m@@7))))))
+ :qid |stdinbpl.304:18|
+ :skolemid |33|
+ :pattern ( (|Seq#Index| s1@@4 m@@7) (|Seq#Append| s0@@4 s1@@4))
+)))
+(assert (= (type ZeroPMask) (MapType1Type RefType boolType)))
+(assert (forall ((o_2@@3 T@U) (f_4@@3 T@U) ) (! (let ((B@@9 (FieldTypeInv1 (type f_4@@3))))
+(let ((A@@10 (FieldTypeInv0 (type f_4@@3))))
+ (=> (and (= (type o_2@@3) RefType) (= (type f_4@@3) (FieldType A@@10 B@@9))) (not (U_2_bool (MapType1Select ZeroPMask o_2@@3 f_4@@3))))))
+ :qid |stdinbpl.112:22|
+ :skolemid |14|
+ :pattern ( (MapType1Select ZeroPMask o_2@@3 f_4@@3))
+)))
+(assert (forall ((s@@14 T@U) (x@@10 T@U) (i@@5 Int) ) (! (let ((T@@30 (type x@@10)))
+ (=> (= (type s@@14) (SeqType T@@30)) (=> (and (and (<= 0 i@@5) (< i@@5 (|Seq#Length| s@@14))) (= (|Seq#Index| s@@14 i@@5) x@@10)) (|Seq#Contains| s@@14 x@@10))))
+ :qid |stdinbpl.455:18|
+ :skolemid |48|
+ :pattern ( (|Seq#Contains| s@@14 x@@10) (|Seq#Index| s@@14 i@@5))
+)))
+(assert (forall ((s0@@5 T@U) (s1@@5 T@U) ) (! (let ((T@@31 (SeqTypeInv0 (type s0@@5))))
+ (=> (and (= (type s0@@5) (SeqType T@@31)) (= (type s1@@5) (SeqType T@@31))) (or (or (and (= s0@@5 s1@@5) (|Seq#Equal| s0@@5 s1@@5)) (and (and (not (= s0@@5 s1@@5)) (not (|Seq#Equal| s0@@5 s1@@5))) (not (= (|Seq#Length| s0@@5) (|Seq#Length| s1@@5))))) (and (and (and (and (and (and (not (= s0@@5 s1@@5)) (not (|Seq#Equal| s0@@5 s1@@5))) (= (|Seq#Length| s0@@5) (|Seq#Length| s1@@5))) (= (|Seq#SkolemDiff| s0@@5 s1@@5) (|Seq#SkolemDiff| s1@@5 s0@@5))) (<= 0 (|Seq#SkolemDiff| s0@@5 s1@@5))) (< (|Seq#SkolemDiff| s0@@5 s1@@5) (|Seq#Length| s0@@5))) (not (= (|Seq#Index| s0@@5 (|Seq#SkolemDiff| s0@@5 s1@@5)) (|Seq#Index| s1@@5 (|Seq#SkolemDiff| s0@@5 s1@@5))))))))
+ :qid |stdinbpl.559:18|
+ :skolemid |52|
+ :pattern ( (|Seq#Equal| s0@@5 s1@@5))
+)))
+(assert (forall ((p@@1 T@U) (v_1@@0 T@U) (q T@U) (w@@0 T@U) (r T@U) (u T@U) ) (! (let ((C@@3 (FieldTypeInv0 (type r))))
+(let ((B@@10 (FieldTypeInv0 (type q))))
+(let ((A@@11 (FieldTypeInv0 (type p@@1))))
+ (=> (and (and (and (and (and (and (= (type p@@1) (FieldType A@@11 FrameTypeType)) (= (type v_1@@0) FrameTypeType)) (= (type q) (FieldType B@@10 FrameTypeType))) (= (type w@@0) FrameTypeType)) (= (type r) (FieldType C@@3 FrameTypeType))) (= (type u) FrameTypeType)) (and (InsidePredicate p@@1 v_1@@0 q w@@0) (InsidePredicate q w@@0 r u))) (InsidePredicate p@@1 v_1@@0 r u)))))
+ :qid |stdinbpl.228:25|
+ :skolemid |20|
+ :pattern ( (InsidePredicate p@@1 v_1@@0 q w@@0) (InsidePredicate q w@@0 r u))
+)))
+(assert (forall ((s@@15 T@U) ) (! (let ((T@@32 (SeqTypeInv0 (type s@@15))))
+ (=> (and (= (type s@@15) (SeqType T@@32)) (= (|Seq#Length| s@@15) 0)) (= s@@15 (|Seq#Empty| T@@32))))
+ :qid |stdinbpl.263:18|
+ :skolemid |24|
+ :pattern ( (|Seq#Length| s@@15))
+)))
+(assert (forall ((s@@16 T@U) (n@@12 Int) ) (! (let ((T@@33 (SeqTypeInv0 (type s@@16))))
+ (=> (and (= (type s@@16) (SeqType T@@33)) (<= n@@12 0)) (= (|Seq#Take| s@@16 n@@12) (|Seq#Empty| T@@33))))
+ :qid |stdinbpl.438:18|
+ :skolemid |46|
+ :pattern ( (|Seq#Take| s@@16 n@@12))
+)))
+(assert (= NoPerm 0.0))
+(assert (= FullPerm 1.0))
+(push 1)
+(declare-fun ControlFlow (Int Int) Int)
+(declare-fun N@@3 () Int)
+(declare-fun tid () Int)
+(declare-fun PostHeap@0 () T@U)
+(declare-fun diz () T@U)
+(declare-fun this_barrier () Int)
+(declare-fun PostMask@10 () T@U)
+(declare-fun gsize () Int)
+(declare-fun sys__result () Int)
+(declare-fun PostMask@7 () T@U)
+(declare-fun PostMask@8 () T@U)
+(declare-fun PostMask@9 () T@U)
+(declare-fun PostMask@5 () T@U)
+(declare-fun PostMask@6 () T@U)
+(declare-fun PostMask@4 () T@U)
+(declare-fun PostMask@1 () T@U)
+(declare-fun PostMask@2 () T@U)
+(declare-fun PostMask@3 () T@U)
+(declare-fun tcount () Int)
+(declare-fun lid () Int)
+(declare-fun gid () Int)
+(declare-fun wildcard@2 () Real)
+(declare-fun PostMask@0 () T@U)
+(declare-fun wildcard@3 () Real)
+(declare-fun Mask@10 () T@U)
+(declare-fun Heap@@13 () T@U)
+(declare-fun last_barrier () Int)
+(declare-fun Mask@7 () T@U)
+(declare-fun Mask@8 () T@U)
+(declare-fun Mask@9 () T@U)
+(declare-fun Mask@5 () T@U)
+(declare-fun Mask@6 () T@U)
+(declare-fun Mask@4 () T@U)
+(declare-fun Mask@1 () T@U)
+(declare-fun Mask@2 () T@U)
+(declare-fun Mask@3 () T@U)
+(declare-fun wildcard@0 () Real)
+(declare-fun Mask@0 () T@U)
+(declare-fun wildcard@1 () Real)
+(declare-fun current_thread_id () Int)
+(declare-fun wildcard () Real)
+(assert  (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (= (type PostHeap@0) (MapType0Type RefType)) (= (type diz) RefType)) (= (type PostMask@10) (MapType1Type RefType realType))) (= (type PostMask@7) (MapType1Type RefType realType))) (= (type PostMask@8) (MapType1Type RefType realType))) (= (type PostMask@9) (MapType1Type RefType realType))) (= (type PostMask@4) (MapType1Type RefType realType))) (= (type PostMask@5) (MapType1Type RefType realType))) (= (type PostMask@6) (MapType1Type RefType realType))) (= (type PostMask@1) (MapType1Type RefType realType))) (= (type PostMask@2) (MapType1Type RefType realType))) (= (type PostMask@3) (MapType1Type RefType realType))) (= (type PostMask@0) (MapType1Type RefType realType))) (= (type Mask@10) (MapType1Type RefType realType))) (= (type Heap@@13) (MapType0Type RefType))) (= (type Mask@7) (MapType1Type RefType realType))) (= (type Mask@8) (MapType1Type RefType realType))) (= (type Mask@9) (MapType1Type RefType realType))) (= (type Mask@4) (MapType1Type RefType realType))) (= (type Mask@5) (MapType1Type RefType realType))) (= (type Mask@6) (MapType1Type RefType realType))) (= (type Mask@1) (MapType1Type RefType realType))) (= (type Mask@2) (MapType1Type RefType realType))) (= (type Mask@3) (MapType1Type RefType realType))) (= (type Mask@0) (MapType1Type RefType realType))))
+(set-info :boogie-vc-id demo__main_barrier)
+(set-option :timeout 0)
+(set-option :rlimit 0)
+(assert (not
+ (=> (= (ControlFlow 0 0) 204) (let ((anon121_Then_correct  (and (=> (= (ControlFlow 0 148) (- 0 150)) (>= N@@3 0)) (=> (>= N@@3 0) (and (=> (= (ControlFlow 0 148) (- 0 149)) (<= 0 tid)) (=> (<= 0 tid) (=> (= (ControlFlow 0 148) (- 0 147)) (<= tid N@@3))))))))
+(let ((anon128_Then_correct  (and (=> (= (ControlFlow 0 114) (- 0 116)) (>= N@@3 0)) (=> (>= N@@3 0) (and (=> (= (ControlFlow 0 114) (- 0 115)) (<= 0 tid)) (=> (<= 0 tid) (=> (= (ControlFlow 0 114) (- 0 113)) (<= tid N@@3))))))))
+(let ((anon139_Then_correct  (and (=> (= (ControlFlow 0 54) (- 0 56)) (>= N@@3 0)) (=> (>= N@@3 0) (and (=> (= (ControlFlow 0 54) (- 0 55)) (<= 0 (- tid 1))) (=> (<= 0 (- tid 1)) (=> (= (ControlFlow 0 54) (- 0 53)) (<= (- tid 1) N@@3))))))))
+(let ((anon142_Then_correct  (and (=> (= (ControlFlow 0 41) (- 0 43)) (>= N@@3 0)) (=> (>= N@@3 0) (and (=> (= (ControlFlow 0 41) (- 0 42)) (<= 0 tid)) (=> (<= 0 tid) (=> (= (ControlFlow 0 41) (- 0 40)) (<= tid N@@3))))))))
+(let ((anon148_Then_correct  (and (=> (= (ControlFlow 0 18) (- 0 20)) (>= N@@3 0)) (=> (>= N@@3 0) (and (=> (= (ControlFlow 0 18) (- 0 19)) (<= 0 tid)) (=> (<= 0 tid) (=> (= (ControlFlow 0 18) (- 0 17)) (<= tid N@@3))))))))
+(let ((anon70_correct true))
+(let ((anon69_correct  (=> (and (= (U_2_int (MapType0Select PostHeap@0 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value)) (ite (< tid N@@3) (demo__bin PostHeap@0 N@@3 tid) 1)) (= (ControlFlow 0 15) 13)) anon70_correct)))
+(let ((anon147_Then_correct  (=> (< tid N@@3) (and (=> (= (ControlFlow 0 21) 18) anon148_Then_correct) (=> (= (ControlFlow 0 21) 15) anon69_correct)))))
+(let ((anon147_Else_correct  (=> (and (<= N@@3 tid) (= (ControlFlow 0 16) 15)) anon69_correct)))
+(let ((anon146_Then_correct  (=> (and (= this_barrier 2) (state PostHeap@0 PostMask@10)) (and (=> (= (ControlFlow 0 22) (- 0 26)) (HasDirectPerm PostMask@10 diz demo__ar)) (=> (HasDirectPerm PostMask@10 diz demo__ar) (and (=> (= (ControlFlow 0 22) (- 0 25)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 22) (- 0 24)) (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar))) (and (=> (= (ControlFlow 0 22) (- 0 23)) (HasDirectPerm PostMask@10 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value)) (=> (HasDirectPerm PostMask@10 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value) (and (=> (= (ControlFlow 0 22) 21) anon147_Then_correct) (=> (= (ControlFlow 0 22) 16) anon147_Else_correct)))))))))))))
+(let ((anon146_Else_correct  (=> (and (not (= this_barrier 2)) (= (ControlFlow 0 14) 13)) anon70_correct)))
+(let ((anon65_correct  (=> (state PostHeap@0 PostMask@10) (and (=> (= (ControlFlow 0 27) 22) anon146_Then_correct) (=> (= (ControlFlow 0 27) 14) anon146_Else_correct)))))
+(let ((anon145_Else_correct  (=> (and (not (= this_barrier 2)) (= (ControlFlow 0 29) 27)) anon65_correct)))
+(let ((anon145_Then_correct  (=> (= this_barrier 2) (=> (and (< N@@3 gsize) (= (ControlFlow 0 28) 27)) anon65_correct))))
+(let ((anon63_correct  (=> (state PostHeap@0 PostMask@10) (and (=> (= (ControlFlow 0 30) 28) anon145_Then_correct) (=> (= (ControlFlow 0 30) 29) anon145_Else_correct)))))
+(let ((anon144_Else_correct  (=> (and (not (= this_barrier 2)) (= (ControlFlow 0 32) 30)) anon63_correct)))
+(let ((anon144_Then_correct  (=> (= this_barrier 2) (=> (and (< 0 N@@3) (= (ControlFlow 0 31) 30)) anon63_correct))))
+(let ((anon61_correct  (=> (state PostHeap@0 PostMask@10) (and (=> (= (ControlFlow 0 33) 31) anon144_Then_correct) (=> (= (ControlFlow 0 33) 32) anon144_Else_correct)))))
+(let ((anon143_Else_correct  (=> (and (not (= this_barrier 2)) (= (ControlFlow 0 35) 33)) anon61_correct)))
+(let ((anon143_Then_correct  (=> (= this_barrier 2) (=> (and (> gsize 1) (= (ControlFlow 0 34) 33)) anon61_correct))))
+(let ((anon59_correct  (=> (state PostHeap@0 PostMask@10) (and (=> (= (ControlFlow 0 36) 34) anon143_Then_correct) (=> (= (ControlFlow 0 36) 35) anon143_Else_correct)))))
+(let ((anon58_correct  (=> (and (= (U_2_int (MapType0Select PostHeap@0 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value)) (ite (< tid N@@3) (demo__bin PostHeap@0 N@@3 tid) 1)) (= (ControlFlow 0 38) 36)) anon59_correct)))
+(let ((anon141_Then_correct  (=> (< tid N@@3) (and (=> (= (ControlFlow 0 44) 41) anon142_Then_correct) (=> (= (ControlFlow 0 44) 38) anon58_correct)))))
+(let ((anon141_Else_correct  (=> (and (<= N@@3 tid) (= (ControlFlow 0 39) 38)) anon58_correct)))
+(let ((anon140_Then_correct  (=> (and (= this_barrier 1) (state PostHeap@0 PostMask@10)) (and (=> (= (ControlFlow 0 45) (- 0 49)) (HasDirectPerm PostMask@10 diz demo__ar)) (=> (HasDirectPerm PostMask@10 diz demo__ar) (and (=> (= (ControlFlow 0 45) (- 0 48)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 45) (- 0 47)) (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar))) (and (=> (= (ControlFlow 0 45) (- 0 46)) (HasDirectPerm PostMask@10 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value)) (=> (HasDirectPerm PostMask@10 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value) (and (=> (= (ControlFlow 0 45) 44) anon141_Then_correct) (=> (= (ControlFlow 0 45) 39) anon141_Else_correct)))))))))))))
+(let ((anon140_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 37) 36)) anon59_correct)))
+(let ((anon54_correct  (=> (state PostHeap@0 PostMask@10) (and (=> (= (ControlFlow 0 50) 45) anon140_Then_correct) (=> (= (ControlFlow 0 50) 37) anon140_Else_correct)))))
+(let ((anon139_Else_correct  (=> (and (= (U_2_int (MapType0Select PostHeap@0 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) (- tid 1)) Ref__Integer_value)) (demo__bin PostHeap@0 N@@3 (- tid 1))) (= (ControlFlow 0 57) 50)) anon54_correct)))
+(let ((anon138_Then_correct  (=> (and (and (< 0 tid) (<= tid N@@3)) (state PostHeap@0 PostMask@10)) (and (=> (= (ControlFlow 0 58) (- 0 62)) (HasDirectPerm PostMask@10 diz demo__tmp)) (=> (HasDirectPerm PostMask@10 diz demo__tmp) (and (=> (= (ControlFlow 0 58) (- 0 61)) (>= (- tid 1) 0)) (=> (>= (- tid 1) 0) (and (=> (= (ControlFlow 0 58) (- 0 60)) (< (- tid 1) (|Seq#Length| (MapType0Select PostHeap@0 diz demo__tmp)))) (=> (< (- tid 1) (|Seq#Length| (MapType0Select PostHeap@0 diz demo__tmp))) (and (=> (= (ControlFlow 0 58) (- 0 59)) (HasDirectPerm PostMask@10 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) (- tid 1)) Ref__Integer_value)) (=> (HasDirectPerm PostMask@10 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) (- tid 1)) Ref__Integer_value) (and (=> (= (ControlFlow 0 58) 54) anon139_Then_correct) (=> (= (ControlFlow 0 58) 57) anon139_Else_correct)))))))))))))
+(let ((anon138_Else_correct  (=> (and (not (and (< 0 tid) (<= tid N@@3))) (= (ControlFlow 0 52) 50)) anon54_correct)))
+(let ((anon137_Then_correct  (=> (= this_barrier 1) (and (=> (= (ControlFlow 0 63) 58) anon138_Then_correct) (=> (= (ControlFlow 0 63) 52) anon138_Else_correct)))))
+(let ((anon137_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 51) 50)) anon54_correct)))
+(let ((anon49_correct  (=> (state PostHeap@0 PostMask@10) (and (=> (= (ControlFlow 0 64) 63) anon137_Then_correct) (=> (= (ControlFlow 0 64) 51) anon137_Else_correct)))))
+(let ((anon136_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 66) 64)) anon49_correct)))
+(let ((anon136_Then_correct  (=> (= this_barrier 1) (=> (and (< N@@3 gsize) (= (ControlFlow 0 65) 64)) anon49_correct))))
+(let ((anon47_correct  (=> (state PostHeap@0 PostMask@10) (and (=> (= (ControlFlow 0 67) 65) anon136_Then_correct) (=> (= (ControlFlow 0 67) 66) anon136_Else_correct)))))
+(let ((anon135_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 69) 67)) anon47_correct)))
+(let ((anon135_Then_correct  (=> (= this_barrier 1) (=> (and (< 0 N@@3) (= (ControlFlow 0 68) 67)) anon47_correct))))
+(let ((anon45_correct  (=> (state PostHeap@0 PostMask@10) (and (=> (= (ControlFlow 0 70) 68) anon135_Then_correct) (=> (= (ControlFlow 0 70) 69) anon135_Else_correct)))))
+(let ((anon134_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 72) 70)) anon45_correct)))
+(let ((anon134_Then_correct  (=> (= this_barrier 1) (=> (and (> gsize 1) (= (ControlFlow 0 71) 70)) anon45_correct))))
+(let ((anon43_correct  (=> (state PostHeap@0 PostMask@10) (=> (and (= sys__result this_barrier) (state PostHeap@0 PostMask@10)) (and (=> (= (ControlFlow 0 73) 71) anon134_Then_correct) (=> (= (ControlFlow 0 73) 72) anon134_Else_correct))))))
+(let ((anon133_Else_correct  (=> (not (= sys__result 0)) (=> (and (= PostMask@10 PostMask@7) (= (ControlFlow 0 81) 73)) anon43_correct))))
+(let ((anon133_Then_correct  (=> (= sys__result 0) (and (=> (= (ControlFlow 0 74) (- 0 80)) (HasDirectPerm PostMask@7 diz demo__ar)) (=> (HasDirectPerm PostMask@7 diz demo__ar) (and (=> (= (ControlFlow 0 74) (- 0 79)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 74) (- 0 78)) (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar))) (=> (not (= (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) null)) (=> (and (= PostMask@8 (MapType1Store PostMask@7 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select PostMask@7 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value)) FullPerm)))) (state PostHeap@0 PostMask@8)) (and (=> (= (ControlFlow 0 74) (- 0 77)) (HasDirectPerm PostMask@8 diz demo__tmp)) (=> (HasDirectPerm PostMask@8 diz demo__tmp) (and (=> (= (ControlFlow 0 74) (- 0 76)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 74) (- 0 75)) (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__tmp)))) (=> (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__tmp))) (=> (not (= (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) tid) null)) (=> (and (and (= PostMask@9 (MapType1Store PostMask@8 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select PostMask@8 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) tid) Ref__Integer_value)) FullPerm)))) (state PostHeap@0 PostMask@9)) (and (= PostMask@10 PostMask@9) (= (ControlFlow 0 74) 73))) anon43_correct)))))))))))))))))))
+(let ((anon41_correct  (=> (state PostHeap@0 PostMask@7) (and (=> (= (ControlFlow 0 82) 74) anon133_Then_correct) (=> (= (ControlFlow 0 82) 81) anon133_Else_correct)))))
+(let ((anon132_Else_correct  (=> (>= 0 tid) (=> (and (= PostMask@7 PostMask@5) (= (ControlFlow 0 88) 82)) anon41_correct))))
+(let ((anon132_Then_correct  (=> (> tid 0) (and (=> (= (ControlFlow 0 84) (- 0 87)) (HasDirectPerm PostMask@5 diz demo__tmp)) (=> (HasDirectPerm PostMask@5 diz demo__tmp) (and (=> (= (ControlFlow 0 84) (- 0 86)) (>= (- tid 1) 0)) (=> (>= (- tid 1) 0) (and (=> (= (ControlFlow 0 84) (- 0 85)) (< (- tid 1) (|Seq#Length| (MapType0Select PostHeap@0 diz demo__tmp)))) (=> (< (- tid 1) (|Seq#Length| (MapType0Select PostHeap@0 diz demo__tmp))) (=> (not (= (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) (- tid 1)) null)) (=> (and (and (= PostMask@6 (MapType1Store PostMask@5 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) (- tid 1)) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select PostMask@5 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) (- tid 1)) Ref__Integer_value)) FullPerm)))) (state PostHeap@0 PostMask@6)) (and (= PostMask@7 PostMask@6) (= (ControlFlow 0 84) 82))) anon41_correct)))))))))))
+(let ((anon131_Then_correct  (=> (= sys__result 1) (and (=> (= (ControlFlow 0 89) (- 0 92)) (HasDirectPerm PostMask@4 diz demo__ar)) (=> (HasDirectPerm PostMask@4 diz demo__ar) (and (=> (= (ControlFlow 0 89) (- 0 91)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 89) (- 0 90)) (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar))) (=> (not (= (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) null)) (=> (and (= PostMask@5 (MapType1Store PostMask@4 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select PostMask@4 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value)) FullPerm)))) (state PostHeap@0 PostMask@5)) (and (=> (= (ControlFlow 0 89) 84) anon132_Then_correct) (=> (= (ControlFlow 0 89) 88) anon132_Else_correct)))))))))))))
+(let ((anon131_Else_correct  (=> (not (= sys__result 1)) (=> (and (= PostMask@7 PostMask@4) (= (ControlFlow 0 83) 82)) anon41_correct))))
+(let ((anon38_correct  (=> (state PostHeap@0 PostMask@4) (and (=> (= (ControlFlow 0 93) 89) anon131_Then_correct) (=> (= (ControlFlow 0 93) 83) anon131_Else_correct)))))
+(let ((anon130_Else_correct  (=> (not (= sys__result 2)) (=> (and (= PostMask@4 PostMask@1) (= (ControlFlow 0 101) 93)) anon38_correct))))
+(let ((anon130_Then_correct  (=> (= sys__result 2) (and (=> (= (ControlFlow 0 94) (- 0 100)) (HasDirectPerm PostMask@1 diz demo__ar)) (=> (HasDirectPerm PostMask@1 diz demo__ar) (and (=> (= (ControlFlow 0 94) (- 0 99)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 94) (- 0 98)) (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar))) (=> (not (= (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) null)) (=> (and (= PostMask@2 (MapType1Store PostMask@1 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select PostMask@1 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__ar) tid) Ref__Integer_value)) FullPerm)))) (state PostHeap@0 PostMask@2)) (and (=> (= (ControlFlow 0 94) (- 0 97)) (HasDirectPerm PostMask@2 diz demo__tmp)) (=> (HasDirectPerm PostMask@2 diz demo__tmp) (and (=> (= (ControlFlow 0 94) (- 0 96)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 94) (- 0 95)) (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__tmp)))) (=> (< tid (|Seq#Length| (MapType0Select PostHeap@0 diz demo__tmp))) (=> (not (= (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) tid) null)) (=> (and (and (= PostMask@3 (MapType1Store PostMask@2 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select PostMask@2 (|Seq#Index| (MapType0Select PostHeap@0 diz demo__tmp) tid) Ref__Integer_value)) FullPerm)))) (state PostHeap@0 PostMask@3)) (and (= PostMask@4 PostMask@3) (= (ControlFlow 0 94) 93))) anon38_correct)))))))))))))))))))
+(let ((anon129_Then_correct  (=> (and (and (and (and (state PostHeap@0 ZeroMask) (<= 0 tid)) (and (state PostHeap@0 ZeroMask) (< tid tcount))) (and (and (state PostHeap@0 ZeroMask) (= tid lid)) (and (state PostHeap@0 ZeroMask) (= tcount gsize)))) (and (and (and (state PostHeap@0 ZeroMask) (= gid 0)) (and (state PostHeap@0 ZeroMask) (> wildcard@2 NoPerm))) (and (and (not (= diz null)) (= PostMask@0 (MapType1Store ZeroMask diz demo__ar (real_2_U (+ (U_2_real (MapType1Select ZeroMask diz demo__ar)) wildcard@2))))) (and (state PostHeap@0 PostMask@0) (state PostHeap@0 PostMask@0))))) (and (=> (= (ControlFlow 0 102) (- 0 108)) (HasDirectPerm PostMask@0 diz demo__ar)) (=> (HasDirectPerm PostMask@0 diz demo__ar) (=> (= (|Seq#Length| (MapType0Select PostHeap@0 diz demo__ar)) gsize) (=> (and (state PostHeap@0 PostMask@0) (> wildcard@3 NoPerm)) (=> (and (and (not (= diz null)) (= PostMask@1 (MapType1Store PostMask@0 diz demo__tmp (real_2_U (+ (U_2_real (MapType1Select PostMask@0 diz demo__tmp)) wildcard@3))))) (and (state PostHeap@0 PostMask@1) (state PostHeap@0 PostMask@1))) (and (=> (= (ControlFlow 0 102) (- 0 107)) (HasDirectPerm PostMask@1 diz demo__tmp)) (=> (HasDirectPerm PostMask@1 diz demo__tmp) (=> (and (= (|Seq#Length| (MapType0Select PostHeap@0 diz demo__tmp)) gsize) (state PostHeap@0 PostMask@1)) (and (=> (= (ControlFlow 0 102) (- 0 106)) (HasDirectPerm PostMask@1 diz demo__ar)) (=> (HasDirectPerm PostMask@1 diz demo__ar) (and (=> (= (ControlFlow 0 102) (- 0 105)) (HasDirectPerm Mask@10 diz demo__ar)) (=> (HasDirectPerm Mask@10 diz demo__ar) (=> (and (|Seq#Equal| (MapType0Select PostHeap@0 diz demo__ar) (MapType0Select Heap@@13 diz demo__ar)) (state PostHeap@0 PostMask@1)) (and (=> (= (ControlFlow 0 102) (- 0 104)) (HasDirectPerm PostMask@1 diz demo__tmp)) (=> (HasDirectPerm PostMask@1 diz demo__tmp) (and (=> (= (ControlFlow 0 102) (- 0 103)) (HasDirectPerm Mask@10 diz demo__tmp)) (=> (HasDirectPerm Mask@10 diz demo__tmp) (=> (and (|Seq#Equal| (MapType0Select PostHeap@0 diz demo__tmp) (MapType0Select Heap@@13 diz demo__tmp)) (state PostHeap@0 PostMask@1)) (and (=> (= (ControlFlow 0 102) 94) anon130_Then_correct) (=> (= (ControlFlow 0 102) 101) anon130_Else_correct)))))))))))))))))))))))
+(let ((anon129_Else_correct true))
+(let ((anon35_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 109) 102) anon129_Then_correct) (=> (= (ControlFlow 0 109) 2) anon129_Else_correct)))))
+(let ((anon34_correct  (=> (and (= (U_2_int (MapType0Select Heap@@13 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value)) (ite (< tid N@@3) (demo__bin Heap@@13 N@@3 tid) 1)) (= (ControlFlow 0 111) 109)) anon35_correct)))
+(let ((anon127_Then_correct  (=> (< tid N@@3) (and (=> (= (ControlFlow 0 117) 114) anon128_Then_correct) (=> (= (ControlFlow 0 117) 111) anon34_correct)))))
+(let ((anon127_Else_correct  (=> (and (<= N@@3 tid) (= (ControlFlow 0 112) 111)) anon34_correct)))
+(let ((anon126_Then_correct  (=> (and (= this_barrier 2) (state Heap@@13 Mask@10)) (and (=> (= (ControlFlow 0 118) (- 0 122)) (HasDirectPerm Mask@10 diz demo__ar)) (=> (HasDirectPerm Mask@10 diz demo__ar) (and (=> (= (ControlFlow 0 118) (- 0 121)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 118) (- 0 120)) (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar))) (and (=> (= (ControlFlow 0 118) (- 0 119)) (HasDirectPerm Mask@10 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value)) (=> (HasDirectPerm Mask@10 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value) (and (=> (= (ControlFlow 0 118) 117) anon127_Then_correct) (=> (= (ControlFlow 0 118) 112) anon127_Else_correct)))))))))))))
+(let ((anon126_Else_correct  (=> (and (not (= this_barrier 2)) (= (ControlFlow 0 110) 109)) anon35_correct)))
+(let ((anon30_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 123) 118) anon126_Then_correct) (=> (= (ControlFlow 0 123) 110) anon126_Else_correct)))))
+(let ((anon125_Else_correct  (=> (and (not (= this_barrier 2)) (= (ControlFlow 0 125) 123)) anon30_correct)))
+(let ((anon125_Then_correct  (=> (= this_barrier 2) (=> (and (< N@@3 gsize) (= (ControlFlow 0 124) 123)) anon30_correct))))
+(let ((anon28_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 126) 124) anon125_Then_correct) (=> (= (ControlFlow 0 126) 125) anon125_Else_correct)))))
+(let ((anon124_Else_correct  (=> (and (not (= this_barrier 2)) (= (ControlFlow 0 128) 126)) anon28_correct)))
+(let ((anon124_Then_correct  (=> (= this_barrier 2) (=> (and (< 0 N@@3) (= (ControlFlow 0 127) 126)) anon28_correct))))
+(let ((anon26_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 129) 127) anon124_Then_correct) (=> (= (ControlFlow 0 129) 128) anon124_Else_correct)))))
+(let ((anon123_Else_correct  (=> (and (not (= this_barrier 2)) (= (ControlFlow 0 131) 129)) anon26_correct)))
+(let ((anon123_Then_correct  (=> (= this_barrier 2) (=> (and (> gsize 1) (= (ControlFlow 0 130) 129)) anon26_correct))))
+(let ((anon24_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 132) 130) anon123_Then_correct) (=> (= (ControlFlow 0 132) 131) anon123_Else_correct)))))
+(let ((anon122_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 142) 132)) anon24_correct)))
+(let ((anon122_Then_correct  (=> (= this_barrier 1) (and (=> (= (ControlFlow 0 133) (- 0 141)) (HasDirectPerm Mask@10 diz demo__tmp)) (=> (HasDirectPerm Mask@10 diz demo__tmp) (and (=> (= (ControlFlow 0 133) (- 0 140)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 133) (- 0 139)) (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__tmp)))) (=> (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__tmp))) (and (=> (= (ControlFlow 0 133) (- 0 138)) (HasDirectPerm Mask@10 (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) tid) Ref__Integer_value)) (=> (HasDirectPerm Mask@10 (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) tid) Ref__Integer_value) (and (=> (= (ControlFlow 0 133) (- 0 137)) (HasDirectPerm Mask@10 diz demo__ar)) (=> (HasDirectPerm Mask@10 diz demo__ar) (and (=> (= (ControlFlow 0 133) (- 0 136)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 133) (- 0 135)) (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar))) (and (=> (= (ControlFlow 0 133) (- 0 134)) (HasDirectPerm Mask@10 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value)) (=> (HasDirectPerm Mask@10 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value) (=> (and (= (U_2_int (MapType0Select Heap@@13 (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) tid) Ref__Integer_value)) (U_2_int (MapType0Select Heap@@13 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value))) (= (ControlFlow 0 133) 132)) anon24_correct))))))))))))))))))))
+(let ((anon22_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 143) 133) anon122_Then_correct) (=> (= (ControlFlow 0 143) 142) anon122_Else_correct)))))
+(let ((anon21_correct  (=> (and (= (U_2_int (MapType0Select Heap@@13 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value)) (ite (< tid N@@3) (demo__bin Heap@@13 N@@3 tid) 1)) (= (ControlFlow 0 145) 143)) anon22_correct)))
+(let ((anon120_Then_correct  (=> (< tid N@@3) (and (=> (= (ControlFlow 0 151) 148) anon121_Then_correct) (=> (= (ControlFlow 0 151) 145) anon21_correct)))))
+(let ((anon120_Else_correct  (=> (and (<= N@@3 tid) (= (ControlFlow 0 146) 145)) anon21_correct)))
+(let ((anon119_Then_correct  (=> (and (= this_barrier 1) (state Heap@@13 Mask@10)) (and (=> (= (ControlFlow 0 152) (- 0 156)) (HasDirectPerm Mask@10 diz demo__ar)) (=> (HasDirectPerm Mask@10 diz demo__ar) (and (=> (= (ControlFlow 0 152) (- 0 155)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 152) (- 0 154)) (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar))) (and (=> (= (ControlFlow 0 152) (- 0 153)) (HasDirectPerm Mask@10 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value)) (=> (HasDirectPerm Mask@10 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value) (and (=> (= (ControlFlow 0 152) 151) anon120_Then_correct) (=> (= (ControlFlow 0 152) 146) anon120_Else_correct)))))))))))))
+(let ((anon119_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 144) 143)) anon22_correct)))
+(let ((anon17_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 157) 152) anon119_Then_correct) (=> (= (ControlFlow 0 157) 144) anon119_Else_correct)))))
+(let ((anon118_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 159) 157)) anon17_correct)))
+(let ((anon118_Then_correct  (=> (= this_barrier 1) (=> (and (< N@@3 gsize) (= (ControlFlow 0 158) 157)) anon17_correct))))
+(let ((anon15_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 160) 158) anon118_Then_correct) (=> (= (ControlFlow 0 160) 159) anon118_Else_correct)))))
+(let ((anon117_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 162) 160)) anon15_correct)))
+(let ((anon117_Then_correct  (=> (= this_barrier 1) (=> (and (< 0 N@@3) (= (ControlFlow 0 161) 160)) anon15_correct))))
+(let ((anon13_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 163) 161) anon117_Then_correct) (=> (= (ControlFlow 0 163) 162) anon117_Else_correct)))))
+(let ((anon116_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 165) 163)) anon13_correct)))
+(let ((anon116_Then_correct  (=> (= this_barrier 1) (=> (and (> gsize 1) (= (ControlFlow 0 164) 163)) anon13_correct))))
+(let ((anon11_correct  (=> (state Heap@@13 Mask@10) (and (=> (= (ControlFlow 0 166) 164) anon116_Then_correct) (=> (= (ControlFlow 0 166) 165) anon116_Else_correct)))))
+(let ((anon115_Else_correct  (=> (not (= last_barrier 0)) (=> (and (= Mask@10 Mask@7) (= (ControlFlow 0 174) 166)) anon11_correct))))
+(let ((anon115_Then_correct  (=> (= last_barrier 0) (and (=> (= (ControlFlow 0 167) (- 0 173)) (HasDirectPerm Mask@7 diz demo__ar)) (=> (HasDirectPerm Mask@7 diz demo__ar) (and (=> (= (ControlFlow 0 167) (- 0 172)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 167) (- 0 171)) (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar))) (=> (not (= (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) null)) (=> (and (= Mask@8 (MapType1Store Mask@7 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select Mask@7 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value)) FullPerm)))) (state Heap@@13 Mask@8)) (and (=> (= (ControlFlow 0 167) (- 0 170)) (HasDirectPerm Mask@8 diz demo__tmp)) (=> (HasDirectPerm Mask@8 diz demo__tmp) (and (=> (= (ControlFlow 0 167) (- 0 169)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 167) (- 0 168)) (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__tmp)))) (=> (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__tmp))) (=> (not (= (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) tid) null)) (=> (and (and (= Mask@9 (MapType1Store Mask@8 (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select Mask@8 (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) tid) Ref__Integer_value)) FullPerm)))) (state Heap@@13 Mask@9)) (and (= Mask@10 Mask@9) (= (ControlFlow 0 167) 166))) anon11_correct)))))))))))))))))))
+(let ((anon9_correct  (=> (state Heap@@13 Mask@7) (and (=> (= (ControlFlow 0 175) 167) anon115_Then_correct) (=> (= (ControlFlow 0 175) 174) anon115_Else_correct)))))
+(let ((anon114_Else_correct  (=> (>= 0 tid) (=> (and (= Mask@7 Mask@5) (= (ControlFlow 0 181) 175)) anon9_correct))))
+(let ((anon114_Then_correct  (=> (> tid 0) (and (=> (= (ControlFlow 0 177) (- 0 180)) (HasDirectPerm Mask@5 diz demo__tmp)) (=> (HasDirectPerm Mask@5 diz demo__tmp) (and (=> (= (ControlFlow 0 177) (- 0 179)) (>= (- tid 1) 0)) (=> (>= (- tid 1) 0) (and (=> (= (ControlFlow 0 177) (- 0 178)) (< (- tid 1) (|Seq#Length| (MapType0Select Heap@@13 diz demo__tmp)))) (=> (< (- tid 1) (|Seq#Length| (MapType0Select Heap@@13 diz demo__tmp))) (=> (not (= (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) (- tid 1)) null)) (=> (and (and (= Mask@6 (MapType1Store Mask@5 (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) (- tid 1)) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select Mask@5 (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) (- tid 1)) Ref__Integer_value)) FullPerm)))) (state Heap@@13 Mask@6)) (and (= Mask@7 Mask@6) (= (ControlFlow 0 177) 175))) anon9_correct)))))))))))
+(let ((anon113_Then_correct  (=> (= last_barrier 1) (and (=> (= (ControlFlow 0 182) (- 0 185)) (HasDirectPerm Mask@4 diz demo__ar)) (=> (HasDirectPerm Mask@4 diz demo__ar) (and (=> (= (ControlFlow 0 182) (- 0 184)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 182) (- 0 183)) (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar))) (=> (not (= (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) null)) (=> (and (= Mask@5 (MapType1Store Mask@4 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select Mask@4 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value)) FullPerm)))) (state Heap@@13 Mask@5)) (and (=> (= (ControlFlow 0 182) 177) anon114_Then_correct) (=> (= (ControlFlow 0 182) 181) anon114_Else_correct)))))))))))))
+(let ((anon113_Else_correct  (=> (not (= last_barrier 1)) (=> (and (= Mask@7 Mask@4) (= (ControlFlow 0 176) 175)) anon9_correct))))
+(let ((anon6_correct  (=> (state Heap@@13 Mask@4) (and (=> (= (ControlFlow 0 186) 182) anon113_Then_correct) (=> (= (ControlFlow 0 186) 176) anon113_Else_correct)))))
+(let ((anon112_Else_correct  (=> (not (= last_barrier 2)) (=> (and (= Mask@4 Mask@1) (= (ControlFlow 0 194) 186)) anon6_correct))))
+(let ((anon112_Then_correct  (=> (= last_barrier 2) (and (=> (= (ControlFlow 0 187) (- 0 193)) (HasDirectPerm Mask@1 diz demo__ar)) (=> (HasDirectPerm Mask@1 diz demo__ar) (and (=> (= (ControlFlow 0 187) (- 0 192)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 187) (- 0 191)) (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar)))) (=> (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar))) (=> (not (= (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) null)) (=> (and (= Mask@2 (MapType1Store Mask@1 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select Mask@1 (|Seq#Index| (MapType0Select Heap@@13 diz demo__ar) tid) Ref__Integer_value)) FullPerm)))) (state Heap@@13 Mask@2)) (and (=> (= (ControlFlow 0 187) (- 0 190)) (HasDirectPerm Mask@2 diz demo__tmp)) (=> (HasDirectPerm Mask@2 diz demo__tmp) (and (=> (= (ControlFlow 0 187) (- 0 189)) (>= tid 0)) (=> (>= tid 0) (and (=> (= (ControlFlow 0 187) (- 0 188)) (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__tmp)))) (=> (< tid (|Seq#Length| (MapType0Select Heap@@13 diz demo__tmp))) (=> (not (= (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) tid) null)) (=> (and (and (= Mask@3 (MapType1Store Mask@2 (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) tid) Ref__Integer_value (real_2_U (+ (U_2_real (MapType1Select Mask@2 (|Seq#Index| (MapType0Select Heap@@13 diz demo__tmp) tid) Ref__Integer_value)) FullPerm)))) (state Heap@@13 Mask@3)) (and (= Mask@4 Mask@3) (= (ControlFlow 0 187) 186))) anon6_correct)))))))))))))))))))
+(let ((anon4_correct  (=> (and (and (and (and (state Heap@@13 ZeroMask) (<= 0 tid)) (and (state Heap@@13 ZeroMask) (< tid tcount))) (and (and (state Heap@@13 ZeroMask) (= tid lid)) (and (state Heap@@13 ZeroMask) (= tcount gsize)))) (and (and (and (state Heap@@13 ZeroMask) (= gid 0)) (and (state Heap@@13 ZeroMask) (> wildcard@0 NoPerm))) (and (and (not (= diz null)) (= Mask@0 (MapType1Store ZeroMask diz demo__ar (real_2_U (+ (U_2_real (MapType1Select ZeroMask diz demo__ar)) wildcard@0))))) (and (state Heap@@13 Mask@0) (state Heap@@13 Mask@0))))) (and (=> (= (ControlFlow 0 195) (- 0 197)) (HasDirectPerm Mask@0 diz demo__ar)) (=> (HasDirectPerm Mask@0 diz demo__ar) (=> (= (|Seq#Length| (MapType0Select Heap@@13 diz demo__ar)) gsize) (=> (and (state Heap@@13 Mask@0) (> wildcard@1 NoPerm)) (=> (and (and (not (= diz null)) (= Mask@1 (MapType1Store Mask@0 diz demo__tmp (real_2_U (+ (U_2_real (MapType1Select Mask@0 diz demo__tmp)) wildcard@1))))) (and (state Heap@@13 Mask@1) (state Heap@@13 Mask@1))) (and (=> (= (ControlFlow 0 195) (- 0 196)) (HasDirectPerm Mask@1 diz demo__tmp)) (=> (HasDirectPerm Mask@1 diz demo__tmp) (=> (and (= (|Seq#Length| (MapType0Select Heap@@13 diz demo__tmp)) gsize) (state Heap@@13 Mask@1)) (and (=> (= (ControlFlow 0 195) 187) anon112_Then_correct) (=> (= (ControlFlow 0 195) 194) anon112_Else_correct)))))))))))))
+(let ((anon111_Else_correct  (=> (and (not (= this_barrier 2)) (= (ControlFlow 0 199) 195)) anon4_correct)))
+(let ((anon111_Then_correct  (=> (= this_barrier 2) (=> (and (= last_barrier 1) (= (ControlFlow 0 198) 195)) anon4_correct))))
+(let ((anon2_correct  (=> (state Heap@@13 ZeroMask) (and (=> (= (ControlFlow 0 200) 198) anon111_Then_correct) (=> (= (ControlFlow 0 200) 199) anon111_Else_correct)))))
+(let ((anon110_Else_correct  (=> (and (not (= this_barrier 1)) (= (ControlFlow 0 202) 200)) anon2_correct)))
+(let ((anon110_Then_correct  (=> (= this_barrier 1) (=> (and (or (= last_barrier 0) (= last_barrier 2)) (= (ControlFlow 0 201) 200)) anon2_correct))))
+(let ((anon0_correct  (=> (state Heap@@13 ZeroMask) (=> (and (= AssumeFunctionsAbove (- 0 1)) (U_2_bool (MapType0Select Heap@@13 diz $allocated))) (=> (and (and (not (= diz null)) (state Heap@@13 ZeroMask)) (and (>= current_thread_id 0) (state Heap@@13 ZeroMask))) (and (=> (= (ControlFlow 0 203) 201) anon110_Then_correct) (=> (= (ControlFlow 0 203) 202) anon110_Else_correct)))))))
+(let ((PreconditionGeneratedEntry_correct  (=> (and (and (> wildcard NoPerm) true) (= (ControlFlow 0 204) 203)) anon0_correct)))
+PreconditionGeneratedEntry_correct)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+))
+(check-sat)
+(pop 1)
+; Valid
+(get-info :rlimit)

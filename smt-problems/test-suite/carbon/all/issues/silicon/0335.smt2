@@ -1,0 +1,956 @@
+(set-option :print-success false)
+(set-info :smt-lib-version 2.6)
+(set-option :smt.AUTO_CONFIG false)
+(set-option :smt.PHASE_SELECTION 0)
+(set-option :smt.RESTART_STRATEGY 0)
+(set-option :smt.RESTART_FACTOR |1.5|)
+(set-option :smt.ARITH.RANDOM_INITIAL_VALUE true)
+(set-option :smt.CASE_SPLIT 3)
+(set-option :smt.DELAY_UNITS true)
+(set-option :NNF.SK_HACK true)
+(set-option :smt.MBQI false)
+(set-option :smt.QI.EAGER_THRESHOLD 100)
+(set-option :smt.BV.REFLECT true)
+(set-option :smt.qi.max_multi_patterns 1000)
+(set-option :smt.mbqi false)
+(set-option :model.compact false)
+(set-option :model.v2 true)
+(set-option :pp.bv_literals false)
+; done setting options
+
+
+(set-info :category "industrial")
+(declare-sort |T@U| 0)
+(declare-sort |T@T| 0)
+(declare-fun real_pow (Real Real) Real)
+(declare-fun UOrdering2 (|T@U| |T@U|) Bool)
+(declare-fun UOrdering3 (|T@T| |T@U| |T@U|) Bool)
+(declare-fun tickleBool (Bool) Bool)
+(assert (and (tickleBool true) (tickleBool false)))
+(declare-fun U_2_int (T@U) Int)
+(declare-fun U_2_bool (T@U) Bool)
+(declare-fun Ctor (T@T) Int)
+(declare-fun intType () T@T)
+(declare-fun realType () T@T)
+(declare-fun boolType () T@T)
+(declare-fun rmodeType () T@T)
+(declare-fun stringType () T@T)
+(declare-fun regexType () T@T)
+(declare-fun int_2_U (Int) T@U)
+(declare-fun type (T@U) T@T)
+(declare-fun real_2_U (Real) T@U)
+(declare-fun U_2_real (T@U) Real)
+(declare-fun bool_2_U (Bool) T@U)
+(declare-fun rmode_2_U (RoundingMode) T@U)
+(declare-fun U_2_rmode (T@U) RoundingMode)
+(declare-fun string_2_U (String) T@U)
+(declare-fun U_2_string (T@U) String)
+(declare-fun regex_2_U ((RegEx String)) T@U)
+(declare-fun U_2_regex (T@U) (RegEx String))
+(declare-fun $allocated () T@U)
+(declare-fun val () T@U)
+(declare-fun left () T@U)
+(declare-fun right () T@U)
+(declare-fun FieldType (T@T T@T) T@T)
+(declare-fun FieldTypeInv0 (T@T) T@T)
+(declare-fun FieldTypeInv1 (T@T) T@T)
+(declare-fun NormalFieldType () T@T)
+(declare-fun RefType () T@T)
+(declare-fun succHeap (T@U T@U) Bool)
+(declare-fun MapType0Type (T@T) T@T)
+(declare-fun succHeapTrans (T@U T@U) Bool)
+(declare-fun MapType0TypeInv0 (T@T) T@T)
+(declare-fun MapType0Select (T@U T@U T@U) T@U)
+(declare-fun MapType0Store (T@U T@U T@U T@U) T@U)
+(declare-fun state (T@U T@U) Bool)
+(declare-fun MapType1Type (T@T T@T) T@T)
+(declare-fun GoodMask (T@U) Bool)
+(declare-fun MapType1TypeInv0 (T@T) T@T)
+(declare-fun MapType1TypeInv1 (T@T) T@T)
+(declare-fun MapType1Select (T@U T@U T@U) T@U)
+(declare-fun MapType1Store (T@U T@U T@U T@U) T@U)
+(declare-fun loc (T@U Int) T@U)
+(declare-fun ArrayDomainTypeType () T@T)
+(declare-fun len (T@U) Int)
+(declare-fun IdenticalOnKnownLocations (T@U T@U T@U) Bool)
+(declare-fun IsPredicateField (T@U) Bool)
+(declare-fun null () T@U)
+(declare-fun PredicateMaskField (T@U) T@U)
+(declare-fun FrameTypeType () T@T)
+(declare-fun HasDirectPerm (T@U T@U T@U) Bool)
+(declare-fun IsWandField (T@U) Bool)
+(declare-fun WandMaskField (T@U) T@U)
+(declare-fun array (T@U) T@U)
+(declare-fun PredicateType_arrayType () T@T)
+(declare-fun tree (T@U) T@U)
+(declare-fun PredicateType_treeType () T@T)
+(declare-fun |array#trigger| (T@U T@U) Bool)
+(declare-fun |array#everUsed| (T@U) Bool)
+(declare-fun |tree#trigger| (T@U T@U) Bool)
+(declare-fun |tree#everUsed| (T@U) Bool)
+(declare-fun |array#sm| (T@U) T@U)
+(declare-fun |tree#sm| (T@U) T@U)
+(declare-fun |array#condqp1| (T@U T@U) Int)
+(declare-fun |sk_array#condqp1| (Int Int) Int)
+(declare-fun NoPerm () Real)
+(declare-fun FullPerm () Real)
+(declare-fun dummyHeap () T@U)
+(declare-fun ZeroMask () T@U)
+(declare-fun InsidePredicate (T@U T@U T@U T@U) Bool)
+(declare-fun sumMask (T@U T@U T@U) Bool)
+(declare-fun ConditionalFrame (Real T@U) T@U)
+(declare-fun EmptyFrame () T@U)
+(declare-fun getPredWandId (T@U) Int)
+(declare-fun ZeroPMask () T@U)
+(assert  (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (= (Ctor intType) 0) (= (Ctor realType) 1)) (= (Ctor boolType) 2)) (= (Ctor rmodeType) 3)) (= (Ctor stringType) 4)) (= (Ctor regexType) 5)) (forall ((arg0 Int) ) (! (= (U_2_int (int_2_U arg0)) arg0)
+ :qid |typeInv:U_2_int|
+ :pattern ( (int_2_U arg0))
+))) (forall ((x T@U) ) (!  (=> (= (type x) intType) (= (int_2_U (U_2_int x)) x))
+ :qid |cast:U_2_int|
+ :pattern ( (U_2_int x))
+))) (forall ((arg0@@0 Int) ) (! (= (type (int_2_U arg0@@0)) intType)
+ :qid |funType:int_2_U|
+ :pattern ( (int_2_U arg0@@0))
+))) (forall ((arg0@@1 Real) ) (! (= (U_2_real (real_2_U arg0@@1)) arg0@@1)
+ :qid |typeInv:U_2_real|
+ :pattern ( (real_2_U arg0@@1))
+))) (forall ((x@@0 T@U) ) (!  (=> (= (type x@@0) realType) (= (real_2_U (U_2_real x@@0)) x@@0))
+ :qid |cast:U_2_real|
+ :pattern ( (U_2_real x@@0))
+))) (forall ((arg0@@2 Real) ) (! (= (type (real_2_U arg0@@2)) realType)
+ :qid |funType:real_2_U|
+ :pattern ( (real_2_U arg0@@2))
+))) (forall ((arg0@@3 Bool) ) (! (= (U_2_bool (bool_2_U arg0@@3)) arg0@@3)
+ :qid |typeInv:U_2_bool|
+ :pattern ( (bool_2_U arg0@@3))
+))) (forall ((x@@1 T@U) ) (!  (=> (= (type x@@1) boolType) (= (bool_2_U (U_2_bool x@@1)) x@@1))
+ :qid |cast:U_2_bool|
+ :pattern ( (U_2_bool x@@1))
+))) (forall ((arg0@@4 Bool) ) (! (= (type (bool_2_U arg0@@4)) boolType)
+ :qid |funType:bool_2_U|
+ :pattern ( (bool_2_U arg0@@4))
+))) (forall ((arg0@@5 RoundingMode) ) (! (= (U_2_rmode (rmode_2_U arg0@@5)) arg0@@5)
+ :qid |typeInv:U_2_rmode|
+ :pattern ( (rmode_2_U arg0@@5))
+))) (forall ((x@@2 T@U) ) (!  (=> (= (type x@@2) rmodeType) (= (rmode_2_U (U_2_rmode x@@2)) x@@2))
+ :qid |cast:U_2_rmode|
+ :pattern ( (U_2_rmode x@@2))
+))) (forall ((arg0@@6 RoundingMode) ) (! (= (type (rmode_2_U arg0@@6)) rmodeType)
+ :qid |funType:rmode_2_U|
+ :pattern ( (rmode_2_U arg0@@6))
+))) (forall ((arg0@@7 String) ) (! (= (U_2_string (string_2_U arg0@@7)) arg0@@7)
+ :qid |typeInv:U_2_string|
+ :pattern ( (string_2_U arg0@@7))
+))) (forall ((x@@3 T@U) ) (!  (=> (= (type x@@3) stringType) (= (string_2_U (U_2_string x@@3)) x@@3))
+ :qid |cast:U_2_string|
+ :pattern ( (U_2_string x@@3))
+))) (forall ((arg0@@8 String) ) (! (= (type (string_2_U arg0@@8)) stringType)
+ :qid |funType:string_2_U|
+ :pattern ( (string_2_U arg0@@8))
+))) (forall ((arg0@@9 (RegEx String)) ) (! (= (U_2_regex (regex_2_U arg0@@9)) arg0@@9)
+ :qid |typeInv:U_2_regex|
+ :pattern ( (regex_2_U arg0@@9))
+))) (forall ((x@@4 T@U) ) (!  (=> (= (type x@@4) regexType) (= (regex_2_U (U_2_regex x@@4)) x@@4))
+ :qid |cast:U_2_regex|
+ :pattern ( (U_2_regex x@@4))
+))) (forall ((arg0@@10 (RegEx String)) ) (! (= (type (regex_2_U arg0@@10)) regexType)
+ :qid |funType:regex_2_U|
+ :pattern ( (regex_2_U arg0@@10))
+))))
+(assert (forall ((x@@5 T@U) ) (! (UOrdering2 x@@5 x@@5)
+ :qid |bg:subtype-refl|
+ :no-pattern (U_2_int x@@5)
+ :no-pattern (U_2_bool x@@5)
+)))
+(assert (forall ((x@@6 T@U) (y T@U) (z T@U) ) (! (let ((alpha (type x@@6)))
+ (=> (and (and (= (type y) alpha) (= (type z) alpha)) (and (UOrdering2 x@@6 y) (UOrdering2 y z))) (UOrdering2 x@@6 z)))
+ :qid |bg:subtype-trans|
+ :pattern ( (UOrdering2 x@@6 y) (UOrdering2 y z))
+)))
+(assert (forall ((x@@7 T@U) (y@@0 T@U) ) (! (let ((alpha@@0 (type x@@7)))
+ (=> (= (type y@@0) alpha@@0) (=> (and (UOrdering2 x@@7 y@@0) (UOrdering2 y@@0 x@@7)) (= x@@7 y@@0))))
+ :qid |bg:subtype-antisymm|
+ :pattern ( (UOrdering2 x@@7 y@@0) (UOrdering2 y@@0 x@@7))
+)))
+(assert  (and (and (and (and (and (and (and (and (forall ((arg0@@11 T@T) (arg1 T@T) ) (! (= (Ctor (FieldType arg0@@11 arg1)) 6)
+ :qid |ctor:FieldType|
+)) (forall ((arg0@@12 T@T) (arg1@@0 T@T) ) (! (= (FieldTypeInv0 (FieldType arg0@@12 arg1@@0)) arg0@@12)
+ :qid |typeInv:FieldTypeInv0|
+ :pattern ( (FieldType arg0@@12 arg1@@0))
+))) (forall ((arg0@@13 T@T) (arg1@@1 T@T) ) (! (= (FieldTypeInv1 (FieldType arg0@@13 arg1@@1)) arg1@@1)
+ :qid |typeInv:FieldTypeInv1|
+ :pattern ( (FieldType arg0@@13 arg1@@1))
+))) (= (Ctor NormalFieldType) 7)) (= (type $allocated) (FieldType NormalFieldType boolType))) (= (type val) (FieldType NormalFieldType intType))) (= (Ctor RefType) 8)) (= (type left) (FieldType NormalFieldType RefType))) (= (type right) (FieldType NormalFieldType RefType))))
+(assert (distinct $allocated val left right)
+)
+(assert  (and (and (and (and (and (forall ((arg0@@14 T@T) ) (! (= (Ctor (MapType0Type arg0@@14)) 9)
+ :qid |ctor:MapType0Type|
+)) (forall ((arg0@@15 T@T) ) (! (= (MapType0TypeInv0 (MapType0Type arg0@@15)) arg0@@15)
+ :qid |typeInv:MapType0TypeInv0|
+ :pattern ( (MapType0Type arg0@@15))
+))) (forall ((arg0@@16 T@U) (arg1@@2 T@U) (arg2 T@U) ) (! (let ((B (FieldTypeInv1 (type arg2))))
+(= (type (MapType0Select arg0@@16 arg1@@2 arg2)) B))
+ :qid |funType:MapType0Select|
+ :pattern ( (MapType0Select arg0@@16 arg1@@2 arg2))
+))) (forall ((arg0@@17 T@U) (arg1@@3 T@U) (arg2@@0 T@U) (arg3 T@U) ) (! (let ((aVar0 (type arg1@@3)))
+(= (type (MapType0Store arg0@@17 arg1@@3 arg2@@0 arg3)) (MapType0Type aVar0)))
+ :qid |funType:MapType0Store|
+ :pattern ( (MapType0Store arg0@@17 arg1@@3 arg2@@0 arg3))
+))) (forall ((m T@U) (x0 T@U) (x1 T@U) (val@@0 T@U) ) (! (let ((B@@0 (FieldTypeInv1 (type x1))))
+ (=> (= (type val@@0) B@@0) (= (MapType0Select (MapType0Store m x0 x1 val@@0) x0 x1) val@@0)))
+ :qid |mapAx0:MapType0Select|
+ :weight 0
+))) (and (and (forall ((val@@1 T@U) (m@@0 T@U) (x0@@0 T@U) (x1@@0 T@U) (y0 T@U) (y1 T@U) ) (!  (or (= x0@@0 y0) (= (MapType0Select (MapType0Store m@@0 x0@@0 x1@@0 val@@1) y0 y1) (MapType0Select m@@0 y0 y1)))
+ :qid |mapAx1:MapType0Select:0|
+ :weight 0
+)) (forall ((val@@2 T@U) (m@@1 T@U) (x0@@1 T@U) (x1@@1 T@U) (y0@@0 T@U) (y1@@0 T@U) ) (!  (or (= x1@@1 y1@@0) (= (MapType0Select (MapType0Store m@@1 x0@@1 x1@@1 val@@2) y0@@0 y1@@0) (MapType0Select m@@1 y0@@0 y1@@0)))
+ :qid |mapAx1:MapType0Select:1|
+ :weight 0
+))) (forall ((val@@3 T@U) (m@@2 T@U) (x0@@2 T@U) (x1@@2 T@U) (y0@@1 T@U) (y1@@1 T@U) ) (!  (or true (= (MapType0Select (MapType0Store m@@2 x0@@2 x1@@2 val@@3) y0@@1 y1@@1) (MapType0Select m@@2 y0@@1 y1@@1)))
+ :qid |mapAx2:MapType0Select|
+ :weight 0
+)))))
+(assert (forall ((Heap0 T@U) (Heap1 T@U) ) (!  (=> (and (and (= (type Heap0) (MapType0Type RefType)) (= (type Heap1) (MapType0Type RefType))) (succHeap Heap0 Heap1)) (succHeapTrans Heap0 Heap1))
+ :qid |stdinbpl.88:15|
+ :skolemid |11|
+ :pattern ( (succHeap Heap0 Heap1))
+)))
+(assert  (and (and (and (and (and (and (forall ((arg0@@18 T@T) (arg1@@4 T@T) ) (! (= (Ctor (MapType1Type arg0@@18 arg1@@4)) 10)
+ :qid |ctor:MapType1Type|
+)) (forall ((arg0@@19 T@T) (arg1@@5 T@T) ) (! (= (MapType1TypeInv0 (MapType1Type arg0@@19 arg1@@5)) arg0@@19)
+ :qid |typeInv:MapType1TypeInv0|
+ :pattern ( (MapType1Type arg0@@19 arg1@@5))
+))) (forall ((arg0@@20 T@T) (arg1@@6 T@T) ) (! (= (MapType1TypeInv1 (MapType1Type arg0@@20 arg1@@6)) arg1@@6)
+ :qid |typeInv:MapType1TypeInv1|
+ :pattern ( (MapType1Type arg0@@20 arg1@@6))
+))) (forall ((arg0@@21 T@U) (arg1@@7 T@U) (arg2@@1 T@U) ) (! (let ((aVar1 (MapType1TypeInv1 (type arg0@@21))))
+(= (type (MapType1Select arg0@@21 arg1@@7 arg2@@1)) aVar1))
+ :qid |funType:MapType1Select|
+ :pattern ( (MapType1Select arg0@@21 arg1@@7 arg2@@1))
+))) (forall ((arg0@@22 T@U) (arg1@@8 T@U) (arg2@@2 T@U) (arg3@@0 T@U) ) (! (let ((aVar1@@0 (type arg3@@0)))
+(let ((aVar0@@0 (type arg1@@8)))
+(= (type (MapType1Store arg0@@22 arg1@@8 arg2@@2 arg3@@0)) (MapType1Type aVar0@@0 aVar1@@0))))
+ :qid |funType:MapType1Store|
+ :pattern ( (MapType1Store arg0@@22 arg1@@8 arg2@@2 arg3@@0))
+))) (forall ((m@@3 T@U) (x0@@3 T@U) (x1@@3 T@U) (val@@4 T@U) ) (! (let ((aVar1@@1 (MapType1TypeInv1 (type m@@3))))
+ (=> (= (type val@@4) aVar1@@1) (= (MapType1Select (MapType1Store m@@3 x0@@3 x1@@3 val@@4) x0@@3 x1@@3) val@@4)))
+ :qid |mapAx0:MapType1Select|
+ :weight 0
+))) (and (and (forall ((val@@5 T@U) (m@@4 T@U) (x0@@4 T@U) (x1@@4 T@U) (y0@@2 T@U) (y1@@2 T@U) ) (!  (or (= x0@@4 y0@@2) (= (MapType1Select (MapType1Store m@@4 x0@@4 x1@@4 val@@5) y0@@2 y1@@2) (MapType1Select m@@4 y0@@2 y1@@2)))
+ :qid |mapAx1:MapType1Select:0|
+ :weight 0
+)) (forall ((val@@6 T@U) (m@@5 T@U) (x0@@5 T@U) (x1@@5 T@U) (y0@@3 T@U) (y1@@3 T@U) ) (!  (or (= x1@@5 y1@@3) (= (MapType1Select (MapType1Store m@@5 x0@@5 x1@@5 val@@6) y0@@3 y1@@3) (MapType1Select m@@5 y0@@3 y1@@3)))
+ :qid |mapAx1:MapType1Select:1|
+ :weight 0
+))) (forall ((val@@7 T@U) (m@@6 T@U) (x0@@6 T@U) (x1@@6 T@U) (y0@@4 T@U) (y1@@4 T@U) ) (!  (or true (= (MapType1Select (MapType1Store m@@6 x0@@6 x1@@6 val@@7) y0@@4 y1@@4) (MapType1Select m@@6 y0@@4 y1@@4)))
+ :qid |mapAx2:MapType1Select|
+ :weight 0
+)))))
+(assert (forall ((Heap T@U) (Mask T@U) ) (!  (=> (and (and (= (type Heap) (MapType0Type RefType)) (= (type Mask) (MapType1Type RefType realType))) (state Heap Mask)) (GoodMask Mask))
+ :qid |stdinbpl.124:15|
+ :skolemid |15|
+ :pattern ( (state Heap Mask))
+)))
+(assert (forall ((Heap0@@0 T@U) (Heap1@@0 T@U) (Heap2 T@U) ) (!  (=> (and (and (and (= (type Heap0@@0) (MapType0Type RefType)) (= (type Heap1@@0) (MapType0Type RefType))) (= (type Heap2) (MapType0Type RefType))) (and (succHeapTrans Heap0@@0 Heap1@@0) (succHeap Heap1@@0 Heap2))) (succHeapTrans Heap0@@0 Heap2))
+ :qid |stdinbpl.93:15|
+ :skolemid |12|
+ :pattern ( (succHeapTrans Heap0@@0 Heap1@@0) (succHeap Heap1@@0 Heap2))
+)))
+(assert  (and (= (Ctor ArrayDomainTypeType) 11) (forall ((arg0@@23 T@U) (arg1@@9 Int) ) (! (= (type (loc arg0@@23 arg1@@9)) RefType)
+ :qid |funType:loc|
+ :pattern ( (loc arg0@@23 arg1@@9))
+))))
+(assert (forall ((a_3 T@U) (i_1 Int) (j Int) ) (!  (=> (= (type a_3) ArrayDomainTypeType) (=> (and (>= i_1 0) (and (>= j 0) (and (< i_1 (len a_3)) (and (< j (len a_3)) (not (= i_1 j)))))) (not (= (loc a_3 i_1) (loc a_3 j)))))
+ :qid |stdinbpl.210:15|
+ :skolemid |22|
+ :pattern ( (loc a_3 i_1) (loc a_3 j))
+)))
+(assert  (and (and (= (Ctor FrameTypeType) 12) (= (type null) RefType)) (forall ((arg0@@24 T@U) ) (! (let ((A (FieldTypeInv0 (type arg0@@24))))
+(= (type (PredicateMaskField arg0@@24)) (FieldType A (MapType1Type RefType boolType))))
+ :qid |funType:PredicateMaskField|
+ :pattern ( (PredicateMaskField arg0@@24))
+))))
+(assert (forall ((Heap@@0 T@U) (ExhaleHeap T@U) (Mask@@0 T@U) (pm_f T@U) ) (! (let ((C (FieldTypeInv0 (type pm_f))))
+ (=> (and (and (and (and (and (= (type Heap@@0) (MapType0Type RefType)) (= (type ExhaleHeap) (MapType0Type RefType))) (= (type Mask@@0) (MapType1Type RefType realType))) (= (type pm_f) (FieldType C FrameTypeType))) (IdenticalOnKnownLocations Heap@@0 ExhaleHeap Mask@@0)) (and (HasDirectPerm Mask@@0 null pm_f) (IsPredicateField pm_f))) (= (MapType0Select Heap@@0 null (PredicateMaskField pm_f)) (MapType0Select ExhaleHeap null (PredicateMaskField pm_f)))))
+ :qid |stdinbpl.47:19|
+ :skolemid |2|
+ :pattern ( (IdenticalOnKnownLocations Heap@@0 ExhaleHeap Mask@@0) (IsPredicateField pm_f) (MapType0Select ExhaleHeap null (PredicateMaskField pm_f)))
+)))
+(assert (forall ((arg0@@25 T@U) ) (! (let ((A@@0 (FieldTypeInv0 (type arg0@@25))))
+(= (type (WandMaskField arg0@@25)) (FieldType A@@0 (MapType1Type RefType boolType))))
+ :qid |funType:WandMaskField|
+ :pattern ( (WandMaskField arg0@@25))
+)))
+(assert (forall ((Heap@@1 T@U) (ExhaleHeap@@0 T@U) (Mask@@1 T@U) (pm_f@@0 T@U) ) (! (let ((C@@0 (FieldTypeInv0 (type pm_f@@0))))
+ (=> (and (and (and (and (and (= (type Heap@@1) (MapType0Type RefType)) (= (type ExhaleHeap@@0) (MapType0Type RefType))) (= (type Mask@@1) (MapType1Type RefType realType))) (= (type pm_f@@0) (FieldType C@@0 FrameTypeType))) (IdenticalOnKnownLocations Heap@@1 ExhaleHeap@@0 Mask@@1)) (and (HasDirectPerm Mask@@1 null pm_f@@0) (IsWandField pm_f@@0))) (= (MapType0Select Heap@@1 null (WandMaskField pm_f@@0)) (MapType0Select ExhaleHeap@@0 null (WandMaskField pm_f@@0)))))
+ :qid |stdinbpl.60:19|
+ :skolemid |5|
+ :pattern ( (IdenticalOnKnownLocations Heap@@1 ExhaleHeap@@0 Mask@@1) (IsWandField pm_f@@0) (MapType0Select ExhaleHeap@@0 null (WandMaskField pm_f@@0)))
+)))
+(assert  (and (= (Ctor PredicateType_arrayType) 13) (forall ((arg0@@26 T@U) ) (! (= (type (array arg0@@26)) (FieldType PredicateType_arrayType FrameTypeType))
+ :qid |funType:array|
+ :pattern ( (array arg0@@26))
+))))
+(assert (forall ((a_3@@0 T@U) ) (!  (=> (= (type a_3@@0) ArrayDomainTypeType) (IsPredicateField (array a_3@@0)))
+ :qid |stdinbpl.240:15|
+ :skolemid |24|
+ :pattern ( (array a_3@@0))
+)))
+(assert  (and (= (Ctor PredicateType_treeType) 14) (forall ((arg0@@27 T@U) ) (! (= (type (tree arg0@@27)) (FieldType PredicateType_treeType FrameTypeType))
+ :qid |funType:tree|
+ :pattern ( (tree arg0@@27))
+))))
+(assert (forall ((root T@U) ) (!  (=> (= (type root) RefType) (IsPredicateField (tree root)))
+ :qid |stdinbpl.338:15|
+ :skolemid |37|
+ :pattern ( (tree root))
+)))
+(assert (forall ((Heap@@2 T@U) (a_3@@1 T@U) ) (!  (=> (and (= (type Heap@@2) (MapType0Type RefType)) (= (type a_3@@1) ArrayDomainTypeType)) (|array#everUsed| (array a_3@@1)))
+ :qid |stdinbpl.259:15|
+ :skolemid |28|
+ :pattern ( (|array#trigger| Heap@@2 (array a_3@@1)))
+)))
+(assert (forall ((Heap@@3 T@U) (root@@0 T@U) ) (!  (=> (and (= (type Heap@@3) (MapType0Type RefType)) (= (type root@@0) RefType)) (|tree#everUsed| (tree root@@0)))
+ :qid |stdinbpl.357:15|
+ :skolemid |41|
+ :pattern ( (|tree#trigger| Heap@@3 (tree root@@0)))
+)))
+(assert (forall ((Heap@@4 T@U) (ExhaleHeap@@1 T@U) (Mask@@2 T@U) (o_1 T@U) ) (!  (=> (and (and (and (and (and (= (type Heap@@4) (MapType0Type RefType)) (= (type ExhaleHeap@@1) (MapType0Type RefType))) (= (type Mask@@2) (MapType1Type RefType realType))) (= (type o_1) RefType)) (IdenticalOnKnownLocations Heap@@4 ExhaleHeap@@1 Mask@@2)) (U_2_bool (MapType0Select Heap@@4 o_1 $allocated))) (U_2_bool (MapType0Select ExhaleHeap@@1 o_1 $allocated)))
+ :qid |stdinbpl.73:15|
+ :skolemid |8|
+ :pattern ( (IdenticalOnKnownLocations Heap@@4 ExhaleHeap@@1 Mask@@2) (MapType0Select ExhaleHeap@@1 o_1 $allocated))
+)))
+(assert (forall ((a_3@@2 T@U) (a2 T@U) ) (!  (=> (and (and (= (type a_3@@2) ArrayDomainTypeType) (= (type a2) ArrayDomainTypeType)) (= (array a_3@@2) (array a2))) (= a_3@@2 a2))
+ :qid |stdinbpl.250:15|
+ :skolemid |26|
+ :pattern ( (array a_3@@2) (array a2))
+)))
+(assert (forall ((arg0@@28 T@U) ) (! (= (type (|array#sm| arg0@@28)) (FieldType PredicateType_arrayType (MapType1Type RefType boolType)))
+ :qid |funType:array#sm|
+ :pattern ( (|array#sm| arg0@@28))
+)))
+(assert (forall ((a_3@@3 T@U) (a2@@0 T@U) ) (!  (=> (and (and (= (type a_3@@3) ArrayDomainTypeType) (= (type a2@@0) ArrayDomainTypeType)) (= (|array#sm| a_3@@3) (|array#sm| a2@@0))) (= a_3@@3 a2@@0))
+ :qid |stdinbpl.254:15|
+ :skolemid |27|
+ :pattern ( (|array#sm| a_3@@3) (|array#sm| a2@@0))
+)))
+(assert (forall ((root@@1 T@U) (root2 T@U) ) (!  (=> (and (and (= (type root@@1) RefType) (= (type root2) RefType)) (= (tree root@@1) (tree root2))) (= root@@1 root2))
+ :qid |stdinbpl.348:15|
+ :skolemid |39|
+ :pattern ( (tree root@@1) (tree root2))
+)))
+(assert (forall ((arg0@@29 T@U) ) (! (= (type (|tree#sm| arg0@@29)) (FieldType PredicateType_treeType (MapType1Type RefType boolType)))
+ :qid |funType:tree#sm|
+ :pattern ( (|tree#sm| arg0@@29))
+)))
+(assert (forall ((root@@2 T@U) (root2@@0 T@U) ) (!  (=> (and (and (= (type root@@2) RefType) (= (type root2@@0) RefType)) (= (|tree#sm| root@@2) (|tree#sm| root2@@0))) (= root@@2 root2@@0))
+ :qid |stdinbpl.352:15|
+ :skolemid |40|
+ :pattern ( (|tree#sm| root@@2) (|tree#sm| root2@@0))
+)))
+(assert (forall ((Heap@@5 T@U) (ExhaleHeap@@2 T@U) (Mask@@3 T@U) (o_1@@0 T@U) (f_2 T@U) ) (! (let ((B@@1 (FieldTypeInv1 (type f_2))))
+(let ((A@@1 (FieldTypeInv0 (type f_2))))
+ (=> (and (and (and (and (and (and (= (type Heap@@5) (MapType0Type RefType)) (= (type ExhaleHeap@@2) (MapType0Type RefType))) (= (type Mask@@3) (MapType1Type RefType realType))) (= (type o_1@@0) RefType)) (= (type f_2) (FieldType A@@1 B@@1))) (IdenticalOnKnownLocations Heap@@5 ExhaleHeap@@2 Mask@@3)) (HasDirectPerm Mask@@3 o_1@@0 f_2)) (= (MapType0Select Heap@@5 o_1@@0 f_2) (MapType0Select ExhaleHeap@@2 o_1@@0 f_2)))))
+ :qid |stdinbpl.42:22|
+ :skolemid |1|
+ :pattern ( (IdenticalOnKnownLocations Heap@@5 ExhaleHeap@@2 Mask@@3) (MapType0Select ExhaleHeap@@2 o_1@@0 f_2))
+)))
+(assert (forall ((Heap2Heap T@U) (Heap1Heap T@U) (a_3@@4 T@U) ) (!  (=> (and (and (and (= (type Heap2Heap) (MapType0Type RefType)) (= (type Heap1Heap) (MapType0Type RefType))) (= (type a_3@@4) ArrayDomainTypeType)) (and (=  (and (and (<= 0 (|sk_array#condqp1| (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4))) (< (|sk_array#condqp1| (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4)) (len a_3@@4))) (< NoPerm FullPerm))  (and (and (<= 0 (|sk_array#condqp1| (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4))) (< (|sk_array#condqp1| (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4)) (len a_3@@4))) (< NoPerm FullPerm))) (=> (and (and (<= 0 (|sk_array#condqp1| (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4))) (< (|sk_array#condqp1| (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4)) (len a_3@@4))) (< NoPerm FullPerm)) (= (U_2_int (MapType0Select Heap2Heap (loc a_3@@4 (|sk_array#condqp1| (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4))) val)) (U_2_int (MapType0Select Heap1Heap (loc a_3@@4 (|sk_array#condqp1| (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4))) val)))))) (= (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4)))
+ :qid |stdinbpl.270:15|
+ :skolemid |29|
+ :pattern ( (|array#condqp1| Heap2Heap a_3@@4) (|array#condqp1| Heap1Heap a_3@@4) (succHeapTrans Heap2Heap Heap1Heap))
+)))
+(assert  (and (= (type dummyHeap) (MapType0Type RefType)) (= (type ZeroMask) (MapType1Type RefType realType))))
+(assert (state dummyHeap ZeroMask))
+(assert (forall ((p T@U) (v_1 T@U) (w T@U) ) (! (let ((A@@2 (FieldTypeInv0 (type p))))
+ (=> (and (and (= (type p) (FieldType A@@2 FrameTypeType)) (= (type v_1) FrameTypeType)) (= (type w) FrameTypeType)) (not (InsidePredicate p v_1 p w))))
+ :qid |stdinbpl.191:19|
+ :skolemid |21|
+ :pattern ( (InsidePredicate p v_1 p w))
+)))
+(assert  (not (IsPredicateField val)))
+(assert  (not (IsWandField val)))
+(assert  (not (IsPredicateField left)))
+(assert  (not (IsWandField left)))
+(assert  (not (IsPredicateField right)))
+(assert  (not (IsWandField right)))
+(assert (forall ((Heap@@6 T@U) (ExhaleHeap@@3 T@U) (Mask@@4 T@U) ) (!  (=> (and (and (and (= (type Heap@@6) (MapType0Type RefType)) (= (type ExhaleHeap@@3) (MapType0Type RefType))) (= (type Mask@@4) (MapType1Type RefType realType))) (IdenticalOnKnownLocations Heap@@6 ExhaleHeap@@3 Mask@@4)) (succHeap Heap@@6 ExhaleHeap@@3))
+ :qid |stdinbpl.83:15|
+ :skolemid |10|
+ :pattern ( (IdenticalOnKnownLocations Heap@@6 ExhaleHeap@@3 Mask@@4))
+)))
+(assert (forall ((ResultMask T@U) (SummandMask1 T@U) (SummandMask2 T@U) (o_2 T@U) (f_4 T@U) ) (! (let ((B@@2 (FieldTypeInv1 (type f_4))))
+(let ((A@@3 (FieldTypeInv0 (type f_4))))
+ (=> (and (and (and (and (and (= (type ResultMask) (MapType1Type RefType realType)) (= (type SummandMask1) (MapType1Type RefType realType))) (= (type SummandMask2) (MapType1Type RefType realType))) (= (type o_2) RefType)) (= (type f_4) (FieldType A@@3 B@@2))) (sumMask ResultMask SummandMask1 SummandMask2)) (= (U_2_real (MapType1Select ResultMask o_2 f_4)) (+ (U_2_real (MapType1Select SummandMask1 o_2 f_4)) (U_2_real (MapType1Select SummandMask2 o_2 f_4)))))))
+ :qid |stdinbpl.138:22|
+ :skolemid |18|
+ :pattern ( (sumMask ResultMask SummandMask1 SummandMask2) (MapType1Select ResultMask o_2 f_4))
+ :pattern ( (sumMask ResultMask SummandMask1 SummandMask2) (MapType1Select SummandMask1 o_2 f_4))
+ :pattern ( (sumMask ResultMask SummandMask1 SummandMask2) (MapType1Select SummandMask2 o_2 f_4))
+)))
+(assert  (and (forall ((arg0@@30 Real) (arg1@@10 T@U) ) (! (= (type (ConditionalFrame arg0@@30 arg1@@10)) FrameTypeType)
+ :qid |funType:ConditionalFrame|
+ :pattern ( (ConditionalFrame arg0@@30 arg1@@10))
+)) (= (type EmptyFrame) FrameTypeType)))
+(assert (forall ((p@@0 Real) (f_6 T@U) ) (!  (=> (= (type f_6) FrameTypeType) (= (ConditionalFrame p@@0 f_6) (ite (> p@@0 0.0) f_6 EmptyFrame)))
+ :qid |stdinbpl.179:15|
+ :skolemid |19|
+ :pattern ( (ConditionalFrame p@@0 f_6))
+)))
+(assert (forall ((Mask@@5 T@U) (o_2@@0 T@U) (f_4@@0 T@U) ) (! (let ((B@@3 (FieldTypeInv1 (type f_4@@0))))
+(let ((A@@4 (FieldTypeInv0 (type f_4@@0))))
+ (=> (and (and (= (type Mask@@5) (MapType1Type RefType realType)) (= (type o_2@@0) RefType)) (= (type f_4@@0) (FieldType A@@4 B@@3))) (= (HasDirectPerm Mask@@5 o_2@@0 f_4@@0) (> (U_2_real (MapType1Select Mask@@5 o_2@@0 f_4@@0)) NoPerm)))))
+ :qid |stdinbpl.133:22|
+ :skolemid |17|
+ :pattern ( (HasDirectPerm Mask@@5 o_2@@0 f_4@@0))
+)))
+(assert (forall ((o_2@@1 T@U) (f_4@@1 T@U) ) (! (let ((B@@4 (FieldTypeInv1 (type f_4@@1))))
+(let ((A@@5 (FieldTypeInv0 (type f_4@@1))))
+ (=> (and (= (type o_2@@1) RefType) (= (type f_4@@1) (FieldType A@@5 B@@4))) (= (U_2_real (MapType1Select ZeroMask o_2@@1 f_4@@1)) NoPerm))))
+ :qid |stdinbpl.106:22|
+ :skolemid |13|
+ :pattern ( (MapType1Select ZeroMask o_2@@1 f_4@@1))
+)))
+(assert (forall ((Heap@@7 T@U) (ExhaleHeap@@4 T@U) (Mask@@6 T@U) (pm_f@@1 T@U) ) (! (let ((C@@1 (FieldTypeInv0 (type pm_f@@1))))
+ (=> (and (and (and (and (and (= (type Heap@@7) (MapType0Type RefType)) (= (type ExhaleHeap@@4) (MapType0Type RefType))) (= (type Mask@@6) (MapType1Type RefType realType))) (= (type pm_f@@1) (FieldType C@@1 FrameTypeType))) (IdenticalOnKnownLocations Heap@@7 ExhaleHeap@@4 Mask@@6)) (and (HasDirectPerm Mask@@6 null pm_f@@1) (IsPredicateField pm_f@@1))) (forall ((o2 T@U) (f_2@@0 T@U) ) (! (let ((B@@5 (FieldTypeInv1 (type f_2@@0))))
+(let ((A@@6 (FieldTypeInv0 (type f_2@@0))))
+ (=> (and (and (= (type o2) RefType) (= (type f_2@@0) (FieldType A@@6 B@@5))) (U_2_bool (MapType1Select (MapType0Select Heap@@7 null (PredicateMaskField pm_f@@1)) o2 f_2@@0))) (= (MapType0Select Heap@@7 o2 f_2@@0) (MapType0Select ExhaleHeap@@4 o2 f_2@@0)))))
+ :qid |stdinbpl.54:134|
+ :skolemid |3|
+ :pattern ( (MapType0Select ExhaleHeap@@4 o2 f_2@@0))
+))))
+ :qid |stdinbpl.52:19|
+ :skolemid |4|
+ :pattern ( (IdenticalOnKnownLocations Heap@@7 ExhaleHeap@@4 Mask@@6) (IsPredicateField pm_f@@1))
+)))
+(assert (forall ((Heap@@8 T@U) (ExhaleHeap@@5 T@U) (Mask@@7 T@U) (pm_f@@2 T@U) ) (! (let ((C@@2 (FieldTypeInv0 (type pm_f@@2))))
+ (=> (and (and (and (and (and (= (type Heap@@8) (MapType0Type RefType)) (= (type ExhaleHeap@@5) (MapType0Type RefType))) (= (type Mask@@7) (MapType1Type RefType realType))) (= (type pm_f@@2) (FieldType C@@2 FrameTypeType))) (IdenticalOnKnownLocations Heap@@8 ExhaleHeap@@5 Mask@@7)) (and (HasDirectPerm Mask@@7 null pm_f@@2) (IsWandField pm_f@@2))) (forall ((o2@@0 T@U) (f_2@@1 T@U) ) (! (let ((B@@6 (FieldTypeInv1 (type f_2@@1))))
+(let ((A@@7 (FieldTypeInv0 (type f_2@@1))))
+ (=> (and (and (= (type o2@@0) RefType) (= (type f_2@@1) (FieldType A@@7 B@@6))) (U_2_bool (MapType1Select (MapType0Select Heap@@8 null (WandMaskField pm_f@@2)) o2@@0 f_2@@1))) (= (MapType0Select Heap@@8 o2@@0 f_2@@1) (MapType0Select ExhaleHeap@@5 o2@@0 f_2@@1)))))
+ :qid |stdinbpl.67:129|
+ :skolemid |6|
+ :pattern ( (MapType0Select ExhaleHeap@@5 o2@@0 f_2@@1))
+))))
+ :qid |stdinbpl.65:19|
+ :skolemid |7|
+ :pattern ( (IdenticalOnKnownLocations Heap@@8 ExhaleHeap@@5 Mask@@7) (IsWandField pm_f@@2))
+)))
+(assert (forall ((a_3@@5 T@U) ) (!  (=> (= (type a_3@@5) ArrayDomainTypeType) (= (getPredWandId (array a_3@@5)) 0))
+ :qid |stdinbpl.244:15|
+ :skolemid |25|
+ :pattern ( (array a_3@@5))
+)))
+(assert (forall ((root@@3 T@U) ) (!  (=> (= (type root@@3) RefType) (= (getPredWandId (tree root@@3)) 1))
+ :qid |stdinbpl.342:15|
+ :skolemid |38|
+ :pattern ( (tree root@@3))
+)))
+(assert (forall ((Mask@@8 T@U) (o_2@@2 T@U) (f_4@@2 T@U) ) (! (let ((B@@7 (FieldTypeInv1 (type f_4@@2))))
+(let ((A@@8 (FieldTypeInv0 (type f_4@@2))))
+ (=> (and (and (and (= (type Mask@@8) (MapType1Type RefType realType)) (= (type o_2@@2) RefType)) (= (type f_4@@2) (FieldType A@@8 B@@7))) (GoodMask Mask@@8)) (and (>= (U_2_real (MapType1Select Mask@@8 o_2@@2 f_4@@2)) NoPerm) (=> (and (and (GoodMask Mask@@8) (not (IsPredicateField f_4@@2))) (not (IsWandField f_4@@2))) (<= (U_2_real (MapType1Select Mask@@8 o_2@@2 f_4@@2)) FullPerm))))))
+ :qid |stdinbpl.128:22|
+ :skolemid |16|
+ :pattern ( (GoodMask Mask@@8) (MapType1Select Mask@@8 o_2@@2 f_4@@2))
+)))
+(assert (forall ((o T@U) (f T@U) (Heap@@9 T@U) ) (!  (=> (and (and (and (= (type o) RefType) (= (type f) (FieldType NormalFieldType RefType))) (= (type Heap@@9) (MapType0Type RefType))) (U_2_bool (MapType0Select Heap@@9 o $allocated))) (U_2_bool (MapType0Select Heap@@9 (MapType0Select Heap@@9 o f) $allocated)))
+ :qid |stdinbpl.31:15|
+ :skolemid |0|
+ :pattern ( (MapType0Select Heap@@9 o f))
+)))
+(assert (forall ((a_3@@6 T@U) ) (!  (=> (= (type a_3@@6) ArrayDomainTypeType) (= (PredicateMaskField (array a_3@@6)) (|array#sm| a_3@@6)))
+ :qid |stdinbpl.236:15|
+ :skolemid |23|
+ :pattern ( (PredicateMaskField (array a_3@@6)))
+)))
+(assert (forall ((root@@4 T@U) ) (!  (=> (= (type root@@4) RefType) (= (PredicateMaskField (tree root@@4)) (|tree#sm| root@@4)))
+ :qid |stdinbpl.334:15|
+ :skolemid |36|
+ :pattern ( (PredicateMaskField (tree root@@4)))
+)))
+(assert (forall ((Heap@@10 T@U) (o@@0 T@U) (f_3 T@U) (v T@U) ) (! (let ((B@@8 (type v)))
+(let ((A@@9 (FieldTypeInv0 (type f_3))))
+ (=> (and (and (= (type Heap@@10) (MapType0Type RefType)) (= (type o@@0) RefType)) (= (type f_3) (FieldType A@@9 B@@8))) (succHeap Heap@@10 (MapType0Store Heap@@10 o@@0 f_3 v)))))
+ :qid |stdinbpl.78:22|
+ :skolemid |9|
+ :pattern ( (MapType0Store Heap@@10 o@@0 f_3 v))
+)))
+(assert (= (type ZeroPMask) (MapType1Type RefType boolType)))
+(assert (forall ((o_2@@3 T@U) (f_4@@3 T@U) ) (! (let ((B@@9 (FieldTypeInv1 (type f_4@@3))))
+(let ((A@@10 (FieldTypeInv0 (type f_4@@3))))
+ (=> (and (= (type o_2@@3) RefType) (= (type f_4@@3) (FieldType A@@10 B@@9))) (not (U_2_bool (MapType1Select ZeroPMask o_2@@3 f_4@@3))))))
+ :qid |stdinbpl.112:22|
+ :skolemid |14|
+ :pattern ( (MapType1Select ZeroPMask o_2@@3 f_4@@3))
+)))
+(assert (forall ((p@@1 T@U) (v_1@@0 T@U) (q T@U) (w@@0 T@U) (r T@U) (u T@U) ) (! (let ((C@@3 (FieldTypeInv0 (type r))))
+(let ((B@@10 (FieldTypeInv0 (type q))))
+(let ((A@@11 (FieldTypeInv0 (type p@@1))))
+ (=> (and (and (and (and (and (and (= (type p@@1) (FieldType A@@11 FrameTypeType)) (= (type v_1@@0) FrameTypeType)) (= (type q) (FieldType B@@10 FrameTypeType))) (= (type w@@0) FrameTypeType)) (= (type r) (FieldType C@@3 FrameTypeType))) (= (type u) FrameTypeType)) (and (InsidePredicate p@@1 v_1@@0 q w@@0) (InsidePredicate q w@@0 r u))) (InsidePredicate p@@1 v_1@@0 r u)))))
+ :qid |stdinbpl.186:25|
+ :skolemid |20|
+ :pattern ( (InsidePredicate p@@1 v_1@@0 q w@@0) (InsidePredicate q w@@0 r u))
+)))
+(assert (= NoPerm 0.0))
+(assert (= FullPerm 1.0))
+(push 1)
+(declare-fun ControlFlow (Int Int) Int)
+(declare-fun PostHeap@7 () T@U)
+(declare-fun root@@5 () T@U)
+(declare-fun UnfoldingMask@39 () T@U)
+(declare-fun UnfoldingMask@37 () T@U)
+(declare-fun UnfoldingMask@38 () T@U)
+(declare-fun UnfoldingMask@36 () T@U)
+(declare-fun UnfoldingMask@34 () T@U)
+(declare-fun UnfoldingMask@35 () T@U)
+(declare-fun PostMask@0 () T@U)
+(declare-fun CombineFrames (T@U T@U) T@U)
+(declare-fun FrameFragment (T@U) T@U)
+(declare-fun UnfoldingMask@32 () T@U)
+(declare-fun UnfoldingMask@33 () T@U)
+(declare-fun PostHeap@5 () T@U)
+(declare-fun newPMask@10 () T@U)
+(declare-fun PostHeap@6 () T@U)
+(declare-fun PostHeap@4 () T@U)
+(declare-fun PostHeap@2 () T@U)
+(declare-fun newPMask@9 () T@U)
+(declare-fun PostHeap@3 () T@U)
+(declare-fun Heap@@11 () T@U)
+(declare-fun Unfolding1Mask@15 () T@U)
+(declare-fun PostHeap@1 () T@U)
+(declare-fun PostHeap@0 () T@U)
+(declare-fun Unfolding1Mask@13 () T@U)
+(declare-fun Unfolding1Mask@14 () T@U)
+(declare-fun Unfolding1Mask@12 () T@U)
+(declare-fun Unfolding1Mask@10 () T@U)
+(declare-fun Unfolding1Mask@11 () T@U)
+(declare-fun Unfolding1Mask@8 () T@U)
+(declare-fun Mask@1 () T@U)
+(declare-fun Unfolding1Mask@9 () T@U)
+(declare-fun UnfoldingMask@31 () T@U)
+(declare-fun UnfoldingMask@29 () T@U)
+(declare-fun UnfoldingMask@30 () T@U)
+(declare-fun UnfoldingMask@28 () T@U)
+(declare-fun UnfoldingMask@26 () T@U)
+(declare-fun UnfoldingMask@27 () T@U)
+(declare-fun UnfoldingMask@24 () T@U)
+(declare-fun UnfoldingMask@25 () T@U)
+(declare-fun Heap@37 () T@U)
+(declare-fun Heap@39 () T@U)
+(declare-fun newPMask@8 () T@U)
+(declare-fun Heap@38 () T@U)
+(declare-fun Heap@36 () T@U)
+(declare-fun Heap@34 () T@U)
+(declare-fun newPMask@7 () T@U)
+(declare-fun Heap@35 () T@U)
+(declare-fun Heap@32 () T@U)
+(declare-fun UnfoldingMask@23 () T@U)
+(declare-fun Heap@33 () T@U)
+(declare-fun UnfoldingMask@21 () T@U)
+(declare-fun UnfoldingMask@22 () T@U)
+(declare-fun UnfoldingMask@20 () T@U)
+(declare-fun UnfoldingMask@18 () T@U)
+(declare-fun UnfoldingMask@19 () T@U)
+(declare-fun UnfoldingMask@16 () T@U)
+(declare-fun Mask@23 () T@U)
+(declare-fun UnfoldingMask@17 () T@U)
+(declare-fun Mask@24 () T@U)
+(declare-fun Heap@30 () T@U)
+(declare-fun newPMask@6 () T@U)
+(declare-fun Heap@31 () T@U)
+(declare-fun Heap@29 () T@U)
+(declare-fun Heap@27 () T@U)
+(declare-fun newPMask@5 () T@U)
+(declare-fun Heap@28 () T@U)
+(declare-fun Heap@26 () T@U)
+(declare-fun Heap@25 () T@U)
+(declare-fun Heap@22 () T@U)
+(declare-fun Heap@23 () T@U)
+(declare-fun Heap@24 () T@U)
+(declare-fun freshVersion@1 () T@U)
+(declare-fun Mask@22 () T@U)
+(declare-fun Mask@21 () T@U)
+(declare-fun Mask@20 () T@U)
+(declare-fun Mask@19 () T@U)
+(declare-fun Mask@18 () T@U)
+(declare-fun Mask@17 () T@U)
+(declare-fun Mask@16 () T@U)
+(declare-fun Mask@15 () T@U)
+(declare-fun Heap@21 () T@U)
+(declare-fun Mask@14 () T@U)
+(declare-fun Heap@19 () T@U)
+(declare-fun arg_root@0 () T@U)
+(declare-fun newPMask@4 () T@U)
+(declare-fun Heap@20 () T@U)
+(declare-fun Heap@18 () T@U)
+(declare-fun Heap@16 () T@U)
+(declare-fun newPMask@3 () T@U)
+(declare-fun Heap@17 () T@U)
+(declare-fun Heap@7 () T@U)
+(declare-fun Unfolding1Mask@7 () T@U)
+(declare-fun Heap@15 () T@U)
+(declare-fun Heap@14 () T@U)
+(declare-fun Unfolding1Mask@5 () T@U)
+(declare-fun Unfolding1Mask@6 () T@U)
+(declare-fun Unfolding1Mask@4 () T@U)
+(declare-fun Unfolding1Mask@2 () T@U)
+(declare-fun Unfolding1Mask@3 () T@U)
+(declare-fun Unfolding1Mask@0 () T@U)
+(declare-fun Mask@11 () T@U)
+(declare-fun Unfolding1Mask@1 () T@U)
+(declare-fun UnfoldingMask@15 () T@U)
+(declare-fun UnfoldingMask@13 () T@U)
+(declare-fun UnfoldingMask@14 () T@U)
+(declare-fun UnfoldingMask@12 () T@U)
+(declare-fun UnfoldingMask@10 () T@U)
+(declare-fun UnfoldingMask@11 () T@U)
+(declare-fun UnfoldingMask@8 () T@U)
+(declare-fun UnfoldingMask@9 () T@U)
+(declare-fun Heap@12 () T@U)
+(declare-fun newPMask@2 () T@U)
+(declare-fun Heap@13 () T@U)
+(declare-fun Heap@11 () T@U)
+(declare-fun Heap@9 () T@U)
+(declare-fun newPMask@1 () T@U)
+(declare-fun Heap@10 () T@U)
+(declare-fun ExhaleHeap@0 () T@U)
+(declare-fun UnfoldingMask@7 () T@U)
+(declare-fun Heap@8 () T@U)
+(declare-fun UnfoldingMask@5 () T@U)
+(declare-fun UnfoldingMask@6 () T@U)
+(declare-fun UnfoldingMask@4 () T@U)
+(declare-fun UnfoldingMask@2 () T@U)
+(declare-fun UnfoldingMask@3 () T@U)
+(declare-fun Mask@13 () T@U)
+(declare-fun Mask@12 () T@U)
+(declare-fun a_3@@7 () T@U)
+(declare-fun UnfoldingMask@0 () T@U)
+(declare-fun UnfoldingMask@1 () T@U)
+(declare-fun newPMask@0 () T@U)
+(declare-fun Heap@6 () T@U)
+(declare-fun Heap@3 () T@U)
+(declare-fun Heap@4 () T@U)
+(declare-fun Heap@5 () T@U)
+(declare-fun freshVersion@0 () T@U)
+(declare-fun qpRange2 (T@U) Bool)
+(declare-fun invRecv2 (T@U) Int)
+(declare-fun QPMask@0 () T@U)
+(declare-fun Mask@10 () T@U)
+(declare-fun neverTriggered3 (Int) Bool)
+(declare-fun qpRange3 (T@U) Bool)
+(declare-fun invRecv3 (T@U) Int)
+(declare-fun QPMask@1 () T@U)
+(declare-fun Heap@1 () T@U)
+(declare-fun Heap@2 () T@U)
+(declare-fun newVersion@1 () T@U)
+(declare-fun Mask@9 () T@U)
+(declare-fun Mask@7 () T@U)
+(declare-fun Mask@8 () T@U)
+(declare-fun Mask@6 () T@U)
+(declare-fun Mask@4 () T@U)
+(declare-fun Mask@5 () T@U)
+(declare-fun Mask@3 () T@U)
+(declare-fun Mask@2 () T@U)
+(declare-fun Heap@0 () T@U)
+(declare-fun newVersion@0 () T@U)
+(declare-fun Mask@0 () T@U)
+(assert  (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (= (type Heap@37) (MapType0Type RefType)) (= (type root@@5) RefType)) (= (type newPMask@8) (MapType1Type RefType boolType))) (= (type Heap@38) (MapType0Type RefType))) (= (type Heap@39) (MapType0Type RefType))) (= (type Heap@36) (MapType0Type RefType))) (= (type Heap@34) (MapType0Type RefType))) (= (type newPMask@7) (MapType1Type RefType boolType))) (= (type Heap@35) (MapType0Type RefType))) (= (type Heap@32) (MapType0Type RefType))) (= (type UnfoldingMask@23) (MapType1Type RefType realType))) (= (type Heap@@11) (MapType0Type RefType))) (= (type Heap@33) (MapType0Type RefType))) (= (type UnfoldingMask@22) (MapType1Type RefType realType))) (= (type UnfoldingMask@21) (MapType1Type RefType realType))) (= (type UnfoldingMask@20) (MapType1Type RefType realType))) (= (type UnfoldingMask@19) (MapType1Type RefType realType))) (= (type UnfoldingMask@18) (MapType1Type RefType realType))) (= (type UnfoldingMask@16) (MapType1Type RefType realType))) (= (type Mask@23) (MapType1Type RefType realType))) (= (type UnfoldingMask@17) (MapType1Type RefType realType))) (= (type Mask@24) (MapType1Type RefType realType))) (forall ((arg0@@31 T@U) (arg1@@11 T@U) ) (! (= (type (CombineFrames arg0@@31 arg1@@11)) FrameTypeType)
+ :qid |funType:CombineFrames|
+ :pattern ( (CombineFrames arg0@@31 arg1@@11))
+))) (forall ((arg0@@32 T@U) ) (! (= (type (FrameFragment arg0@@32)) FrameTypeType)
+ :qid |funType:FrameFragment|
+ :pattern ( (FrameFragment arg0@@32))
+))) (= (type Heap@30) (MapType0Type RefType))) (= (type newPMask@6) (MapType1Type RefType boolType))) (= (type Heap@31) (MapType0Type RefType))) (= (type Heap@29) (MapType0Type RefType))) (= (type Heap@27) (MapType0Type RefType))) (= (type newPMask@5) (MapType1Type RefType boolType))) (= (type Heap@28) (MapType0Type RefType))) (= (type Heap@26) (MapType0Type RefType))) (= (type Heap@25) (MapType0Type RefType))) (= (type Heap@23) (MapType0Type RefType))) (= (type Heap@22) (MapType0Type RefType))) (= (type Heap@24) (MapType0Type RefType))) (= (type freshVersion@1) FrameTypeType)) (= (type Mask@22) (MapType1Type RefType realType))) (= (type Mask@20) (MapType1Type RefType realType))) (= (type Mask@21) (MapType1Type RefType realType))) (= (type Mask@19) (MapType1Type RefType realType))) (= (type Mask@17) (MapType1Type RefType realType))) (= (type Mask@18) (MapType1Type RefType realType))) (= (type Mask@16) (MapType1Type RefType realType))) (= (type Mask@15) (MapType1Type RefType realType))) (= (type Heap@7) (MapType0Type RefType))) (= (type Mask@11) (MapType1Type RefType realType))) (= (type Heap@21) (MapType0Type RefType))) (= (type Mask@14) (MapType1Type RefType realType))) (= (type Heap@19) (MapType0Type RefType))) (= (type arg_root@0) RefType)) (= (type newPMask@4) (MapType1Type RefType boolType))) (= (type Heap@20) (MapType0Type RefType))) (= (type Heap@18) (MapType0Type RefType))) (= (type Heap@16) (MapType0Type RefType))) (= (type newPMask@3) (MapType1Type RefType boolType))) (= (type Heap@17) (MapType0Type RefType))) (= (type Unfolding1Mask@7) (MapType1Type RefType realType))) (= (type Heap@15) (MapType0Type RefType))) (= (type Heap@14) (MapType0Type RefType))) (= (type Unfolding1Mask@6) (MapType1Type RefType realType))) (= (type Unfolding1Mask@5) (MapType1Type RefType realType))) (= (type Unfolding1Mask@4) (MapType1Type RefType realType))) (= (type Unfolding1Mask@3) (MapType1Type RefType realType))) (= (type Unfolding1Mask@2) (MapType1Type RefType realType))) (= (type Unfolding1Mask@0) (MapType1Type RefType realType))) (= (type Unfolding1Mask@1) (MapType1Type RefType realType))) (= (type UnfoldingMask@15) (MapType1Type RefType realType))) (= (type UnfoldingMask@14) (MapType1Type RefType realType))) (= (type UnfoldingMask@13) (MapType1Type RefType realType))) (= (type UnfoldingMask@12) (MapType1Type RefType realType))) (= (type UnfoldingMask@11) (MapType1Type RefType realType))) (= (type UnfoldingMask@10) (MapType1Type RefType realType))) (= (type UnfoldingMask@8) (MapType1Type RefType realType))) (= (type UnfoldingMask@9) (MapType1Type RefType realType))) (= (type Heap@12) (MapType0Type RefType))) (= (type newPMask@2) (MapType1Type RefType boolType))) (= (type Heap@13) (MapType0Type RefType))) (= (type Heap@11) (MapType0Type RefType))) (= (type Heap@9) (MapType0Type RefType))) (= (type newPMask@1) (MapType1Type RefType boolType))) (= (type Heap@10) (MapType0Type RefType))) (= (type ExhaleHeap@0) (MapType0Type RefType))) (= (type UnfoldingMask@7) (MapType1Type RefType realType))) (= (type Heap@8) (MapType0Type RefType))) (= (type UnfoldingMask@6) (MapType1Type RefType realType))) (= (type UnfoldingMask@5) (MapType1Type RefType realType))) (= (type UnfoldingMask@4) (MapType1Type RefType realType))) (= (type UnfoldingMask@3) (MapType1Type RefType realType))) (= (type UnfoldingMask@2) (MapType1Type RefType realType))) (= (type Mask@13) (MapType1Type RefType realType))) (= (type Mask@12) (MapType1Type RefType realType))) (= (type a_3@@7) ArrayDomainTypeType)) (= (type UnfoldingMask@0) (MapType1Type RefType realType))) (= (type UnfoldingMask@1) (MapType1Type RefType realType))) (= (type newPMask@0) (MapType1Type RefType boolType))) (= (type Heap@6) (MapType0Type RefType))) (= (type Heap@4) (MapType0Type RefType))) (= (type Heap@3) (MapType0Type RefType))) (= (type Heap@5) (MapType0Type RefType))) (= (type freshVersion@0) FrameTypeType)) (= (type QPMask@0) (MapType1Type RefType realType))) (= (type Mask@10) (MapType1Type RefType realType))) (= (type QPMask@1) (MapType1Type RefType realType))) (= (type Heap@2) (MapType0Type RefType))) (= (type Heap@1) (MapType0Type RefType))) (= (type newVersion@1) FrameTypeType)) (= (type Mask@9) (MapType1Type RefType realType))) (= (type Mask@8) (MapType1Type RefType realType))) (= (type Mask@7) (MapType1Type RefType realType))) (= (type Mask@6) (MapType1Type RefType realType))) (= (type Mask@5) (MapType1Type RefType realType))) (= (type Mask@4) (MapType1Type RefType realType))) (= (type Mask@3) (MapType1Type RefType realType))) (= (type Mask@2) (MapType1Type RefType realType))) (= (type Heap@0) (MapType0Type RefType))) (= (type newVersion@0) FrameTypeType)) (= (type Mask@1) (MapType1Type RefType realType))) (= (type PostHeap@7) (MapType0Type RefType))) (= (type UnfoldingMask@38) (MapType1Type RefType realType))) (= (type UnfoldingMask@37) (MapType1Type RefType realType))) (= (type UnfoldingMask@39) (MapType1Type RefType realType))) (= (type UnfoldingMask@36) (MapType1Type RefType realType))) (= (type UnfoldingMask@35) (MapType1Type RefType realType))) (= (type UnfoldingMask@34) (MapType1Type RefType realType))) (= (type PostMask@0) (MapType1Type RefType realType))) (= (type UnfoldingMask@32) (MapType1Type RefType realType))) (= (type UnfoldingMask@33) (MapType1Type RefType realType))) (= (type PostHeap@5) (MapType0Type RefType))) (= (type newPMask@10) (MapType1Type RefType boolType))) (= (type PostHeap@6) (MapType0Type RefType))) (= (type PostHeap@4) (MapType0Type RefType))) (= (type PostHeap@2) (MapType0Type RefType))) (= (type newPMask@9) (MapType1Type RefType boolType))) (= (type PostHeap@3) (MapType0Type RefType))) (= (type Unfolding1Mask@15) (MapType1Type RefType realType))) (= (type PostHeap@1) (MapType0Type RefType))) (= (type PostHeap@0) (MapType0Type RefType))) (= (type Unfolding1Mask@14) (MapType1Type RefType realType))) (= (type Unfolding1Mask@13) (MapType1Type RefType realType))) (= (type Unfolding1Mask@12) (MapType1Type RefType realType))) (= (type Unfolding1Mask@11) (MapType1Type RefType realType))) (= (type Unfolding1Mask@10) (MapType1Type RefType realType))) (= (type Unfolding1Mask@8) (MapType1Type RefType realType))) (= (type Unfolding1Mask@9) (MapType1Type RefType realType))) (= (type UnfoldingMask@31) (MapType1Type RefType realType))) (= (type UnfoldingMask@30) (MapType1Type RefType realType))) (= (type UnfoldingMask@29) (MapType1Type RefType realType))) (= (type UnfoldingMask@28) (MapType1Type RefType realType))) (= (type UnfoldingMask@27) (MapType1Type RefType realType))) (= (type UnfoldingMask@26) (MapType1Type RefType realType))) (= (type UnfoldingMask@24) (MapType1Type RefType realType))) (= (type UnfoldingMask@25) (MapType1Type RefType realType))) (= (type Mask@0) (MapType1Type RefType realType))))
+(set-info :boogie-vc-id _treeToArray)
+(set-option :timeout 0)
+(set-option :rlimit 0)
+(assert (not
+ (=> (= (ControlFlow 0 0) 170) (let ((anon21_correct true))
+(let ((anon109_Else_correct  (=> (= (MapType0Select PostHeap@7 root@@5 right) null) (=> (and (= UnfoldingMask@39 UnfoldingMask@37) (= (ControlFlow 0 136) 134)) anon21_correct))))
+(let ((anon109_Then_correct  (=> (and (not (= (MapType0Select PostHeap@7 root@@5 right) null)) (= UnfoldingMask@38 (MapType1Store UnfoldingMask@37 null (tree (MapType0Select PostHeap@7 root@@5 right)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@37 null (tree (MapType0Select PostHeap@7 root@@5 right)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select PostHeap@7 null (tree root@@5)) (tree (MapType0Select PostHeap@7 root@@5 right)) (MapType0Select PostHeap@7 null (tree (MapType0Select PostHeap@7 root@@5 right)))) (state PostHeap@7 UnfoldingMask@38)) (and (= UnfoldingMask@39 UnfoldingMask@38) (= (ControlFlow 0 135) 134))) anon21_correct))))
+(let ((anon19_correct  (=> (not (= root@@5 null)) (=> (and (= UnfoldingMask@37 (MapType1Store UnfoldingMask@36 root@@5 right (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@36 root@@5 right)) FullPerm)))) (state PostHeap@7 UnfoldingMask@37)) (and (=> (= (ControlFlow 0 137) 135) anon109_Then_correct) (=> (= (ControlFlow 0 137) 136) anon109_Else_correct))))))
+(let ((anon108_Else_correct  (=> (= (MapType0Select PostHeap@7 root@@5 left) null) (=> (and (= UnfoldingMask@36 UnfoldingMask@34) (= (ControlFlow 0 139) 137)) anon19_correct))))
+(let ((anon108_Then_correct  (=> (and (not (= (MapType0Select PostHeap@7 root@@5 left) null)) (= UnfoldingMask@35 (MapType1Store UnfoldingMask@34 null (tree (MapType0Select PostHeap@7 root@@5 left)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@34 null (tree (MapType0Select PostHeap@7 root@@5 left)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select PostHeap@7 null (tree root@@5)) (tree (MapType0Select PostHeap@7 root@@5 left)) (MapType0Select PostHeap@7 null (tree (MapType0Select PostHeap@7 root@@5 left)))) (state PostHeap@7 UnfoldingMask@35)) (and (= UnfoldingMask@36 UnfoldingMask@35) (= (ControlFlow 0 138) 137))) anon19_correct))))
+(let ((anon17_correct  (=> (and (state PostHeap@7 PostMask@0) (|tree#trigger| PostHeap@7 (tree root@@5))) (=> (and (and (and (= (MapType0Select PostHeap@7 null (tree root@@5)) (CombineFrames (FrameFragment (MapType0Select PostHeap@7 root@@5 val)) (CombineFrames (FrameFragment (MapType0Select PostHeap@7 root@@5 left)) (CombineFrames (FrameFragment (ite (not (= (MapType0Select PostHeap@7 root@@5 left) null)) (MapType0Select PostHeap@7 null (tree (MapType0Select PostHeap@7 root@@5 left))) EmptyFrame)) (CombineFrames (FrameFragment (MapType0Select PostHeap@7 root@@5 right)) (FrameFragment (ite (not (= (MapType0Select PostHeap@7 root@@5 right) null)) (MapType0Select PostHeap@7 null (tree (MapType0Select PostHeap@7 root@@5 right))) EmptyFrame))))))) (= UnfoldingMask@32 (MapType1Store PostMask@0 null (tree root@@5) (real_2_U (- (U_2_real (MapType1Select PostMask@0 null (tree root@@5))) FullPerm))))) (and (not (= root@@5 null)) (= UnfoldingMask@33 (MapType1Store UnfoldingMask@32 root@@5 val (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@32 root@@5 val)) FullPerm)))))) (and (and (state PostHeap@7 UnfoldingMask@33) (not (= root@@5 null))) (and (= UnfoldingMask@34 (MapType1Store UnfoldingMask@33 root@@5 left (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@33 root@@5 left)) FullPerm)))) (state PostHeap@7 UnfoldingMask@34)))) (and (=> (= (ControlFlow 0 140) 138) anon108_Then_correct) (=> (= (ControlFlow 0 140) 139) anon108_Else_correct))))))
+(let ((anon107_Else_correct  (=> (= (MapType0Select PostHeap@5 root@@5 right) null) (=> (and (= PostHeap@7 PostHeap@5) (= (ControlFlow 0 142) 140)) anon17_correct))))
+(let ((anon107_Then_correct  (=> (not (= (MapType0Select PostHeap@5 root@@5 right) null)) (=> (and (and (forall ((o_5 T@U) (f_8 T@U) ) (! (let ((B@@11 (FieldTypeInv1 (type f_8))))
+(let ((A@@12 (FieldTypeInv0 (type f_8))))
+ (=> (and (and (= (type o_5) RefType) (= (type f_8) (FieldType A@@12 B@@11))) (or (U_2_bool (MapType1Select (MapType0Select PostHeap@5 null (|tree#sm| root@@5)) o_5 f_8)) (U_2_bool (MapType1Select (MapType0Select PostHeap@5 null (|tree#sm| (MapType0Select PostHeap@5 root@@5 right))) o_5 f_8)))) (U_2_bool (MapType1Select newPMask@10 o_5 f_8)))))
+ :qid |stdinbpl.577:33|
+ :skolemid |43|
+ :pattern ( (MapType1Select newPMask@10 o_5 f_8))
+)) (= PostHeap@6 (MapType0Store PostHeap@5 null (|tree#sm| root@@5) newPMask@10))) (and (= PostHeap@7 PostHeap@6) (= (ControlFlow 0 141) 140))) anon17_correct))))
+(let ((anon15_correct  (=> (= PostHeap@5 (MapType0Store PostHeap@4 null (|tree#sm| root@@5) (MapType1Store (MapType0Select PostHeap@4 null (|tree#sm| root@@5)) root@@5 right (bool_2_U true)))) (and (=> (= (ControlFlow 0 143) 141) anon107_Then_correct) (=> (= (ControlFlow 0 143) 142) anon107_Else_correct)))))
+(let ((anon106_Else_correct  (=> (= (MapType0Select PostHeap@2 root@@5 left) null) (=> (and (= PostHeap@4 PostHeap@2) (= (ControlFlow 0 145) 143)) anon15_correct))))
+(let ((anon106_Then_correct  (=> (not (= (MapType0Select PostHeap@2 root@@5 left) null)) (=> (and (and (forall ((o_4 T@U) (f_7 T@U) ) (! (let ((B@@12 (FieldTypeInv1 (type f_7))))
+(let ((A@@13 (FieldTypeInv0 (type f_7))))
+ (=> (and (and (= (type o_4) RefType) (= (type f_7) (FieldType A@@13 B@@12))) (or (U_2_bool (MapType1Select (MapType0Select PostHeap@2 null (|tree#sm| root@@5)) o_4 f_7)) (U_2_bool (MapType1Select (MapType0Select PostHeap@2 null (|tree#sm| (MapType0Select PostHeap@2 root@@5 left))) o_4 f_7)))) (U_2_bool (MapType1Select newPMask@9 o_4 f_7)))))
+ :qid |stdinbpl.568:33|
+ :skolemid |42|
+ :pattern ( (MapType1Select newPMask@9 o_4 f_7))
+)) (= PostHeap@3 (MapType0Store PostHeap@2 null (|tree#sm| root@@5) newPMask@9))) (and (= PostHeap@4 PostHeap@3) (= (ControlFlow 0 144) 143))) anon15_correct))))
+(let ((anon13_correct  (=> (state Heap@@11 Unfolding1Mask@15) (and (=> (= (ControlFlow 0 146) (- 0 147)) (HasDirectPerm Unfolding1Mask@15 root@@5 val)) (=> (HasDirectPerm Unfolding1Mask@15 root@@5 val) (=> (and (= PostHeap@1 (MapType0Store PostHeap@0 null (|tree#sm| root@@5) (MapType1Store (MapType0Select PostHeap@0 null (|tree#sm| root@@5)) root@@5 val (bool_2_U true)))) (= PostHeap@2 (MapType0Store PostHeap@1 null (|tree#sm| root@@5) (MapType1Store (MapType0Select PostHeap@1 null (|tree#sm| root@@5)) root@@5 left (bool_2_U true))))) (and (=> (= (ControlFlow 0 146) 144) anon106_Then_correct) (=> (= (ControlFlow 0 146) 145) anon106_Else_correct))))))))
+(let ((anon105_Else_correct  (=> (= (MapType0Select Heap@@11 root@@5 right) null) (=> (and (= Unfolding1Mask@15 Unfolding1Mask@13) (= (ControlFlow 0 149) 146)) anon13_correct))))
+(let ((anon105_Then_correct  (=> (and (not (= (MapType0Select Heap@@11 root@@5 right) null)) (= Unfolding1Mask@14 (MapType1Store Unfolding1Mask@13 null (tree (MapType0Select Heap@@11 root@@5 right)) (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@13 null (tree (MapType0Select Heap@@11 root@@5 right)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select Heap@@11 null (tree root@@5)) (tree (MapType0Select Heap@@11 root@@5 right)) (MapType0Select Heap@@11 null (tree (MapType0Select Heap@@11 root@@5 right)))) (state Heap@@11 Unfolding1Mask@14)) (and (= Unfolding1Mask@15 Unfolding1Mask@14) (= (ControlFlow 0 148) 146))) anon13_correct))))
+(let ((anon11_correct  (=> (not (= root@@5 null)) (=> (and (= Unfolding1Mask@13 (MapType1Store Unfolding1Mask@12 root@@5 right (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@12 root@@5 right)) FullPerm)))) (state Heap@@11 Unfolding1Mask@13)) (and (=> (= (ControlFlow 0 150) 148) anon105_Then_correct) (=> (= (ControlFlow 0 150) 149) anon105_Else_correct))))))
+(let ((anon104_Else_correct  (=> (= (MapType0Select Heap@@11 root@@5 left) null) (=> (and (= Unfolding1Mask@12 Unfolding1Mask@10) (= (ControlFlow 0 152) 150)) anon11_correct))))
+(let ((anon104_Then_correct  (=> (and (not (= (MapType0Select Heap@@11 root@@5 left) null)) (= Unfolding1Mask@11 (MapType1Store Unfolding1Mask@10 null (tree (MapType0Select Heap@@11 root@@5 left)) (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@10 null (tree (MapType0Select Heap@@11 root@@5 left)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select Heap@@11 null (tree root@@5)) (tree (MapType0Select Heap@@11 root@@5 left)) (MapType0Select Heap@@11 null (tree (MapType0Select Heap@@11 root@@5 left)))) (state Heap@@11 Unfolding1Mask@11)) (and (= Unfolding1Mask@12 Unfolding1Mask@11) (= (ControlFlow 0 151) 150))) anon11_correct))))
+(let ((anon9_correct  (=> (= Unfolding1Mask@8 (MapType1Store Mask@1 null (tree root@@5) (real_2_U (- (U_2_real (MapType1Select Mask@1 null (tree root@@5))) FullPerm)))) (=> (and (not (= root@@5 null)) (= Unfolding1Mask@9 (MapType1Store Unfolding1Mask@8 root@@5 val (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@8 root@@5 val)) FullPerm))))) (=> (and (and (state Heap@@11 Unfolding1Mask@9) (not (= root@@5 null))) (and (= Unfolding1Mask@10 (MapType1Store Unfolding1Mask@9 root@@5 left (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@9 root@@5 left)) FullPerm)))) (state Heap@@11 Unfolding1Mask@10))) (and (=> (= (ControlFlow 0 153) 151) anon104_Then_correct) (=> (= (ControlFlow 0 153) 152) anon104_Else_correct)))))))
+(let ((anon103_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 156) 153)) anon9_correct)))
+(let ((anon103_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 154) (- 0 155)) (<= FullPerm (U_2_real (MapType1Select Mask@1 null (tree root@@5))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@1 null (tree root@@5)))) (=> (= (ControlFlow 0 154) 153) anon9_correct))))))
+(let ((anon7_correct  (=> (state PostHeap@0 UnfoldingMask@31) (and (=> (= (ControlFlow 0 157) (- 0 158)) (HasDirectPerm UnfoldingMask@31 root@@5 val)) (=> (HasDirectPerm UnfoldingMask@31 root@@5 val) (=> (and (|tree#trigger| Heap@@11 (tree root@@5)) (= (MapType0Select Heap@@11 null (tree root@@5)) (CombineFrames (FrameFragment (MapType0Select Heap@@11 root@@5 val)) (CombineFrames (FrameFragment (MapType0Select Heap@@11 root@@5 left)) (CombineFrames (FrameFragment (ite (not (= (MapType0Select Heap@@11 root@@5 left) null)) (MapType0Select Heap@@11 null (tree (MapType0Select Heap@@11 root@@5 left))) EmptyFrame)) (CombineFrames (FrameFragment (MapType0Select Heap@@11 root@@5 right)) (FrameFragment (ite (not (= (MapType0Select Heap@@11 root@@5 right) null)) (MapType0Select Heap@@11 null (tree (MapType0Select Heap@@11 root@@5 right))) EmptyFrame)))))))) (and (=> (= (ControlFlow 0 157) 154) anon103_Then_correct) (=> (= (ControlFlow 0 157) 156) anon103_Else_correct))))))))
+(let ((anon102_Else_correct  (=> (= (MapType0Select PostHeap@0 root@@5 right) null) (=> (and (= UnfoldingMask@31 UnfoldingMask@29) (= (ControlFlow 0 160) 157)) anon7_correct))))
+(let ((anon102_Then_correct  (=> (and (not (= (MapType0Select PostHeap@0 root@@5 right) null)) (= UnfoldingMask@30 (MapType1Store UnfoldingMask@29 null (tree (MapType0Select PostHeap@0 root@@5 right)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@29 null (tree (MapType0Select PostHeap@0 root@@5 right)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select PostHeap@0 null (tree root@@5)) (tree (MapType0Select PostHeap@0 root@@5 right)) (MapType0Select PostHeap@0 null (tree (MapType0Select PostHeap@0 root@@5 right)))) (state PostHeap@0 UnfoldingMask@30)) (and (= UnfoldingMask@31 UnfoldingMask@30) (= (ControlFlow 0 159) 157))) anon7_correct))))
+(let ((anon5_correct  (=> (not (= root@@5 null)) (=> (and (= UnfoldingMask@29 (MapType1Store UnfoldingMask@28 root@@5 right (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@28 root@@5 right)) FullPerm)))) (state PostHeap@0 UnfoldingMask@29)) (and (=> (= (ControlFlow 0 161) 159) anon102_Then_correct) (=> (= (ControlFlow 0 161) 160) anon102_Else_correct))))))
+(let ((anon101_Else_correct  (=> (= (MapType0Select PostHeap@0 root@@5 left) null) (=> (and (= UnfoldingMask@28 UnfoldingMask@26) (= (ControlFlow 0 163) 161)) anon5_correct))))
+(let ((anon101_Then_correct  (=> (and (not (= (MapType0Select PostHeap@0 root@@5 left) null)) (= UnfoldingMask@27 (MapType1Store UnfoldingMask@26 null (tree (MapType0Select PostHeap@0 root@@5 left)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@26 null (tree (MapType0Select PostHeap@0 root@@5 left)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select PostHeap@0 null (tree root@@5)) (tree (MapType0Select PostHeap@0 root@@5 left)) (MapType0Select PostHeap@0 null (tree (MapType0Select PostHeap@0 root@@5 left)))) (state PostHeap@0 UnfoldingMask@27)) (and (= UnfoldingMask@28 UnfoldingMask@27) (= (ControlFlow 0 162) 161))) anon5_correct))))
+(let ((anon3_correct  (=> (= UnfoldingMask@24 (MapType1Store PostMask@0 null (tree root@@5) (real_2_U (- (U_2_real (MapType1Select PostMask@0 null (tree root@@5))) FullPerm)))) (=> (and (not (= root@@5 null)) (= UnfoldingMask@25 (MapType1Store UnfoldingMask@24 root@@5 val (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@24 root@@5 val)) FullPerm))))) (=> (and (and (state PostHeap@0 UnfoldingMask@25) (not (= root@@5 null))) (and (= UnfoldingMask@26 (MapType1Store UnfoldingMask@25 root@@5 left (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@25 root@@5 left)) FullPerm)))) (state PostHeap@0 UnfoldingMask@26))) (and (=> (= (ControlFlow 0 164) 162) anon101_Then_correct) (=> (= (ControlFlow 0 164) 163) anon101_Else_correct)))))))
+(let ((anon100_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 167) 164)) anon3_correct)))
+(let ((anon100_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 165) (- 0 166)) (<= FullPerm (U_2_real (MapType1Select PostMask@0 null (tree root@@5))))) (=> (<= FullPerm (U_2_real (MapType1Select PostMask@0 null (tree root@@5)))) (=> (= (ControlFlow 0 165) 164) anon3_correct))))))
+(let ((anon99_Then_correct  (=> (and (state PostHeap@0 ZeroMask) (= PostMask@0 (MapType1Store ZeroMask null (tree root@@5) (real_2_U (+ (U_2_real (MapType1Select ZeroMask null (tree root@@5))) FullPerm))))) (=> (and (and (state PostHeap@0 PostMask@0) (state PostHeap@0 PostMask@0)) (and (|tree#trigger| PostHeap@0 (tree root@@5)) (= (MapType0Select PostHeap@0 null (tree root@@5)) (CombineFrames (FrameFragment (MapType0Select PostHeap@0 root@@5 val)) (CombineFrames (FrameFragment (MapType0Select PostHeap@0 root@@5 left)) (CombineFrames (FrameFragment (ite (not (= (MapType0Select PostHeap@0 root@@5 left) null)) (MapType0Select PostHeap@0 null (tree (MapType0Select PostHeap@0 root@@5 left))) EmptyFrame)) (CombineFrames (FrameFragment (MapType0Select PostHeap@0 root@@5 right)) (FrameFragment (ite (not (= (MapType0Select PostHeap@0 root@@5 right) null)) (MapType0Select PostHeap@0 null (tree (MapType0Select PostHeap@0 root@@5 right))) EmptyFrame))))))))) (and (=> (= (ControlFlow 0 168) 165) anon100_Then_correct) (=> (= (ControlFlow 0 168) 167) anon100_Else_correct))))))
+(let ((anon98_correct true))
+(let ((anon147_Else_correct  (=> (= (MapType0Select Heap@37 root@@5 right) null) (=> (and (= Heap@39 Heap@37) (= (ControlFlow 0 3) 1)) anon98_correct))))
+(let ((anon147_Then_correct  (=> (not (= (MapType0Select Heap@37 root@@5 right) null)) (=> (and (and (forall ((o_14 T@U) (f_17 T@U) ) (! (let ((B@@13 (FieldTypeInv1 (type f_17))))
+(let ((A@@14 (FieldTypeInv0 (type f_17))))
+ (=> (and (and (= (type o_14) RefType) (= (type f_17) (FieldType A@@14 B@@13))) (or (U_2_bool (MapType1Select (MapType0Select Heap@37 null (|tree#sm| root@@5)) o_14 f_17)) (U_2_bool (MapType1Select (MapType0Select Heap@37 null (|tree#sm| (MapType0Select Heap@37 root@@5 right))) o_14 f_17)))) (U_2_bool (MapType1Select newPMask@8 o_14 f_17)))))
+ :qid |stdinbpl.1158:31|
+ :skolemid |65|
+ :pattern ( (MapType1Select newPMask@8 o_14 f_17))
+)) (= Heap@38 (MapType0Store Heap@37 null (|tree#sm| root@@5) newPMask@8))) (and (= Heap@39 Heap@38) (= (ControlFlow 0 2) 1))) anon98_correct))))
+(let ((anon96_correct  (=> (= Heap@37 (MapType0Store Heap@36 null (|tree#sm| root@@5) (MapType1Store (MapType0Select Heap@36 null (|tree#sm| root@@5)) root@@5 right (bool_2_U true)))) (and (=> (= (ControlFlow 0 4) 2) anon147_Then_correct) (=> (= (ControlFlow 0 4) 3) anon147_Else_correct)))))
+(let ((anon146_Else_correct  (=> (= (MapType0Select Heap@34 root@@5 left) null) (=> (and (= Heap@36 Heap@34) (= (ControlFlow 0 6) 4)) anon96_correct))))
+(let ((anon146_Then_correct  (=> (not (= (MapType0Select Heap@34 root@@5 left) null)) (=> (and (and (forall ((o_13 T@U) (f_16 T@U) ) (! (let ((B@@14 (FieldTypeInv1 (type f_16))))
+(let ((A@@15 (FieldTypeInv0 (type f_16))))
+ (=> (and (and (= (type o_13) RefType) (= (type f_16) (FieldType A@@15 B@@14))) (or (U_2_bool (MapType1Select (MapType0Select Heap@34 null (|tree#sm| root@@5)) o_13 f_16)) (U_2_bool (MapType1Select (MapType0Select Heap@34 null (|tree#sm| (MapType0Select Heap@34 root@@5 left))) o_13 f_16)))) (U_2_bool (MapType1Select newPMask@7 o_13 f_16)))))
+ :qid |stdinbpl.1149:31|
+ :skolemid |64|
+ :pattern ( (MapType1Select newPMask@7 o_13 f_16))
+)) (= Heap@35 (MapType0Store Heap@34 null (|tree#sm| root@@5) newPMask@7))) (and (= Heap@36 Heap@35) (= (ControlFlow 0 5) 4))) anon96_correct))))
+(let ((anon94_correct  (=> (state Heap@32 UnfoldingMask@23) (and (=> (= (ControlFlow 0 7) (- 0 8)) (= (U_2_int (MapType0Select Heap@32 root@@5 val)) (U_2_int (MapType0Select Heap@@11 root@@5 val)))) (=> (= (U_2_int (MapType0Select Heap@32 root@@5 val)) (U_2_int (MapType0Select Heap@@11 root@@5 val))) (=> (and (= Heap@33 (MapType0Store Heap@32 null (|tree#sm| root@@5) (MapType1Store (MapType0Select Heap@32 null (|tree#sm| root@@5)) root@@5 val (bool_2_U true)))) (= Heap@34 (MapType0Store Heap@33 null (|tree#sm| root@@5) (MapType1Store (MapType0Select Heap@33 null (|tree#sm| root@@5)) root@@5 left (bool_2_U true))))) (and (=> (= (ControlFlow 0 7) 5) anon146_Then_correct) (=> (= (ControlFlow 0 7) 6) anon146_Else_correct))))))))
+(let ((anon145_Else_correct  (=> (= (MapType0Select Heap@32 root@@5 right) null) (=> (and (= UnfoldingMask@23 UnfoldingMask@21) (= (ControlFlow 0 10) 7)) anon94_correct))))
+(let ((anon145_Then_correct  (=> (and (not (= (MapType0Select Heap@32 root@@5 right) null)) (= UnfoldingMask@22 (MapType1Store UnfoldingMask@21 null (tree (MapType0Select Heap@32 root@@5 right)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@21 null (tree (MapType0Select Heap@32 root@@5 right)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select Heap@32 null (tree root@@5)) (tree (MapType0Select Heap@32 root@@5 right)) (MapType0Select Heap@32 null (tree (MapType0Select Heap@32 root@@5 right)))) (state Heap@32 UnfoldingMask@22)) (and (= UnfoldingMask@23 UnfoldingMask@22) (= (ControlFlow 0 9) 7))) anon94_correct))))
+(let ((anon92_correct  (=> (not (= root@@5 null)) (=> (and (= UnfoldingMask@21 (MapType1Store UnfoldingMask@20 root@@5 right (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@20 root@@5 right)) FullPerm)))) (state Heap@32 UnfoldingMask@21)) (and (=> (= (ControlFlow 0 11) 9) anon145_Then_correct) (=> (= (ControlFlow 0 11) 10) anon145_Else_correct))))))
+(let ((anon144_Else_correct  (=> (= (MapType0Select Heap@32 root@@5 left) null) (=> (and (= UnfoldingMask@20 UnfoldingMask@18) (= (ControlFlow 0 13) 11)) anon92_correct))))
+(let ((anon144_Then_correct  (=> (and (not (= (MapType0Select Heap@32 root@@5 left) null)) (= UnfoldingMask@19 (MapType1Store UnfoldingMask@18 null (tree (MapType0Select Heap@32 root@@5 left)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@18 null (tree (MapType0Select Heap@32 root@@5 left)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select Heap@32 null (tree root@@5)) (tree (MapType0Select Heap@32 root@@5 left)) (MapType0Select Heap@32 null (tree (MapType0Select Heap@32 root@@5 left)))) (state Heap@32 UnfoldingMask@19)) (and (= UnfoldingMask@20 UnfoldingMask@19) (= (ControlFlow 0 12) 11))) anon92_correct))))
+(let ((anon90_correct  (=> (= UnfoldingMask@16 (MapType1Store Mask@23 null (tree root@@5) (real_2_U (- (U_2_real (MapType1Select Mask@23 null (tree root@@5))) FullPerm)))) (=> (and (not (= root@@5 null)) (= UnfoldingMask@17 (MapType1Store UnfoldingMask@16 root@@5 val (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@16 root@@5 val)) FullPerm))))) (=> (and (and (state Heap@32 UnfoldingMask@17) (not (= root@@5 null))) (and (= UnfoldingMask@18 (MapType1Store UnfoldingMask@17 root@@5 left (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@17 root@@5 left)) FullPerm)))) (state Heap@32 UnfoldingMask@18))) (and (=> (= (ControlFlow 0 14) 12) anon144_Then_correct) (=> (= (ControlFlow 0 14) 13) anon144_Else_correct)))))))
+(let ((anon143_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 17) 14)) anon90_correct)))
+(let ((anon143_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 15) (- 0 16)) (<= FullPerm (U_2_real (MapType1Select Mask@23 null (tree root@@5))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@23 null (tree root@@5)))) (=> (= (ControlFlow 0 15) 14) anon90_correct))))))
+(let ((anon88_correct  (=> (= Mask@24 (MapType1Store Mask@23 null (tree root@@5) (real_2_U (- (U_2_real (MapType1Select Mask@23 null (tree root@@5))) FullPerm)))) (=> (and (|tree#trigger| Heap@32 (tree root@@5)) (= (MapType0Select Heap@32 null (tree root@@5)) (CombineFrames (FrameFragment (MapType0Select Heap@32 root@@5 val)) (CombineFrames (FrameFragment (MapType0Select Heap@32 root@@5 left)) (CombineFrames (FrameFragment (ite (not (= (MapType0Select Heap@32 root@@5 left) null)) (MapType0Select Heap@32 null (tree (MapType0Select Heap@32 root@@5 left))) EmptyFrame)) (CombineFrames (FrameFragment (MapType0Select Heap@32 root@@5 right)) (FrameFragment (ite (not (= (MapType0Select Heap@32 root@@5 right) null)) (MapType0Select Heap@32 null (tree (MapType0Select Heap@32 root@@5 right))) EmptyFrame)))))))) (and (=> (= (ControlFlow 0 18) 15) anon143_Then_correct) (=> (= (ControlFlow 0 18) 17) anon143_Else_correct))))))
+(let ((anon142_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 21) 18)) anon88_correct)))
+(let ((anon142_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 19) (- 0 20)) (<= FullPerm (U_2_real (MapType1Select Mask@23 null (tree root@@5))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@23 null (tree root@@5)))) (=> (= (ControlFlow 0 19) 18) anon88_correct))))))
+(let ((anon86_correct  (=> (and (state Heap@32 Mask@23) (state Heap@32 Mask@23)) (and (=> (= (ControlFlow 0 22) 19) anon142_Then_correct) (=> (= (ControlFlow 0 22) 21) anon142_Else_correct)))))
+(let ((anon141_Else_correct  (=> (= (MapType0Select Heap@30 root@@5 right) null) (=> (and (= Heap@32 Heap@30) (= (ControlFlow 0 24) 22)) anon86_correct))))
+(let ((anon141_Then_correct  (=> (not (= (MapType0Select Heap@30 root@@5 right) null)) (=> (and (and (forall ((o_12 T@U) (f_15 T@U) ) (! (let ((B@@15 (FieldTypeInv1 (type f_15))))
+(let ((A@@16 (FieldTypeInv0 (type f_15))))
+ (=> (and (and (= (type o_12) RefType) (= (type f_15) (FieldType A@@16 B@@15))) (or (U_2_bool (MapType1Select (MapType0Select Heap@30 null (|tree#sm| root@@5)) o_12 f_15)) (U_2_bool (MapType1Select (MapType0Select Heap@30 null (|tree#sm| (MapType0Select Heap@30 root@@5 right))) o_12 f_15)))) (U_2_bool (MapType1Select newPMask@6 o_12 f_15)))))
+ :qid |stdinbpl.1080:29|
+ :skolemid |63|
+ :pattern ( (MapType1Select newPMask@6 o_12 f_15))
+)) (= Heap@31 (MapType0Store Heap@30 null (|tree#sm| root@@5) newPMask@6))) (and (= Heap@32 Heap@31) (= (ControlFlow 0 23) 22))) anon86_correct))))
+(let ((anon84_correct  (=> (= Heap@30 (MapType0Store Heap@29 null (|tree#sm| root@@5) (MapType1Store (MapType0Select Heap@29 null (|tree#sm| root@@5)) root@@5 right (bool_2_U true)))) (and (=> (= (ControlFlow 0 25) 23) anon141_Then_correct) (=> (= (ControlFlow 0 25) 24) anon141_Else_correct)))))
+(let ((anon140_Else_correct  (=> (= (MapType0Select Heap@27 root@@5 left) null) (=> (and (= Heap@29 Heap@27) (= (ControlFlow 0 27) 25)) anon84_correct))))
+(let ((anon140_Then_correct  (=> (not (= (MapType0Select Heap@27 root@@5 left) null)) (=> (and (and (forall ((o_11 T@U) (f_14 T@U) ) (! (let ((B@@16 (FieldTypeInv1 (type f_14))))
+(let ((A@@17 (FieldTypeInv0 (type f_14))))
+ (=> (and (and (= (type o_11) RefType) (= (type f_14) (FieldType A@@17 B@@16))) (or (U_2_bool (MapType1Select (MapType0Select Heap@27 null (|tree#sm| root@@5)) o_11 f_14)) (U_2_bool (MapType1Select (MapType0Select Heap@27 null (|tree#sm| (MapType0Select Heap@27 root@@5 left))) o_11 f_14)))) (U_2_bool (MapType1Select newPMask@5 o_11 f_14)))))
+ :qid |stdinbpl.1071:29|
+ :skolemid |62|
+ :pattern ( (MapType1Select newPMask@5 o_11 f_14))
+)) (= Heap@28 (MapType0Store Heap@27 null (|tree#sm| root@@5) newPMask@5))) (and (= Heap@29 Heap@28) (= (ControlFlow 0 26) 25))) anon84_correct))))
+(let ((anon82_correct  (=> (and (= Heap@26 (MapType0Store Heap@25 null (|tree#sm| root@@5) (MapType1Store (MapType0Select Heap@25 null (|tree#sm| root@@5)) root@@5 val (bool_2_U true)))) (= Heap@27 (MapType0Store Heap@26 null (|tree#sm| root@@5) (MapType1Store (MapType0Select Heap@26 null (|tree#sm| root@@5)) root@@5 left (bool_2_U true))))) (and (=> (= (ControlFlow 0 28) 26) anon140_Then_correct) (=> (= (ControlFlow 0 28) 27) anon140_Else_correct)))))
+(let ((anon139_Else_correct  (=> (HasDirectPerm Mask@23 null (tree root@@5)) (=> (and (= Heap@25 Heap@22) (= (ControlFlow 0 30) 28)) anon82_correct))))
+(let ((anon139_Then_correct  (=> (not (HasDirectPerm Mask@23 null (tree root@@5))) (=> (and (and (= Heap@23 (MapType0Store Heap@22 null (|tree#sm| root@@5) ZeroPMask)) (= Heap@24 (MapType0Store Heap@23 null (tree root@@5) freshVersion@1))) (and (= Heap@25 Heap@24) (= (ControlFlow 0 29) 28))) anon82_correct))))
+(let ((anon80_correct  (=> (= Mask@23 (MapType1Store Mask@22 null (tree root@@5) (real_2_U (+ (U_2_real (MapType1Select Mask@22 null (tree root@@5))) FullPerm)))) (=> (and (and (state Heap@22 Mask@23) (state Heap@22 Mask@23)) (and (|tree#trigger| Heap@22 (tree root@@5)) (= (MapType0Select Heap@22 null (tree root@@5)) (CombineFrames (FrameFragment (MapType0Select Heap@22 root@@5 val)) (CombineFrames (FrameFragment (MapType0Select Heap@22 root@@5 left)) (CombineFrames (FrameFragment (ite (not (= (MapType0Select Heap@22 root@@5 left) null)) (MapType0Select Heap@22 null (tree (MapType0Select Heap@22 root@@5 left))) EmptyFrame)) (CombineFrames (FrameFragment (MapType0Select Heap@22 root@@5 right)) (FrameFragment (ite (not (= (MapType0Select Heap@22 root@@5 right) null)) (MapType0Select Heap@22 null (tree (MapType0Select Heap@22 root@@5 right))) EmptyFrame))))))))) (and (=> (= (ControlFlow 0 31) 29) anon139_Then_correct) (=> (= (ControlFlow 0 31) 30) anon139_Else_correct))))))
+(let ((anon79_correct  (=> (and (and (= Mask@21 (MapType1Store Mask@20 null (tree (MapType0Select Heap@22 root@@5 right)) (real_2_U (- (U_2_real (MapType1Select Mask@20 null (tree (MapType0Select Heap@22 root@@5 right)))) FullPerm)))) (InsidePredicate (tree root@@5) (MapType0Select Heap@22 null (tree root@@5)) (tree (MapType0Select Heap@22 root@@5 right)) (MapType0Select Heap@22 null (tree (MapType0Select Heap@22 root@@5 right))))) (and (= Mask@22 Mask@21) (= (ControlFlow 0 33) 31))) anon80_correct)))
+(let ((anon138_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 36) 33)) anon79_correct)))
+(let ((anon138_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 34) (- 0 35)) (<= FullPerm (U_2_real (MapType1Select Mask@20 null (tree (MapType0Select Heap@22 root@@5 right)))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@20 null (tree (MapType0Select Heap@22 root@@5 right))))) (=> (= (ControlFlow 0 34) 33) anon79_correct))))))
+(let ((anon137_Then_correct  (=> (not (= (MapType0Select Heap@22 root@@5 right) null)) (and (=> (= (ControlFlow 0 37) 34) anon138_Then_correct) (=> (= (ControlFlow 0 37) 36) anon138_Else_correct)))))
+(let ((anon137_Else_correct  (=> (= (MapType0Select Heap@22 root@@5 right) null) (=> (and (= Mask@22 Mask@20) (= (ControlFlow 0 32) 31)) anon80_correct))))
+(let ((anon76_correct  (=> (= Mask@20 (MapType1Store Mask@19 root@@5 right (real_2_U (- (U_2_real (MapType1Select Mask@19 root@@5 right)) FullPerm)))) (and (=> (= (ControlFlow 0 38) 37) anon137_Then_correct) (=> (= (ControlFlow 0 38) 32) anon137_Else_correct)))))
+(let ((anon136_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 41) 38)) anon76_correct)))
+(let ((anon136_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 39) (- 0 40)) (<= FullPerm (U_2_real (MapType1Select Mask@19 root@@5 right)))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@19 root@@5 right))) (=> (= (ControlFlow 0 39) 38) anon76_correct))))))
+(let ((anon73_correct  (=> (= Mask@18 (MapType1Store Mask@17 null (tree (MapType0Select Heap@22 root@@5 left)) (real_2_U (- (U_2_real (MapType1Select Mask@17 null (tree (MapType0Select Heap@22 root@@5 left)))) FullPerm)))) (=> (and (InsidePredicate (tree root@@5) (MapType0Select Heap@22 null (tree root@@5)) (tree (MapType0Select Heap@22 root@@5 left)) (MapType0Select Heap@22 null (tree (MapType0Select Heap@22 root@@5 left)))) (= Mask@19 Mask@18)) (and (=> (= (ControlFlow 0 43) 39) anon136_Then_correct) (=> (= (ControlFlow 0 43) 41) anon136_Else_correct))))))
+(let ((anon135_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 46) 43)) anon73_correct)))
+(let ((anon135_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 44) (- 0 45)) (<= FullPerm (U_2_real (MapType1Select Mask@17 null (tree (MapType0Select Heap@22 root@@5 left)))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@17 null (tree (MapType0Select Heap@22 root@@5 left))))) (=> (= (ControlFlow 0 44) 43) anon73_correct))))))
+(let ((anon134_Then_correct  (=> (not (= (MapType0Select Heap@22 root@@5 left) null)) (and (=> (= (ControlFlow 0 47) 44) anon135_Then_correct) (=> (= (ControlFlow 0 47) 46) anon135_Else_correct)))))
+(let ((anon134_Else_correct  (=> (and (= (MapType0Select Heap@22 root@@5 left) null) (= Mask@19 Mask@17)) (and (=> (= (ControlFlow 0 42) 39) anon136_Then_correct) (=> (= (ControlFlow 0 42) 41) anon136_Else_correct)))))
+(let ((anon70_correct  (=> (= Mask@17 (MapType1Store Mask@16 root@@5 left (real_2_U (- (U_2_real (MapType1Select Mask@16 root@@5 left)) FullPerm)))) (and (=> (= (ControlFlow 0 48) 47) anon134_Then_correct) (=> (= (ControlFlow 0 48) 42) anon134_Else_correct)))))
+(let ((anon133_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 51) 48)) anon70_correct)))
+(let ((anon133_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 49) (- 0 50)) (<= FullPerm (U_2_real (MapType1Select Mask@16 root@@5 left)))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@16 root@@5 left))) (=> (= (ControlFlow 0 49) 48) anon70_correct))))))
+(let ((anon68_correct  (=> (= Mask@16 (MapType1Store Mask@15 root@@5 val (real_2_U (- (U_2_real (MapType1Select Mask@15 root@@5 val)) FullPerm)))) (and (=> (= (ControlFlow 0 52) 49) anon133_Then_correct) (=> (= (ControlFlow 0 52) 51) anon133_Else_correct)))))
+(let ((anon132_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 55) 52)) anon68_correct)))
+(let ((anon132_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 53) (- 0 54)) (<= FullPerm (U_2_real (MapType1Select Mask@15 root@@5 val)))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@15 root@@5 val))) (=> (= (ControlFlow 0 53) 52) anon68_correct))))))
+(let ((anon66_correct  (=> (state Heap@22 Mask@15) (and (=> (= (ControlFlow 0 56) 53) anon132_Then_correct) (=> (= (ControlFlow 0 56) 55) anon132_Else_correct)))))
+(let ((anon65_correct  (=> (state Heap@21 Mask@14) (=> (and (and (state Heap@21 Mask@14) (= Mask@15 Mask@14)) (and (= Heap@22 Heap@21) (= (ControlFlow 0 58) 56))) anon66_correct))))
+(let ((anon131_Else_correct  (=> (= (MapType0Select Heap@19 arg_root@0 right) null) (=> (and (= Heap@21 Heap@19) (= (ControlFlow 0 60) 58)) anon65_correct))))
+(let ((anon131_Then_correct  (=> (not (= (MapType0Select Heap@19 arg_root@0 right) null)) (=> (and (and (forall ((o_10 T@U) (f_13 T@U) ) (! (let ((B@@17 (FieldTypeInv1 (type f_13))))
+(let ((A@@18 (FieldTypeInv0 (type f_13))))
+ (=> (and (and (= (type o_10) RefType) (= (type f_13) (FieldType A@@18 B@@17))) (or (U_2_bool (MapType1Select (MapType0Select Heap@19 null (|tree#sm| arg_root@0)) o_10 f_13)) (U_2_bool (MapType1Select (MapType0Select Heap@19 null (|tree#sm| (MapType0Select Heap@19 arg_root@0 right))) o_10 f_13)))) (U_2_bool (MapType1Select newPMask@4 o_10 f_13)))))
+ :qid |stdinbpl.1002:39|
+ :skolemid |61|
+ :pattern ( (MapType1Select newPMask@4 o_10 f_13))
+)) (= Heap@20 (MapType0Store Heap@19 null (|tree#sm| arg_root@0) newPMask@4))) (and (= Heap@21 Heap@20) (= (ControlFlow 0 59) 58))) anon65_correct))))
+(let ((anon63_correct  (=> (= Heap@19 (MapType0Store Heap@18 null (|tree#sm| arg_root@0) (MapType1Store (MapType0Select Heap@18 null (|tree#sm| arg_root@0)) arg_root@0 right (bool_2_U true)))) (and (=> (= (ControlFlow 0 61) 59) anon131_Then_correct) (=> (= (ControlFlow 0 61) 60) anon131_Else_correct)))))
+(let ((anon130_Else_correct  (=> (= (MapType0Select Heap@16 arg_root@0 left) null) (=> (and (= Heap@18 Heap@16) (= (ControlFlow 0 63) 61)) anon63_correct))))
+(let ((anon130_Then_correct  (=> (not (= (MapType0Select Heap@16 arg_root@0 left) null)) (=> (and (and (forall ((o_9 T@U) (f_12 T@U) ) (! (let ((B@@18 (FieldTypeInv1 (type f_12))))
+(let ((A@@19 (FieldTypeInv0 (type f_12))))
+ (=> (and (and (= (type o_9) RefType) (= (type f_12) (FieldType A@@19 B@@18))) (or (U_2_bool (MapType1Select (MapType0Select Heap@16 null (|tree#sm| arg_root@0)) o_9 f_12)) (U_2_bool (MapType1Select (MapType0Select Heap@16 null (|tree#sm| (MapType0Select Heap@16 arg_root@0 left))) o_9 f_12)))) (U_2_bool (MapType1Select newPMask@3 o_9 f_12)))))
+ :qid |stdinbpl.993:39|
+ :skolemid |60|
+ :pattern ( (MapType1Select newPMask@3 o_9 f_12))
+)) (= Heap@17 (MapType0Store Heap@16 null (|tree#sm| arg_root@0) newPMask@3))) (and (= Heap@18 Heap@17) (= (ControlFlow 0 62) 61))) anon63_correct))))
+(let ((anon61_correct  (=> (state Heap@7 Unfolding1Mask@7) (=> (and (= Heap@15 (MapType0Store Heap@14 null (|tree#sm| arg_root@0) (MapType1Store (MapType0Select Heap@14 null (|tree#sm| arg_root@0)) arg_root@0 val (bool_2_U true)))) (= Heap@16 (MapType0Store Heap@15 null (|tree#sm| arg_root@0) (MapType1Store (MapType0Select Heap@15 null (|tree#sm| arg_root@0)) arg_root@0 left (bool_2_U true))))) (and (=> (= (ControlFlow 0 64) 62) anon130_Then_correct) (=> (= (ControlFlow 0 64) 63) anon130_Else_correct))))))
+(let ((anon129_Else_correct  (=> (= (MapType0Select Heap@7 arg_root@0 right) null) (=> (and (= Unfolding1Mask@7 Unfolding1Mask@5) (= (ControlFlow 0 66) 64)) anon61_correct))))
+(let ((anon129_Then_correct  (=> (and (not (= (MapType0Select Heap@7 arg_root@0 right) null)) (= Unfolding1Mask@6 (MapType1Store Unfolding1Mask@5 null (tree (MapType0Select Heap@7 arg_root@0 right)) (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@5 null (tree (MapType0Select Heap@7 arg_root@0 right)))) FullPerm))))) (=> (and (and (InsidePredicate (tree arg_root@0) (MapType0Select Heap@7 null (tree arg_root@0)) (tree (MapType0Select Heap@7 arg_root@0 right)) (MapType0Select Heap@7 null (tree (MapType0Select Heap@7 arg_root@0 right)))) (state Heap@7 Unfolding1Mask@6)) (and (= Unfolding1Mask@7 Unfolding1Mask@6) (= (ControlFlow 0 65) 64))) anon61_correct))))
+(let ((anon59_correct  (=> (not (= arg_root@0 null)) (=> (and (= Unfolding1Mask@5 (MapType1Store Unfolding1Mask@4 arg_root@0 right (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@4 arg_root@0 right)) FullPerm)))) (state Heap@7 Unfolding1Mask@5)) (and (=> (= (ControlFlow 0 67) 65) anon129_Then_correct) (=> (= (ControlFlow 0 67) 66) anon129_Else_correct))))))
+(let ((anon128_Else_correct  (=> (= (MapType0Select Heap@7 arg_root@0 left) null) (=> (and (= Unfolding1Mask@4 Unfolding1Mask@2) (= (ControlFlow 0 69) 67)) anon59_correct))))
+(let ((anon128_Then_correct  (=> (and (not (= (MapType0Select Heap@7 arg_root@0 left) null)) (= Unfolding1Mask@3 (MapType1Store Unfolding1Mask@2 null (tree (MapType0Select Heap@7 arg_root@0 left)) (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@2 null (tree (MapType0Select Heap@7 arg_root@0 left)))) FullPerm))))) (=> (and (and (InsidePredicate (tree arg_root@0) (MapType0Select Heap@7 null (tree arg_root@0)) (tree (MapType0Select Heap@7 arg_root@0 left)) (MapType0Select Heap@7 null (tree (MapType0Select Heap@7 arg_root@0 left)))) (state Heap@7 Unfolding1Mask@3)) (and (= Unfolding1Mask@4 Unfolding1Mask@3) (= (ControlFlow 0 68) 67))) anon59_correct))))
+(let ((anon57_correct  (=> (= Unfolding1Mask@0 (MapType1Store Mask@11 null (tree arg_root@0) (real_2_U (- (U_2_real (MapType1Select Mask@11 null (tree arg_root@0))) FullPerm)))) (=> (and (not (= arg_root@0 null)) (= Unfolding1Mask@1 (MapType1Store Unfolding1Mask@0 arg_root@0 val (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@0 arg_root@0 val)) FullPerm))))) (=> (and (and (state Heap@7 Unfolding1Mask@1) (not (= arg_root@0 null))) (and (= Unfolding1Mask@2 (MapType1Store Unfolding1Mask@1 arg_root@0 left (real_2_U (+ (U_2_real (MapType1Select Unfolding1Mask@1 arg_root@0 left)) FullPerm)))) (state Heap@7 Unfolding1Mask@2))) (and (=> (= (ControlFlow 0 70) 68) anon128_Then_correct) (=> (= (ControlFlow 0 70) 69) anon128_Else_correct)))))))
+(let ((anon127_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 73) 70)) anon57_correct)))
+(let ((anon127_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 71) (- 0 72)) (<= FullPerm (U_2_real (MapType1Select Mask@11 null (tree arg_root@0))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@11 null (tree arg_root@0)))) (=> (= (ControlFlow 0 71) 70) anon57_correct))))))
+(let ((anon55_correct  (=> (state Heap@14 UnfoldingMask@15) (=> (and (|tree#trigger| Heap@7 (tree arg_root@0)) (= (MapType0Select Heap@7 null (tree arg_root@0)) (CombineFrames (FrameFragment (MapType0Select Heap@7 arg_root@0 val)) (CombineFrames (FrameFragment (MapType0Select Heap@7 arg_root@0 left)) (CombineFrames (FrameFragment (ite (not (= (MapType0Select Heap@7 arg_root@0 left) null)) (MapType0Select Heap@7 null (tree (MapType0Select Heap@7 arg_root@0 left))) EmptyFrame)) (CombineFrames (FrameFragment (MapType0Select Heap@7 arg_root@0 right)) (FrameFragment (ite (not (= (MapType0Select Heap@7 arg_root@0 right) null)) (MapType0Select Heap@7 null (tree (MapType0Select Heap@7 arg_root@0 right))) EmptyFrame)))))))) (and (=> (= (ControlFlow 0 74) 71) anon127_Then_correct) (=> (= (ControlFlow 0 74) 73) anon127_Else_correct))))))
+(let ((anon126_Else_correct  (=> (= (MapType0Select Heap@14 arg_root@0 right) null) (=> (and (= UnfoldingMask@15 UnfoldingMask@13) (= (ControlFlow 0 76) 74)) anon55_correct))))
+(let ((anon126_Then_correct  (=> (and (not (= (MapType0Select Heap@14 arg_root@0 right) null)) (= UnfoldingMask@14 (MapType1Store UnfoldingMask@13 null (tree (MapType0Select Heap@14 arg_root@0 right)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@13 null (tree (MapType0Select Heap@14 arg_root@0 right)))) FullPerm))))) (=> (and (and (InsidePredicate (tree arg_root@0) (MapType0Select Heap@14 null (tree arg_root@0)) (tree (MapType0Select Heap@14 arg_root@0 right)) (MapType0Select Heap@14 null (tree (MapType0Select Heap@14 arg_root@0 right)))) (state Heap@14 UnfoldingMask@14)) (and (= UnfoldingMask@15 UnfoldingMask@14) (= (ControlFlow 0 75) 74))) anon55_correct))))
+(let ((anon53_correct  (=> (not (= arg_root@0 null)) (=> (and (= UnfoldingMask@13 (MapType1Store UnfoldingMask@12 arg_root@0 right (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@12 arg_root@0 right)) FullPerm)))) (state Heap@14 UnfoldingMask@13)) (and (=> (= (ControlFlow 0 77) 75) anon126_Then_correct) (=> (= (ControlFlow 0 77) 76) anon126_Else_correct))))))
+(let ((anon125_Else_correct  (=> (= (MapType0Select Heap@14 arg_root@0 left) null) (=> (and (= UnfoldingMask@12 UnfoldingMask@10) (= (ControlFlow 0 79) 77)) anon53_correct))))
+(let ((anon125_Then_correct  (=> (and (not (= (MapType0Select Heap@14 arg_root@0 left) null)) (= UnfoldingMask@11 (MapType1Store UnfoldingMask@10 null (tree (MapType0Select Heap@14 arg_root@0 left)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@10 null (tree (MapType0Select Heap@14 arg_root@0 left)))) FullPerm))))) (=> (and (and (InsidePredicate (tree arg_root@0) (MapType0Select Heap@14 null (tree arg_root@0)) (tree (MapType0Select Heap@14 arg_root@0 left)) (MapType0Select Heap@14 null (tree (MapType0Select Heap@14 arg_root@0 left)))) (state Heap@14 UnfoldingMask@11)) (and (= UnfoldingMask@12 UnfoldingMask@11) (= (ControlFlow 0 78) 77))) anon53_correct))))
+(let ((anon51_correct  (=> (= UnfoldingMask@8 (MapType1Store Mask@14 null (tree arg_root@0) (real_2_U (- (U_2_real (MapType1Select Mask@14 null (tree arg_root@0))) FullPerm)))) (=> (and (not (= arg_root@0 null)) (= UnfoldingMask@9 (MapType1Store UnfoldingMask@8 arg_root@0 val (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@8 arg_root@0 val)) FullPerm))))) (=> (and (and (state Heap@14 UnfoldingMask@9) (not (= arg_root@0 null))) (and (= UnfoldingMask@10 (MapType1Store UnfoldingMask@9 arg_root@0 left (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@9 arg_root@0 left)) FullPerm)))) (state Heap@14 UnfoldingMask@10))) (and (=> (= (ControlFlow 0 80) 78) anon125_Then_correct) (=> (= (ControlFlow 0 80) 79) anon125_Else_correct)))))))
+(let ((anon124_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 83) 80)) anon51_correct)))
+(let ((anon124_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 81) (- 0 82)) (<= FullPerm (U_2_real (MapType1Select Mask@14 null (tree arg_root@0))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@14 null (tree arg_root@0)))) (=> (= (ControlFlow 0 81) 80) anon51_correct))))))
+(let ((anon49_correct  (=> (and (and (state Heap@14 Mask@14) (state Heap@14 Mask@14)) (and (|tree#trigger| Heap@14 (tree arg_root@0)) (= (MapType0Select Heap@14 null (tree arg_root@0)) (CombineFrames (FrameFragment (MapType0Select Heap@14 arg_root@0 val)) (CombineFrames (FrameFragment (MapType0Select Heap@14 arg_root@0 left)) (CombineFrames (FrameFragment (ite (not (= (MapType0Select Heap@14 arg_root@0 left) null)) (MapType0Select Heap@14 null (tree (MapType0Select Heap@14 arg_root@0 left))) EmptyFrame)) (CombineFrames (FrameFragment (MapType0Select Heap@14 arg_root@0 right)) (FrameFragment (ite (not (= (MapType0Select Heap@14 arg_root@0 right) null)) (MapType0Select Heap@14 null (tree (MapType0Select Heap@14 arg_root@0 right))) EmptyFrame))))))))) (and (=> (= (ControlFlow 0 84) 81) anon124_Then_correct) (=> (= (ControlFlow 0 84) 83) anon124_Else_correct)))))
+(let ((anon123_Else_correct  (=> (= (MapType0Select Heap@12 arg_root@0 right) null) (=> (and (= Heap@14 Heap@12) (= (ControlFlow 0 86) 84)) anon49_correct))))
+(let ((anon123_Then_correct  (=> (not (= (MapType0Select Heap@12 arg_root@0 right) null)) (=> (and (and (forall ((o_8 T@U) (f_11 T@U) ) (! (let ((B@@19 (FieldTypeInv1 (type f_11))))
+(let ((A@@20 (FieldTypeInv0 (type f_11))))
+ (=> (and (and (= (type o_8) RefType) (= (type f_11) (FieldType A@@20 B@@19))) (or (U_2_bool (MapType1Select (MapType0Select Heap@12 null (|tree#sm| arg_root@0)) o_8 f_11)) (U_2_bool (MapType1Select (MapType0Select Heap@12 null (|tree#sm| (MapType0Select Heap@12 arg_root@0 right))) o_8 f_11)))) (U_2_bool (MapType1Select newPMask@2 o_8 f_11)))))
+ :qid |stdinbpl.895:37|
+ :skolemid |59|
+ :pattern ( (MapType1Select newPMask@2 o_8 f_11))
+)) (= Heap@13 (MapType0Store Heap@12 null (|tree#sm| arg_root@0) newPMask@2))) (and (= Heap@14 Heap@13) (= (ControlFlow 0 85) 84))) anon49_correct))))
+(let ((anon47_correct  (=> (= Heap@12 (MapType0Store Heap@11 null (|tree#sm| arg_root@0) (MapType1Store (MapType0Select Heap@11 null (|tree#sm| arg_root@0)) arg_root@0 right (bool_2_U true)))) (and (=> (= (ControlFlow 0 87) 85) anon123_Then_correct) (=> (= (ControlFlow 0 87) 86) anon123_Else_correct)))))
+(let ((anon122_Else_correct  (=> (= (MapType0Select Heap@9 arg_root@0 left) null) (=> (and (= Heap@11 Heap@9) (= (ControlFlow 0 89) 87)) anon47_correct))))
+(let ((anon122_Then_correct  (=> (not (= (MapType0Select Heap@9 arg_root@0 left) null)) (=> (and (and (forall ((o_7 T@U) (f_10 T@U) ) (! (let ((B@@20 (FieldTypeInv1 (type f_10))))
+(let ((A@@21 (FieldTypeInv0 (type f_10))))
+ (=> (and (and (= (type o_7) RefType) (= (type f_10) (FieldType A@@21 B@@20))) (or (U_2_bool (MapType1Select (MapType0Select Heap@9 null (|tree#sm| arg_root@0)) o_7 f_10)) (U_2_bool (MapType1Select (MapType0Select Heap@9 null (|tree#sm| (MapType0Select Heap@9 arg_root@0 left))) o_7 f_10)))) (U_2_bool (MapType1Select newPMask@1 o_7 f_10)))))
+ :qid |stdinbpl.886:37|
+ :skolemid |58|
+ :pattern ( (MapType1Select newPMask@1 o_7 f_10))
+)) (= Heap@10 (MapType0Store Heap@9 null (|tree#sm| arg_root@0) newPMask@1))) (and (= Heap@11 Heap@10) (= (ControlFlow 0 88) 87))) anon47_correct))))
+(let ((anon45_correct  (=> (and (and (state ExhaleHeap@0 UnfoldingMask@7) (= (U_2_int (MapType0Select ExhaleHeap@0 arg_root@0 val)) (U_2_int (MapType0Select Heap@7 arg_root@0 val)))) (and (= Heap@8 (MapType0Store ExhaleHeap@0 null (|tree#sm| arg_root@0) (MapType1Store (MapType0Select ExhaleHeap@0 null (|tree#sm| arg_root@0)) arg_root@0 val (bool_2_U true)))) (= Heap@9 (MapType0Store Heap@8 null (|tree#sm| arg_root@0) (MapType1Store (MapType0Select Heap@8 null (|tree#sm| arg_root@0)) arg_root@0 left (bool_2_U true)))))) (and (=> (= (ControlFlow 0 90) 88) anon122_Then_correct) (=> (= (ControlFlow 0 90) 89) anon122_Else_correct)))))
+(let ((anon121_Else_correct  (=> (= (MapType0Select ExhaleHeap@0 arg_root@0 right) null) (=> (and (= UnfoldingMask@7 UnfoldingMask@5) (= (ControlFlow 0 92) 90)) anon45_correct))))
+(let ((anon121_Then_correct  (=> (and (not (= (MapType0Select ExhaleHeap@0 arg_root@0 right) null)) (= UnfoldingMask@6 (MapType1Store UnfoldingMask@5 null (tree (MapType0Select ExhaleHeap@0 arg_root@0 right)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@5 null (tree (MapType0Select ExhaleHeap@0 arg_root@0 right)))) FullPerm))))) (=> (and (and (InsidePredicate (tree arg_root@0) (MapType0Select ExhaleHeap@0 null (tree arg_root@0)) (tree (MapType0Select ExhaleHeap@0 arg_root@0 right)) (MapType0Select ExhaleHeap@0 null (tree (MapType0Select ExhaleHeap@0 arg_root@0 right)))) (state ExhaleHeap@0 UnfoldingMask@6)) (and (= UnfoldingMask@7 UnfoldingMask@6) (= (ControlFlow 0 91) 90))) anon45_correct))))
+(let ((anon43_correct  (=> (not (= arg_root@0 null)) (=> (and (= UnfoldingMask@5 (MapType1Store UnfoldingMask@4 arg_root@0 right (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@4 arg_root@0 right)) FullPerm)))) (state ExhaleHeap@0 UnfoldingMask@5)) (and (=> (= (ControlFlow 0 93) 91) anon121_Then_correct) (=> (= (ControlFlow 0 93) 92) anon121_Else_correct))))))
+(let ((anon120_Else_correct  (=> (= (MapType0Select ExhaleHeap@0 arg_root@0 left) null) (=> (and (= UnfoldingMask@4 UnfoldingMask@2) (= (ControlFlow 0 95) 93)) anon43_correct))))
+(let ((anon120_Then_correct  (=> (and (not (= (MapType0Select ExhaleHeap@0 arg_root@0 left) null)) (= UnfoldingMask@3 (MapType1Store UnfoldingMask@2 null (tree (MapType0Select ExhaleHeap@0 arg_root@0 left)) (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@2 null (tree (MapType0Select ExhaleHeap@0 arg_root@0 left)))) FullPerm))))) (=> (and (and (InsidePredicate (tree arg_root@0) (MapType0Select ExhaleHeap@0 null (tree arg_root@0)) (tree (MapType0Select ExhaleHeap@0 arg_root@0 left)) (MapType0Select ExhaleHeap@0 null (tree (MapType0Select ExhaleHeap@0 arg_root@0 left)))) (state ExhaleHeap@0 UnfoldingMask@3)) (and (= UnfoldingMask@4 UnfoldingMask@3) (= (ControlFlow 0 94) 93))) anon43_correct))))
+(let ((anon41_correct  (=> (= Mask@13 (MapType1Store Mask@12 null (array a_3@@7) (real_2_U (- (U_2_real (MapType1Select Mask@12 null (array a_3@@7))) FullPerm)))) (=> (and (and (IdenticalOnKnownLocations Heap@7 ExhaleHeap@0 Mask@13) (= Mask@14 (MapType1Store Mask@13 null (tree arg_root@0) (real_2_U (+ (U_2_real (MapType1Select Mask@13 null (tree arg_root@0))) FullPerm))))) (and (state ExhaleHeap@0 Mask@14) (|tree#trigger| ExhaleHeap@0 (tree arg_root@0)))) (=> (and (and (and (= (MapType0Select ExhaleHeap@0 null (tree arg_root@0)) (CombineFrames (FrameFragment (MapType0Select ExhaleHeap@0 arg_root@0 val)) (CombineFrames (FrameFragment (MapType0Select ExhaleHeap@0 arg_root@0 left)) (CombineFrames (FrameFragment (ite (not (= (MapType0Select ExhaleHeap@0 arg_root@0 left) null)) (MapType0Select ExhaleHeap@0 null (tree (MapType0Select ExhaleHeap@0 arg_root@0 left))) EmptyFrame)) (CombineFrames (FrameFragment (MapType0Select ExhaleHeap@0 arg_root@0 right)) (FrameFragment (ite (not (= (MapType0Select ExhaleHeap@0 arg_root@0 right) null)) (MapType0Select ExhaleHeap@0 null (tree (MapType0Select ExhaleHeap@0 arg_root@0 right))) EmptyFrame))))))) (= UnfoldingMask@0 (MapType1Store Mask@14 null (tree arg_root@0) (real_2_U (- (U_2_real (MapType1Select Mask@14 null (tree arg_root@0))) FullPerm))))) (and (not (= arg_root@0 null)) (= UnfoldingMask@1 (MapType1Store UnfoldingMask@0 arg_root@0 val (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@0 arg_root@0 val)) FullPerm)))))) (and (and (state ExhaleHeap@0 UnfoldingMask@1) (not (= arg_root@0 null))) (and (= UnfoldingMask@2 (MapType1Store UnfoldingMask@1 arg_root@0 left (real_2_U (+ (U_2_real (MapType1Select UnfoldingMask@1 arg_root@0 left)) FullPerm)))) (state ExhaleHeap@0 UnfoldingMask@2)))) (and (=> (= (ControlFlow 0 96) 94) anon120_Then_correct) (=> (= (ControlFlow 0 96) 95) anon120_Else_correct)))))))
+(let ((anon119_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 99) 96)) anon41_correct)))
+(let ((anon119_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 97) (- 0 98)) (<= FullPerm (U_2_real (MapType1Select Mask@12 null (array a_3@@7))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@12 null (array a_3@@7)))) (=> (= (ControlFlow 0 97) 96) anon41_correct))))))
+(let ((anon39_correct  (=> (= Mask@12 (MapType1Store Mask@11 null (tree arg_root@0) (real_2_U (- (U_2_real (MapType1Select Mask@11 null (tree arg_root@0))) FullPerm)))) (and (=> (= (ControlFlow 0 100) 97) anon119_Then_correct) (=> (= (ControlFlow 0 100) 99) anon119_Else_correct)))))
+(let ((anon118_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 103) 100)) anon39_correct)))
+(let ((anon118_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 101) (- 0 102)) (<= FullPerm (U_2_real (MapType1Select Mask@11 null (tree arg_root@0))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@11 null (tree arg_root@0)))) (=> (= (ControlFlow 0 101) 100) anon39_correct))))))
+(let ((anon117_Then_correct  (=> (not (= (MapType0Select Heap@7 root@@5 right) null)) (and (=> (= (ControlFlow 0 104) (- 0 105)) (HasDirectPerm Mask@11 root@@5 right)) (=> (HasDirectPerm Mask@11 root@@5 right) (=> (= arg_root@0 (MapType0Select Heap@7 root@@5 right)) (and (=> (= (ControlFlow 0 104) 101) anon118_Then_correct) (=> (= (ControlFlow 0 104) 103) anon118_Else_correct))))))))
+(let ((anon117_Else_correct  (=> (and (and (= (MapType0Select Heap@7 root@@5 right) null) (= Mask@15 Mask@11)) (and (= Heap@22 Heap@7) (= (ControlFlow 0 57) 56))) anon66_correct)))
+(let ((anon36_correct  (=> (forall ((o_6 T@U) (f_9 T@U) ) (! (let ((B@@21 (FieldTypeInv1 (type f_9))))
+(let ((A@@22 (FieldTypeInv0 (type f_9))))
+ (=> (and (and (= (type o_6) RefType) (= (type f_9) (FieldType A@@22 B@@21))) (U_2_bool (MapType1Select (MapType0Select Heap@6 null (|array#sm| a_3@@7)) o_6 f_9))) (U_2_bool (MapType1Select newPMask@0 o_6 f_9)))))
+ :qid |stdinbpl.788:27|
+ :skolemid |56|
+ :pattern ( (MapType1Select newPMask@0 o_6 f_9))
+)) (=> (and (and (forall ((i$0_2_1 Int) ) (!  (=> (and (<= 0 i$0_2_1) (< i$0_2_1 (len a_3@@7))) (U_2_bool (MapType1Select newPMask@0 (loc a_3@@7 i$0_2_1) val)))
+ :qid |stdinbpl.792:20|
+ :skolemid |57|
+)) (= Heap@7 (MapType0Store Heap@6 null (|array#sm| a_3@@7) newPMask@0))) (and (state Heap@7 Mask@11) (state Heap@7 Mask@11))) (and (=> (= (ControlFlow 0 106) (- 0 107)) (HasDirectPerm Mask@11 root@@5 right)) (=> (HasDirectPerm Mask@11 root@@5 right) (and (=> (= (ControlFlow 0 106) 104) anon117_Then_correct) (=> (= (ControlFlow 0 106) 57) anon117_Else_correct))))))))
+(let ((anon116_Else_correct  (=> (HasDirectPerm Mask@11 null (array a_3@@7)) (=> (and (= Heap@6 Heap@3) (= (ControlFlow 0 109) 106)) anon36_correct))))
+(let ((anon116_Then_correct  (=> (not (HasDirectPerm Mask@11 null (array a_3@@7))) (=> (and (and (= Heap@4 (MapType0Store Heap@3 null (|array#sm| a_3@@7) ZeroPMask)) (= Heap@5 (MapType0Store Heap@4 null (array a_3@@7) freshVersion@0))) (and (= Heap@6 Heap@5) (= (ControlFlow 0 108) 106))) anon36_correct))))
+(let ((anon34_correct  (and (=> (= (ControlFlow 0 110) (- 0 113)) (forall ((i$0 Int) (i$0_2 Int) ) (!  (=> (and (and (and (and (not (= i$0 i$0_2)) (and (<= 0 i$0) (< i$0 (len a_3@@7)))) (and (<= 0 i$0_2) (< i$0_2 (len a_3@@7)))) (< NoPerm FullPerm)) (< NoPerm FullPerm)) (not (= (loc a_3@@7 i$0) (loc a_3@@7 i$0_2))))
+ :qid |stdinbpl.696:15|
+ :skolemid |44|
+))) (=> (forall ((i$0@@0 Int) (i$0_2@@0 Int) ) (!  (=> (and (and (and (and (not (= i$0@@0 i$0_2@@0)) (and (<= 0 i$0@@0) (< i$0@@0 (len a_3@@7)))) (and (<= 0 i$0_2@@0) (< i$0_2@@0 (len a_3@@7)))) (< NoPerm FullPerm)) (< NoPerm FullPerm)) (not (= (loc a_3@@7 i$0@@0) (loc a_3@@7 i$0_2@@0))))
+ :qid |stdinbpl.696:15|
+ :skolemid |44|
+)) (=> (and (and (and (forall ((i$0@@1 Int) ) (!  (=> (and (and (<= 0 i$0@@1) (< i$0@@1 (len a_3@@7))) (< NoPerm FullPerm)) (and (qpRange2 (loc a_3@@7 i$0@@1)) (= (invRecv2 (loc a_3@@7 i$0@@1)) i$0@@1)))
+ :qid |stdinbpl.702:22|
+ :skolemid |45|
+ :pattern ( (loc a_3@@7 i$0@@1))
+ :pattern ( (MapType0Select Heap@3 (loc a_3@@7 i$0@@1) val))
+)) (forall ((o_3 T@U) ) (!  (=> (= (type o_3) RefType) (=> (and (and (and (<= 0 (invRecv2 o_3)) (< (invRecv2 o_3) (len a_3@@7))) (< NoPerm FullPerm)) (qpRange2 o_3)) (= (loc a_3@@7 (invRecv2 o_3)) o_3)))
+ :qid |stdinbpl.706:22|
+ :skolemid |46|
+ :pattern ( (invRecv2 o_3))
+))) (and (forall ((i$0@@2 Int) ) (!  (=> (and (<= 0 i$0@@2) (< i$0@@2 (len a_3@@7))) (not (= (loc a_3@@7 i$0@@2) null)))
+ :qid |stdinbpl.712:22|
+ :skolemid |47|
+ :pattern ( (loc a_3@@7 i$0@@2))
+ :pattern ( (MapType0Select Heap@3 (loc a_3@@7 i$0@@2) val))
+)) (forall ((o_3@@0 T@U) ) (!  (=> (= (type o_3@@0) RefType) (and (=> (and (and (and (<= 0 (invRecv2 o_3@@0)) (< (invRecv2 o_3@@0) (len a_3@@7))) (< NoPerm FullPerm)) (qpRange2 o_3@@0)) (and (=> (< NoPerm FullPerm) (= (loc a_3@@7 (invRecv2 o_3@@0)) o_3@@0)) (= (U_2_real (MapType1Select QPMask@0 o_3@@0 val)) (+ (U_2_real (MapType1Select Mask@10 o_3@@0 val)) FullPerm)))) (=> (not (and (and (and (<= 0 (invRecv2 o_3@@0)) (< (invRecv2 o_3@@0) (len a_3@@7))) (< NoPerm FullPerm)) (qpRange2 o_3@@0))) (= (U_2_real (MapType1Select QPMask@0 o_3@@0 val)) (U_2_real (MapType1Select Mask@10 o_3@@0 val))))))
+ :qid |stdinbpl.718:22|
+ :skolemid |48|
+ :pattern ( (MapType1Select QPMask@0 o_3@@0 val))
+)))) (and (and (forall ((o_3@@1 T@U) (f_5 T@U) ) (! (let ((B@@22 (FieldTypeInv1 (type f_5))))
+(let ((A@@23 (FieldTypeInv0 (type f_5))))
+ (=> (and (and (= (type o_3@@1) RefType) (= (type f_5) (FieldType A@@23 B@@22))) (not (= f_5 val))) (= (U_2_real (MapType1Select Mask@10 o_3@@1 f_5)) (U_2_real (MapType1Select QPMask@0 o_3@@1 f_5))))))
+ :qid |stdinbpl.722:29|
+ :skolemid |49|
+ :pattern ( (MapType1Select Mask@10 o_3@@1 f_5))
+ :pattern ( (MapType1Select QPMask@0 o_3@@1 f_5))
+)) (state Heap@3 QPMask@0)) (and (state Heap@3 QPMask@0) (state Heap@3 QPMask@0)))) (and (=> (= (ControlFlow 0 110) (- 0 112)) (forall ((i$0_1 Int) (i$0_1_1 Int) ) (!  (=> (and (and (and (and (not (= i$0_1 i$0_1_1)) (and (<= 0 i$0_1) (< i$0_1 (len a_3@@7)))) (and (<= 0 i$0_1_1) (< i$0_1_1 (len a_3@@7)))) (< NoPerm FullPerm)) (< NoPerm FullPerm)) (not (= (loc a_3@@7 i$0_1) (loc a_3@@7 i$0_1_1))))
+ :qid |stdinbpl.741:17|
+ :skolemid |50|
+ :pattern ( (neverTriggered3 i$0_1) (neverTriggered3 i$0_1_1))
+))) (=> (forall ((i$0_1@@0 Int) (i$0_1_1@@0 Int) ) (!  (=> (and (and (and (and (not (= i$0_1@@0 i$0_1_1@@0)) (and (<= 0 i$0_1@@0) (< i$0_1@@0 (len a_3@@7)))) (and (<= 0 i$0_1_1@@0) (< i$0_1_1@@0 (len a_3@@7)))) (< NoPerm FullPerm)) (< NoPerm FullPerm)) (not (= (loc a_3@@7 i$0_1@@0) (loc a_3@@7 i$0_1_1@@0))))
+ :qid |stdinbpl.741:17|
+ :skolemid |50|
+ :pattern ( (neverTriggered3 i$0_1@@0) (neverTriggered3 i$0_1_1@@0))
+)) (and (=> (= (ControlFlow 0 110) (- 0 111)) (forall ((i$0_1@@1 Int) ) (!  (=> (and (<= 0 i$0_1@@1) (< i$0_1@@1 (len a_3@@7))) (>= (U_2_real (MapType1Select QPMask@0 (loc a_3@@7 i$0_1@@1) val)) FullPerm))
+ :qid |stdinbpl.748:17|
+ :skolemid |51|
+ :pattern ( (loc a_3@@7 i$0_1@@1))
+ :pattern ( (MapType0Select Heap@3 (loc a_3@@7 i$0_1@@1) val))
+))) (=> (forall ((i$0_1@@2 Int) ) (!  (=> (and (<= 0 i$0_1@@2) (< i$0_1@@2 (len a_3@@7))) (>= (U_2_real (MapType1Select QPMask@0 (loc a_3@@7 i$0_1@@2) val)) FullPerm))
+ :qid |stdinbpl.748:17|
+ :skolemid |51|
+ :pattern ( (loc a_3@@7 i$0_1@@2))
+ :pattern ( (MapType0Select Heap@3 (loc a_3@@7 i$0_1@@2) val))
+)) (=> (forall ((i$0_1@@3 Int) ) (!  (=> (and (and (<= 0 i$0_1@@3) (< i$0_1@@3 (len a_3@@7))) (< NoPerm FullPerm)) (and (qpRange3 (loc a_3@@7 i$0_1@@3)) (= (invRecv3 (loc a_3@@7 i$0_1@@3)) i$0_1@@3)))
+ :qid |stdinbpl.754:22|
+ :skolemid |52|
+ :pattern ( (loc a_3@@7 i$0_1@@3))
+ :pattern ( (MapType0Select Heap@3 (loc a_3@@7 i$0_1@@3) val))
+)) (=> (and (and (and (forall ((o_3@@2 T@U) ) (!  (=> (= (type o_3@@2) RefType) (=> (and (and (<= 0 (invRecv3 o_3@@2)) (< (invRecv3 o_3@@2) (len a_3@@7))) (and (< NoPerm FullPerm) (qpRange3 o_3@@2))) (= (loc a_3@@7 (invRecv3 o_3@@2)) o_3@@2)))
+ :qid |stdinbpl.758:22|
+ :skolemid |53|
+ :pattern ( (invRecv3 o_3@@2))
+)) (forall ((o_3@@3 T@U) ) (!  (=> (= (type o_3@@3) RefType) (and (=> (and (and (<= 0 (invRecv3 o_3@@3)) (< (invRecv3 o_3@@3) (len a_3@@7))) (and (< NoPerm FullPerm) (qpRange3 o_3@@3))) (and (= (loc a_3@@7 (invRecv3 o_3@@3)) o_3@@3) (= (U_2_real (MapType1Select QPMask@1 o_3@@3 val)) (- (U_2_real (MapType1Select QPMask@0 o_3@@3 val)) FullPerm)))) (=> (not (and (and (<= 0 (invRecv3 o_3@@3)) (< (invRecv3 o_3@@3) (len a_3@@7))) (and (< NoPerm FullPerm) (qpRange3 o_3@@3)))) (= (U_2_real (MapType1Select QPMask@1 o_3@@3 val)) (U_2_real (MapType1Select QPMask@0 o_3@@3 val))))))
+ :qid |stdinbpl.764:22|
+ :skolemid |54|
+ :pattern ( (MapType1Select QPMask@1 o_3@@3 val))
+))) (and (forall ((o_3@@4 T@U) (f_5@@0 T@U) ) (! (let ((B@@23 (FieldTypeInv1 (type f_5@@0))))
+(let ((A@@24 (FieldTypeInv0 (type f_5@@0))))
+ (=> (and (and (= (type o_3@@4) RefType) (= (type f_5@@0) (FieldType A@@24 B@@23))) (not (= f_5@@0 val))) (= (U_2_real (MapType1Select QPMask@0 o_3@@4 f_5@@0)) (U_2_real (MapType1Select QPMask@1 o_3@@4 f_5@@0))))))
+ :qid |stdinbpl.770:29|
+ :skolemid |55|
+ :pattern ( (MapType1Select QPMask@1 o_3@@4 f_5@@0))
+)) (= Mask@11 (MapType1Store QPMask@1 null (array a_3@@7) (real_2_U (+ (U_2_real (MapType1Select QPMask@1 null (array a_3@@7))) FullPerm)))))) (and (and (state Heap@3 Mask@11) (state Heap@3 Mask@11)) (and (|array#trigger| Heap@3 (array a_3@@7)) (= (MapType0Select Heap@3 null (array a_3@@7)) (FrameFragment (int_2_U (|array#condqp1| Heap@3 a_3@@7))))))) (and (=> (= (ControlFlow 0 110) 108) anon116_Then_correct) (=> (= (ControlFlow 0 110) 109) anon116_Else_correct)))))))))))))
+(let ((anon115_Else_correct  (=> (HasDirectPerm Mask@10 null (array a_3@@7)) (=> (and (= Heap@3 Heap@1) (= (ControlFlow 0 115) 110)) anon34_correct))))
+(let ((anon115_Then_correct  (=> (and (and (not (HasDirectPerm Mask@10 null (array a_3@@7))) (= Heap@2 (MapType0Store Heap@1 null (array a_3@@7) newVersion@1))) (and (= Heap@3 Heap@2) (= (ControlFlow 0 114) 110))) anon34_correct)))
+(let ((anon32_correct  (=> (= Mask@10 (MapType1Store Mask@9 null (array a_3@@7) (real_2_U (- (U_2_real (MapType1Select Mask@9 null (array a_3@@7))) FullPerm)))) (and (=> (= (ControlFlow 0 116) 114) anon115_Then_correct) (=> (= (ControlFlow 0 116) 115) anon115_Else_correct)))))
+(let ((anon114_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 119) 116)) anon32_correct)))
+(let ((anon114_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 117) (- 0 118)) (<= FullPerm (U_2_real (MapType1Select Mask@9 null (array a_3@@7))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@9 null (array a_3@@7)))) (=> (= (ControlFlow 0 117) 116) anon32_correct))))))
+(let ((anon30_correct  (=> (and (and (state Heap@1 Mask@9) (state Heap@1 Mask@9)) (and (|array#trigger| Heap@1 (array a_3@@7)) (= (MapType0Select Heap@1 null (array a_3@@7)) (FrameFragment (int_2_U (|array#condqp1| Heap@1 a_3@@7)))))) (and (=> (= (ControlFlow 0 120) 117) anon114_Then_correct) (=> (= (ControlFlow 0 120) 119) anon114_Else_correct)))))
+(let ((anon113_Else_correct  (=> (= (MapType0Select Heap@1 root@@5 right) null) (=> (and (= Mask@9 Mask@7) (= (ControlFlow 0 122) 120)) anon30_correct))))
+(let ((anon113_Then_correct  (=> (and (not (= (MapType0Select Heap@1 root@@5 right) null)) (= Mask@8 (MapType1Store Mask@7 null (tree (MapType0Select Heap@1 root@@5 right)) (real_2_U (+ (U_2_real (MapType1Select Mask@7 null (tree (MapType0Select Heap@1 root@@5 right)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select Heap@1 null (tree root@@5)) (tree (MapType0Select Heap@1 root@@5 right)) (MapType0Select Heap@1 null (tree (MapType0Select Heap@1 root@@5 right)))) (state Heap@1 Mask@8)) (and (= Mask@9 Mask@8) (= (ControlFlow 0 121) 120))) anon30_correct))))
+(let ((anon28_correct  (=> (not (= root@@5 null)) (=> (and (= Mask@7 (MapType1Store Mask@6 root@@5 right (real_2_U (+ (U_2_real (MapType1Select Mask@6 root@@5 right)) FullPerm)))) (state Heap@1 Mask@7)) (and (=> (= (ControlFlow 0 123) 121) anon113_Then_correct) (=> (= (ControlFlow 0 123) 122) anon113_Else_correct))))))
+(let ((anon112_Else_correct  (=> (= (MapType0Select Heap@1 root@@5 left) null) (=> (and (= Mask@6 Mask@4) (= (ControlFlow 0 125) 123)) anon28_correct))))
+(let ((anon112_Then_correct  (=> (and (not (= (MapType0Select Heap@1 root@@5 left) null)) (= Mask@5 (MapType1Store Mask@4 null (tree (MapType0Select Heap@1 root@@5 left)) (real_2_U (+ (U_2_real (MapType1Select Mask@4 null (tree (MapType0Select Heap@1 root@@5 left)))) FullPerm))))) (=> (and (and (InsidePredicate (tree root@@5) (MapType0Select Heap@1 null (tree root@@5)) (tree (MapType0Select Heap@1 root@@5 left)) (MapType0Select Heap@1 null (tree (MapType0Select Heap@1 root@@5 left)))) (state Heap@1 Mask@5)) (and (= Mask@6 Mask@5) (= (ControlFlow 0 124) 123))) anon28_correct))))
+(let ((anon26_correct  (=> (and (not (= root@@5 null)) (= Mask@3 (MapType1Store Mask@2 root@@5 val (real_2_U (+ (U_2_real (MapType1Select Mask@2 root@@5 val)) FullPerm))))) (=> (and (and (state Heap@1 Mask@3) (not (= root@@5 null))) (and (= Mask@4 (MapType1Store Mask@3 root@@5 left (real_2_U (+ (U_2_real (MapType1Select Mask@3 root@@5 left)) FullPerm)))) (state Heap@1 Mask@4))) (and (=> (= (ControlFlow 0 126) 124) anon112_Then_correct) (=> (= (ControlFlow 0 126) 125) anon112_Else_correct))))))
+(let ((anon111_Else_correct  (=> (HasDirectPerm Mask@2 null (tree root@@5)) (=> (and (= Heap@1 Heap@@11) (= (ControlFlow 0 128) 126)) anon26_correct))))
+(let ((anon111_Then_correct  (=> (and (and (not (HasDirectPerm Mask@2 null (tree root@@5))) (= Heap@0 (MapType0Store Heap@@11 null (tree root@@5) newVersion@0))) (and (= Heap@1 Heap@0) (= (ControlFlow 0 127) 126))) anon26_correct)))
+(let ((anon24_correct  (=> (= Mask@2 (MapType1Store Mask@1 null (tree root@@5) (real_2_U (- (U_2_real (MapType1Select Mask@1 null (tree root@@5))) FullPerm)))) (and (=> (= (ControlFlow 0 129) 127) anon111_Then_correct) (=> (= (ControlFlow 0 129) 128) anon111_Else_correct)))))
+(let ((anon110_Else_correct  (=> (and (= FullPerm NoPerm) (= (ControlFlow 0 132) 129)) anon24_correct)))
+(let ((anon110_Then_correct  (=> (not (= FullPerm NoPerm)) (and (=> (= (ControlFlow 0 130) (- 0 131)) (<= FullPerm (U_2_real (MapType1Select Mask@1 null (tree root@@5))))) (=> (<= FullPerm (U_2_real (MapType1Select Mask@1 null (tree root@@5)))) (=> (= (ControlFlow 0 130) 129) anon24_correct))))))
+(let ((anon99_Else_correct  (=> (and (|tree#trigger| Heap@@11 (tree root@@5)) (= (MapType0Select Heap@@11 null (tree root@@5)) (CombineFrames (FrameFragment (MapType0Select Heap@@11 root@@5 val)) (CombineFrames (FrameFragment (MapType0Select Heap@@11 root@@5 left)) (CombineFrames (FrameFragment (ite (not (= (MapType0Select Heap@@11 root@@5 left) null)) (MapType0Select Heap@@11 null (tree (MapType0Select Heap@@11 root@@5 left))) EmptyFrame)) (CombineFrames (FrameFragment (MapType0Select Heap@@11 root@@5 right)) (FrameFragment (ite (not (= (MapType0Select Heap@@11 root@@5 right) null)) (MapType0Select Heap@@11 null (tree (MapType0Select Heap@@11 root@@5 right))) EmptyFrame)))))))) (and (=> (= (ControlFlow 0 133) 130) anon110_Then_correct) (=> (= (ControlFlow 0 133) 132) anon110_Else_correct)))))
+(let ((anon0_correct  (=> (and (and (and (state Heap@@11 ZeroMask) (U_2_bool (MapType0Select Heap@@11 root@@5 $allocated))) (and (= Mask@0 (MapType1Store ZeroMask null (tree root@@5) (real_2_U (+ (U_2_real (MapType1Select ZeroMask null (tree root@@5))) FullPerm)))) (state Heap@@11 Mask@0))) (and (and (state Heap@@11 Mask@0) (= Mask@1 (MapType1Store Mask@0 null (array a_3@@7) (real_2_U (+ (U_2_real (MapType1Select Mask@0 null (array a_3@@7))) FullPerm))))) (and (state Heap@@11 Mask@1) (state Heap@@11 Mask@1)))) (and (=> (= (ControlFlow 0 169) 168) anon99_Then_correct) (=> (= (ControlFlow 0 169) 133) anon99_Else_correct)))))
+(let ((PreconditionGeneratedEntry_correct  (=> (= (ControlFlow 0 170) 169) anon0_correct)))
+PreconditionGeneratedEntry_correct))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+))
+(check-sat)
+(pop 1)
+; Valid
+(get-info :rlimit)

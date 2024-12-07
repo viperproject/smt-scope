@@ -4,7 +4,7 @@ pub mod matching_loop;
 pub mod next_insts;
 pub mod reconnect;
 
-use std::mem::MaybeUninit;
+use std::{cmp::Reverse, mem::MaybeUninit};
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
@@ -221,24 +221,27 @@ impl InstGraph {
     }
 
     pub fn analyse(&mut self) {
-        self.analysis.cost.sort_by(|&a, &b| {
-            self.raw.graph[a.0]
-                .cost
-                .total_cmp(&self.raw.graph[b.0].cost)
-                .reverse()
-                .then_with(|| a.cmp(&b))
+        #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+        struct F64Ord(f64);
+        impl std::cmp::Eq for F64Ord {}
+        impl std::cmp::Ord for F64Ord {
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                self.0.total_cmp(&other.0)
+            }
+        }
+
+        self.analysis.cost.sort_by_cached_key(|&a| {
+            (Reverse(F64Ord(self.raw.graph[a.0]
+                .cost)), a)
         });
         self.analysis.children.sort_by_cached_key(|&a| {
             let ac = self.raw.neighbors(a).count();
-            (usize::MAX - ac, a)
+            (Reverse(ac), a)
         });
-        self.analysis.fwd_depth_min.sort_by(|&a, &b| {
-            self.raw.graph[a.0]
+        self.analysis.fwd_depth_min.sort_by_cached_key(|&a| {
+            (Reverse(self.raw.graph[a.0]
                 .fwd_depth
-                .min
-                .cmp(&self.raw.graph[b.0].fwd_depth.min)
-                .reverse()
-                .then_with(|| a.cmp(&b))
+                .min), a)
         });
         // self.analysis.max_depth.sort_by(|&a, &b|
         //     self.raw.graph[a.0].max_depth.cmp(&self.raw.graph[b.0].max_depth).reverse().then_with(|| a.cmp(&b))

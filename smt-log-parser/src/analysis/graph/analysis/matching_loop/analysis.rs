@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
@@ -84,9 +86,9 @@ impl MlOutput {
             let (len, leaf) = ml.leaves.0[0];
             let has_complete_graph = ml.graph.as_ref().is_some_and(|g| !g.graph_incomplete);
             (
-                !has_complete_graph,
+                Reverse(has_complete_graph),
                 ml.graph.is_none(),
-                u32::MAX - len,
+                Reverse(len),
                 leaf,
             )
         });
@@ -196,16 +198,16 @@ impl<'a> MlAnalysis<'a> {
             for gen in &mut sig_col.gens {
                 gen.1
                      .0
-                    .sort_unstable_by_key(|(len, idx)| (u32::MAX - *len, *idx));
+                    .sort_unstable_by_key(|(len, idx)| (Reverse(*len), *idx));
             }
             sig_col
                 .gens
-                .sort_unstable_by_key(|(gen, leaves)| (u32::MAX - leaves.0[0].0, *gen));
+                .sort_unstable_by_key(|(gen, leaves)| (Reverse(leaves.0[0].0), *gen));
 
             sig_col
                 .ungens
                 .0
-                .sort_unstable_by_key(|(len, idx)| (u32::MAX - *len, *idx));
+                .sort_unstable_by_key(|(len, idx)| (Reverse(*len), *idx));
         }
         MlOutput {
             signatures: self.data,
@@ -614,8 +616,8 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
 
         curr_info.tree_above.sort_unstable_by_key(|&pidx| {
             (
-                u32::MAX - pidx.max_depth,
-                u32::MAX - pidx.max_ungen_depth,
+                Reverse(pidx.max_depth),
+                Reverse(pidx.max_ungen_depth),
                 pidx.prev,
             )
         });

@@ -41,10 +41,8 @@ impl Deref for RcParser {
 impl RcParser {
     pub fn new(parser: Z3Parser) -> Self {
         let colour_map = QuantIdxToColourMap::new(&parser);
-        // let lookup = StringLookupZ3::init(&parser);
         let parser = Parser {
             parser: RefCell::new(parser),
-            // lookup,
             colour_map,
         };
         Self(Rc::new(parser))
@@ -53,7 +51,6 @@ impl RcParser {
 
 pub struct Parser {
     pub parser: RefCell<Z3Parser>,
-    // pub lookup: StringLookupZ3,
     pub colour_map: QuantIdxToColourMap,
 }
 

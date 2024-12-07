@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, rc::Rc};
+use std::{cmp::{Ordering, Reverse}, rc::Rc};
 
 use gloo::timers::callback::Timeout;
 use yew::{html, Callback, Context, ContextHandle, Html, MouseEvent, NodeRef};
@@ -217,8 +217,8 @@ impl CommandAction {
     pub fn ordering(&self) -> impl Ord + '_ {
         (
             self.command.disabled,
-            usize::MAX - self.last_used.map(|lu| usize::MAX - lu).unwrap_or_default(),
-            u16::MAX - self.score,
+            Reverse(self.last_used.map(|lu| usize::MAX - lu).unwrap_or_default()),
+            Reverse(self.score),
             self.command.name.as_str(),
             self.id,
         )

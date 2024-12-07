@@ -6,8 +6,6 @@ use crate::{Result, Z3Parser};
 
 use self::{analysis::Analysis, raw::RawInstGraph, visible::VisibleInstGraph};
 
-// TODO: once the ML algo is reimplemented, delete this
-// pub mod inst_graph;
 pub mod analysis;
 pub mod disable;
 pub mod hide;

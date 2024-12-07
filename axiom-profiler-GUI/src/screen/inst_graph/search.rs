@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 use smt_log_parser::{
     analysis::{raw::NodeKind, InstGraph, RawNodeIndex},
     items::{ENodeIdx, EqTransIdx, QuantIdx},
@@ -163,6 +165,6 @@ impl Graph {
 
 impl OmniboxSearchEntry {
     fn order(&self) -> impl Ord + '_ {
-        (usize::MAX - self.select_from, self.search_text.as_str())
+        (Reverse(self.select_from), self.search_text.as_str())
     }
 }

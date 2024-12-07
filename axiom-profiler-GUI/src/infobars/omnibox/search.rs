@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 use nucleo_matcher::Utf32String;
 use yew::{html, Callback, Html, MouseEvent, NodeRef};
 
@@ -215,6 +217,6 @@ struct SearchResult {
 
 impl SearchResult {
     pub fn order(self, cidx: usize) -> impl Ord {
-        (!self.exact, u16::MAX - self.score, cidx, self.eidx)
+        (Reverse(self.exact), Reverse(self.score), cidx, self.eidx)
     }
 }

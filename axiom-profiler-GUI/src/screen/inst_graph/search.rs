@@ -2,7 +2,7 @@ use std::cmp::Reverse;
 
 use smt_log_parser::{
     analysis::{raw::NodeKind, InstGraph, RawNodeIndex},
-    items::{ENodeIdx, EqTransIdx, QuantIdx},
+    items::{ENodeIdx, EqTransIdx, QuantIdx, TermIdx},
     FxHashMap, IString, Z3Parser,
 };
 use yew::html;
@@ -51,19 +51,20 @@ impl Graph {
     ) -> OmniboxSearch {
         let mut quantifiers = FxHashMap::<QuantIdx, EntryCounter>::default();
         let mut terms = FxHashMap::<(IString, usize), EntryCounter>::default();
-        fn handle_term(
+        fn handle_term<const EXPECT_APP: bool>(
             parser: &Z3Parser,
             terms: &mut FxHashMap<(IString, usize), EntryCounter>,
-            eidx: ENodeIdx,
+            tidx: TermIdx,
             idx: RawNodeIndex,
             visible: bool,
         ) {
-            let tidx = parser[eidx].owner;
             // TODO: display meaning in search?
             if let Some(_meaning) = parser.meaning(tidx) {}
-            let term = &parser[parser[eidx].owner];
+            let term = &parser[tidx];
             let Some(name) = term.kind.app_name() else {
-                log::error!("ENode without name: {:?}", term);
+                if EXPECT_APP {
+                    log::error!("ENode without name: {:?}", term);
+                }
                 return;
             };
             terms
@@ -71,16 +72,10 @@ impl Graph {
                 .or_default()
                 .insert(idx, visible);
         }
-        fn handle_eq(
-            parser: &Z3Parser,
-            terms: &mut FxHashMap<(IString, usize), EntryCounter>,
-            eq: EqTransIdx,
-            idx: RawNodeIndex,
-            visible: bool,
-        ) {
+        fn handle_eq(parser: &Z3Parser, eq: EqTransIdx, mut handle_enode: impl FnMut(ENodeIdx)) {
             let (from, to) = parser.from_to(eq);
-            handle_term(parser, terms, from, idx, visible);
-            handle_term(parser, terms, to, idx, visible);
+            handle_enode(from);
+            handle_enode(to);
         }
 
         for idx in graph.subgraphs.topo_node_indices() {
@@ -89,6 +84,9 @@ impl Graph {
                 continue;
             }
             let visible = node.visible();
+            let mut handle_enode = |enode: ENodeIdx| {
+                handle_term::<true>(parser, &mut terms, parser[enode].owner, idx, visible)
+            };
 
             match *node.kind() {
                 NodeKind::Instantiation(iidx) => {
@@ -98,23 +96,26 @@ impl Graph {
                         quantifiers.entry(qidx).or_default().insert(idx, visible);
                     }
                     for &yt in inst.yields_terms.iter() {
-                        handle_term(parser, &mut terms, yt, idx, visible);
+                        handle_enode(yt);
                     }
                     for blame in match_.pattern_matches() {
-                        handle_term(parser, &mut terms, blame.enode(), idx, visible);
+                        handle_enode(blame.enode());
                         for eq in blame.equalities() {
-                            handle_eq(parser, &mut terms, eq, idx, visible);
+                            handle_eq(parser, eq, &mut handle_enode);
                         }
                     }
                 }
-                NodeKind::ENode(eidx) => handle_term(parser, &mut terms, eidx, idx, visible),
+                NodeKind::ENode(eidx) => handle_enode(eidx),
                 NodeKind::GivenEquality(eq, _) => {
                     let eq = &parser[eq];
-                    handle_term(parser, &mut terms, eq.from(), idx, visible);
-                    handle_term(parser, &mut terms, eq.to(), idx, visible);
+                    handle_enode(eq.from());
+                    handle_enode(eq.to());
                 }
                 NodeKind::TransEquality(eq) => {
-                    handle_eq(parser, &mut terms, eq, idx, visible);
+                    handle_eq(parser, eq, handle_enode);
+                }
+                NodeKind::Proof(pidx) => {
+                    handle_term::<false>(parser, &mut terms, parser[pidx].result, idx, visible)
                 }
             }
         }

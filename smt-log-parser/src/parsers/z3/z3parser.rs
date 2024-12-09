@@ -935,6 +935,17 @@ impl Z3Parser {
         qpat.pat.map(|pat| self.patterns(qpat.quant).unwrap()[pat])
     }
 
+    /// Does the proof step `pidx` prove `false`? This can may be under a
+    /// hypothesis so might not necessarily imply unsat.
+    pub fn proves_false(&self, pidx: ProofIdx) -> bool {
+        let result = &self[self[pidx].result];
+        result.child_ids.is_empty()
+            && result
+                .kind
+                .app_name()
+                .is_some_and(|name| &self[name] == "false")
+    }
+
     /// Returns the size in AST nodes of the term `tidx`. Note that z3 eagerly
     /// reduces terms such as `1 + 1` to `2` meaning that a matching loop can be
     /// constant in this size metric!

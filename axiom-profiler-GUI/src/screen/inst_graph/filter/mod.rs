@@ -7,7 +7,7 @@ mod manage_filter;
 use material_yew::icon::MatIcon;
 use petgraph::Direction;
 use smt_log_parser::{
-    analysis::{InstGraph, RawNodeIndex},
+    analysis::{raw::NodeKind, InstGraph, RawNodeIndex},
     items::QuantIdx,
     Z3Parser,
 };
@@ -38,12 +38,18 @@ pub const DEFAULT_FILTER_CHAIN: &[Filter] = &[
     Filter::IgnoreTheorySolving,
     Filter::MaxInsts(DEFAULT_NODE_COUNT),
 ];
+
+pub const PROOF_FILTER_CHAIN: &[Filter] = &[Filter::MaxInsts(DEFAULT_NODE_COUNT)];
+
 pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
     (Disabler::Smart, true),
     (Disabler::ENodes, false),
     (Disabler::GivenEqualities, false),
     (Disabler::AllEqualities, false),
 ];
+
+pub const PROOF_DISABLER_CHAIN: &[(Disabler, bool)] =
+    &[(Disabler::Smart, true), (Disabler::NonProof, false)];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Filter {
@@ -70,6 +76,7 @@ pub enum Disabler {
     ENodes,
     GivenEqualities,
     AllEqualities,
+    NonProof,
 }
 
 pub enum FilterM {
@@ -277,13 +284,15 @@ impl FiltersState {
 pub struct DisablersState {
     disablers_modified: bool,
     disablers: Vec<(Disabler, bool)>,
+    enable_proofs: bool,
 }
 
 impl DisablersState {
-    pub fn new(disablers: Vec<(Disabler, bool)>) -> Self {
+    pub fn new(disablers: Vec<(Disabler, bool)>, enable_proofs: bool) -> Self {
         DisablersState {
             disablers_modified: true,
             disablers,
+            enable_proofs,
         }
     }
 
@@ -296,12 +305,35 @@ impl DisablersState {
         core::mem::replace(&mut self.disablers_modified, false)
     }
 
-    pub fn disablers(&self) -> impl Iterator<Item = Disabler> + Clone + '_ {
+    pub fn apply(&mut self, graph: &mut InstGraph, parser: &Z3Parser) {
+        if !self.modified() {
+            return;
+        }
+        graph.reset_disabled_to(parser, |node, graph| {
+            // TODO: hardcoded disabling based on two modes, change this
+            let n = &graph[node];
+            let allowed = if self.enable_proofs {
+                matches!(n.kind(), NodeKind::Instantiation(..) | NodeKind::Proof(..))
+                    && n.proof.reaches_proof
+            } else {
+                n.kind().proof().is_none()
+            };
+            if !allowed {
+                return true;
+            }
+
+            self.disablers()
+                .clone()
+                .any(|d| d.disable(node, graph, parser))
+        });
+    }
+
+    fn disablers(&self) -> impl Iterator<Item = Disabler> + Clone + '_ {
         self.disablers
             .iter()
+            .copied()
             .filter(|(_, b)| *b)
             .map(|(d, _)| d)
-            .copied()
     }
 
     pub fn sidebar(&self, link: &Scope<Graph>) -> SidebarSection {

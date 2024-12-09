@@ -36,7 +36,9 @@ pub trait TransferInitialiser<const FORWARD: bool, const ID: u8>: Initialiser<FO
     fn add(&mut self, node: &mut Node, value: Self::Value);
 }
 /// Initialiser where values are transferred from the neighbors to the current node.
-pub trait CollectInitialiser<const FORWARD: bool, const ID: u8>: Initialiser<FORWARD, ID> {
+pub trait CollectInitialiser<const FORWARD: bool, const SKIP_DISABLED: bool, const ID: u8>:
+    Initialiser<FORWARD, ID>
+{
     fn collect<'n, T: Iterator<Item = &'n Node>>(
         &mut self,
         _node: &Node,
@@ -145,8 +147,9 @@ impl InstGraph {
     }
 
     pub fn initialise_collect<
-        I: CollectInitialiser<FORWARD, ID>,
+        I: CollectInitialiser<FORWARD, SKIP_DISABLED, ID>,
         const FORWARD: bool,
+        const SKIP_DISABLED: bool,
         const ID: u8,
     >(
         &mut self,
@@ -162,12 +165,22 @@ impl InstGraph {
         for subgraph in self.subgraphs.iter() {
             initialiser.reset();
             let for_each = |idx: RawNodeIndex| {
-                let from_all = || {
-                    self.raw
-                        .neighbors_directed(idx, I::direction())
-                        .map(|i| &self.raw[i])
+                let value = if SKIP_DISABLED {
+                    let from_all = || {
+                        self.raw
+                            .neighbors_directed(idx, I::direction())
+                            .map(|i| &self.raw[i])
+                    };
+                    initialiser.collect(&self.raw.graph[idx.0], from_all)
+                } else {
+                    let from_all = || {
+                        self.raw
+                            .graph
+                            .neighbors_directed(idx.0, I::direction())
+                            .map(|i| &self.raw.graph[i])
+                    };
+                    initialiser.collect(&self.raw.graph[idx.0], from_all)
                 };
-                let value = initialiser.collect(&self.raw.graph[idx.0], from_all);
                 initialiser.assign(&mut self.raw.graph[idx.0], value);
             };
             let iter = subgraph.nodes.iter().copied();

@@ -67,6 +67,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                     MatchKind::Quantifier { .. } => "Quantifier",
                 }
             }
+            NodeKind::Proof(_) => "Proof",
         }
     }
     pub fn description(&self) -> Html {
@@ -96,13 +97,17 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 let detail = eq.with(self.ctxt).to_string();
                 ("Equality", detail)
             }
+            NodeKind::Proof(pidx) => {
+                let detail = self.ctxt.parser[pidx].result.with(self.ctxt).to_string();
+                ("Proved", detail)
+            }
         }
     }
+
+    // Instantiation specific
     pub fn blame(&self) -> Option<Vec<(String, String, Vec<String>)>> {
-        let NodeKind::Instantiation(iidx) = *self.node.kind() else {
-            return None;
-        };
-        let data = self.ctxt.parser.get_inst(iidx);
+        let inst = self.node.kind().inst()?;
+        let data = self.ctxt.parser.get_inst(inst);
         let qpat = data.match_.kind.quant_pat()?;
         let pattern = self.ctxt.parser.get_pattern(qpat)?;
         let pattern_matches = self.ctxt.parser[pattern]
@@ -127,9 +132,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         Some(blame)
     }
     pub fn bound_terms(&self) -> Option<Vec<String>> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
-            return None;
-        };
+        let inst = self.node.kind().inst()?;
         let match_ = &self.ctxt.parser[self.ctxt.parser[inst].match_];
         let bound_terms = match_.kind.bound_terms(
             |enode| enode.with(self.ctxt).to_string(),
@@ -152,16 +155,12 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         )
     }
     pub fn resulting_term(&self) -> Option<String> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
-            return None;
-        };
+        let inst = self.node.kind().inst()?;
         let resulting_term = self.ctxt.parser.get_instantiation_body(inst)?;
         Some(resulting_term.with(self.ctxt).to_string())
     }
     pub fn yield_terms(&self) -> Option<Vec<String>> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
-            return None;
-        };
+        let inst = self.node.kind().inst()?;
         let yields_terms = self.ctxt.parser[inst].yields_terms.iter();
         Some(
             yields_terms
@@ -169,6 +168,25 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 .collect(),
         )
     }
+
+    // Proof step specific
+    pub fn proof_step_name(&self) -> Option<String> {
+        let proof = self.node.kind().proof()?;
+        let parser = &self.ctxt.parser;
+        let kind = parser[proof].kind.to_z3_string();
+        let kind = kind.unwrap_or_else(|other| parser[other].to_string());
+        Some(kind)
+    }
+    pub fn prerequisites(&self) -> Option<Vec<String>> {
+        let proof = self.node.kind().proof()?;
+        let parser = &self.ctxt.parser;
+        let prerequisites = &parser[proof].prerequisites;
+        let prerequisites = prerequisites
+            .iter()
+            .map(|&pre| parser[pre].result.with(self.ctxt).to_string());
+        Some(prerequisites.collect())
+    }
+
     pub fn extra_info(&self) -> Option<Vec<(&'static str, String)>> {
         let mut extra_info = Vec::new();
         if let Some(z3gen) = self
@@ -264,6 +282,13 @@ pub fn SelectedNodesInfo(
                 }).collect();
                 html! { <>{yields}<hr/></> }
             });
+            let proof_step_name = info.proof_step_name().map(|name| {
+                    html!{<InfoLine header="Proof Step Name" text={name} code=true />}}); 
+            let prerequisites = info.prerequisites().map(|prerequisites| {
+                prerequisites.into_iter().map(|prerequisite| html! {
+                    <InfoLine header="Prerequisite(s)" text={prerequisite} code=true />
+                }).chain([html! { <hr/> }]).collect::<Html>()
+            });
             let extra_info = info.extra_info().map(|extra_info| {
                 let extra_info: Html = extra_info.into_iter().map(|(header, info)| html! {
                     <InfoLine {header} text={info} code=true />
@@ -280,6 +305,8 @@ pub fn SelectedNodesInfo(
                     {bound_terms}
                     {resulting_term}
                     {yield_terms}
+                    {proof_step_name}
+                    {prerequisites}
                     {extra_info}
                     <InfoLine header="Cost"     text={format!("{:.1}", info.node.cost)} code=false />
                     <InfoLine header="To Root"  text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
@@ -318,34 +345,35 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
         self.tooltip()
     }
     pub fn kind(&self) -> String {
+        use VisibleEdgeKind::*;
         match self.kind {
-            VisibleEdgeKind::Direct(_, EdgeKind::Yield) => "Yield".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::Blame { pattern_term }) => {
+            Direct(_, EdgeKind::Yield) => "Yield".to_string(),
+            Direct(_, EdgeKind::Blame { pattern_term }) => {
                 format!("Blame pattern #{pattern_term}")
             }
-            VisibleEdgeKind::Direct(_, EdgeKind::BlameEq { .. }) => "Blame Equality".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::EqualityFact) => "Equality Fact".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::EqualityCongruence) => {
-                "Equality Congruence".to_string()
-            }
-            VisibleEdgeKind::Direct(_, EdgeKind::TEqualitySimple { forward }) => format!(
+            Direct(_, EdgeKind::BlameEq { .. }) => "Blame Equality".to_string(),
+            Direct(_, EdgeKind::EqualityFact) => "Equality Fact".to_string(),
+            Direct(_, EdgeKind::EqualityCongruence) => "Equality Congruence".to_string(),
+            Direct(_, EdgeKind::TEqualitySimple { forward }) => format!(
                 "Simple {}Equality",
                 (!forward).then_some("Reverse ").unwrap_or_default()
             ),
-            VisibleEdgeKind::Direct(_, EdgeKind::TEqualityTransitive { forward }) => format!(
+            Direct(_, EdgeKind::TEqualityTransitive { forward }) => format!(
                 "Transitive {}Equality",
                 (!forward).then_some("Reverse ").unwrap_or_default()
             ),
-            VisibleEdgeKind::YieldBlame { pattern_term, .. } => {
+            Direct(_, EdgeKind::ProofStep) => "Proof Step".to_string(),
+            Direct(_, EdgeKind::YieldProof) => "Instantiation Proof Step".to_string(),
+            YieldBlame { pattern_term, .. } => {
                 format!("Yield/Blame pattern #{pattern_term}")
             }
-            VisibleEdgeKind::YieldEq(_) => "Yield Equality".to_string(),
-            VisibleEdgeKind::YieldBlameEq { .. } => "Yield/Blame Equality".to_string(),
-            VisibleEdgeKind::YieldEqOther(_) => "Yield Equality Other".to_string(),
-            VisibleEdgeKind::ENodeEq(_) => "ENode Equality".to_string(),
-            VisibleEdgeKind::ENodeBlameEq { .. } => "ENode/Blame Equality".to_string(),
-            VisibleEdgeKind::ENodeEqOther(_) => "ENode Equality Other".to_string(),
-            VisibleEdgeKind::Unknown(start, end) => {
+            YieldEq(_) => "Yield Equality".to_string(),
+            YieldBlameEq { .. } => "Yield/Blame Equality".to_string(),
+            YieldEqOther(_) => "Yield Equality Other".to_string(),
+            ENodeEq(_) => "ENode Equality".to_string(),
+            ENodeBlameEq { .. } => "ENode/Blame Equality".to_string(),
+            ENodeEqOther(_) => "ENode Equality Other".to_string(),
+            Unknown(start, end) => {
                 let ctxt = self.ctxt;
                 let hidden_from = self.graph.raw.graph.edge_endpoints(start.0).unwrap().1;
                 let hidden_to = self.graph.raw.graph.edge_endpoints(end.0).unwrap().0;
@@ -424,10 +452,7 @@ pub fn SelectedEdgesInfo(
 
         let summary = format!("[{}] {}", info.index(), info.kind());
         // Get info about blamed node
-        let blame = graph.raw.index(info.kind.blame(graph));
-        // TODO:
-        // let blame = graph.raw[blame].kind().tooltip((*ctxt, true, None));
-        let blame = graph.raw[blame].kind().tooltip(ctxt.parser);
+        let blame = info.kind.blame(graph).tooltip(ctxt.parser);
         html! {
             <details {open} {onclick}>
                 <summary>{summary}</summary>

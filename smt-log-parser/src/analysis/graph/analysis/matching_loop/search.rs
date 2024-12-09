@@ -1,8 +1,6 @@
 use crate::{
-    analysis::{
-        analysis::matching_loop::MlAnalysis, raw::NodeKind, visible::VisibleEdge, InstGraph,
-    },
-    items::{GraphIdx, InstIdx, QuantPat, TermIdx, TimeRange},
+    analysis::{analysis::matching_loop::MlAnalysis, InstGraph},
+    items::{GraphIdx, InstIdx, QuantPat, TimeRange},
     Z3Parser,
 };
 
@@ -101,18 +99,5 @@ impl InstGraph {
             .ml_data
             .as_ref()
             .and_then(|mls| mls.matching_loops.get(n))
-    }
-
-    fn _get_blame_term(&self, edge: &VisibleEdge, parser: &Z3Parser) -> Option<TermIdx> {
-        let kind = edge.kind(self);
-        let node = &self.raw[self.raw.index(kind.blame(self))];
-        match node.kind() {
-            NodeKind::ENode(enode) => Some(parser[*enode].owner),
-            NodeKind::GivenEquality(eq, _) => match parser[*eq] {
-                crate::items::EqualityExpl::Literal { eq, .. } => Some(parser[eq].owner),
-                _ => None,
-            },
-            _ => None,
-        }
     }
 }

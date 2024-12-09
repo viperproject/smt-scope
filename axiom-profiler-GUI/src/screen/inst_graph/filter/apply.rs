@@ -166,7 +166,7 @@ pub struct FilterOutput {
 }
 
 impl Disabler {
-    pub fn disable(self, idx: RawNodeIndex, graph: &RawInstGraph, _parser: &Z3Parser) -> bool {
+    pub fn disable(self, idx: RawNodeIndex, graph: &RawInstGraph, parser: &Z3Parser) -> bool {
         let node = &graph[idx];
         match self {
             Disabler::ENodes => node.kind().enode().is_some(),
@@ -174,7 +174,9 @@ impl Disabler {
             Disabler::AllEqualities => {
                 node.kind().eq_given().is_some() || node.kind().eq_trans().is_some()
             }
-            Disabler::Smart => match node.kind() {
+            Disabler::NonProof => node.kind().proof().is_none(),
+            Disabler::Smart => match *node.kind() {
+                NodeKind::Instantiation(_) => false,
                 NodeKind::ENode(_) => {
                     // Should only be 0 or 1
                     let parents = graph
@@ -210,17 +212,8 @@ impl Disabler {
                         .count();
                     parents == 0 || (parents == 1 && children == 1)
                 }
-                NodeKind::Instantiation(_) => false,
+                NodeKind::Proof(proof) => parser[proof].kind.is_trivial(),
             },
         }
-    }
-    pub fn apply(
-        many: impl Iterator<Item = Disabler> + Clone,
-        graph: &mut InstGraph,
-        parser: &Z3Parser,
-    ) {
-        graph.reset_disabled_to(parser, |node, graph| {
-            many.clone().any(|d| d.disable(node, graph, parser))
-        });
     }
 }

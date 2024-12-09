@@ -113,7 +113,7 @@ fn quants_ordered<'a, T: Ord + Copy + Debug, const REVERSE: bool>(
         .filter_map(|(q, c)| {
             let name = parser[q].kind.name(&parser.strings)?;
             let hue = colour_map.get_rbg_hue(Some(q));
-            log::info!("{name}: {hue:?} | {c:?}");
+            // log::info!("{name}: {hue:?} | {c:?}");
             Some((name, hue, c))
         })
         .collect::<Vec<_>>();

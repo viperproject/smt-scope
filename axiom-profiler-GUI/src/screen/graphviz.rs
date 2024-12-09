@@ -3,7 +3,7 @@ use core::fmt;
 use smt_log_parser::{
     analysis::{
         analysis::matching_loop::{MLGraphEdge, MLGraphNode, RecurrenceKind},
-        raw::NodeKind,
+        raw::{NodeKind, ProofReach},
         visible::VisibleEdge,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
@@ -47,10 +47,14 @@ macro_rules! all_struct {
 
 pub const INST_SHAPE: &str = "box";
 pub const OTHER_SHAPE: &str = "ellipse";
-pub const SPECIAL_SHAPE: &str = "egg";
+pub const OTHER_FULL_SHAPE: &str = "egg";
+pub const PROOF_SHAPE: &str = "doublecircle";
+pub const PROOF_FULL_SHAPE: &str = "circle";
 
 pub const ENODE_COLOUR: &str = "lightgray";
 pub const EQ_COLOUR: &str = "white";
+pub const PROOF_COLOUR: &str = "ivory";
+pub const FALSE_COLOUR: &str = "lightcoral";
 
 pub const NODE_COLOUR_SATURATION: f64 = 0.4;
 pub const NODE_COLOUR_VALUE: f64 = 0.95;
@@ -148,9 +152,9 @@ impl
         (),
         (),
         &'_ Z3Parser,
-        &'_ Z3Parser,
+        (&'_ Z3Parser, ProofReach),
         (u32, u32),
-        (&'_ Z3Parser, &'_ QuantIdxToColourMap),
+        (&'_ Z3Parser, &'_ QuantIdxToColourMap, ProofReach),
         (),
         (),
         (),
@@ -160,27 +164,13 @@ impl
         self.to_string()
     }
 
-    fn tooltip(&self, parser: &'_ Z3Parser) -> String {
+    fn tooltip(&self, parser: &Z3Parser) -> String {
         use NodeKind::*;
         fn get_name(parser: &Z3Parser, enode: ENodeIdx) -> &str {
             let name = parser[parser[enode].owner].kind.app_name();
             name.map(|n| &parser[n]).unwrap_or_default()
         }
         match *self {
-            ENode(enode) => get_name(parser, enode).to_string(),
-            GivenEquality(eq, _) => {
-                let eq = &parser[eq];
-                let kind = eq.kind_str(&parser.strings);
-                let (from, to) = (get_name(parser, eq.from()), get_name(parser, eq.to()));
-                format!("{kind}: {from} = {to}")
-            }
-            TransEquality(eq) => {
-                let (from, to) = parser.from_to(eq);
-                let (from, to) = (get_name(parser, from), get_name(parser, to));
-                let len = parser[eq].given_len.map(|l| l.to_string());
-                let len = len.as_deref().unwrap_or("?");
-                format!("{from} =[{len}] {to}")
-            }
             Instantiation(inst) => match &parser[parser[inst].match_].kind {
                 MatchKind::TheorySolving { axiom_id, .. } => {
                     let namespace = &parser[axiom_id.namespace];
@@ -195,17 +185,47 @@ impl
                     .unwrap()
                     .to_string(),
             },
+            ENode(enode) => get_name(parser, enode).to_string(),
+            GivenEquality(eq, _) => {
+                let eq = &parser[eq];
+                let kind = eq.kind_str(&parser.strings);
+                let (from, to) = (get_name(parser, eq.from()), get_name(parser, eq.to()));
+                format!("{kind}: {from} = {to}")
+            }
+            TransEquality(eq) => {
+                let (from, to) = parser.from_to(eq);
+                let (from, to) = (get_name(parser, from), get_name(parser, to));
+                let len = parser[eq].given_len.map(|l| l.to_string());
+                let len = len.as_deref().unwrap_or("?");
+                format!("{from} =[{len}] {to}")
+            }
+            Proof(proof) => {
+                let name = &parser[parser[proof].result].kind.app_name();
+                let name = name.map(|n| &parser[n]).unwrap_or_default();
+                name.to_string()
+            }
         }
     }
 
-    fn style(&self, parser: &Z3Parser) -> &'static str {
-        let NodeKind::Instantiation(inst) = self else {
-            return "filled";
-        };
-        if parser[parser[*inst].match_].kind.is_mbqi() {
-            "filled,dashed"
-        } else {
-            "filled"
+    fn style(&self, (parser, reach): (&Z3Parser, ProofReach)) -> &'static str {
+        match *self {
+            NodeKind::Instantiation(inst) => {
+                if parser[parser[inst].match_].kind.is_mbqi() {
+                    "filled,dashed"
+                } else {
+                    "filled"
+                }
+            }
+            NodeKind::Proof(proof) => {
+                if parser[proof].kind.is_hypothesis() {
+                    "filled,dotted"
+                } else if reach.under_hypothesis {
+                    "filled,dashed"
+                } else {
+                    "filled"
+                }
+            }
+            _ => "filled",
         }
     }
 
@@ -216,12 +236,17 @@ impl
             (Instantiation(..), 0, _) => "house",
             (Instantiation(..), _, 0) => "invhouse",
             (Instantiation(..), _, _) => "diamond",
-            (ENode(..) | GivenEquality(..) | TransEquality(..), 0, 0) => SPECIAL_SHAPE,
+            (ENode(..) | GivenEquality(..) | TransEquality(..), 0, 0) => OTHER_FULL_SHAPE,
+            (Proof(..), 0, 0) => PROOF_FULL_SHAPE,
             (ENode(..) | GivenEquality(..) | TransEquality(..), _, _) => OTHER_SHAPE,
+            (Proof(..), _, _) => PROOF_SHAPE,
         }
     }
 
-    fn fillcolor(&self, (parser, colour_map): (&Z3Parser, &QuantIdxToColourMap)) -> String {
+    fn fillcolor(
+        &self,
+        (parser, colour_map, reach): (&Z3Parser, &QuantIdxToColourMap, ProofReach),
+    ) -> String {
         use NodeKind::*;
         match self {
             Instantiation(inst_idx) => {
@@ -232,6 +257,13 @@ impl
             }
             ENode(..) => ENODE_COLOUR.to_owned(),
             GivenEquality(..) | TransEquality(..) => EQ_COLOUR.to_owned(),
+            Proof(..) => {
+                if reach.proves_false {
+                    FALSE_COLOUR.to_owned()
+                } else {
+                    PROOF_COLOUR.to_owned()
+                }
+            }
         }
     }
 

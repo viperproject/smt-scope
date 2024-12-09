@@ -26,11 +26,7 @@ use crate::{
     utils::colouring::QuantIdxToColourMap,
 };
 
-use super::{
-    filter::{Disabler, RenderCommand},
-    visible::RcVisibleGraph,
-    Graph, GraphM,
-};
+use super::{filter::RenderCommand, visible::RcVisibleGraph, Graph, GraphM};
 
 impl Graph {
     pub(super) fn apply_filter(
@@ -40,9 +36,7 @@ impl Graph {
         cmd: RenderCommand,
     ) -> (bool, bool, bool) {
         if cmd.is_full() {
-            if self.disabler.modified() {
-                Disabler::apply(self.disabler.disablers(), graph, parser);
-            }
+            self.disabler.apply(graph, parser);
             graph.raw.reset_visibility_to(false);
             self.filter.no_effects.clear();
         }
@@ -180,9 +174,9 @@ impl Graph {
                         (),
                         (),
                         parser,
-                        parser,
+                        (parser, node_data.proof),
                         (data.hidden_parents, data.hidden_children),
-                        (parser, colour_map),
+                        (parser, colour_map, node_data.proof),
                         (),
                         (),
                         (),

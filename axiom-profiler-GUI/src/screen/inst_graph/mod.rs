@@ -48,6 +48,8 @@ pub struct GraphProps {
     pub default_filters: Vec<Filter>,
     pub default_disablers: Vec<(Disabler, bool)>,
     pub extra: Option<GraphExtraProps>,
+    // TODO: make the graph display be generic over this (and not a parameter).
+    pub enable_proofs: bool,
 }
 
 impl GraphProps {
@@ -128,7 +130,7 @@ impl Screen for Graph {
                 Self::default_permissions(),
                 link,
             ),
-            disabler: DisablersState::new(props.default_disablers.clone()),
+            disabler: DisablersState::new(props.default_disablers.clone(), props.enable_proofs),
             nodes_to_select: Vec::new(),
             svg_view: WeakComponentLink::default(),
             graph_warning: WeakComponentLink::default(),
@@ -145,9 +147,11 @@ impl Screen for Graph {
             *self = Self::create(link, props);
             return true;
         }
-        let disablers_changed = props.default_disablers != old_props.default_disablers;
+        let disablers_changed = props.default_disablers != old_props.default_disablers
+            || props.enable_proofs != old_props.enable_proofs;
         if disablers_changed {
-            self.disabler = DisablersState::new(props.default_disablers.clone());
+            self.disabler =
+                DisablersState::new(props.default_disablers.clone(), props.enable_proofs);
         }
         if props.default_filters != old_props.default_filters {
             self.filter = FiltersState::new(

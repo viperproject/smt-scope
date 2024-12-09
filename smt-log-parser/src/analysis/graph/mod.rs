@@ -34,7 +34,7 @@ impl InstGraph {
             subgraphs,
             analysis,
         };
-        self_.initialise_default(parser);
+        self_.initialise_first(parser);
         Ok(self_)
     }
 

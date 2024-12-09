@@ -78,6 +78,7 @@ impl MatchingLoopLoaded {
                     swap_split: false,
                     info_top: Self::renderer(link, props, initial),
                 }),
+                enable_proofs: false,
             };
             MatchingLoopRendering {
                 idx: initial,

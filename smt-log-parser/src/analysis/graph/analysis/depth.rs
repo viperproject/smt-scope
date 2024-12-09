@@ -43,7 +43,7 @@ impl<C: DepthInitialiser<FORWARD>, const FORWARD: bool> Initialiser<FORWARD, 1> 
         DepthInitialiser::reset(self)
     }
 }
-impl<C: DepthInitialiser<FORWARD>, const FORWARD: bool> CollectInitialiser<FORWARD, 1> for C {
+impl<C: DepthInitialiser<FORWARD>, const FORWARD: bool> CollectInitialiser<FORWARD, true, 1> for C {
     fn collect<'n, T: Iterator<Item = &'n Node>>(
         &mut self,
         node: &Node,

@@ -181,14 +181,7 @@ impl Disabler {
             Disabler::ENodes => "yield terms",
             Disabler::GivenEqualities => "yield equalities",
             Disabler::AllEqualities => "all equalities",
-        }
-    }
-    pub fn icon(&self) -> &'static str {
-        match self {
-            Disabler::Smart => "low_priority",
-            Disabler::ENodes => "functions",
-            Disabler::GivenEqualities => "compare_arrows",
-            Disabler::AllEqualities => "compare_arrows",
+            Disabler::NonProof => "non-proof nodes",
         }
     }
 }

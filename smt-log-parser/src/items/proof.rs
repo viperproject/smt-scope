@@ -536,6 +536,26 @@ impl ProofStepKind {
             .to_ascii_lowercase();
         Ok(kind_str)
     }
+
+    pub fn is_trivial(self) -> bool {
+        use ProofStepKind::*;
+        matches!(
+            self,
+            PR_MP
+                | PR_REWRITE
+                | PR_MONOTONICITY
+                | PR_TRANS
+                | PR_REFL
+                | PR_COMMUTATIVITY
+                | PR_IFF_TRUE
+                | PR_IFF_FALSE
+                | PR_SYMM
+        )
+    }
+
+    pub fn is_hypothesis(self) -> bool {
+        matches!(self, ProofStepKind::PR_HYPOTHESIS)
+    }
 }
 
 static SEARCH_MAP: OnceLock<FxHashMap<String, ProofStepKind>> = OnceLock::new();

@@ -277,13 +277,14 @@ impl GraphStats {
 #[derive(Debug, Clone)]
 pub struct Node {
     state: NodeState,
+    kind: NodeKind,
     pub cost: f64,
     pub fwd_depth: Depth,
     pub bwd_depth: Depth,
     pub subgraph: Option<(GraphIdx, u32)>,
-    kind: NodeKind,
     pub parents: NextNodes,
     pub children: NextNodes,
+    pub proof: ProofReach,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -313,6 +314,16 @@ pub struct NextNodes {
     pub count: u32,
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ProofReach {
+    pub proves_false: bool,
+    pub under_hypothesis: bool,
+    pub reaches_proof: bool,
+    pub reaches_false: bool,
+}
+
 impl Node {
     fn new(kind: NodeKind) -> Self {
         Self {
@@ -324,6 +335,7 @@ impl Node {
             kind,
             parents: NextNodes::default(),
             children: NextNodes::default(),
+            proof: ProofReach::default(),
         }
     }
     pub fn kind(&self) -> &NodeKind {
@@ -414,6 +426,12 @@ impl fmt::Display for NodeKind {
 }
 
 impl NodeKind {
+    pub fn inst(&self) -> Option<InstIdx> {
+        match self {
+            Self::Instantiation(inst) => Some(*inst),
+            _ => None,
+        }
+    }
     pub fn enode(&self) -> Option<ENodeIdx> {
         match self {
             Self::ENode(enode) => Some(*enode),
@@ -432,9 +450,9 @@ impl NodeKind {
             _ => None,
         }
     }
-    pub fn inst(&self) -> Option<InstIdx> {
+    pub fn proof(&self) -> Option<ProofIdx> {
         match self {
-            Self::Instantiation(inst) => Some(*inst),
+            Self::Proof(ps) => Some(*ps),
             _ => None,
         }
     }

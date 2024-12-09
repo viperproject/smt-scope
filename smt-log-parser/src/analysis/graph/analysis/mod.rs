@@ -2,6 +2,7 @@ pub mod cost;
 pub mod depth;
 pub mod matching_loop;
 pub mod next_nodes;
+pub mod proof;
 pub mod reconnect;
 pub mod run;
 
@@ -14,7 +15,9 @@ use matching_loop::MlData;
 
 use crate::{F64Ord, Result, Z3Parser};
 
-use self::{cost::DefaultCost, depth::DefaultDepth, next_nodes::DefaultNextInsts};
+use self::{
+    cost::DefaultCost, depth::DefaultDepth, next_nodes::NextInstsInit, proof::ProofInitialiser,
+};
 
 use super::{raw::RawInstGraph, InstGraph, RawNodeIndex};
 
@@ -91,13 +94,20 @@ impl Analysis {
 }
 
 impl InstGraph {
+    pub fn initialise_first(&mut self, parser: &Z3Parser) {
+        self.initialise_collect(ProofInitialiser::<false>, parser);
+        self.initialise_collect(ProofInitialiser::<true>, parser);
+
+        self.initialise_default(parser);
+    }
+
     pub fn initialise_default(&mut self, parser: &Z3Parser) {
         self.initialise_transfer(DefaultCost, parser);
         self.initialise_collect(DefaultDepth::<true>, parser);
         self.initialise_collect(DefaultDepth::<false>, parser);
 
-        self.initialise_transfer(DefaultNextInsts::<true>, parser);
-        self.initialise_transfer(DefaultNextInsts::<false>, parser);
+        self.initialise_transfer(NextInstsInit::<true>, parser);
+        self.initialise_transfer(NextInstsInit::<false>, parser);
 
         self.analyse();
     }

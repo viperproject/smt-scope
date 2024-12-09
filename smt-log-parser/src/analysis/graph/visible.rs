@@ -34,10 +34,11 @@ impl InstGraph {
         let (mut nodes, mut edges) = (0, 0);
         for (idx, data) in reconnect.iter_mut_enumerated() {
             if !self.raw[idx].visible() {
-                data.clear();
+                data.above.clear();
+                continue;
             }
             nodes += 1;
-            edges += data.len();
+            edges += data.above.len();
         }
 
         let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> =
@@ -70,10 +71,11 @@ impl InstGraph {
 
         for (i_idx, data) in reconnect.iter_enumerated() {
             let Some(v_idx) = self_.reverse(i_idx) else {
-                assert!(data.is_empty());
+                assert!(data.above.is_empty());
                 continue;
             };
             let mut edges_to_add: Vec<_> = data
+                .above
                 .iter()
                 .map(|&(from_v, from_h, to_h)| {
                     let v_from_v = self_.reverse(from_v).unwrap();
@@ -315,7 +317,7 @@ impl VisibleEdgeKind {
     pub fn blame(&self, graph: &InstGraph) -> NodeKind {
         use NodeKind::*;
         match self {
-            VisibleEdgeKind::Direct(edge, _) | VisibleEdgeKind::Unknown(edge, ..) => {
+            VisibleEdgeKind::Direct(edge, _) | VisibleEdgeKind::Unknown(.., edge) => {
                 *graph.raw.graph[graph.raw.graph.edge_endpoints(edge.0).unwrap().0].kind()
             }
 

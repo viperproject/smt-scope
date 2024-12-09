@@ -62,8 +62,8 @@ impl QuantifierAnalysis {
                 qinfo.children += 1.0 / parents;
             }
 
-            let pat = parser.get_pattern(qpat);
-            let subpats = pat.map(|p| parser[p].child_ids.len()).unwrap_or_default();
+            let pat = parser.get_pattern_term(qpat);
+            let subpats = pat.map(|p| p.child_ids.len()).unwrap_or_default();
             for (i, blame) in data.match_.pattern_matches().enumerate() {
                 // Increment the count for each expression in the pattern.
                 if i == qinfo.direct_deps.len() {

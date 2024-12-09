@@ -125,8 +125,8 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         let inst = self.node.kind().inst()?;
         let data = self.ctxt.parser.get_inst(inst);
         let qpat = data.match_.kind.quant_pat()?;
-        let pattern = self.ctxt.parser.get_pattern(qpat)?;
-        let pattern_matches = self.ctxt.parser[pattern]
+        let pattern = self.ctxt.parser.get_pattern_term(qpat)?;
+        let pattern_matches = pattern
             .child_ids
             .iter()
             .rev()

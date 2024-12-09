@@ -715,6 +715,17 @@ impl Z3LogParser for Z3Parser {
             blamed: blamed.into(),
             frame: self.stack.active_frame(),
         };
+        // Z3 BUG: Sometimes the number of pattern_matches is larger than the
+        // number of subpatterns available.
+        let pat = QuantPat {
+            quant,
+            pat: Some(pattern),
+        };
+        let subpats = self.get_pattern_term(pat).unwrap().child_ids.len();
+        let subpat_matches = match_.pattern_matches().count();
+        if subpats != subpat_matches {
+            return Err(E::MatchPatternMismatch(subpats, subpat_matches));
+        }
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
     }

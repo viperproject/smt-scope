@@ -104,6 +104,10 @@ impl Z3Parser {
         qpat.pat.map(|pat| self.patterns(qpat.quant).unwrap()[pat])
     }
 
+    pub fn get_pattern_term(&self, qpat: QuantPat) -> Option<&Term> {
+        self.get_pattern(qpat).map(|tidx| &self[tidx])
+    }
+
     pub fn get_frame(&self, idx: impl HasFrame) -> &StackFrame {
         &self.stack[idx.frame(self)]
     }

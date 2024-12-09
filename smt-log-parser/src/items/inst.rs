@@ -244,3 +244,12 @@ pub enum InstProofLink {
     /// proved.
     ProofsDisabled(Option<TermIdx>),
 }
+
+impl InstProofLink {
+    pub fn proof(&self) -> Option<ProofIdx> {
+        match self {
+            Self::HasProof(proof) => Some(*proof),
+            _ => None,
+        }
+    }
+}

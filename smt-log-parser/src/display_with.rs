@@ -1,7 +1,4 @@
-use std::{
-    borrow::{Borrow, Cow},
-    fmt,
-};
+use std::{borrow::Cow, fmt};
 
 use crate::{
     formatter::{
@@ -635,25 +632,30 @@ impl VarNames {
             ),
         };
 
-        let mut colour = None;
         #[cfg(feature = "display_html")]
-        let name = if config.html() {
-            const COLOURS: [&str; 9] = [
-                "blue", "green", "olive", "maroon", "teal", "purple", "red", "fuchsia", "navy",
-            ];
-            colour = Some(COLOURS[idx % COLOURS.len()]);
-            let name = ammonia::clean_text(name.borrow());
-            Cow::Owned(name)
-        } else {
-            name
-        };
-        VarName(move |f| {
-            if let Some(colour) = colour {
-                config.with_html_colour(f, colour, |f| write!(f, "{name}"))
+        {
+            let mut colour = None;
+            let name = if config.html() {
+                const COLOURS: [&str; 9] = [
+                    "blue", "green", "olive", "maroon", "teal", "purple", "red", "fuchsia", "navy",
+                ];
+                colour = Some(COLOURS[idx % COLOURS.len()]);
+                use std::borrow::Borrow;
+                let name = ammonia::clean_text(name.borrow());
+                Cow::Owned(name)
             } else {
-                write!(f, "{name}")
-            }
-        })
+                name
+            };
+            VarName(move |f| {
+                if let Some(colour) = colour {
+                    config.with_html_colour(f, colour, |f| write!(f, "{name}"))
+                } else {
+                    write!(f, "{name}")
+                }
+            })
+        }
+        #[cfg(not(feature = "display_html"))]
+        VarName(move |f| write!(f, "{name}"))
     }
 }
 

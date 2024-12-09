@@ -167,9 +167,11 @@ impl TermDisplayContext {
         }
     }
 
+    #[cfg(feature = "serde")]
     pub(super) fn to_parts(&self) -> TermDisplayContextParts {
         (&self.string_matchers, &self.regex_matchers, &self.fallback)
     }
+    #[cfg(feature = "serde")]
     pub(super) fn from_parts(
         string_matchers: FxHashMap<(Cow<'static, str>, Option<NonMaxU32>), TermDisplay>,
         regex_matchers: Vec<TermDisplay>,

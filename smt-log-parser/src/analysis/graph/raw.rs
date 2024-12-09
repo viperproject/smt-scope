@@ -14,7 +14,7 @@ use petgraph::{
 use crate::{
     graph_idx,
     items::{
-        ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, StackIdx,
+        ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx, StackIdx,
         TransitiveExplSegmentKind,
     },
     DiGraph, FxHashMap, FxHashSet, NonMaxU32, Result, Z3Parser,
@@ -26,10 +26,11 @@ graph_idx!(raw_idx, RawNodeIndex, RawEdgeIndex, RawIx);
 #[derive(Debug)]
 pub struct RawInstGraph {
     pub graph: DiGraph<Node, EdgeKind, RawIx>,
+    inst_idx: RawNodeIndex,
     enode_idx: RawNodeIndex,
     eq_trans_idx: RawNodeIndex,
-    inst_idx: RawNodeIndex,
     eq_given_idx: FxHashMap<(EqGivenIdx, Option<NonMaxU32>), RawNodeIndex>,
+    proofs_idx: RawNodeIndex,
 
     pub(crate) stats: GraphStats,
 }
@@ -73,6 +74,10 @@ impl RawInstGraph {
                 }
             }
         }
+        let proofs_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
+        for ps_idx in parser.proofs().keys() {
+            graph.add_node(Node::new(NodeKind::Proof(ps_idx)));
+        }
         let stats = GraphStats {
             hidden: graph.node_count() as u32,
             disabled: 0,
@@ -80,10 +85,11 @@ impl RawInstGraph {
         };
         let mut self_ = RawInstGraph {
             graph,
+            inst_idx,
             enode_idx,
             eq_given_idx,
             eq_trans_idx,
-            inst_idx,
+            proofs_idx,
             stats,
         };
 
@@ -156,6 +162,21 @@ impl RawInstGraph {
                 }
             }
         }
+
+        // Add proof step edges
+        for (idx, ps) in parser.proofs().iter_enumerated() {
+            for pre in ps.prerequisites.iter() {
+                self_.add_edge(*pre, idx, EdgeKind::ProofStep)
+            }
+        }
+
+        for (iidx, inst) in parser.insts.insts.iter_enumerated() {
+            let Some(proof) = inst.proof_id.proof() else {
+                continue;
+            };
+            self_.add_edge(iidx, proof, EdgeKind::YieldProof);
+        }
+
         debug_assert!(
             !petgraph::algo::is_cyclic_directed(&*self_.graph),
             "Graph is cyclic, this should not happen by construction!"
@@ -179,6 +200,7 @@ impl RawInstGraph {
             NodeKind::GivenEquality(eq, use_) => (eq, use_).index(self),
             NodeKind::TransEquality(eq) => eq.index(self),
             NodeKind::Instantiation(inst) => inst.index(self),
+            NodeKind::Proof(ps) => ps.index(self),
         }
     }
 
@@ -326,9 +348,10 @@ impl Node {
 
     pub fn frame(&self, parser: &Z3Parser) -> Option<StackIdx> {
         match *self.kind() {
-            NodeKind::ENode(enode_idx) => Some(parser[enode_idx].frame),
-            NodeKind::Instantiation(inst_idx) => Some(parser.insts[inst_idx].frame),
+            NodeKind::Instantiation(iidx) => Some(parser[iidx].frame),
+            NodeKind::ENode(eidx) => Some(parser[eidx].frame),
             NodeKind::GivenEquality(..) | NodeKind::TransEquality(_) => None,
+            NodeKind::Proof(psidx) => Some(parser[psidx].frame),
         }
     }
 }
@@ -338,30 +361,38 @@ impl Node {
 pub enum NodeKind {
     /// Corresponds to `InstIdx`.
     ///
-    /// **Parents:** arbitrary count, will always be `ENode` or `TransEquality`.\
-    /// **Children:** arbitrary count, will always be `ENode`.
+    /// **Parents:** (small) arbitrary count, will always be `ENode` or
+    /// `TransEquality`.\
+    /// **Children:** (small) arbitrary count, will always be `ENode`.
     Instantiation(InstIdx),
     /// Corresponds to `ENodeIdx`.
     ///
     /// **Parents:** will always have 0 or 1 parents, if 1 then this will be an `Instantiation`.\
-    /// **Children:** arbitrary count, will always be either `Instantiation` or
-    /// `GivenEquality` of type `EqualityExpl::Literal`.
+    /// **Children:** (large) arbitrary count, will always be either
+    /// `Instantiation` or `GivenEquality` of type `EqualityExpl::Literal`.
     ENode(ENodeIdx),
     /// Corresponds to `EqGivenIdx`.
     ///
     /// **Parents:** will always have 0 or 1 parents, if 1 then this will be an
     /// `ENode` or a `TransEquality` depending on if it's a `Literal` or
     /// `Congruence` resp.\
-    /// **Children:** arbitrary count, will always be `TransEquality` of type.
+    /// **Children:** (small) arbitrary count, will always be `TransEquality` of
+    /// type.
     GivenEquality(EqGivenIdx, Option<NonMaxU32>),
     /// Corresponds to `EqTransIdx`.
     ///
     /// **Parents:** arbitrary count, will always be `GivenEquality` or
     /// `TransEquality`. The number of immediately reachable `GivenEquality` con
     /// be found in `TransitiveExpl::given_len`.\
-    /// **Children:** arbitrary count, can be `GivenEquality`, `TransEquality`
-    /// or `Instantiation`.
+    /// **Children:** (large) arbitrary count, can be `GivenEquality`,
+    /// `TransEquality` or `Instantiation`.
     TransEquality(EqTransIdx),
+    /// Corresponds to `ProofIdx`.
+    ///
+    /// **Parents:** (small) arbitrary count, will always be `Proof` or
+    /// `Instantiation`.
+    /// **Children:** (small) arbitrary count, will always be `Proof`.
+    Proof(ProofIdx),
 }
 
 impl fmt::Display for NodeKind {
@@ -377,6 +408,7 @@ impl fmt::Display for NodeKind {
             ),
             NodeKind::TransEquality(eq) => write!(f, "{eq:?}"),
             NodeKind::Instantiation(inst) => write!(f, "{inst:?}"),
+            NodeKind::Proof(ps) => write!(f, "{ps:?}"),
         }
     }
 }
@@ -425,10 +457,19 @@ pub enum EdgeKind {
     TEqualitySimple { forward: bool },
     /// TransEquality -> TransEquality (`TransitiveExplSegmentKind::Transitive`)
     TEqualityTransitive { forward: bool },
+    /// Proof -> Proof
+    ProofStep,
+    /// Instantiation -> Proof
+    YieldProof,
 }
 
 pub trait IndexesInstGraph {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex;
+}
+impl IndexesInstGraph for InstIdx {
+    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
+        graph.inst_to_raw_idx()(*self)
+    }
 }
 impl IndexesInstGraph for ENodeIdx {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
@@ -444,14 +485,16 @@ impl IndexesInstGraph for EqTransIdx {
         ))
     }
 }
-impl IndexesInstGraph for InstIdx {
-    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
-        graph.inst_to_raw_idx()(*self)
-    }
-}
 impl IndexesInstGraph for (EqGivenIdx, Option<NonMaxU32>) {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
         graph.eq_given_idx[self]
+    }
+}
+impl IndexesInstGraph for ProofIdx {
+    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
+        RawNodeIndex(NodeIndex::new(
+            graph.proofs_idx.0.index() + usize::from(*self),
+        ))
     }
 }
 impl IndexesInstGraph for RawNodeIndex {

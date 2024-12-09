@@ -6,7 +6,7 @@ use strum::{EnumIter, IntoEnumIterator};
 
 use crate::{BoxSlice, FxHashMap, IString};
 
-use super::{ProofIdx, TermId, TermIdx};
+use super::{ProofIdx, StackIdx, TermId, TermIdx};
 
 /// A Z3 proof step and associated data.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -17,6 +17,7 @@ pub struct ProofStep {
     pub kind: ProofStepKind,
     pub result: TermIdx,
     pub prerequisites: BoxSlice<ProofIdx>,
+    pub frame: StackIdx,
 }
 
 #[allow(non_camel_case_types)]

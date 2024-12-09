@@ -468,6 +468,7 @@ impl Z3LogParser for Z3Parser {
             kind,
             result,
             prerequisites: prerequisites.into(),
+            frame: self.stack.active_frame(),
         };
         let proof_idx = self.terms.proof_terms.new_term(proof_step)?;
         self.events.new_proof_step(

@@ -76,6 +76,7 @@ impl CostInitialiser for DefaultCost {
                 parser[*eq].given_len.map(|l| l.get()).unwrap_or_default()
             }
             NodeKind::Instantiation(_) => 1,
+            NodeKind::Proof(_) => 0,
         }
     }
     fn transfer(
@@ -85,7 +86,10 @@ impl CostInitialiser for DefaultCost {
         idx: usize,
         incoming: &[Self::Observed],
     ) -> f64 {
-        let total = incoming.iter().sum::<usize>() as f64;
-        node.cost * incoming[idx] as f64 / total
+        let total = incoming.iter().sum::<usize>();
+        if total == 0 {
+            return 0.0;
+        }
+        node.cost * incoming[idx] as f64 / total as f64
     }
 }

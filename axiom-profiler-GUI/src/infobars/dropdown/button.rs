@@ -1,7 +1,6 @@
-use yew::{
-    function_component, html, use_context, use_effect_with_deps, use_state_eq, Callback, Children,
-    Html, MouseEvent, Properties,
-};
+use std::cell::RefCell;
+
+use yew::prelude::*;
 
 use crate::infobars::DropdownCtxt;
 
@@ -16,29 +15,21 @@ pub struct DropdownButtonProps {
     pub children: Children,
 }
 
-#[derive(Clone, Copy)]
-struct Bool(bool);
-impl PartialEq for Bool {
-    fn eq(&self, _: &Self) -> bool {
-        true
-    }
-}
-
 #[function_component]
 pub fn DropdownButton(props: &DropdownButtonProps) -> Html {
     let disabled = props.disabled.unwrap_or_default();
     let dropdown = use_context::<DropdownCtxt>().unwrap();
     let last_hovered = dropdown.enabled && dropdown.last_hovered.is_some_and(|lh| lh == props.idx);
 
-    let last_hovered_state = use_state_eq(|| Bool(false));
-    last_hovered_state.set(Bool(last_hovered));
+    let last_hovered_state = use_state(|| RefCell::new(false));
+    *last_hovered_state.borrow_mut() = last_hovered;
 
     use_effect_with_deps(
         move |(last_hovered, toggle)| {
             let last_hovered = last_hovered.clone();
             let toggle = toggle.clone();
             move || {
-                if last_hovered.0 {
+                if *last_hovered.borrow() {
                     toggle.emit(Some(false));
                 }
             }

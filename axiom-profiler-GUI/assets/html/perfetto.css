@@ -773,9 +773,6 @@ input[type="file"] {
 	margin-right: 10px;
 	font-size: inherit;
 }
-/* .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li:not(.drag) .material-icons.small {
-	color: hsl(216, 3.5%, 48%);
-} */
 .sidebar .sidebar-scroll > .sidebar-scroll-container .section-content li.no-effect a {
 	color: var(--menu-text-disabled-color);
 }

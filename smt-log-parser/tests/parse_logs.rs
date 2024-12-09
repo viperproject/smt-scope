@@ -2,7 +2,7 @@ use cap::Cap;
 use std::time::{Duration, Instant};
 
 use mem_dbg::*;
-use smt_log_parser::analysis::InstGraph;
+use smt_log_parser::analysis::{InstGraph, LogInfo, QuantifierAnalysis};
 use smt_log_parser::{LogParser, Z3Parser};
 
 #[global_allocator]
@@ -101,7 +101,9 @@ fn parse_all_logs() {
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
 
             let now = Instant::now();
+            let _log_info = LogInfo::new(&parser);
             let mut inst_graph = InstGraph::new(&parser).unwrap();
+            let _quant_info = QuantifierAnalysis::new(&parser, &inst_graph);
             let elapsed_ig = now.elapsed();
             assert!(
                 elapsed_ig < timeout,

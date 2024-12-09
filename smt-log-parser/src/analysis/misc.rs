@@ -1,4 +1,7 @@
-use crate::{items::QuantIdx, TiVec, Z3Parser};
+use crate::{
+    items::{QuantIdx, QuantPatVec},
+    Z3Parser,
+};
 
 pub struct LogInfo {
     pub match_: MatchesInfo,
@@ -58,17 +61,15 @@ impl InstsInfo {
 }
 
 /// How many times each quantifier was instantiated
-pub struct QuantsInfo(pub TiVec<QuantIdx, u64>);
-
-pub struct RedundancyInfo {}
+pub struct QuantsInfo(pub QuantPatVec<usize>);
 
 impl LogInfo {
     pub fn new(parser: &Z3Parser) -> Self {
-        let mut quants = QuantsInfo(parser.quantifiers.iter().map(|_| 0).collect());
+        let mut quants = QuantsInfo(parser.new_quant_pat_vec(|_| 0));
         let mut match_ = MatchesInfo::default();
         for data in parser.instantiations_data() {
-            if let Some(qidx) = data.match_.kind.quant_idx() {
-                quants.0[qidx] += 1;
+            if let Some(qpat) = data.match_.kind.quant_pat() {
+                quants.0[qpat] += 1;
             }
             use crate::items::MatchKind::*;
             match &data.match_.kind {
@@ -87,10 +88,11 @@ impl LogInfo {
         }
     }
 
-    pub fn quants_iter(&self) -> impl Iterator<Item = (QuantIdx, u64)> + '_ {
+    pub fn quants_iter(&self) -> impl Iterator<Item = (QuantIdx, usize)> + '_ {
         self.quants
             .0
+             .0
             .iter_enumerated()
-            .map(|(i, count)| (i, *count))
+            .map(|(i, count)| (i, count.iter_enumerated().map(|(_, c)| c).sum()))
     }
 }

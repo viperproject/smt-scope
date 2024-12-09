@@ -166,6 +166,9 @@ impl Graph {
                         is_indirect,
                         blame,
                         (),
+                        (),
+                        (),
+                        (),
                     );
                     // For edges the `id` is the `VisibleEdgeIndex` from the VisibleGraph!
                     format!("id=edge_{} {all}", edge_data.id().index())
@@ -175,10 +178,12 @@ impl Graph {
                     let node_data = &graph.raw[data.idx];
                     let all = node_data.kind().all(
                         (),
+                        (),
                         parser,
                         parser,
                         (data.hidden_parents, data.hidden_children),
                         (parser, colour_map),
+                        (),
                         (),
                         (),
                     );

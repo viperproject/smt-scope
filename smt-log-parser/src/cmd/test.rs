@@ -45,7 +45,7 @@ pub fn run(logfiles: Vec<PathBuf>, timeout: f32) -> Result<(), String> {
             let quants_involved: Vec<_> = inst_graph
                 .quants_per_matching_loop()
                 .unwrap()
-                .map(|q| result[q].kind.debug(&result))
+                .map(|q| result[q.quant].kind.debug(&result))
                 .collect();
             println!(
                 "Finished analysing after {} seconds. Found {sure_mls} sure mls, {maybe_mls} maybe mls. Quants involved {quants_involved:?}",

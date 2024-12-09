@@ -1,40 +1,27 @@
 use std::rc::Rc;
 
-use petgraph::dot::{Config, Dot};
 use smt_log_parser::{
     analysis::analysis::matching_loop::MlGraph, display_with::DisplayCtxt,
     formatter::TermDisplayContext,
 };
-use viz_js::VizInstance;
-use wasm_timer::Instant;
-use web_sys::SvgsvgElement;
-use yew::{function_component, html, use_context, Callback, Html, Properties};
+use yew::{function_component, html, use_context, Html, Properties};
 
 use crate::{
     configuration::ConfigurationProvider,
     screen::{
         file::RcAnalysis,
         graphviz::{DotEdgeProperties, DotNodeProperties},
-        homepage::RcParser,
+        homepage::{FileInfo, RcParser},
     },
-    utils::colouring::QuantIdxToColourMap,
+    utils::{colouring::QuantIdxToColourMap, graphviz::Dot},
 };
-
-use super::graph::MlgViewer;
-
-#[derive(Clone, PartialEq)]
-pub struct MlgrOutput {
-    pub incomplete: bool,
-    pub idx: usize,
-    pub svg: SvgsvgElement,
-}
 
 #[derive(Properties, Clone)]
 pub struct MlgrProps {
     pub parser: RcParser,
     pub analysis: RcAnalysis,
     pub idx: usize,
-    pub rendered: Callback<MlgrOutput>,
+    pub file: FileInfo,
 }
 
 impl PartialEq for MlgrProps {
@@ -52,7 +39,7 @@ pub fn MlgRenderer(props: &MlgrProps) -> Html {
         return html! { "Error E290" };
     };
     let Some(graph) = &ml.graph else {
-        return MlgViewer::no_graph();
+        return html! { <h2>{"Failed to generalise repeating chain, might not be a matching loop."}</h2> };
     };
 
     let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
@@ -64,33 +51,24 @@ pub fn MlgRenderer(props: &MlgrProps) -> Html {
         config: cfg.config.display,
     };
     ctxt.config.font_tag = true;
-    let dot_output = MlgRenderer::generate_dot(graph, ctxt, &props.parser.colour_map);
-    log::trace!("ML Graph DOT:\n{dot_output}");
+    let dot = MlgRenderer::generate_dot(graph, ctxt, &props.parser.colour_map);
+    log::trace!("ML Graph DOT:\n{dot}");
 
-    let rendered = props.rendered.clone();
-    let idx = props.idx;
-    let incomplete = graph.graph_incomplete;
-    wasm_bindgen_futures::spawn_local(async move {
-        gloo_timers::future::TimeoutFuture::new(10).await;
-        let graphviz = VizInstance::new().await;
-        let options = viz_js::Options::default();
-        let start = Instant::now();
-        let svg = graphviz
-            .render_svg_element(dot_output, options)
-            .expect("Could not render graphviz");
-        let elapsed = start.elapsed();
-        log::trace!(
-            "ML-Graph: Converting dot-String to SVG took {} seconds",
-            elapsed.as_secs()
-        );
-        rendered.emit(MlgrOutput {
-            incomplete,
-            idx,
-            svg,
-        });
-    });
+    let warning = if graph.graph_incomplete {
+        html! { <span class="warning" title="Error during graph construction, the graph is incomplete!">{"⚠️ Incomplete ⚠️"}</span> }
+    } else {
+        html! {}
+    };
 
-    html! {}
+    let filename = format!(
+        "{}_ml_{}",
+        props.file.name.split('.').next().unwrap(),
+        props.idx + 1
+    );
+    html! {<>
+        <h2>{"Generalised Matching Loop "}{warning}</h2>
+        <Dot {dot} {filename} scale={false} />
+    </>}
 }
 
 impl MlgRenderer {
@@ -99,6 +77,7 @@ impl MlgRenderer {
         ctxt: DisplayCtxt<'_>,
         colour_map: &QuantIdxToColourMap,
     ) -> String {
+        use petgraph::dot::{Config, Dot};
         let settings = ["ranksep=0.5;", "splines=true;"];
         let dot = format!(
             "{:?}",
@@ -107,10 +86,14 @@ impl MlgRenderer {
                 &[
                     Config::EdgeNoLabel,
                     Config::NodeNoLabel,
-                    Config::GraphContentOnly
+                    Config::GraphContentOnly,
                 ],
-                &|_, edge| edge.weight().all(ctxt.config.debug, (), (), (), (), ()),
-                &|_, (_, node_data)| { node_data.all(ctxt, ctxt, (), (), colour_map, (), ()) },
+                &|_, edge| edge
+                    .weight()
+                    .all(ctxt.config.debug, (), (), (), (), (), (), (), ()),
+                &|_, (_, node_data)| {
+                    node_data.all(ctxt, (), ctxt, (), (), colour_map, (), (), ())
+                },
             )
         );
         let mut inputs = Vec::new();

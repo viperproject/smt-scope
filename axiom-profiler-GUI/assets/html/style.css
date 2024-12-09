@@ -368,15 +368,27 @@ li input.td-matcher, li input.td-formatter {
 /* Summary view */
 
 .summary {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: scroll;
+}
+
+.summary .info-box {
     display: inline;
     padding: 10px;
 }
-.summary-all-data {
+.summary .info-boxes {
     display: flex;
 }
-.summary-row {
+.summary .info-box-row {
     display: flex;
     align-items: center;
+}
+
+.quant-graph {
+    max-height: 400px;
 }
 
 /* Graph view */
@@ -385,7 +397,7 @@ li input.td-matcher, li input.td-formatter {
     width: 100%;
     height: 100%;
     overflow-wrap: anywhere;
-    overflow: clip auto;
+    overflow: auto;
 }
 
 div.selected-info-box {
@@ -409,4 +421,20 @@ ul.selected-info {
     bottom: 0;
     left: 0;
     z-index: 1;
+}
+
+/* Simple dot-svg view */
+
+.dot {
+    position: relative;
+}
+.dot.scaled {
+    width: 100%;
+    height: 100%;
+}
+
+.dot-buttons {
+    position: absolute;
+    bottom: 0;
+    right: 0;
 }

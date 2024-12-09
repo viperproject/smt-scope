@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use smt_log_parser::analysis::{analysis::cost::QuantCosts, InstGraph};
+use smt_log_parser::analysis::{InstGraph, QuantifierAnalysis};
 
 #[derive(Clone)]
 pub struct RcAnalysis(Rc<RefCell<AnalysisData>>);
@@ -27,7 +27,7 @@ impl PartialEq for RcAnalysis {
 
 pub struct AnalysisData {
     pub graph: InstGraph,
-    pub costs: QuantCosts,
+    pub quants: QuantifierAnalysis,
 }
 
 #[derive(Debug, Clone, PartialEq)]

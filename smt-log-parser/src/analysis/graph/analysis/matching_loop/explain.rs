@@ -151,8 +151,12 @@ impl MlExplainer {
         let prev_info = &ml_out.node_to_ml[&prev];
 
         let sig = ml_out.signatures[prev_info.ml_sig].clone();
-        let pattern = sig.pattern.into();
-        let prev_inst = self.graph.add_node(MLGraphNode::QI(sig, pattern));
+        let Some(pat) = parser.get_pattern(sig.qpat) else {
+            debug_assert!(false, "Found an MBQI matching loop?");
+            self.error = true;
+            return Vec::new();
+        };
+        let prev_inst = self.graph.add_node(MLGraphNode::QI(sig, pat.into()));
         let old = self.instantiations.insert(prev, prev_inst);
         assert!(old.is_none());
 

@@ -14,11 +14,7 @@ use matching_loop::MlData;
 
 use crate::{F64Ord, Result, Z3Parser};
 
-use self::{
-    cost::{DefaultCost, QuantCosts},
-    depth::DefaultDepth,
-    next_nodes::DefaultNextInsts,
-};
+use self::{cost::DefaultCost, depth::DefaultDepth, next_nodes::DefaultNextInsts};
 
 use super::{raw::RawInstGraph, InstGraph, RawNodeIndex};
 
@@ -113,17 +109,6 @@ impl InstGraph {
         self.analysis.first_n_cost(&self.raw, 10000);
         self.analysis.first_n_children(&self.raw, 10000);
         self.analysis.first_n_fwd_depth_min(&self.raw, 10000);
-    }
-
-    pub fn quant_costs(&self, parser: &Z3Parser) -> QuantCosts {
-        let mut costs = QuantCosts((0..parser.quantifiers.len()).map(|_| 0.0).collect());
-        for data in parser.instantiations_data() {
-            let Some(qidx) = data.match_.kind.quant_idx() else {
-                continue;
-            };
-            costs[qidx] += self.raw[data.iidx].cost;
-        }
-        costs
     }
 }
 

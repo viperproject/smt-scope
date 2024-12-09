@@ -8,8 +8,8 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
 
     let mut instantiations_occurrances: Vec<_> = info
         .quants_iter()
-        .flat_map(|(qidx, icount)| {
-            parser[qidx]
+        .flat_map(|(quant, icount)| {
+            parser[quant]
                 .kind
                 .user_name()
                 .map(|name| (&parser[name], icount))

@@ -4,15 +4,14 @@ use mem_dbg::{MemDbg, MemSize};
 use crate::{
     display_with::{DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
-    items::{ENodeIdx, InstIdx, QuantIdx, TermIdx},
+    items::{ENodeIdx, InstIdx, QuantIdx, QuantPat},
     FxHashMap, FxHashSet, Z3Parser,
 };
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct MlSignature {
-    pub quantifier: QuantIdx,
-    pub pattern: TermIdx,
+    pub qpat: QuantPat,
     pub parents: Box<[(InstParent, usize)]>,
 }
 
@@ -46,11 +45,9 @@ impl MlSignature {
 
     pub fn new(parser: &Z3Parser, inst: InstIdx) -> Option<Self> {
         let match_ = &parser[parser[inst].match_];
-        let pattern = match_.kind.pattern()?;
-        // If it has a pattern then definitely also has a quant_idx
-        let quant_idx = match_.kind.quant_idx().unwrap();
+        let qpat = match_.kind.quant_pat()?;
         let parents: Box<[_]> = match_
-            .trigger_matches()
+            .pattern_matches()
             .map(|blame| {
                 let eq_len = blame
                     .equalities()
@@ -67,11 +64,7 @@ impl MlSignature {
                 }
             })
             .collect();
-        Some(Self {
-            quantifier: quant_idx,
-            pattern,
-            parents,
-        })
+        Some(Self { qpat, parents })
     }
 
     pub fn to_string(&self, parser: &Z3Parser) -> String {
@@ -91,9 +84,9 @@ impl MlSignature {
             .collect::<Vec<_>>()
             .join(", ");
         format!(
-            "{} {} {parents:?}",
-            self.quantifier.with(&ctxt),
-            self.pattern,
+            "{} {:?} {parents:?}",
+            self.qpat.quant.with(&ctxt),
+            self.qpat.pat,
         )
     }
 }

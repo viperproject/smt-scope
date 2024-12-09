@@ -99,26 +99,28 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
         }
     }
     pub fn blame(&self) -> Option<Vec<(String, String, Vec<String>)>> {
-        let NodeKind::Instantiation(inst) = *self.node.kind() else {
+        let NodeKind::Instantiation(iidx) = *self.node.kind() else {
             return None;
         };
-        let match_ = &self.ctxt.parser[self.ctxt.parser[inst].match_];
-        let mut qidx = match_.kind.quant_idx();
-        let pattern = match_.kind.pattern()?;
-        let trigger_matches = self.ctxt.parser[pattern]
+        let data = self.ctxt.parser.get_inst(iidx);
+        let qpat = data.match_.kind.quant_pat()?;
+        let pattern = self.ctxt.parser.get_pattern(qpat)?;
+        let pattern_matches = self.ctxt.parser[pattern]
             .child_ids
             .iter()
             .rev()
-            .zip(match_.trigger_matches());
-        let mut blame: Vec<_> = trigger_matches
-            .map(|(trigger, matched)| {
-                let trigger = trigger.with_data(self.ctxt, &mut qidx).to_string();
+            .zip(data.match_.pattern_matches());
+        let mut blame: Vec<_> = pattern_matches
+            .map(|(pattern, matched)| {
+                let pattern = pattern
+                    .with_data(self.ctxt, &mut Some(qpat.quant))
+                    .to_string();
                 let enode = matched.enode().with(self.ctxt).to_string();
                 let equalities = matched
                     .equalities()
                     .map(|eq| eq.with(self.ctxt).to_string())
                     .collect();
-                (trigger, enode, equalities)
+                (pattern, enode, equalities)
             })
             .collect();
         blame.reverse();
@@ -235,13 +237,13 @@ pub fn SelectedNodesInfo(
             let description = info.description();
             let (detail_header, detail) = info.detail();
 
-            let blame: Option<Html> = info.blame().map(|blame| blame.into_iter().enumerate().map(|(idx, (trigger, enode, equalities))| {
+            let blame: Option<Html> = info.blame().map(|blame| blame.into_iter().enumerate().map(|(idx, (pattern, enode, equalities))| {
                 let equalities: Html = equalities.into_iter().map(|equality| html! {
                     <InfoLine header="Equality" text={equality} code=true />
                 }).collect();
                 html! {
                 <>
-                    <InfoLine header={format!("Trigger #{idx}")} text={trigger} code=true />
+                    <InfoLine header={format!("Trigger #{idx}")} text={pattern} code=true />
                     <InfoLine header="Matched" text={enode} code=true />
                     {equalities}
                 <hr/></>
@@ -318,8 +320,8 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
     pub fn kind(&self) -> String {
         match self.kind {
             VisibleEdgeKind::Direct(_, EdgeKind::Yield) => "Yield".to_string(),
-            VisibleEdgeKind::Direct(_, EdgeKind::Blame { trigger_term }) => {
-                format!("Blame trigger #{trigger_term}")
+            VisibleEdgeKind::Direct(_, EdgeKind::Blame { pattern_term }) => {
+                format!("Blame pattern #{pattern_term}")
             }
             VisibleEdgeKind::Direct(_, EdgeKind::BlameEq { .. }) => "Blame Equality".to_string(),
             VisibleEdgeKind::Direct(_, EdgeKind::EqualityFact) => "Equality Fact".to_string(),
@@ -334,8 +336,8 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
                 "Transitive {}Equality",
                 (!forward).then_some("Reverse ").unwrap_or_default()
             ),
-            VisibleEdgeKind::YieldBlame { trigger_term, .. } => {
-                format!("Yield/Blame trigger #{trigger_term}")
+            VisibleEdgeKind::YieldBlame { pattern_term, .. } => {
+                format!("Yield/Blame pattern #{pattern_term}")
             }
             VisibleEdgeKind::YieldEq(_) => "Yield Equality".to_string(),
             VisibleEdgeKind::YieldBlameEq { .. } => "Yield/Blame Equality".to_string(),

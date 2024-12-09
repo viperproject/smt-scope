@@ -1,5 +1,4 @@
 mod data;
-mod graph;
 mod loaded;
 mod render;
 
@@ -16,7 +15,7 @@ use super::{
     Scope, Screen,
 };
 
-pub use self::{data::MlData, loaded::MatchingLoopLoaded, render::MlgrOutput};
+pub use self::{data::MlData, loaded::MatchingLoopLoaded};
 
 #[derive(Clone, PartialEq)]
 pub struct MatchingLoopProps {
@@ -33,7 +32,6 @@ pub enum MatchingLoop {
 pub enum MatchingLoopM {
     Search,
     Choose(usize),
-    Rendered(MlgrOutput),
 }
 
 impl Screen for MatchingLoop {
@@ -79,13 +77,6 @@ impl Screen for MatchingLoop {
                 };
                 self_.choose(link, props, idx);
                 true
-            }
-            MatchingLoopM::Rendered(data) => {
-                let Self::Loaded(self_) = self else {
-                    log::error!("Received Rendered message in Loading state");
-                    return false;
-                };
-                self_.rendered(props.file.clone(), data)
             }
         }
     }

@@ -2,7 +2,7 @@ use crate::{
     analysis::{
         analysis::matching_loop::MlAnalysis, raw::NodeKind, visible::VisibleEdge, InstGraph,
     },
-    items::{GraphIdx, InstIdx, QuantIdx, TermIdx, TimeRange},
+    items::{GraphIdx, InstIdx, QuantPat, TermIdx, TimeRange},
     Z3Parser,
 };
 
@@ -88,11 +88,11 @@ impl InstGraph {
         self.matching_loops().map(|mls| mls.sure_mls)
     }
 
-    pub fn quants_per_matching_loop(&self) -> Option<impl Iterator<Item = QuantIdx> + '_> {
+    pub fn quants_per_matching_loop(&self) -> Option<impl Iterator<Item = QuantPat> + '_> {
         self.matching_loops().map(|mls| {
             mls.matching_loops
                 .iter()
-                .map(|ml| mls.signatures[ml.sig].quantifier)
+                .map(|ml| mls.signatures[ml.sig].qpat)
         })
     }
 

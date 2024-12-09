@@ -41,6 +41,7 @@ semver = "1.0"
 nucleo-matcher = "0.3.1"
 mem_dbg = { version = "0.2.4", features = ["std", "derive"], default-features = false }
 duplicate = "1.0"
+ammonia = "4.0.0"
 
 # For random colour generation
 gcd = "2.3.0"

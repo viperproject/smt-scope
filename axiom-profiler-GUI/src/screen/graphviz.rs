@@ -7,11 +7,13 @@ use smt_log_parser::{
         visible::VisibleEdge,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::{ENodeIdx, MatchKind},
+    items::{ENodeIdx, MatchKind, QuantPat},
     Z3Parser,
 };
 
-use crate::utils::colouring::QuantIdxToColourMap;
+use crate::{screen::file::quant_graph::QuantPatKind, utils::colouring::QuantIdxToColourMap};
+
+use super::file::quant_graph::{QuantEdge, QuantEdgeKind, QuantNode, QuantNodeKind};
 
 macro_rules! all_struct {
     ($name:ident {
@@ -55,40 +57,60 @@ pub const NODE_COLOUR_VALUE: f64 = 0.95;
 
 all_struct!(AllNodeProperties {
     label: String,
+    fontsize: String,
     tooltip: String,
     style: &'static str,
     shape: &'static str,
     fillcolor: String,
-    class: &'static str,
+    class: String,
     ordering: &'static str,
+    penwidth: String,
 });
 
-pub trait DotNodeProperties<LabelCtx, TooltipCtx, StyleCtx, ShapeCtx, ColCtx, ClassCtx, OrderingCtx>
+pub trait DotNodeProperties<
+    LabelCtx,
+    FontsizeCtx,
+    TooltipCtx,
+    StyleCtx,
+    ShapeCtx,
+    ColCtx,
+    ClassCtx,
+    OrderingCtx,
+    PenwidthCtx,
+>
 {
     #[allow(clippy::too_many_arguments)]
     fn all(
         &self,
         label: LabelCtx,
+        fontsize: FontsizeCtx,
         tooltip: TooltipCtx,
         style: StyleCtx,
         shape: ShapeCtx,
         fillcolor: ColCtx,
         class: ClassCtx,
         ordering: OrderingCtx,
+        penwidth: PenwidthCtx,
     ) -> String {
         AllNodeProperties {
             label: self.label(label),
+            fontsize: self.fontsize(fontsize),
             tooltip: self.tooltip(tooltip),
             style: self.style(style),
             shape: self.shape(shape),
             fillcolor: self.fillcolor(fillcolor),
             class: self.class(class),
             ordering: self.ordering(ordering),
+            penwidth: self.penwidth(penwidth),
         }
         .to_string()
     }
 
     fn label(&self, _ctx: LabelCtx) -> String {
+        Default::default()
+    }
+
+    fn fontsize(&self, _ctx: FontsizeCtx) -> String {
         Default::default()
     }
 
@@ -108,22 +130,28 @@ pub trait DotNodeProperties<LabelCtx, TooltipCtx, StyleCtx, ShapeCtx, ColCtx, Cl
         Default::default()
     }
 
-    fn class(&self, _ctx: ClassCtx) -> &'static str {
-        ""
+    fn class(&self, _ctx: ClassCtx) -> String {
+        Default::default()
     }
 
     fn ordering(&self, _ctx: OrderingCtx) -> &'static str {
         ""
+    }
+
+    fn penwidth(&self, _ctx: PenwidthCtx) -> String {
+        Default::default()
     }
 }
 
 impl
     DotNodeProperties<
         (),
+        (),
         &'_ Z3Parser,
         &'_ Z3Parser,
         (u32, u32),
         (&'_ Z3Parser, &'_ QuantIdxToColourMap),
+        (),
         (),
         (),
     > for NodeKind
@@ -214,8 +242,18 @@ impl
     }
 }
 
-impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), &'_ QuantIdxToColourMap, (), ()>
-    for MLGraphNode
+impl
+    DotNodeProperties<
+        DisplayCtxt<'_>,
+        (),
+        DisplayCtxt<'_>,
+        (),
+        (),
+        &'_ QuantIdxToColourMap,
+        (),
+        (),
+        (),
+    > for MLGraphNode
 {
     fn label(&self, mut ctxt: DisplayCtxt) -> String {
         use MLGraphNode::*;
@@ -227,7 +265,7 @@ impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), &'_ QuantIdxToC
             },
             QI(ref sig, pattern) => pattern
                 .simp
-                .with_data(&ctxt, &mut Some(sig.quantifier))
+                .with_data(&ctxt, &mut Some(sig.qpat.quant))
                 .to_string(),
             FixedENode(matched_term) => matched_term.simp.with(&ctxt).to_string(),
             RecurringENode(matched_term, input) => {
@@ -261,7 +299,7 @@ impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), &'_ QuantIdxToC
                     "Fixed nodes which do not change but are used in each iteration.".to_owned()
                 }
             },
-            QI(ref sig, _) => ctxt.parser[sig.quantifier].kind.with(&ctxt).to_string(),
+            QI(ref sig, _) => ctxt.parser[sig.qpat.quant].kind.with(&ctxt).to_string(),
             FixedENode(matched_term) => matched_term.orig.with(&ctxt).to_string(),
             RecurringENode(matched_term, input) => {
                 ctxt.config.input = input.rec_input();
@@ -298,7 +336,7 @@ impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), &'_ QuantIdxToC
         match self {
             HiddenNode(..) => Default::default(),
             QI(sig, _) => {
-                let hue = ctx.get_rbg_hue(Some(sig.quantifier)).unwrap() / 360.0;
+                let hue = ctx.get_rbg_hue(Some(sig.qpat.quant)).unwrap() / 360.0;
                 format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
             }
             FixedENode(..) | RecurringENode(..) => ENODE_COLOUR.to_owned(),
@@ -306,9 +344,9 @@ impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), &'_ QuantIdxToC
         }
     }
 
-    fn class(&self, (): ()) -> &'static str {
+    fn class(&self, (): ()) -> String {
         use MLGraphNode::*;
-        match *self {
+        let class = match *self {
             FixedENode(..) | FixedEquality(..) => "fixed",
             RecurringENode(.., rec_kind) | RecurringEquality(.., rec_kind) => match rec_kind {
                 RecurrenceKind::Input(..) => "input",
@@ -321,7 +359,8 @@ impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), &'_ QuantIdxToC
                 None => "fixed",
             },
             QI(..) => "middle",
-        }
+        };
+        class.to_string()
     }
 
     fn ordering(&self, (): ()) -> &'static str {
@@ -335,6 +374,142 @@ impl DotNodeProperties<DisplayCtxt<'_>, DisplayCtxt<'_>, (), (), &'_ QuantIdxToC
     }
 }
 
+struct PercentDisplay<const BOLD: bool = true>(f64);
+impl PercentDisplay<true> {
+    fn new(percent: f64) -> PercentDisplay<false> {
+        PercentDisplay(percent)
+    }
+    fn bold(percent: f64) -> PercentDisplay<true> {
+        PercentDisplay(percent)
+    }
+}
+impl<const BOLD: bool> fmt::Display for PercentDisplay<BOLD> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if BOLD {
+            write!(f, "<b>")?;
+        }
+        let p = self.0;
+        if p > 10.0 {
+            write!(f, "{p:.0}%")
+        } else if p > 1.0 {
+            write!(f, "{p:.1}%")
+        } else {
+            write!(f, "{p:.2}%")
+        }?;
+        if BOLD {
+            write!(f, "</b>")?;
+        }
+        Ok(())
+    }
+}
+
+impl
+    DotNodeProperties<
+        DisplayCtxt<'_>,
+        f64,
+        DisplayCtxt<'_>,
+        (),
+        (),
+        &'_ QuantIdxToColourMap,
+        (),
+        (),
+        f64,
+    > for QuantNode
+{
+    fn label(&self, ctxt: DisplayCtxt) -> String {
+        use QuantNodeKind::*;
+        let percent = PercentDisplay::bold(self.percent);
+        match self.kind {
+            Quant(..) => {
+                let name = ctxt.parser[self.quant].kind.name(&ctxt.parser.strings);
+                let name = name.unwrap_or("lambda".into());
+                let name = ammonia::clean_text(&name);
+                format!("{name} {percent}")
+            }
+            QuantPat(qpat, kind) => match kind {
+                QuantPatKind::Full => {
+                    if let Some(pat) = qpat.pat {
+                        format!("{{ {} }} {percent}", usize::from(pat) + 1)
+                    } else {
+                        format!("MBQI {percent}")
+                    }
+                }
+                QuantPatKind::Single { is_single_pat } => {
+                    let pat = ctxt.parser.get_pattern(qpat).unwrap();
+                    let mut data = Some(qpat.quant);
+                    let pat = pat.with_data(&ctxt, &mut data);
+                    if is_single_pat {
+                        format!("{pat}")
+                    } else {
+                        format!("{pat} {percent}")
+                    }
+                }
+            },
+            SubPat(pat, idx) => {
+                let pat = ctxt.parser.patterns(self.quant).unwrap()[pat];
+                let subpat = ctxt.parser[pat].child_ids[idx];
+                let mut data = Some(self.quant);
+                let subpat = subpat.with_data(&ctxt, &mut data);
+                format!("{subpat}")
+            }
+        }
+    }
+
+    fn fontsize(&self, max_width: f64) -> String {
+        let fontsize = 4. * self.percent * max_width / 100. + 14.;
+        format!("{fontsize:.1}")
+    }
+
+    fn tooltip(&self, _ctxt: DisplayCtxt) -> String {
+        // TODO
+        Default::default()
+    }
+
+    fn style(&self, _ctx: ()) -> &'static str {
+        match self.kind {
+            // MBQI
+            QuantNodeKind::QuantPat(QuantPat { pat: None, .. }, ..) => "filled,dashed",
+            _ => "filled",
+        }
+    }
+
+    fn shape(&self, (): ()) -> &'static str {
+        // match self.kind {
+        //     QuantNodeKind::Quant(..) | QuantNodeKind::QuantPat(QuantPat { .. }, QuantPatKind::Full, ..) => {
+        "box"
+        //     }
+        //     _ => "ellipse",
+        // }
+    }
+
+    fn fillcolor(&self, ctx: &QuantIdxToColourMap) -> String {
+        match self.kind {
+            QuantNodeKind::Quant(..) | QuantNodeKind::QuantPat(_, QuantPatKind::Full, ..) => {
+                let hue = ctx.get_rbg_hue(Some(self.quant)).unwrap() / 360.0;
+                format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
+            }
+            _ => "white".to_string(),
+        }
+    }
+
+    fn class(&self, _ctx: ()) -> String {
+        format!("{:?}", self.quant)
+    }
+
+    fn ordering(&self, (): ()) -> &'static str {
+        if self.can_have_deps() {
+            ""
+        } else {
+            "in"
+        }
+    }
+
+    // fn penwidth(&self, max_width: f64) -> String {
+    //     let penwidth = (self.percent * max_width / 100.).max(0.2);
+    //     format!("{penwidth}")
+    // }
+}
+
 // -------------
 // Graphviz edge
 // -------------
@@ -345,10 +520,24 @@ all_struct!(AllEdgeProperties {
     style: &'static str,
     class: &'static str,
     arrowhead: &'static str,
+    arrowsize: String,
     minlen: &'static str,
+    penwidth: String,
+    constraint: &'static str,
 });
 
-pub trait DotEdgeProperties<LabelCtx, TooltipCtx, StyleCtx, ClassCtx, ArrowheadCtx, MinlenCtx> {
+pub trait DotEdgeProperties<
+    LabelCtx,
+    TooltipCtx,
+    StyleCtx,
+    ClassCtx,
+    ArrowheadCtx,
+    ArrowsizeCtx,
+    MinlenCtx,
+    PenwidthCtx,
+    ConstraintCtx,
+>
+{
     #[allow(clippy::too_many_arguments)]
     fn all(
         &self,
@@ -357,7 +546,10 @@ pub trait DotEdgeProperties<LabelCtx, TooltipCtx, StyleCtx, ClassCtx, ArrowheadC
         style: StyleCtx,
         class: ClassCtx,
         arrowhead: ArrowheadCtx,
+        arrowsize: ArrowsizeCtx,
         minlen: MinlenCtx,
+        penwidth: PenwidthCtx,
+        constraint: ConstraintCtx,
     ) -> String {
         AllEdgeProperties {
             label: self.label(label),
@@ -365,7 +557,10 @@ pub trait DotEdgeProperties<LabelCtx, TooltipCtx, StyleCtx, ClassCtx, ArrowheadC
             style: self.style(style),
             class: self.class(class),
             arrowhead: self.arrowhead(arrowhead),
+            arrowsize: self.arrowsize(arrowsize),
             minlen: self.minlen(minlen),
+            penwidth: self.penwidth(penwidth),
+            constraint: self.constraint(constraint),
         }
         .to_string()
     }
@@ -390,12 +585,26 @@ pub trait DotEdgeProperties<LabelCtx, TooltipCtx, StyleCtx, ClassCtx, ArrowheadC
         ""
     }
 
+    fn arrowsize(&self, _ctx: ArrowsizeCtx) -> String {
+        Default::default()
+    }
+
     fn minlen(&self, _ctx: MinlenCtx) -> &'static str {
+        ""
+    }
+
+    fn penwidth(&self, _ctx: PenwidthCtx) -> String {
+        Default::default()
+    }
+
+    fn constraint(&self, _ctx: ConstraintCtx) -> &'static str {
         ""
     }
 }
 
-impl DotEdgeProperties<(), (bool, NodeKind, NodeKind), bool, bool, NodeKind, ()> for VisibleEdge {
+impl DotEdgeProperties<(), (bool, NodeKind, NodeKind), bool, bool, NodeKind, (), (), (), ()>
+    for VisibleEdge
+{
     fn tooltip(&self, (is_indirect, from, to): (bool, NodeKind, NodeKind)) -> String {
         let arrow = match is_indirect {
             true => "↝",
@@ -426,7 +635,7 @@ impl DotEdgeProperties<(), (bool, NodeKind, NodeKind), bool, bool, NodeKind, ()>
     }
 }
 
-impl DotEdgeProperties<bool, (), (), (), (), ()> for MLGraphEdge {
+impl DotEdgeProperties<bool, (), (), (), (), (), (), (), ()> for MLGraphEdge {
     fn label(&self, debug: bool) -> String {
         if debug {
             format!("{self:?}")
@@ -454,6 +663,62 @@ impl DotEdgeProperties<bool, (), (), (), (), ()> for MLGraphEdge {
     fn minlen(&self, (): ()) -> &'static str {
         match self {
             MLGraphEdge::HiddenEdge(..) => "0",
+            _ => "",
+        }
+    }
+}
+
+impl DotEdgeProperties<(), (), (), (), (), f64, (), f64, (&QuantNode, &QuantNode)> for QuantEdge {
+    fn tooltip(&self, (): ()) -> String {
+        let percent = PercentDisplay::new(self.percent);
+        percent.to_string()
+    }
+
+    fn style(&self, (): ()) -> &'static str {
+        use QuantEdgeKind::*;
+        match self.kind {
+            QuantPatToQuant | SubPatToQuantPat | SubPatToQuant => "dashed",
+            _ => "solid",
+        }
+    }
+
+    fn arrowhead(&self, (): ()) -> &'static str {
+        if self.is_eq() {
+            "empty"
+        } else {
+            "normal"
+        }
+    }
+
+    fn arrowsize(&self, max_width: f64) -> String {
+        let penwidth = (self.percent * max_width / 100.).max(0.2);
+        let arrowsize: f64 = if penwidth > 10.0 {
+            0.1
+        } else if penwidth > 7.0 {
+            0.2
+        } else if penwidth > 5.0 {
+            0.3
+        } else if penwidth > 3.0 {
+            0.4
+        } else {
+            0.5
+        };
+        if self.is_eq() {
+            format!("{:.1}", arrowsize.sqrt())
+        } else {
+            format!("{arrowsize:.1}")
+        }
+    }
+
+    fn penwidth(&self, max_width: f64) -> String {
+        let penwidth = (self.percent * max_width / 100.).max(0.2);
+        format!("{penwidth}")
+    }
+
+    fn constraint(&self, (from, to): (&QuantNode, &QuantNode)) -> &'static str {
+        use QuantEdgeKind::*;
+        match self.kind {
+            Yield | YieldEq if from.quant == to.quant => "false",
             _ => "",
         }
     }

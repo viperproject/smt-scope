@@ -93,17 +93,17 @@ impl RawInstGraph {
                 self_.add_edge(idx, *yields, EdgeKind::Yield);
             }
             for (i, blame) in parser.insts.matches[inst.match_]
-                .trigger_matches()
+                .pattern_matches()
                 .enumerate()
             {
-                let trigger_term = i as u16;
-                self_.add_edge(blame.enode(), idx, EdgeKind::Blame { trigger_term });
+                let pattern_term = i as u16;
+                self_.add_edge(blame.enode(), idx, EdgeKind::Blame { pattern_term });
                 for (i, eq) in blame.equalities().enumerate() {
                     self_.add_edge(
                         eq,
                         idx,
                         EdgeKind::BlameEq {
-                            trigger_term,
+                            pattern_term,
                             eq_order: i as u16,
                         },
                     );
@@ -412,9 +412,9 @@ pub enum EdgeKind {
     /// Instantiation -> ENode
     Yield,
     /// ENode -> Instantiation
-    Blame { trigger_term: u16 },
+    Blame { pattern_term: u16 },
     /// TransEquality -> Instantiation
-    BlameEq { trigger_term: u16, eq_order: u16 },
+    BlameEq { pattern_term: u16, eq_order: u16 },
     /// ENode -> GivenEquality (`EqualityExpl::Literal`)
     EqualityFact,
     /// TransEquality -> GivenEquality (`EqualityExpl::Congruence`)

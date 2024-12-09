@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 use typed_index_collections::TiSlice;
@@ -617,17 +619,20 @@ impl Z3LogParser for Z3Parser {
     }
 
     fn new_match<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
+        let app_terms = &self.terms.app_terms;
+
         let fingerprint = l.next().ok_or(Error::UnexpectedNewline)?;
         let fingerprint = Fingerprint::parse(fingerprint)?;
-        let idx = self
-            .terms
-            .app_terms
-            .parse_existing_id(&mut self.strings, l.next().ok_or(Error::UnexpectedNewline)?)?;
+        let idx = l.next().ok_or(Error::UnexpectedNewline)?;
+        let idx = app_terms.parse_existing_id(&mut self.strings, idx)?;
         let quant = self.terms.quant(idx)?;
+        let pattern = l.next().ok_or(Error::UnexpectedNewline)?;
+        let pattern = app_terms.parse_existing_id(&mut self.strings, pattern)?;
         let pattern = self
-            .terms
-            .app_terms
-            .parse_existing_id(&mut self.strings, l.next().ok_or(Error::UnexpectedNewline)?)?;
+            .patterns(quant)
+            .ok_or(Error::NewMatchOnLambda(quant))?
+            .position(|p| *p == pattern)
+            .ok_or(Error::UnknownPatternIdx(pattern))?;
         let bound_terms = Self::iter_until_eq(&mut l, ";");
         let is_axiom = fingerprint.is_zero();
 
@@ -902,17 +907,29 @@ impl Z3Parser {
         self.terms.proof_terms.terms()
     }
 
-    pub fn patterns(&self, q: QuantIdx) -> &[TermIdx] {
+    pub fn patterns(&self, q: QuantIdx) -> Option<&TiSlice<PatternIdx, TermIdx>> {
         let child_ids = &self[self[q].term].child_ids;
-        &child_ids[..child_ids.len() - 1]
+        child_ids
+            .len()
+            .checked_sub(1)
+            .map(|len| &child_ids[..len])
+            .map(TiSlice::from_ref)
     }
 
-    pub fn get_instantiation_body(&self, inst: InstIdx) -> Option<TermIdx> {
-        self.terms.get_instantiation_body(&self[inst])
+    pub fn get_inst(&self, iidx: InstIdx) -> InstData<'_> {
+        self.insts.get_inst(iidx)
+    }
+
+    pub fn get_instantiation_body(&self, iidx: InstIdx) -> Option<TermIdx> {
+        self.terms.get_instantiation_body(&self[iidx])
     }
 
     pub fn as_tidx(&self, sidx: SynthIdx) -> Option<TermIdx> {
         self.synth_terms.as_tidx(sidx)
+    }
+
+    pub fn get_pattern(&self, qpat: QuantPat) -> Option<TermIdx> {
+        qpat.pat.map(|pat| self.patterns(qpat.quant).unwrap()[pat])
     }
 
     /// Returns the size in AST nodes of the term `tidx`. Note that z3 eagerly
@@ -947,69 +964,90 @@ impl Z3Parser {
             .map(|&tidx| self.ast_size(tidx).unwrap())
             .sum()
     }
+
+    pub fn new_quant_pat_vec<T>(&self, f: impl Fn(QuantPat) -> T) -> QuantPatVec<T> {
+        QuantPatVec(
+            self.quantifiers()
+                .keys()
+                .map(|quant| {
+                    let mbqi = f(QuantPat { quant, pat: None });
+                    let pats = self.patterns(quant).into_iter().flat_map(|p| p.keys());
+                    let pats = pats
+                        .map(|pat| {
+                            f(QuantPat {
+                                quant,
+                                pat: Some(pat),
+                            })
+                        })
+                        .collect();
+                    PatVec { mbqi, pats }
+                })
+                .collect(),
+        )
+    }
 }
 
-impl std::ops::Index<TermIdx> for Z3Parser {
+impl Index<TermIdx> for Z3Parser {
     type Output = Term;
     fn index(&self, idx: TermIdx) -> &Self::Output {
         &self.terms[idx]
     }
 }
-impl std::ops::Index<SynthIdx> for Z3Parser {
+impl Index<SynthIdx> for Z3Parser {
     type Output = AnyTerm;
     fn index(&self, idx: SynthIdx) -> &Self::Output {
         self.synth_terms.index(&self.terms, idx)
     }
 }
-impl std::ops::Index<ProofIdx> for Z3Parser {
+impl Index<ProofIdx> for Z3Parser {
     type Output = ProofStep;
     fn index(&self, idx: ProofIdx) -> &Self::Output {
         &self.terms[idx]
     }
 }
-impl std::ops::Index<QuantIdx> for Z3Parser {
+impl Index<QuantIdx> for Z3Parser {
     type Output = Quantifier;
     fn index(&self, idx: QuantIdx) -> &Self::Output {
         &self.quantifiers[idx]
     }
 }
-impl std::ops::Index<ENodeIdx> for Z3Parser {
+impl Index<ENodeIdx> for Z3Parser {
     type Output = ENode;
     fn index(&self, idx: ENodeIdx) -> &Self::Output {
         &self.egraph[idx]
     }
 }
-impl std::ops::Index<InstIdx> for Z3Parser {
+impl Index<InstIdx> for Z3Parser {
     type Output = Instantiation;
     fn index(&self, idx: InstIdx) -> &Self::Output {
         &self.insts[idx]
     }
 }
-impl std::ops::Index<MatchIdx> for Z3Parser {
+impl Index<MatchIdx> for Z3Parser {
     type Output = Match;
     fn index(&self, idx: MatchIdx) -> &Self::Output {
         &self.insts[idx]
     }
 }
-impl std::ops::Index<EqGivenIdx> for Z3Parser {
+impl Index<EqGivenIdx> for Z3Parser {
     type Output = EqualityExpl;
     fn index(&self, idx: EqGivenIdx) -> &Self::Output {
         &self.egraph.equalities.given[idx]
     }
 }
-impl std::ops::Index<EqTransIdx> for Z3Parser {
+impl Index<EqTransIdx> for Z3Parser {
     type Output = TransitiveExpl;
     fn index(&self, idx: EqTransIdx) -> &Self::Output {
         &self.egraph.equalities.transitive[idx]
     }
 }
-impl std::ops::Index<StackIdx> for Z3Parser {
+impl Index<StackIdx> for Z3Parser {
     type Output = StackFrame;
     fn index(&self, idx: StackIdx) -> &Self::Output {
         &self.stack[idx]
     }
 }
-impl std::ops::Index<IString> for Z3Parser {
+impl Index<IString> for Z3Parser {
     type Output = str;
     fn index(&self, idx: IString) -> &Self::Output {
         &self.strings[*idx]

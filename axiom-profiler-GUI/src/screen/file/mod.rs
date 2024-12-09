@@ -1,9 +1,14 @@
 mod analysis;
+pub mod quant_graph;
 mod summary;
 
 use std::rc::Rc;
 
-use smt_log_parser::{analysis::InstGraph, formatter::TermDisplayContext, parsers::ParseState};
+use smt_log_parser::{
+    analysis::{InstGraph, QuantifierAnalysis},
+    formatter::TermDisplayContext,
+    parsers::ParseState,
+};
 use yew::{html, ContextHandle, ContextProvider, Html};
 
 use crate::{
@@ -153,7 +158,7 @@ impl Screen for File {
                 match InstGraph::new(&parser) {
                     Ok(graph) => {
                         let data = AnalysisData {
-                            costs: graph.quant_costs(&parser),
+                            quants: QuantifierAnalysis::new(&parser, &graph),
                             graph,
                         };
                         self.analysis = Err(RcAnalysis::new(data));
@@ -215,7 +220,8 @@ impl Screen for File {
     fn view(&self, _link: &Scope<Self>, props: &Self::Properties) -> Html {
         let screen = match self.view.clone() {
             ViewProps::Overview => {
-                html! { <Summary parser={props.parser.clone()} analysis={self.analysis().cloned()} /> }
+                let file = props.file_info.clone();
+                html! { <Summary parser={props.parser.clone()} analysis={self.analysis().cloned()} {file} /> }
             }
             ViewProps::Graph(initial) => self.nested_screen.view::<Graph>(initial),
             ViewProps::MatchingLoop(initial) => self.nested_screen.view::<MatchingLoop>(initial),

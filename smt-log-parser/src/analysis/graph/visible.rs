@@ -203,12 +203,12 @@ impl VisibleEdge {
 
                 match (graph.raw.graph[from.0], graph.raw.graph[to.0]) {
                     // Starting at Instantiation
-                    (EdgeKind::Yield, EdgeKind::Blame { trigger_term })
+                    (EdgeKind::Yield, EdgeKind::Blame { pattern_term })
                         if non_visible_between.len() == 1 =>
                     {
                         VisibleEdgeKind::YieldBlame {
                             enode: get_kind(0).unwrap().enode().unwrap(),
-                            trigger_term,
+                            pattern_term,
                         }
                     }
                     (EdgeKind::Yield, EdgeKind::TEqualitySimple { .. })
@@ -219,7 +219,7 @@ impl VisibleEdge {
                     (
                         EdgeKind::Yield,
                         EdgeKind::BlameEq {
-                            trigger_term,
+                            pattern_term,
                             eq_order,
                         },
                     ) if non_visible_between.len() == 3 => {
@@ -232,7 +232,7 @@ impl VisibleEdge {
                         if trans == 1 {
                             VisibleEdgeKind::YieldBlameEq {
                                 given_eq,
-                                trigger_term,
+                                pattern_term,
                                 eq_order,
                             }
                         } else {
@@ -249,7 +249,7 @@ impl VisibleEdge {
                     (
                         EdgeKind::EqualityFact,
                         EdgeKind::BlameEq {
-                            trigger_term,
+                            pattern_term,
                             eq_order,
                         },
                     ) if non_visible_between.len() == 2 => {
@@ -262,7 +262,7 @@ impl VisibleEdge {
                         if trans == 1 {
                             VisibleEdgeKind::ENodeBlameEq {
                                 given_eq,
-                                trigger_term,
+                                pattern_term,
                                 eq_order,
                             }
                         } else {
@@ -283,7 +283,7 @@ pub enum VisibleEdgeKind {
     /// `Instantiation` -> `ENode` -> `Instantiation`
     YieldBlame {
         enode: ENodeIdx,
-        trigger_term: u16,
+        pattern_term: u16,
     },
     /// `Instantiation` -> `ENode` -> `GivenEquality` -> `TransEquality`
     YieldEq((EqGivenIdx, Option<NonMaxU32>)),
@@ -291,7 +291,7 @@ pub enum VisibleEdgeKind {
     /// `TransEquality` (only 1 parent) -> `Instantiation`
     YieldBlameEq {
         given_eq: (EqGivenIdx, Option<NonMaxU32>),
-        trigger_term: u16,
+        pattern_term: u16,
         eq_order: u16,
     },
     /// `Instantiation` -> `ENode` -> `GivenEquality` -> ...
@@ -302,7 +302,7 @@ pub enum VisibleEdgeKind {
     /// `ENode` -> `GivenEquality` -> `TransEquality` -> `Instantiation`
     ENodeBlameEq {
         given_eq: (EqGivenIdx, Option<NonMaxU32>),
-        trigger_term: u16,
+        pattern_term: u16,
         eq_order: u16,
     },
     /// `ENode` -> `GivenEquality` -> ...

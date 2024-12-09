@@ -100,7 +100,7 @@ impl Graph {
                     for &yt in inst.yields_terms.iter() {
                         handle_term(parser, &mut terms, yt, idx, visible);
                     }
-                    for blame in match_.trigger_matches() {
+                    for blame in match_.pattern_matches() {
                         handle_term(parser, &mut terms, blame.enode(), idx, visible);
                         for eq in blame.equalities() {
                             handle_eq(parser, &mut terms, eq, idx, visible);

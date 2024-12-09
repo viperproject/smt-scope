@@ -411,7 +411,7 @@ impl MlAnalysisInner<'_> {
 
 impl MlNodeInfo {
     pub fn blames(parser: &Z3Parser, iidx: InstIdx) -> impl Iterator<Item = CollectedBlame> + '_ {
-        let blames = parser[parser[iidx].match_].trigger_matches();
+        let blames = parser[parser[iidx].match_].pattern_matches();
         blames.map(|blame| CollectedBlame::new(parser, blame))
     }
 

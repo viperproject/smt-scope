@@ -1,11 +1,9 @@
-use std::borrow::Cow;
-
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{BoxSlice, Error, FxHashMap, IString, NonMaxU32, Result, StringTable};
 
-use super::{ProofIdx, QuantIdx, TermIdx};
+use super::{QuantIdx, TermIdx};
 
 /// A Z3 term and associated data.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -51,122 +49,6 @@ impl TermKind {
     }
     pub fn is_var(&self) -> bool {
         matches!(self, Self::Var(_))
-    }
-}
-
-/// A Z3 quantifier and associated data.
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug)]
-pub struct Quantifier {
-    pub kind: QuantKind,
-    pub num_vars: u32,
-    pub term: TermIdx,
-    pub vars: Option<VarNames>,
-}
-
-/// Represents an ID string of the form `name!id`.
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum QuantKind {
-    Lambda(BoxSlice<ProofIdx>),
-    NamedQuant(IString),
-    /// Represents a name string of the form `name!id`
-    UnnamedQuant {
-        name: IString,
-        id: usize,
-    },
-}
-
-impl QuantKind {
-    pub(crate) fn parse(strings: &mut StringTable, value: &str) -> Self {
-        match QuantKindParse::parse(value) {
-            QuantKindParse::Named(name) => Self::NamedQuant(IString(strings.get_or_intern(name))),
-            QuantKindParse::Unnamed { name, id } => Self::UnnamedQuant {
-                name: IString(strings.get_or_intern(name)),
-                id,
-            },
-        }
-    }
-
-    pub fn parse_existing(strings: &StringTable, value: &str) -> Option<Self> {
-        match QuantKindParse::parse(value) {
-            QuantKindParse::Named(name) => Some(Self::NamedQuant(IString(strings.get(name)?))),
-            QuantKindParse::Unnamed { name, id } => Some(Self::UnnamedQuant {
-                name: IString(strings.get(name)?),
-                id,
-            }),
-        }
-    }
-
-    pub fn user_name(&self) -> Option<IString> {
-        match self {
-            Self::NamedQuant(name) => Some(*name),
-            _ => None,
-        }
-    }
-
-    pub fn name<'a>(&self, strings: &'a StringTable) -> Option<Cow<'a, str>> {
-        match self {
-            Self::NamedQuant(name) => Some(Cow::Borrowed(&strings[**name])),
-            Self::UnnamedQuant { name, id } => {
-                Some(Cow::Owned(format!("{}!{id}", &strings[**name])))
-            }
-            Self::Lambda(_) => None,
-        }
-    }
-}
-
-enum QuantKindParse<'a> {
-    Named(&'a str),
-    Unnamed { name: &'a str, id: usize },
-}
-
-impl<'a> QuantKindParse<'a> {
-    /// Splits an ID string into name and ID number (if unnamed).
-    /// 0 is used for identifiers without a number
-    /// (usually for theory-solving 'quantifiers' such as "basic#", "arith#")
-    fn parse(value: &'a str) -> Self {
-        let mut split = value.split('!');
-        let name = split.next().expect(value);
-        split
-            .next()
-            .and_then(|id| id.parse::<usize>().ok())
-            .map_or(Self::Named(name), |id| Self::Unnamed { name, id })
-    }
-}
-
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug)]
-pub enum VarNames {
-    TypeOnly(BoxSlice<IString>),
-    NameAndType(Box<[(IString, IString)]>),
-}
-impl VarNames {
-    pub fn get_type<'a>(
-        strings: &'a StringTable,
-        this: Option<&Self>,
-        idx: usize,
-    ) -> Option<&'a str> {
-        this.as_ref().map(|this| {
-            let ty = match this {
-                Self::TypeOnly(names) => names[idx],
-                Self::NameAndType(names) => names[idx].1,
-            };
-            &strings[*ty]
-        })
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-    pub fn len(&self) -> usize {
-        match self {
-            Self::TypeOnly(names) => names.len(),
-            Self::NameAndType(names) => names.len(),
-        }
     }
 }
 

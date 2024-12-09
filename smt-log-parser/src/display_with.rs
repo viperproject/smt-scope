@@ -308,6 +308,7 @@ mod private {
         pub(super) fn find_quant(&self, idx: &mut u32) -> Option<&Quantifier> {
             self.quant
                 .iter()
+                .rev()
                 .find(|q| {
                     let found = q.num_vars > *idx;
                     if !found {
@@ -850,7 +851,9 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
         // for this, we need to store the quantifier in the context
         data.with_quant(self, |data| {
             data.with_outer_bind_power(f, QUANT_BIND, |data, f| {
-                let vars = (0..self.num_vars).map(|idx| {
+                // Print the variables in reverse since they are logged in
+                // reverse for some reason.
+                let vars = (0..self.num_vars).rev().map(|idx| {
                     let name = VarNames::get_name(
                         &ctxt.parser.strings,
                         self.vars.as_ref(),
@@ -859,7 +862,7 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                     );
                     let ty =
                         VarNames::get_type(&ctxt.parser.strings, self.vars.as_ref(), idx as usize);
-                    (idx != 0, name, ty)
+                    (idx != self.num_vars - 1, name, ty)
                 });
                 let (body, patterns) = data.children().split_last().unwrap();
                 if ctxt.config.replace_symbols.is_none() {

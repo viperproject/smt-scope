@@ -72,7 +72,9 @@ impl CostInitialiser for DefaultCost {
         match node.kind() {
             NodeKind::ENode(_) => 1,
             NodeKind::GivenEquality(_, _) => 1,
-            NodeKind::TransEquality(eq) => parser[*eq].given_len.min(1),
+            NodeKind::TransEquality(eq) => {
+                parser[*eq].given_len.map(|l| l.get()).unwrap_or_default()
+            }
             NodeKind::Instantiation(_) => 1,
         }
     }

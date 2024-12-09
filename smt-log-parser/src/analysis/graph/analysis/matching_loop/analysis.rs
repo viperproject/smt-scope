@@ -278,14 +278,11 @@ impl CollectedBlame {
         let owner = parser[enode].owner;
         let equalities = blame
             .equalities()
-            .filter_map(|eidx| {
-                let eq = &parser[eidx];
-                (eq.given_len != 0).then(|| {
-                    let (from, to) = parser.egraph.equalities.from_to(eidx);
-                    let from = parser[from].owner;
-                    let to = parser[to].owner;
-                    (eidx, from, to)
-                })
+            .map(|eidx| {
+                let (from, to) = parser.from_to(eidx);
+                let from = parser[from].owner;
+                let to = parser[to].owner;
+                (eidx, from, to)
             })
             .collect();
         Self {

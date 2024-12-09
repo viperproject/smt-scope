@@ -177,7 +177,8 @@ impl
             TransEquality(eq) => {
                 let (from, to) = parser.from_to(eq);
                 let (from, to) = (get_name(parser, from), get_name(parser, to));
-                let len = parser[eq].given_len;
+                let len = parser[eq].given_len.map(|l| l.to_string());
+                let len = len.as_deref().unwrap_or("?");
                 format!("{from} =[{len}] {to}")
             }
             Instantiation(inst) => match &parser[parser[inst].match_].kind {

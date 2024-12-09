@@ -210,7 +210,7 @@ impl Z3Parser {
     fn parse_trans_equality(
         &mut self,
         can_mismatch: bool,
-    ) -> impl FnMut(&str, &str) -> Result<EqTransIdx> + '_ {
+    ) -> impl FnMut(&str, &str) -> Result<Option<EqTransIdx>> + '_ {
         move |from, to| {
             let from = self.parse_existing_enode(from)?;
             let to = self.parse_existing_enode(to)?;
@@ -243,7 +243,9 @@ impl Z3Parser {
         let mut pte = self.parse_trans_equality(can_mismatch);
         for t in Self::gobble_tuples::<true>(l) {
             let (from, to) = t?;
-            let trans = pte(from, to)?;
+            let Some(trans) = pte(from, to)? else {
+                continue;
+            };
             f(trans)?;
         }
         Ok(())

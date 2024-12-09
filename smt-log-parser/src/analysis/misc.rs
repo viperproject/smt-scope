@@ -27,7 +27,7 @@ pub struct InstsInfo {
     pub treqs: usize,
     pub insts: usize,
     pub geqs_trivial: usize,
-    pub treqs_trivial: usize,
+    pub treqs_error: usize,
 }
 
 impl InstsInfo {
@@ -38,16 +38,16 @@ impl InstsInfo {
         self.geqs - self.geqs_trivial
     }
     pub fn treqs_nontrivial(&self) -> usize {
-        self.treqs - self.treqs_trivial
+        self.treqs
     }
 
     pub fn new(parser: &Z3Parser) -> Self {
         let equalities = &parser.egraph.equalities;
         let geqs_trivial = equalities.given.iter().filter(|eq| eq.is_trivial()).count();
-        let treqs_trivial = equalities
+        let treqs_error = equalities
             .transitive
             .iter()
-            .filter(|eq| eq.given_len == 0)
+            .filter(|eq| eq.given_len.is_none())
             .count();
         Self {
             insts: parser.insts.insts.len(),
@@ -55,7 +55,7 @@ impl InstsInfo {
             geqs: equalities.given.len(),
             treqs: equalities.transitive.len(),
             geqs_trivial,
-            treqs_trivial,
+            treqs_error,
         }
     }
 }

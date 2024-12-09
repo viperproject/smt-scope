@@ -118,7 +118,6 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 let enode = matched.enode().with(self.ctxt).to_string();
                 let equalities = matched
                     .equalities()
-                    .filter(|&eq| self.ctxt.parser[eq].given_len != 0)
                     .map(|eq| eq.with(self.ctxt).to_string())
                     .collect();
                 (pattern, enode, equalities)

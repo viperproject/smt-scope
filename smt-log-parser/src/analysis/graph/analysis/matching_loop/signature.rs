@@ -49,10 +49,7 @@ impl MlSignature {
         let parents: Box<[_]> = match_
             .pattern_matches()
             .map(|blame| {
-                let eq_len = blame
-                    .equalities()
-                    .filter(|&eq| parser[eq].given_len != 0)
-                    .count();
+                let eq_len = blame.equalities().count();
                 let blame = blame.enode();
                 let eblame = &parser[blame];
                 let Some(created_by) = eblame.created_by else {

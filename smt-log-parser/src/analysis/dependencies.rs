@@ -63,9 +63,6 @@ impl QuantifierAnalysis {
                 *direct_dep.enode.entry(created_by).or_default() += 1;
 
                 for eq in blame.equalities() {
-                    if parser[eq].given_len == 0 {
-                        continue;
-                    }
                     let eq_parents = inst_graph.raw[eq].parents.insts.iter().copied();
                     let eq_parents =
                         eq_parents.filter_map(|iidx| parser.get_inst(iidx).match_.kind.quant_idx());

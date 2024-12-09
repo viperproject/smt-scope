@@ -4,7 +4,7 @@ use crate::{
     analysis::analysis::matching_loop::{RecurrenceKind, SimpIdx},
     items::{
         ENodeIdx, EqGivenUse, EqTransIdx, EqualityExpl, InstIdx, Term, TermIdx, TermKind,
-        TransitiveExplSegment, TransitiveExplSegmentKind,
+        TransitiveExplSegmentKind,
     },
     parsers::z3::{
         egraph::{Equalities, EqualityWalker},
@@ -417,15 +417,11 @@ impl MlExplainer {
 
                 let all = self.equalities().transitive[eq].all(forward);
                 for next in all {
-                    match next {
-                        TransitiveExplSegment {
-                            forward,
-                            kind: TransitiveExplSegmentKind::Given(eq_use),
-                        } => self.walk_given(eq_use, forward)?,
-                        TransitiveExplSegment {
-                            forward,
-                            kind: TransitiveExplSegmentKind::Transitive(eq),
-                        } => self.walk_trans(eq, forward)?,
+                    use TransitiveExplSegmentKind::*;
+                    match next.kind {
+                        Given(eq_use) => self.walk_given(eq_use, next.forward)?,
+                        Transitive(eq) => self.walk_trans(eq, next.forward)?,
+                        Error(_) => (),
                     }
                     ancestor_is_recurring |= self.ancestor_is_recurring;
                     self.ancestor_is_recurring = false;
@@ -438,10 +434,6 @@ impl MlExplainer {
                 eq: EqTransIdx,
                 forward: bool,
             ) -> core::result::Result<(), Self::Error> {
-                if self.equalities().transitive[eq].given_len == 0 {
-                    return Ok(());
-                }
-
                 if self.add_mode {
                     if self.burned_eqs.insert(eq) {
                         let data =
@@ -450,7 +442,7 @@ impl MlExplainer {
                                 .fixed_equalities
                                 .entry(eq)
                                 .or_insert_with(|| {
-                                    let (from, to) = self.parser.egraph.equalities.from_to(eq);
+                                    let (from, to) = self.parser.from_to(eq);
                                     let (from, to) =
                                         (self.parser[from].owner, self.parser[to].owner);
                                     let data = MLGraphNode::FixedEquality(from.into(), to.into());

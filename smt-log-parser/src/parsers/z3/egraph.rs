@@ -1,4 +1,4 @@
-use std::collections::hash_map::Entry;
+use std::{collections::hash_map::Entry, num::NonZeroUsize};
 
 use fxhash::FxHashSet;
 #[cfg(feature = "mem_dbg")]
@@ -32,8 +32,10 @@ impl Equalities {
             let from = if fwd { eq.from() } else { eq.to() };
             Err(from)
         });
-        let eq = &self.transitive[eq];
-        (from.err().unwrap_or(eq.to), eq.to)
+        let equality = &self.transitive[eq];
+        let from = from.err().unwrap_or_else(|| equality.error_from().unwrap());
+        let to = equality.to;
+        (from, to)
     }
 
     /// Walk the given equalities of a transitive equality, returning early with
@@ -152,17 +154,12 @@ impl EGraph {
         to: ENodeIdx,
         stack: &Stack,
         can_mismatch: impl Fn(&EGraph) -> bool,
-    ) -> Result<EqTransIdx> {
+    ) -> Result<Option<EqTransIdx>> {
         if from == to {
-            // Handle the easy and common case of `(#n #n)` separately
-            self.equalities.transitive.raw.try_reserve(1)?;
-            Ok(*self.enodes[from].self_transitive.get_or_insert_with(|| {
-                self.equalities
-                    .transitive
-                    .push_and_get_key(TransitiveExpl::empty(to))
-            }))
+            Ok(None)
         } else {
             self.construct_trans_equality(from, to, stack, can_mismatch)
+                .map(Some)
         }
     }
 
@@ -246,18 +243,16 @@ impl EGraph {
         let Some(simple_path) = self.get_simple_path(from, to, stack, can_mismatch)? else {
             // There was a root mismatch (and `can_mismatch` was true), so we
             // can't construct a simple path.
+            let error = TransitiveExpl::error(from, to);
             self.enodes[from].transitive.try_reserve(1)?;
             let trans = match self.enodes[from].transitive.entry(to) {
                 Entry::Occupied(mut o) => {
                     let trans = *o.get();
-                    if self.equalities.transitive[trans].given_len != 0 {
+                    if self.equalities.transitive[trans].given_len.is_some() {
                         // These two nodes are no longer equal (this is an old
                         // transitive equality that is no longer valid).
                         self.equalities.transitive.raw.try_reserve(1)?;
-                        let trans = self
-                            .equalities
-                            .transitive
-                            .push_and_get_key(TransitiveExpl::empty(to));
+                        let trans = self.equalities.transitive.push_and_get_key(error);
                         o.insert(trans);
                         trans
                     } else {
@@ -266,17 +261,14 @@ impl EGraph {
                 }
                 Entry::Vacant(v) => {
                     self.equalities.transitive.raw.try_reserve(1)?;
-                    let trans = self
-                        .equalities
-                        .transitive
-                        .push_and_get_key(TransitiveExpl::empty(to));
+                    let trans = self.equalities.transitive.push_and_get_key(error);
                     *v.insert(trans)
                 }
             };
             return Ok(trans);
         };
+        // Should not fail since `from != to`
         let edges_len = simple_path.edges_len();
-        debug_assert_ne!(edges_len, 0);
         let mut graph = simple_path.initialise_graph(self, stack);
 
         // Add transitive edges to graph, start by trying to find either forward
@@ -285,36 +277,39 @@ impl EGraph {
             debug_assert!(forward);
             return Ok(solution);
         }
-        let trans = if let Some((forward, solution)) = graph.add_trans_from(edges_len, self) {
+        let trans = if let Some((forward, solution)) = graph.add_trans_from(edges_len.get(), self) {
             debug_assert!(!forward);
             let inner = &self.equalities.transitive[solution];
             if inner.path.len() == 1 {
+                use TransitiveExplSegmentKind::*;
                 match inner.path[0] {
                     TransitiveExplSegment {
                         forward: false,
-                        kind: TransitiveExplSegmentKind::Transitive(idx),
+                        kind: Transitive(idx),
                     } => return Ok(idx),
                     TransitiveExplSegment {
                         forward: true,
-                        kind: TransitiveExplSegmentKind::Transitive(_),
+                        kind: Transitive(_),
                     } => unreachable!(),
                     TransitiveExplSegment {
-                        kind: TransitiveExplSegmentKind::Given(..),
-                        ..
+                        kind: Given(..), ..
                     } => (),
+                    TransitiveExplSegment {
+                        kind: Error(..), ..
+                    } => unreachable!(),
                 }
             }
             let solution = TransitiveExplSegment {
                 forward,
                 kind: TransitiveExplSegmentKind::Transitive(solution),
             };
-            TransitiveExpl::new([solution].into_iter(), 1, to)?
+            TransitiveExpl::new([solution].into_iter(), NonZeroUsize::new(1).unwrap(), to)?
         } else {
-            for idx in 1..edges_len {
+            for idx in 1..edges_len.get() {
                 graph.add_trans_from(idx, self);
             }
             // Find the shortest path
-            for idx in (0..edges_len).rev() {
+            for idx in (0..edges_len.get()).rev() {
                 let idx = NodeIndex::new(idx);
                 // Use `.rev()` here to prefer transitive edges over leaf edges,
                 // though hopefully the `min_by_key` should be unique.
@@ -371,7 +366,9 @@ impl EGraph {
                 let mut use_ = Vec::new();
                 use_.try_reserve_exact(arg_eqs.len())?;
                 for (from, to) in args {
-                    let trans = self.new_trans_equality(from, to, stack, |_| false)?;
+                    let Some(trans) = self.new_trans_equality(from, to, stack, |_| false)? else {
+                        continue;
+                    };
                     use_.push(trans);
                 }
                 let EqualityExpl::Congruence { uses, .. } = &mut self.equalities.given[*cg] else {
@@ -469,15 +466,11 @@ pub trait EqualityWalker<'a> {
     ) -> core::result::Result<(), Self::Error> {
         let all = self.equalities().transitive[eq].all(forward);
         for next in all {
-            match next {
-                TransitiveExplSegment {
-                    forward,
-                    kind: TransitiveExplSegmentKind::Given(eq_use),
-                } => self.walk_given(eq_use, forward)?,
-                TransitiveExplSegment {
-                    forward,
-                    kind: TransitiveExplSegmentKind::Transitive(eq),
-                } => self.walk_trans(eq, forward)?,
+            use TransitiveExplSegmentKind::*;
+            match next.kind {
+                Given(eq_use) => self.walk_given(eq_use, next.forward)?,
+                Transitive(eq) => self.walk_trans(eq, next.forward)?,
+                Error(..) => (),
             }
         }
         Ok(())
@@ -565,6 +558,11 @@ impl Equalities {
         from
     }
     pub fn path(&self, eq: EqTransIdx) -> Vec<ENodeIdx> {
+        let equality = &self.transitive[eq];
+        if let Some(from) = equality.error_from() {
+            return vec![from, equality.to];
+        }
+
         let mut path = Vec::new();
         let mut walker = TransEqSimpleWalker {
             equalities: self,
@@ -587,8 +585,9 @@ pub struct SimplePath {
     shared: usize,
 }
 impl SimplePath {
-    pub fn edges_len(&self) -> usize {
-        self.from_to_root.len() + self.to_to_root.len() - 2 * self.shared
+    pub fn edges_len(&self) -> NonZeroUsize {
+        NonZeroUsize::new(self.from_to_root.len() + self.to_to_root.len() - 2 * self.shared)
+            .unwrap()
     }
     pub fn all_simple_edges<'a>(
         &'a self,
@@ -612,7 +611,7 @@ impl SimplePath {
     }
 
     pub fn nodes_len(&self) -> usize {
-        self.edges_len() + 1
+        self.edges_len().get() + 1
     }
     pub fn all_nodes(&self) -> impl DoubleEndedIterator<Item = ENodeIdx> + '_ {
         let from_to_join = self.from_to_root[..self.from_to_root.len() + 1 - self.shared].iter();
@@ -641,14 +640,14 @@ impl SimplePath {
     pub fn initialise_graph<'a>(self, egraph: &'a EGraph, stack: &'a Stack) -> Graph {
         let edges_len = self.edges_len();
         let mut g = Graph {
-            graph: DiGraph::with_capacity(self.nodes_len(), edges_len),
+            graph: DiGraph::with_capacity(self.nodes_len(), edges_len.get()),
             path_enodes: self.all_nodes().collect(),
             edges_len,
             simple_path: self,
         };
-        let mut last = g.graph.add_node((edges_len as u32, None));
+        let mut last = g.graph.add_node((edges_len.get() as u32, None));
         for (idx, (_, eq, forward)) in g.simple_path.all_simple_edges(egraph, stack).enumerate() {
-            let cost = (edges_len - idx - 1) as u32;
+            let cost = (edges_len.get() - idx - 1) as u32;
             let next = g.graph.add_node((cost, None));
             let kind = TransitiveExplSegmentKind::Given((eq, None));
             g.graph
@@ -663,7 +662,7 @@ pub struct Graph {
     simple_path: SimplePath,
     path_enodes: FxHashSet<ENodeIdx>,
     graph: DiGraph<(u32, Option<EdgeIndex>), TransitiveExplSegment>,
-    edges_len: usize,
+    edges_len: NonZeroUsize,
 }
 impl Graph {
     pub fn add_trans_from(
@@ -690,9 +689,12 @@ impl Graph {
                     kind: TransitiveExplSegmentKind::Transitive(trans),
                 };
                 let (from, to) = if forward { (nfrom, nto) } else { (nto, nfrom) };
-                debug_assert!(trans_node.given_len == 0 || from.index() < to.index());
+                debug_assert!(trans_node.given_len.is_none() || from.index() < to.index());
                 self.graph.add_edge(from, to, segment);
-                if trans_node.given_len == self.edges_len {
+                if trans_node
+                    .given_len
+                    .is_some_and(|len| len == self.edges_len)
+                {
                     return Some((forward, trans));
                 }
             }
@@ -706,11 +708,11 @@ impl Graph {
         trans_node: &TransitiveExpl,
         equalities: &Equalities,
     ) -> Option<(NodeIndex, bool)> {
-        let edges_len = self.edges_len;
+        let given_len = trans_node.given_len?.get();
+        let edges_len = self.edges_len.get();
         debug_assert!(self.path_enodes.contains(&trans_node.to));
 
-        let left = trans_node.given_len <= idx
-            && trans_node.to == self.simple_path.node_at(idx - trans_node.given_len);
+        let left = given_len <= idx && trans_node.to == self.simple_path.node_at(idx - given_len);
         if left {
             let prior_simple_edges = (0..idx).map(|idx| self.graph[EdgeIndex::new(idx)]);
             let mut prior_simple_edges = TransitiveExplSegment::rev(prior_simple_edges)
@@ -722,12 +724,12 @@ impl Graph {
                 }
                 Some(false) => None,
                 Some(true) => {
-                    let to = NodeIndex::new(idx - trans_node.given_len);
+                    let to = NodeIndex::new(idx - given_len);
                     Some((to, false))
                 }
             }
-        } else if trans_node.given_len <= edges_len - idx
-            && trans_node.to == self.simple_path.node_at(idx + trans_node.given_len)
+        } else if given_len <= edges_len - idx
+            && trans_node.to == self.simple_path.node_at(idx + given_len)
         {
             let post_simple_edges = (idx..edges_len).map(|idx| self.graph[EdgeIndex::new(idx)]);
             let mut post_simple_edges =
@@ -739,7 +741,7 @@ impl Graph {
                 }
                 Some(false) => None,
                 Some(true) => {
-                    let to = NodeIndex::new(idx + trans_node.given_len);
+                    let to = NodeIndex::new(idx + given_len);
                     Some((to, true))
                 }
             }

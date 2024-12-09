@@ -430,9 +430,19 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for EqTransIdx {
         let path = ctxt.parser.egraph.equalities.path(self);
         path.first().unwrap().fmt_with(f, ctxt, data)?;
         if ctxt.config.html() {
-            write!(f, " =<sup>{}</sup> ", path.len() - 1)?;
+            write!(f, " =<sup>")?;
         } else {
-            write!(f, " =[{}] ", path.len() - 1)?;
+            write!(f, " =[ ")?;
+        }
+        if let Some(len) = ctxt.parser[self].given_len {
+            write!(f, "{len}")?;
+        } else {
+            write!(f, "?")?;
+        }
+        if ctxt.config.html() {
+            write!(f, "</sup> ")?;
+        } else {
+            write!(f, "] ")?;
         }
         path.last().unwrap().fmt_with(f, ctxt, data)
     }

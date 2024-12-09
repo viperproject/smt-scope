@@ -136,21 +136,23 @@ impl RawInstGraph {
         for (idx, eq) in parser.egraph.equalities.transitive.iter_enumerated() {
             let all = eq.all(true);
             for parent in all {
+                use TransitiveExplSegmentKind::*;
                 match parent.kind {
-                    TransitiveExplSegmentKind::Given((eq, use_)) => self_.add_edge(
+                    Given((eq, use_)) => self_.add_edge(
                         (eq, use_),
                         idx,
                         EdgeKind::TEqualitySimple {
                             forward: parent.forward,
                         },
                     ),
-                    TransitiveExplSegmentKind::Transitive(eq) => self_.add_edge(
+                    Transitive(eq) => self_.add_edge(
                         eq,
                         idx,
                         EdgeKind::TEqualityTransitive {
                             forward: parent.forward,
                         },
                     ),
+                    Error(..) => (),
                 }
             }
         }

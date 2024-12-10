@@ -160,7 +160,15 @@ impl Graph {
             name: "Terms".to_string(),
             entries: terms,
         };
-        vec![quantifiers, terms]
+        if quantifiers
+            .entries
+            .first()
+            .is_some_and(|f| f.select_from > 0)
+        {
+            vec![quantifiers, terms]
+        } else {
+            vec![terms, quantifiers]
+        }
     }
 }
 

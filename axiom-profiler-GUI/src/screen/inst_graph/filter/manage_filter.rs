@@ -342,25 +342,17 @@ impl Filter {
             MaxNodeIdx(_) => MaxNodeIdx(new_data[0]),
             MinNodeIdx(_) => MinNodeIdx(new_data[0]),
             IgnoreTheorySolving => IgnoreTheorySolving,
-            IgnoreQuantifier(_) => {
-                IgnoreQuantifier(Some(QuantIdx::from(new_data[0])))
-            }
-            IgnoreAllButQuantifier(_) => {
-                IgnoreAllButQuantifier(Some(QuantIdx::from(new_data[0])))
-            }
+            IgnoreQuantifier(_) => IgnoreQuantifier(Some(QuantIdx::from(new_data[0]))),
+            IgnoreAllButQuantifier(_) => IgnoreAllButQuantifier(Some(QuantIdx::from(new_data[0]))),
             AllButExpensive(_) => AllButExpensive(new_data[0]),
             MaxBranching(_) => MaxBranching(new_data[0]),
             ShowNeighbours(old, dir) => ShowNeighbours(*old, *dir),
             VisitSourceTree(old, retain) => VisitSourceTree(*old, *retain),
-            VisitSubTreeWithRoot(old, retain) => {
-                VisitSubTreeWithRoot(*old, *retain)
-            }
+            VisitSubTreeWithRoot(old, retain) => VisitSubTreeWithRoot(*old, *retain),
             MaxDepth(_) => MaxDepth(new_data[0]),
             ShowLongestPath(old) => ShowLongestPath(*old),
             ShowNamedQuantifier(_) => ShowNamedQuantifier(new_strings[0].clone()),
-            SelectNthMatchingLoop(_) => {
-                SelectNthMatchingLoop(new_data[0].max(1) - 1)
-            }
+            SelectNthMatchingLoop(_) => SelectNthMatchingLoop(new_data[0].max(1) - 1),
             ShowMatchingLoopSubgraph => ShowMatchingLoopSubgraph,
             HideUnitNodes => HideUnitNodes,
             LimitProofNodes(_) => LimitProofNodes(new_data[0]),

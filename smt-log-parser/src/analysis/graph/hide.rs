@@ -24,7 +24,8 @@ impl RawInstGraph {
     pub fn can_set_visibility(&self, node: &Node, hidden: bool) -> bool {
         !node.disabled() && node.hidden() != hidden
     }
-    pub fn set_visibility(&mut self, node: RawNodeIndex, hidden: bool) -> bool {
+    pub fn set_visibility<I: IndexesInstGraph>(&mut self, node: I, hidden: bool) -> bool {
+        let node = node.index(self);
         let node = &mut self.graph[node.0];
         if node.disabled() {
             return false;

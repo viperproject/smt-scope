@@ -8,7 +8,9 @@ use crate::{
 use super::run::{CollectInitialiser, Initialiser};
 
 const FORWARD_MASK: ProofReach = ProofReach::ProvesFalse.or(ProofReach::UnderHypothesis);
-const REVERSE_MASK: ProofReach = ProofReach::ReachesProof.or(ProofReach::ReachesNonTrivialProof).or(ProofReach::ReachesFalse);
+const REVERSE_MASK: ProofReach = ProofReach::ReachesProof
+    .or(ProofReach::ReachesNonTrivialProof)
+    .or(ProofReach::ReachesFalse);
 
 pub struct ProofInitialiser<const FORWARD: bool>;
 
@@ -32,7 +34,11 @@ impl<const FORWARD: bool> Initialiser<FORWARD, 3> for ProofInitialiser<FORWARD> 
         let proves_false = parser.proves_false(proof);
         let reaches_false = ProofReach::ReachesFalse.if_(proves_false);
         let proves_false = ProofReach::ProvesFalse.if_(proves_false);
-        proves_false | under_hypothesis | ProofReach::ReachesProof | reaches_non_trivial_proof | reaches_false
+        proves_false
+            | under_hypothesis
+            | ProofReach::ReachesProof
+            | reaches_non_trivial_proof
+            | reaches_false
     }
     fn assign(&mut self, node: &mut Node, value: Self::Value) {
         if FORWARD {
@@ -52,7 +58,8 @@ impl<const FORWARD: bool> CollectInitialiser<FORWARD, false, 3> for ProofInitial
         for from in from_all() {
             if FORWARD {
                 let proves_false = from.proof.proves_false();
-                let under_hypothesis = (from.proof & ProofReach::UnderHypothesis).if_(!proves_false);
+                let under_hypothesis =
+                    (from.proof & ProofReach::UnderHypothesis).if_(!proves_false);
                 reach |= under_hypothesis;
             } else {
                 reach |= from.proof & REVERSE_MASK;

@@ -16,7 +16,10 @@ use matching_loop::MlData;
 use crate::{F64Ord, Result, Z3Parser};
 
 use self::{
-    cost::{DefaultCost, ProofCost}, depth::DefaultDepth, next_nodes::NextInstsInit, proof::ProofInitialiser,
+    cost::{DefaultCost, ProofCost},
+    depth::DefaultDepth,
+    next_nodes::NextInstsInit,
+    proof::ProofInitialiser,
 };
 
 use super::{raw::RawInstGraph, InstGraph, RawNodeIndex};

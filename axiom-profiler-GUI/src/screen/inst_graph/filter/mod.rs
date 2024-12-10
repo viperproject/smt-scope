@@ -7,7 +7,10 @@ mod manage_filter;
 use material_yew::icon::MatIcon;
 use petgraph::Direction;
 use smt_log_parser::{
-    analysis::{raw::{NodeKind, ProofReach}, InstGraph, RawNodeIndex},
+    analysis::{
+        raw::NodeKind,
+        InstGraph, RawNodeIndex,
+    },
     items::QuantIdx,
     Z3Parser,
 };
@@ -338,8 +341,7 @@ impl DisablersState {
                 return true;
             }
 
-            self.disablers()
-                .any(|d| d.disable(node, graph, parser))
+            self.disablers().any(|d| d.disable(node, graph, parser))
         });
     }
 

@@ -5,10 +5,10 @@ use petgraph::{
 use smt_log_parser::{
     analysis::{
         analysis::matching_loop::{MatchingLoop, MlData},
-        raw::{IndexesInstGraph, Node, NodeKind, ProofReach, RawInstGraph},
+        raw::{IndexesInstGraph, Node, NodeKind, RawInstGraph},
         InstGraph, RawNodeIndex,
     },
-    items::{InstIdx, ProofIdx, QuantKind},
+    items::{InstIdx, QuantKind},
     Z3Parser,
 };
 
@@ -25,32 +25,22 @@ impl Filter {
             MinNodeIdx(min) => graph
                 .raw
                 .set_visibility_when(true, |_, idx: RawNodeIndex, _| idx.0.index() < min),
-            IgnoreTheorySolving => {
-                graph
-                    .raw
-                    .set_visibility_when(true, |_, _, node: &Node| {
-                        node.kind()
-                            .inst()
-                            .is_some_and(|i| parser[parser[i].match_].kind.is_discovered())
-                    })
-            }
-            IgnoreQuantifier(qidx) => {
-                graph
-                    .raw
-                    .set_visibility_when(true, |_, _, node: &Node| {
-                        node.kind()
-                            .inst()
-                            .is_some_and(|i| parser[parser[i].match_].kind.quant_idx() == qidx)
-                    })
-            }
+            IgnoreTheorySolving => graph.raw.set_visibility_when(true, |_, _, node: &Node| {
+                node.kind()
+                    .inst()
+                    .is_some_and(|i| parser[parser[i].match_].kind.is_discovered())
+            }),
+            IgnoreQuantifier(qidx) => graph.raw.set_visibility_when(true, |_, _, node: &Node| {
+                node.kind()
+                    .inst()
+                    .is_some_and(|i| parser[parser[i].match_].kind.quant_idx() == qidx)
+            }),
             IgnoreAllButQuantifier(qidx) => {
-                graph
-                    .raw
-                    .set_visibility_when(true, |_, _, node: &Node| {
-                        node.kind()
-                            .inst()
-                            .is_some_and(|i| parser[parser[i].match_].kind.quant_idx() != qidx)
-                    })
+                graph.raw.set_visibility_when(true, |_, _, node: &Node| {
+                    node.kind()
+                        .inst()
+                        .is_some_and(|i| parser[parser[i].match_].kind.quant_idx() != qidx)
+                })
             }
             AllButExpensive(n) => {
                 if graph.raw.visible_nodes() > n {
@@ -80,11 +70,9 @@ impl Filter {
                     .collect();
                 graph.raw.set_visibility_many(!retain, nodes.into_iter())
             }
-            MaxDepth(depth) => graph
-                .raw
-                .set_visibility_when(true, |_, _, node: &Node| {
-                    node.fwd_depth.min as usize > depth
-                }),
+            MaxDepth(depth) => graph.raw.set_visibility_when(true, |_, _, node: &Node| {
+                node.fwd_depth.min as usize > depth
+            }),
             ShowLongestPath(nidx) => {
                 let (modified, nodes) = graph.raw.show_longest_path_through(nidx);
                 select = Some(nodes);
@@ -92,16 +80,14 @@ impl Filter {
             }
             ShowNamedQuantifier(ref name) => {
                 if let Some(name) = QuantKind::parse_existing(&parser.strings, name) {
-                    graph
-                        .raw
-                        .set_visibility_when(false, |_, _, node: &Node| {
-                            node.kind().inst().is_some_and(|i| {
-                                parser[parser[i].match_]
-                                    .kind
-                                    .quant_idx()
-                                    .is_some_and(|q| parser[q].kind == name)
-                            })
+                    graph.raw.set_visibility_when(false, |_, _, node: &Node| {
+                        node.kind().inst().is_some_and(|i| {
+                            parser[parser[i].match_]
+                                .kind
+                                .quant_idx()
+                                .is_some_and(|q| parser[q].kind == name)
                         })
+                    })
                 } else {
                     false
                 }
@@ -137,7 +123,11 @@ impl Filter {
             }
             HideUnitNodes => {
                 macro_rules! allow {
-                    ($e:expr) => { if $e { return false } };
+                    ($e:expr) => {
+                        if $e {
+                            return false;
+                        }
+                    };
                 }
                 graph.raw.set_visibility_when(true, |_, _, n| {
                     allow!(n.children.count > 0 || n.parents.count > 1);
@@ -151,21 +141,19 @@ impl Filter {
                     true
                 })
             }
-            LimitProofNodes(mut count) => {
-                graph.raw.set_visibility_when(true, |_, _, n| {
-                    n.kind().proof().is_some_and(|_| {
-                        if count == 0 {
-                            true
-                        } else {
-                            count -= 1;
-                            false
-                        }
-                    })
+            LimitProofNodes(mut count) => graph.raw.set_visibility_when(true, |_, _, n| {
+                n.kind().proof().is_some_and(|_| {
+                    if count == 0 {
+                        true
+                    } else {
+                        count -= 1;
+                        false
+                    }
                 })
-            }
-            HideNonProof => {
-                graph.raw.set_visibility_when(true, |_, _, n| n.kind().proof().is_none())
-            }
+            }),
+            HideNonProof => graph
+                .raw
+                .set_visibility_when(true, |_, _, n| n.kind().proof().is_none()),
         };
         FilterOutput { modified, select }
     }

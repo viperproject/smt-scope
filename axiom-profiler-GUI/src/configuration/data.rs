@@ -1,7 +1,8 @@
 use fxhash::FxHashMap;
 use smt_log_parser::{
     display_with::{DisplayConfiguration, SymbolReplacement},
-    formatter::TermDisplayContext, NonMaxU32,
+    formatter::TermDisplayContext,
+    NonMaxU32,
 };
 
 use crate::screen::homepage::FileInfo;

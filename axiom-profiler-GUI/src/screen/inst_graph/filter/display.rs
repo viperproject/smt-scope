@@ -30,7 +30,11 @@ impl Filter {
         }
     }
     pub fn short_text(&self, d: impl Fn(RawNodeIndex) -> Option<NodeKind>) -> String {
-        let d = move |idx| d(idx).map(|k| k.to_string()).unwrap_or_else(|| "?".to_string());
+        let d = move |idx| {
+            d(idx)
+                .map(|k| k.to_string())
+                .unwrap_or_else(|| "?".to_string())
+        };
         use Filter::*;
         match self {
             MaxNodeIdx(node_idx) => format!("Hide all ≥ |{node_idx}|"),
@@ -84,7 +88,11 @@ impl Filter {
         }
     }
     pub fn long_text(&self, d: impl Fn(RawNodeIndex) -> Option<NodeKind>, applied: bool) -> String {
-        let d = move |idx| d(idx).map(|k| k.to_string()).unwrap_or_else(|| "?".to_string());
+        let d = move |idx| {
+            d(idx)
+                .map(|k| k.to_string())
+                .unwrap_or_else(|| "?".to_string())
+        };
         let (hide, show) = if applied {
             ("Hiding", "Showing")
         } else {

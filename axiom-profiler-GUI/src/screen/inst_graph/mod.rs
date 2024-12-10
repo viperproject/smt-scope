@@ -176,7 +176,7 @@ impl Screen for Graph {
                 let mut analysis = props.analysis.borrow_mut();
 
                 let (is_first, modified, update_view) =
-                    self.apply_filter(&parser, &mut analysis.graph, cmd);
+                    self.apply_filter(&parser, &mut analysis.graph, cmd, props.enable_proofs);
                 if !modified || filter_only {
                     return update_view;
                 }

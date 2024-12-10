@@ -34,6 +34,7 @@ impl Graph {
         parser: &Z3Parser,
         graph: &mut InstGraph,
         cmd: RenderCommand,
+        enable_proofs: bool,
     ) -> (bool, bool, bool) {
         if cmd.is_full() {
             self.disabler.apply(graph, parser);
@@ -54,6 +55,19 @@ impl Graph {
             }
             if let Some(to_select) = output.select.filter(|_| can_select) {
                 update_view |= self.set_to_select(to_select);
+            }
+        }
+        // Force instantiations which are parents of visible proof nodes to be
+        // visible also (regardless of filters).
+        if enable_proofs {
+            for (idx, inst) in parser.instantiations().iter_enumerated() {
+                let Some(proof) = inst.proof_id.proof() else {
+                    continue;
+                };
+                if !graph.raw[proof].visible() {
+                    continue;
+                }
+                modified |= graph.raw.set_visibility(idx, false);
             }
         }
         (cmd.is_first(), modified, update_view)

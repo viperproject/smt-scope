@@ -464,6 +464,7 @@ impl Homepage {
                     hover_text: Some("Open the GitHub README".to_string()),
                     disabled: false,
                     click: Action::Href(
+                        true,
                         "https://github.com/viperproject/axiom-profiler-2/blob/main/README.md"
                             .to_string(),
                     ),
@@ -481,6 +482,7 @@ impl Homepage {
                     hover_text: Some("Open a new issue on GitHub".to_string()),
                     disabled: false,
                     click: Action::Href(
+                        true,
                         "https://github.com/viperproject/axiom-profiler-2/issues/new".to_string(),
                     ),
                 }),

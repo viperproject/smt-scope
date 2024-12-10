@@ -192,25 +192,26 @@ pub struct SimpleButton {
 
 impl SimpleButton {
     pub fn to_html(self) -> Html {
-        let (href, onmousedown) = match self.click {
-            Action::Href(href) => (href, None),
+        let (href, target, onmousedown, onclick) = match self.click {
+            Action::Href(new_tab, href) => (href, new_tab.then_some("_blank"), None, None),
             Action::MouseDown(callback) => (
                 "#".to_string(),
+                None,
                 (!self.disabled).then(|| {
                     Callback::from(move |ev: MouseEvent| {
                         ev.prevent_default();
                         callback.emit(())
                     })
                 }),
+                Some(Callback::from(move |ev: MouseEvent| {
+                    ev.prevent_default();
+                })),
             ),
         };
         let id = self.text.to_lowercase().replace(" ", "_");
-        let onclick = Callback::from(move |ev: MouseEvent| {
-            ev.prevent_default();
-        });
         let class = self.disabled.then_some("disabled");
         html! {
-            <li {class}><a {id} {href} draggable="false" title={self.hover_text} {onmousedown} {onclick}><div class="material-icons"><MatIcon>{self.icon}</MatIcon></div>{self.text}</a></li>
+            <li {class}><a {id} {href} {target} draggable="false" title={self.hover_text} {onmousedown} {onclick}><div class="material-icons"><MatIcon>{self.icon}</MatIcon></div>{self.text}</a></li>
         }
     }
 }
@@ -219,6 +220,6 @@ impl SimpleButton {
 /// same one each time.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
-    Href(String),
+    Href(bool, String),
     MouseDown(Callback<()>),
 }

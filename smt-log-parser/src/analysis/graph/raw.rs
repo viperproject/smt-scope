@@ -3,6 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+use bitmask_enum::bitmask;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::{
@@ -299,9 +300,9 @@ pub enum NodeState {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Depth {
     /// What is the shortest path to a root/leaf
-    pub min: u32,
+    pub min: u16,
     /// What is the longest path to a root/leaf
-    pub max: u32,
+    pub max: u16,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -314,14 +315,38 @@ pub struct NextNodes {
     pub count: u32,
 }
 
+#[bitmask(u8)]
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "mem_dbg", copy_type)]
-#[derive(Debug, Clone, Copy, Default)]
-pub struct ProofReach {
-    pub proves_false: bool,
-    pub under_hypothesis: bool,
-    pub reaches_proof: bool,
-    pub reaches_false: bool,
+#[derive(Default)]
+pub enum ProofReach {
+    ProvesFalse,
+    UnderHypothesis,
+    ReachesProof,
+    ReachesNonTrivialProof,
+    ReachesFalse,
+}
+
+impl ProofReach {
+    pub fn if_(self, cond: bool) -> Self {
+        cond.then_some(self).unwrap_or_default()
+    }
+
+    pub fn proves_false(self) -> bool {
+        self.contains(ProofReach::ProvesFalse)
+    }
+    pub fn under_hypothesis(self) -> bool {
+        self.contains(ProofReach::UnderHypothesis)
+    }
+    pub fn reaches_proof(self) -> bool {
+        self.contains(ProofReach::ReachesProof)
+    }
+    pub fn reaches_non_trivial_proof(self) -> bool {
+        self.contains(ProofReach::ReachesNonTrivialProof)
+    }
+    pub fn reaches_false(self) -> bool {
+        self.contains(ProofReach::ReachesFalse)
+    }
 }
 
 impl Node {

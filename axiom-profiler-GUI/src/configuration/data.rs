@@ -1,7 +1,7 @@
 use fxhash::FxHashMap;
 use smt_log_parser::{
     display_with::{DisplayConfiguration, SymbolReplacement},
-    formatter::TermDisplayContext,
+    formatter::TermDisplayContext, NonMaxU32,
 };
 
 use crate::screen::homepage::FileInfo;
@@ -56,9 +56,9 @@ impl Configuration {
             input: None,
             html: true,
             font_tag: false,
+            ast_depth_limit: NonMaxU32::new(50),
             // Set manually elsewhere
             enode_char_limit: None,
-            ast_depth_limit: None,
         }
     }
 }

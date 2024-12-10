@@ -7,6 +7,9 @@ use crate::{
 
 use super::run::{CollectInitialiser, Initialiser};
 
+const FORWARD_MASK: ProofReach = ProofReach::ProvesFalse.or(ProofReach::UnderHypothesis);
+const REVERSE_MASK: ProofReach = ProofReach::ReachesProof.or(ProofReach::ReachesNonTrivialProof).or(ProofReach::ReachesFalse);
+
 pub struct ProofInitialiser<const FORWARD: bool>;
 
 impl<const FORWARD: bool> Initialiser<FORWARD, 3> for ProofInitialiser<FORWARD> {
@@ -22,22 +25,20 @@ impl<const FORWARD: bool> Initialiser<FORWARD, 3> for ProofInitialiser<FORWARD> 
         let Some(proof) = node.kind().proof() else {
             return ProofReach::default();
         };
-        let under_hypothesis = parser[proof].kind.is_hypothesis();
+        let kind = parser[proof].kind;
+        let under_hypothesis = ProofReach::UnderHypothesis.if_(kind.is_hypothesis());
+        let reaches_non_trivial_proof = ProofReach::ReachesNonTrivialProof.if_(!kind.is_trivial());
+
         let proves_false = parser.proves_false(proof);
-        ProofReach {
-            proves_false,
-            under_hypothesis,
-            reaches_proof: true,
-            reaches_false: proves_false,
-        }
+        let reaches_false = ProofReach::ReachesFalse.if_(proves_false);
+        let proves_false = ProofReach::ProvesFalse.if_(proves_false);
+        proves_false | under_hypothesis | ProofReach::ReachesProof | reaches_non_trivial_proof | reaches_false
     }
     fn assign(&mut self, node: &mut Node, value: Self::Value) {
         if FORWARD {
-            node.proof.proves_false = value.proves_false;
-            node.proof.under_hypothesis = value.under_hypothesis;
+            node.proof = value & FORWARD_MASK | node.proof & REVERSE_MASK;
         } else {
-            node.proof.reaches_proof = value.reaches_proof;
-            node.proof.reaches_false = value.reaches_false;
+            node.proof = value & REVERSE_MASK | node.proof & FORWARD_MASK;
         }
     }
 }
@@ -50,10 +51,11 @@ impl<const FORWARD: bool> CollectInitialiser<FORWARD, false, 3> for ProofInitial
         let mut reach = node.proof;
         for from in from_all() {
             if FORWARD {
-                reach.under_hypothesis |= from.proof.under_hypothesis && !from.proof.proves_false;
+                let proves_false = from.proof.proves_false();
+                let under_hypothesis = (from.proof & ProofReach::UnderHypothesis).if_(!proves_false);
+                reach |= under_hypothesis;
             } else {
-                reach.reaches_proof |= from.proof.reaches_proof;
-                reach.reaches_false |= from.proof.reaches_false;
+                reach |= from.proof & REVERSE_MASK;
             }
         }
         reach

@@ -556,6 +556,14 @@ impl ProofStepKind {
     pub fn is_hypothesis(self) -> bool {
         matches!(self, ProofStepKind::PR_HYPOTHESIS)
     }
+
+    pub fn is_asserted(self) -> bool {
+        matches!(self, ProofStepKind::PR_ASSERTED)
+    }
+
+    pub fn is_quant_inst(self) -> bool {
+        matches!(self, ProofStepKind::PR_QUANT_INST)
+    }
 }
 
 static SEARCH_MAP: OnceLock<FxHashMap<String, ProofStepKind>> = OnceLock::new();

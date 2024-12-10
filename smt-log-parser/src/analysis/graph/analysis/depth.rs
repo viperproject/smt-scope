@@ -61,7 +61,7 @@ impl<const FORWARD: bool> DepthInitialiser<FORWARD> for DefaultDepth<FORWARD> {
         from_all: impl Fn() -> T,
     ) -> Depth {
         let is_disabled = node.disabled();
-        let min_depth_increase = (!is_disabled && node.kind().inst().is_some()) as u32;
+        let min_depth_increase = (!is_disabled && node.kind().inst().is_some()) as u16;
         let depth = |n: &Node| if FORWARD { n.fwd_depth } else { n.bwd_depth };
         // We filter all parent nodes without an instantiation parent, this way
         // we calculate a 'true' min depth from instantiation nodes only.
@@ -70,13 +70,13 @@ impl<const FORWARD: bool> DepthInitialiser<FORWARD> for DefaultDepth<FORWARD> {
             .filter(|min| *min != 0)
             .min()
             .unwrap_or(0)
-            + min_depth_increase;
+            .saturating_add(min_depth_increase);
         let max = from_all()
             .map(|n| {
                 if is_disabled {
                     depth(n).max
                 } else {
-                    depth(n).max + 1
+                    depth(n).max.saturating_add(1)
                 }
             })
             .max()

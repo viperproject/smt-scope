@@ -55,6 +55,7 @@ pub const ENODE_COLOUR: &str = "lightgray";
 pub const EQ_COLOUR: &str = "white";
 pub const PROOF_COLOUR: &str = "ivory";
 pub const FALSE_COLOUR: &str = "lightcoral";
+pub const ASSERTED_COLOUR: &str = "palegreen";
 
 pub const NODE_COLOUR_SATURATION: f64 = 0.4;
 pub const NODE_COLOUR_VALUE: f64 = 0.95;
@@ -219,7 +220,7 @@ impl
             NodeKind::Proof(proof) => {
                 if parser[proof].kind.is_hypothesis() {
                     "filled,dotted"
-                } else if reach.under_hypothesis {
+                } else if reach.under_hypothesis() {
                     "filled,dashed"
                 } else {
                     "filled"
@@ -248,18 +249,21 @@ impl
         (parser, colour_map, reach): (&Z3Parser, &QuantIdxToColourMap, ProofReach),
     ) -> String {
         use NodeKind::*;
-        match self {
-            Instantiation(inst_idx) => {
-                let match_ = &parser[parser[*inst_idx].match_];
+        match *self {
+            Instantiation(iidx) => {
+                let match_ = &parser[parser[iidx].match_];
                 let hue = colour_map.get_rbg_hue(match_.kind.quant_idx());
                 let hue = hue.unwrap() / 360.0;
                 format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
             }
             ENode(..) => ENODE_COLOUR.to_owned(),
             GivenEquality(..) | TransEquality(..) => EQ_COLOUR.to_owned(),
-            Proof(..) => {
-                if reach.proves_false {
+            Proof(proof) => {
+                let kind = parser[proof].kind;
+                if reach.proves_false() {
                     FALSE_COLOUR.to_owned()
+                } else if kind.is_asserted() {
+                    ASSERTED_COLOUR.to_owned()
                 } else {
                     PROOF_COLOUR.to_owned()
                 }

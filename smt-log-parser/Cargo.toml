@@ -14,6 +14,7 @@ lasso = "0.7"
 nonmax = "0.5"
 either = "1.13"
 num = "0.4"
+bitmask-enum = "2.2.5"
 # Parsing and instrumenting
 futures = "0.3"
 semver = "1.0"

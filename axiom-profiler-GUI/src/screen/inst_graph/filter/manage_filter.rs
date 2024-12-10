@@ -271,7 +271,7 @@ pub struct ExistingFilterProps {
 #[function_component]
 pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
     let graph = props.analysis.borrow();
-    let fc = |i| *graph.graph.raw[i].kind();
+    let fc = |i| Some(*graph.graph.raw[i].kind());
     let icon = props.filter.icon();
     let hover = props.filter.long_text(fc, true);
     let filter_text = props.filter.short_text(fc);
@@ -321,43 +321,50 @@ pub fn ExistingFilter(props: &ExistingFilterProps) -> Html {
 
 impl Filter {
     pub fn is_editable(&self) -> bool {
-        !matches!(
+        use Filter::*;
+        matches!(
             self,
-            Filter::IgnoreTheorySolving
-                | Filter::ShowMatchingLoopSubgraph
-                | Filter::IgnoreQuantifier(None)
-                | Filter::IgnoreAllButQuantifier(None)
-                | Filter::ShowNeighbours(..)
-                | Filter::VisitSourceTree(..)
-                | Filter::VisitSubTreeWithRoot(..)
-                | Filter::ShowLongestPath(..)
+            MaxNodeIdx(..)
+                | MinNodeIdx(..)
+                | IgnoreQuantifier(Some(_))
+                | IgnoreAllButQuantifier(Some(_))
+                | AllButExpensive(..)
+                | MaxBranching(..)
+                | MaxDepth(..)
+                | ShowNamedQuantifier(..)
+                | SelectNthMatchingLoop(..)
+                | LimitProofNodes(..)
         )
     }
     pub fn update(&self, new_data: Vec<usize>, new_strings: Vec<String>) -> Filter {
+        use Filter::*;
         match self {
-            Filter::MaxNodeIdx(_) => Filter::MaxNodeIdx(new_data[0]),
-            Filter::MinNodeIdx(_) => Filter::MinNodeIdx(new_data[0]),
-            Filter::IgnoreTheorySolving => Filter::IgnoreTheorySolving,
-            Filter::IgnoreQuantifier(_) => {
-                Filter::IgnoreQuantifier(Some(QuantIdx::from(new_data[0])))
+            MaxNodeIdx(_) => MaxNodeIdx(new_data[0]),
+            MinNodeIdx(_) => MinNodeIdx(new_data[0]),
+            IgnoreTheorySolving => IgnoreTheorySolving,
+            IgnoreQuantifier(_) => {
+                IgnoreQuantifier(Some(QuantIdx::from(new_data[0])))
             }
-            Filter::IgnoreAllButQuantifier(_) => {
-                Filter::IgnoreAllButQuantifier(Some(QuantIdx::from(new_data[0])))
+            IgnoreAllButQuantifier(_) => {
+                IgnoreAllButQuantifier(Some(QuantIdx::from(new_data[0])))
             }
-            Filter::MaxInsts(_) => Filter::MaxInsts(new_data[0]),
-            Filter::MaxBranching(_) => Filter::MaxBranching(new_data[0]),
-            Filter::ShowNeighbours(old, dir) => Filter::ShowNeighbours(*old, *dir),
-            Filter::VisitSourceTree(old, retain) => Filter::VisitSourceTree(*old, *retain),
-            Filter::VisitSubTreeWithRoot(old, retain) => {
-                Filter::VisitSubTreeWithRoot(*old, *retain)
+            AllButExpensive(_) => AllButExpensive(new_data[0]),
+            MaxBranching(_) => MaxBranching(new_data[0]),
+            ShowNeighbours(old, dir) => ShowNeighbours(*old, *dir),
+            VisitSourceTree(old, retain) => VisitSourceTree(*old, *retain),
+            VisitSubTreeWithRoot(old, retain) => {
+                VisitSubTreeWithRoot(*old, *retain)
             }
-            Filter::MaxDepth(_) => Filter::MaxDepth(new_data[0]),
-            Filter::ShowLongestPath(old) => Filter::ShowLongestPath(*old),
-            Filter::ShowNamedQuantifier(_) => Filter::ShowNamedQuantifier(new_strings[0].clone()),
-            Filter::SelectNthMatchingLoop(_) => {
-                Filter::SelectNthMatchingLoop(new_data[0].max(1) - 1)
+            MaxDepth(_) => MaxDepth(new_data[0]),
+            ShowLongestPath(old) => ShowLongestPath(*old),
+            ShowNamedQuantifier(_) => ShowNamedQuantifier(new_strings[0].clone()),
+            SelectNthMatchingLoop(_) => {
+                SelectNthMatchingLoop(new_data[0].max(1) - 1)
             }
-            Filter::ShowMatchingLoopSubgraph => Filter::ShowMatchingLoopSubgraph,
+            ShowMatchingLoopSubgraph => ShowMatchingLoopSubgraph,
+            HideUnitNodes => HideUnitNodes,
+            LimitProofNodes(_) => LimitProofNodes(new_data[0]),
+            HideNonProof => HideNonProof,
         }
     }
 }

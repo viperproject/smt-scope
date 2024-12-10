@@ -32,10 +32,11 @@ impl AddFilter<'_> {
             .ml_data()
             .is_some_and(|mls| mls.maybe_mls + mls.sure_mls > 0);
         let filters = [
+            (true, Filter::HideUnitNodes, vec![]),
             (true, Filter::MaxNodeIdx(1000), vec![]),
             (true, Filter::MinNodeIdx(1000), vec![]),
             (true, Filter::IgnoreTheorySolving, vec![]),
-            (true, Filter::MaxInsts(DEFAULT_NODE_COUNT), vec![]),
+            (true, Filter::AllButExpensive(DEFAULT_NODE_COUNT), vec![]),
             (true, Filter::MaxBranching(DEFAULT_NODE_COUNT), vec![]),
             (true, Filter::MaxDepth(6), vec![]),
             (
@@ -45,6 +46,24 @@ impl AddFilter<'_> {
             ),
             (enable_ml, Filter::SelectNthMatchingLoop(0), vec![]),
             (enable_ml, Filter::ShowMatchingLoopSubgraph, vec![]),
+        ];
+        self.filters_to_buttons(filters.into_iter())
+    }
+
+    pub fn proof(self) -> Vec<SimpleButton> {
+        let filters = [
+            (true, Filter::HideUnitNodes, vec![]),
+            (true, Filter::MaxNodeIdx(1000), vec![]),
+            (true, Filter::MinNodeIdx(1000), vec![]),
+            (true, Filter::AllButExpensive(DEFAULT_NODE_COUNT), vec![]),
+            (true, Filter::MaxDepth(6), vec![]),
+            (
+                true,
+                Filter::ShowNamedQuantifier("name".to_string()),
+                vec![],
+            ),
+            (true, Filter::HideNonProof, vec![]),
+            (true, Filter::LimitProofNodes(DEFAULT_NODE_COUNT), vec![]),
         ];
         self.filters_to_buttons(filters.into_iter())
     }
@@ -147,7 +166,7 @@ impl AddFilter<'_> {
         filters
             .map(|(enabled, first, other)| {
                 let icon = first.icon();
-                let fc = |i| *self.graph.raw[i].kind();
+                let fc = |i| enabled.then(|| *self.graph.raw[i].kind());
                 let short_text = first
                     .short_text(fc)
                     .split(['|', '"', '$'])

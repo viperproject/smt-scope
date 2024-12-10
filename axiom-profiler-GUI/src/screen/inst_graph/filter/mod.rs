@@ -7,7 +7,7 @@ mod manage_filter;
 use material_yew::icon::MatIcon;
 use petgraph::Direction;
 use smt_log_parser::{
-    analysis::{raw::NodeKind, InstGraph, RawNodeIndex},
+    analysis::{raw::{NodeKind, ProofReach}, InstGraph, RawNodeIndex},
     items::QuantIdx,
     Z3Parser,
 };
@@ -36,10 +36,15 @@ pub const DEFAULT_NODE_COUNT: usize = 300;
 
 pub const DEFAULT_FILTER_CHAIN: &[Filter] = &[
     Filter::IgnoreTheorySolving,
-    Filter::MaxInsts(DEFAULT_NODE_COUNT),
+    Filter::HideUnitNodes,
+    Filter::AllButExpensive(DEFAULT_NODE_COUNT),
 ];
 
-pub const PROOF_FILTER_CHAIN: &[Filter] = &[Filter::MaxInsts(DEFAULT_NODE_COUNT)];
+pub const PROOF_FILTER_CHAIN: &[Filter] = &[
+    Filter::HideNonProof,
+    Filter::HideUnitNodes,
+    Filter::AllButExpensive(DEFAULT_NODE_COUNT),
+];
 
 pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
     (Disabler::Smart, true),
@@ -58,7 +63,7 @@ pub enum Filter {
     IgnoreTheorySolving,
     IgnoreQuantifier(Option<QuantIdx>),
     IgnoreAllButQuantifier(Option<QuantIdx>),
-    MaxInsts(usize),
+    AllButExpensive(usize),
     MaxBranching(usize),
     ShowNeighbours(RawNodeIndex, Direction),
     VisitSourceTree(RawNodeIndex, bool),
@@ -68,6 +73,10 @@ pub enum Filter {
     ShowNamedQuantifier(String),
     SelectNthMatchingLoop(usize),
     ShowMatchingLoopSubgraph,
+
+    HideUnitNodes,
+    LimitProofNodes(usize),
+    HideNonProof,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -254,6 +263,7 @@ impl FiltersState {
         new_filter: &Callback<Filter>,
         selected: &[RawNodeIndex],
         reset: Option<Callback<()>>,
+        enable_proofs: bool,
     ) -> Topbar {
         let add_filter = AddFilter {
             parser,
@@ -261,7 +271,11 @@ impl FiltersState {
             new_filter,
         };
 
-        let mut dropdown = add_filter.general();
+        let mut dropdown = if enable_proofs {
+            add_filter.proof()
+        } else {
+            add_filter.general()
+        };
         dropdown.push(SimpleButton {
             icon: "restore",
             text: "Reset operations".to_string(),
@@ -309,12 +323,14 @@ impl DisablersState {
         if !self.modified() {
             return;
         }
+        let non_trivial_disabled = self.disablers().any(|d| matches!(d, Disabler::Smart));
         graph.reset_disabled_to(parser, |node, graph| {
             // TODO: hardcoded disabling based on two modes, change this
             let n = &graph[node];
             let allowed = if self.enable_proofs {
                 matches!(n.kind(), NodeKind::Instantiation(..) | NodeKind::Proof(..))
-                    && n.proof.reaches_proof
+                    && n.proof.reaches_proof()
+                    && !(non_trivial_disabled && !n.proof.reaches_non_trivial_proof())
             } else {
                 n.kind().proof().is_none()
             };
@@ -323,7 +339,6 @@ impl DisablersState {
             }
 
             self.disablers()
-                .clone()
                 .any(|d| d.disable(node, graph, parser))
         });
     }

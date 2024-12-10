@@ -346,6 +346,7 @@ impl Screen for Graph {
             &link.callback(|f| GraphM::Filter(FilterM::AddFilter(f))),
             selected,
             reset,
+            props.enable_proofs,
         )
     }
 

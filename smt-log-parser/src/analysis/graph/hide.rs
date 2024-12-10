@@ -21,7 +21,10 @@ impl RawInstGraph {
         }
         modified
     }
-    pub fn set_visibility(&mut self, hidden: bool, node: RawNodeIndex) -> bool {
+    pub fn can_set_visibility(&self, node: &Node, hidden: bool) -> bool {
+        !node.disabled() && node.hidden() != hidden
+    }
+    pub fn set_visibility(&mut self, node: RawNodeIndex, hidden: bool) -> bool {
         let node = &mut self.graph[node.0];
         if node.disabled() {
             return false;
@@ -44,8 +47,8 @@ impl RawInstGraph {
         let mut modified = false;
         for node in nodes {
             if n == 0 {
-                modified |= self.set_visibility(true, node);
-            } else if self.graph[node.0].visible() {
+                modified |= self.set_visibility(node, true);
+            } else if self[node].visible() {
                 n -= 1;
             }
         }
@@ -53,24 +56,45 @@ impl RawInstGraph {
     }
 
     /// When predicate `p` evaluates to true the visibility of the corresponding
-    /// node is set to `hidden`.
+    /// node is set to `hidden`. Use this when hiding nodes and the predicate is
+    /// expensive as it avoids calling the predicate a lot more than
+    /// `set_visibility_all`.
     pub fn set_visibility_when(
         &mut self,
         hidden: bool,
-        mut p: impl FnMut(RawNodeIndex, &Node) -> bool,
+        mut p: impl FnMut(&Self, RawNodeIndex, &Node) -> bool,
     ) -> bool {
         let mut modified = false;
         for node in self.graph.node_indices().map(RawNodeIndex) {
-            let n = &self.graph[node.0];
-            if n.disabled() {
+            let n = &self[node];
+            if !self.can_set_visibility(n, hidden) {
                 continue;
             }
-            if p(node, n) {
-                modified |= self.set_visibility(hidden, node);
+            if p(self, node, n) {
+                modified |= self.set_visibility(node, hidden);
             }
         }
         modified
     }
+    /// When predicate `p` evaluates to `Some` the visibility of the corresponding
+    /// node is set to `hidden` (`true`) or `visible` (`false`).
+    pub fn set_visibility_all(
+        &mut self,
+        mut p: impl FnMut(&Self, RawNodeIndex, &Node) -> Option<bool>,
+    ) -> bool {
+        let mut modified = false;
+        for node in self.graph.node_indices().map(RawNodeIndex) {
+            let n = &self[node];
+            if n.disabled() {
+                continue;
+            }
+            if let Some(hidden) = p(self, node, n) {
+                modified |= self.set_visibility(node, hidden);
+            }
+        }
+        modified
+    }
+
     pub fn set_visibility_many<I: IndexesInstGraph>(
         &mut self,
         hidden: bool,
@@ -79,7 +103,7 @@ impl RawInstGraph {
         let mut modified = false;
         for node in nodes {
             let node = node.index(self);
-            modified |= self.set_visibility(hidden, node);
+            modified |= self.set_visibility(node, hidden);
         }
         modified
     }
@@ -87,14 +111,14 @@ impl RawInstGraph {
     fn filter_path(
         &self,
         edge: impl EdgeRef<NodeId = NodeIndex<RawIx>>,
-        f: impl Fn(&Node) -> u32,
+        f: impl Fn(&Node) -> u16,
     ) -> bool {
         let from = &self.graph[edge.source()];
         let to = &self.graph[edge.target()];
         if from.disabled() {
             f(from) == f(to)
         } else {
-            f(from) == f(to) + 1
+            f(from) == f(to).saturating_add(1)
         }
     }
     /// A graph with edges that aren't part of any `longest/shortest` path to a
@@ -154,7 +178,7 @@ impl RawInstGraph {
             let to_leaf = Bfs::new(&to_leaf, node.0).iter(&to_leaf).skip(1);
             path.extend(to_leaf.map(RawNodeIndex));
         };
-        path.retain(|&n| !self.graph[n.0].disabled());
+        path.retain(|&n| !self[n].disabled());
         let modified = self.set_visibility_many(false, path.iter().copied());
         (modified, path)
     }

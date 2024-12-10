@@ -16,7 +16,7 @@ use matching_loop::MlData;
 use crate::{F64Ord, Result, Z3Parser};
 
 use self::{
-    cost::DefaultCost, depth::DefaultDepth, next_nodes::NextInstsInit, proof::ProofInitialiser,
+    cost::{DefaultCost, ProofCost}, depth::DefaultDepth, next_nodes::NextInstsInit, proof::ProofInitialiser,
 };
 
 use super::{raw::RawInstGraph, InstGraph, RawNodeIndex};
@@ -103,6 +103,7 @@ impl InstGraph {
 
     pub fn initialise_default(&mut self, parser: &Z3Parser) {
         self.initialise_transfer(DefaultCost, parser);
+        self.initialise_transfer(ProofCost, parser);
         self.initialise_collect(DefaultDepth::<true>, parser);
         self.initialise_collect(DefaultDepth::<false>, parser);
 

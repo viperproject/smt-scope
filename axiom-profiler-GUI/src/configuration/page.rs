@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use smt_log_parser::display_with::SymbolReplacement;
+use smt_log_parser::{display_with::SymbolReplacement, NonMaxU32};
 use wasm_bindgen::JsCast;
 use yew::{
     function_component, use_context, use_effect_with_deps, Callback, Event, Html, Properties,
@@ -12,12 +12,16 @@ use crate::{
 };
 
 macro_rules! flag_widget {
-    ($cfg:ident, $default:ident, $($access:ident).+, $title:expr, $description:expr, $($from:ident => $to:literal),+$(,)?) => {
+    ($cfg:ident, $default:ident, $($access:ident).+, $title:expr, $description:expr, $($from:ident => $to:literal),* $(,)? $(| $(if $from_e:expr => $to_e:literal),+ $(,)?)?) => {
         {
             let id = stringify!(cfg.$($access).+);
-            let curr = &(($cfg).config.$($access).+);
+            let curr = (($cfg).config.$($access).+);
             let curr_to = match curr {
-                $($from => $to,)+
+                $($from => $to,)*
+                $(
+                    $(v if v == $from_e => $to_e,)+
+                    _ => "other",
+                )?
             };
             let effect = move |curr_to| {
                 let element = gloo::utils::document().get_element_by_id(id);
@@ -30,7 +34,11 @@ macro_rules! flag_widget {
             let deps = curr_to;
             let default = $default.$($access).+;
             let default_to = match &default {
-                $($from => $to,)+
+                $($from => $to,)*
+                $(
+                    $(v if v == &$from_e => $to_e,)+
+                    v => todo!("default value not handled: {v:?}"),
+                )?
             };
             let cfg_update = $cfg.update.clone();
             let onchange = Callback::from(move |e: Event| {
@@ -40,7 +48,11 @@ macro_rules! flag_widget {
                 };
                 cfg_update.update(move |cfg| {
                     let new_value = match target.value().as_str() {
-                        $($to => $from,)+
+                        $($to => $from,)*
+                        $(
+                            $($to_e => $from_e,)+
+                            "other" => curr,
+                        )?
                         _ => unreachable!(),
                     };
                     let old_value = &mut cfg.$($access).*;
@@ -56,7 +68,8 @@ macro_rules! flag_widget {
                 <div class="flag-widget">
                     <label>{$title}</label>
                     <select {id} {onchange}>
-                        $(<option value={$to}>{if $to == default_to { concat!($to, " (default)") } else { $to }}</option>)+
+                        $(<option value={$to}>{if $to == default_to { concat!($to, " (default)") } else { $to }}</option>)*
+                        $($(<option value={$to_e}>{if $to_e == default_to { concat!($to_e, " (default)") } else { $to_e }}</option>)+)?
                     </select>
                     <div class="description">{$description}</div>
                 </div>
@@ -83,19 +96,36 @@ pub fn Flags(props: &FlagsProps) -> Html {
         "Debug mode",
         "Display extra information useful for developers of this tool. For example, shows the IDs (e.g. `#123`) of the terms as they appear in the log file.",
         true => "Enabled",
-        false => "Disabled"
+        false => "Disabled",
     );
     use_effect_with_deps(move |deps| effect(deps), deps);
-    use SymbolReplacement::*;
-    let (replace_symbols, effect, deps) = flag_widget!(
+
+    let (replace_symbols, effect, deps) = {
+        use SymbolReplacement::*;
+        flag_widget!(
+            cfg,
+            default,
+            display.replace_symbols,
+            "Symbol replacement",
+            "Replace some symbols (e.g. \"not\", \"and\", \"<=\") in the UI with their corresponding mathematical or code representation.",
+            Math => "Mathematical",
+            Code => "Code",
+            None => "Disabled",
+        )
+    };
+    use_effect_with_deps(move |deps| effect(deps), deps);
+
+    let (ast_depth_limit, effect, deps) = flag_widget!(
         cfg,
         default,
-        display.replace_symbols,
-        "Symbol replacement",
-        "Replace some symbols (e.g. \"not\", \"and\", \"<=\") in the UI with their corresponding mathematical or code representation.",
-        Math => "Mathematical",
-        Code => "Code",
-        None => "Disabled",
+        display.ast_depth_limit,
+        "Printing depth limit",
+        "Stop printing terms once this AST depth has been reached. Only needed to avoid crashes with huge proof terms.", |
+        if NonMaxU32::new(10) => "10",
+        if NonMaxU32::new(25) => "25",
+        if NonMaxU32::new(50) => "50",
+        if NonMaxU32::new(100) => "100",
+        if None => "Disabled"
     );
     use_effect_with_deps(move |deps| effect(deps), deps);
 
@@ -105,6 +135,7 @@ pub fn Flags(props: &FlagsProps) -> Html {
             <button onclick={reset}>{"Reset configuration"}</button>
             {debug}
             {replace_symbols}
+            {ast_depth_limit}
             <TermDisplayFlag cfg={cfg.clone()} file={props.file.clone()} />
         </div></div>
     }

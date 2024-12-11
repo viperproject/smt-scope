@@ -2,7 +2,7 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    items::{Assignment, Decision, DecisionIdx, StackFrame, StackIdx},
+    items::{Assignment, Cdcl, CdclIdx, Conflict, StackFrame, StackIdx},
     Error, Result, TiVec,
 };
 
@@ -18,6 +18,7 @@ impl Default for Stack {
     fn default() -> Self {
         let mut stack_frames: TiVec<StackIdx, StackFrame> = TiVec::default();
         let idx = stack_frames.push_and_get_key(StackFrame::new(0, false));
+        assert_eq!(idx, Self::ZERO_FRAME);
         Self {
             stack: vec![idx],
             stack_frames,
@@ -27,6 +28,8 @@ impl Default for Stack {
 }
 
 impl Stack {
+    pub const ZERO_FRAME: StackIdx = StackIdx::ZERO;
+
     fn height(&self) -> usize {
         self.stack.len() - 1
     }
@@ -103,28 +106,86 @@ impl Stack {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug, Default)]
-pub struct Decisions(pub TiVec<DecisionIdx, Decision>);
+#[derive(Debug)]
+pub struct CdclTree {
+    cdcl: TiVec<CdclIdx, Cdcl>,
+    /// The cut from the last conflict, only set between a `[conflict]` line and
+    /// a `[pop]`. The latter will backtrack and insert this into the above vec.
+    conflict: Option<Box<[Assignment]>>,
+}
 
-impl Decisions {
-    pub fn new_decision(&mut self, assign: Assignment, frame: StackIdx) -> Result<DecisionIdx> {
-        self.0.raw.try_reserve(1)?;
-        Ok(self.0.push_and_get_key(Decision::new(assign, frame)))
+impl Default for CdclTree {
+    fn default() -> Self {
+        let mut cdcl = TiVec::default();
+        cdcl.push(Cdcl::new_empty(Stack::ZERO_FRAME));
+        Self {
+            cdcl,
+            conflict: None,
+        }
+    }
+}
+
+impl CdclTree {
+    pub fn new_decision(&mut self, assign: Assignment, frame: StackIdx) -> Result<CdclIdx> {
+        debug_assert!(self.conflict.is_none());
+        debug_assert!(!self.cdcl.last().is_some_and(|cdcl| cdcl.frame == frame));
+
+        let cdcl = Cdcl::new_decision(assign, frame);
+        self.cdcl.raw.try_reserve(1)?;
+        Ok(self.cdcl.push_and_get_key(cdcl))
     }
 
-    pub fn last_mut(&mut self) -> Result<&mut Decision> {
-        self.0.last_mut().ok_or(Error::NoDecision)
+    pub fn new_conflict(&mut self, cut: Box<[Assignment]>, frame: StackIdx) {
+        debug_assert!(self.conflict.is_none());
+        debug_assert!(self.cdcl.last().is_some_and(|cdcl| cdcl.frame == frame));
+        self.conflict = Some(cut);
     }
 
-    pub fn backtrack(&self, stack: &Stack) -> Result<DecisionIdx> {
-        let i = self
-            .0
-            .iter_enumerated()
-            .rev()
-            .find_map(|(i, d)| stack[d.frame].active.status().is_active().then_some(i))
-            .ok_or(Error::FailedBacktrack)?;
-        debug_assert_eq!(self.0[i].frame, stack.active_frame());
-        Ok(i)
+    pub fn backtrack(&mut self, stack: &Stack) -> Result<CdclIdx> {
+        let active = |i: &CdclIdx| {
+            let status = stack[self[*i].frame].active.status();
+            status.is_active() || status.is_global()
+        };
+        let backtrack = self.curr_to_root().find(active).unwrap();
+        // Not always true:
+        // debug_assert_eq!(self[backtrack].frame, stack.active_frame());
+
+        let cut = self.conflict.take().ok_or(Error::NoConflict)?;
+        let conflict = Conflict { cut, backtrack };
+        let cdcl = Cdcl::new_conflict(conflict, stack.active_frame());
+        self.cdcl.raw.try_reserve(1)?;
+        Ok(self.cdcl.push_and_get_key(cdcl))
+    }
+
+    pub fn new_propagate(&mut self, assign: Assignment, frame: StackIdx) -> Result<()> {
+        debug_assert!(self.conflict.is_none());
+        let mut last = self.cdcl.last_mut().unwrap();
+        if last.frame != frame {
+            let empty = Cdcl::new_empty(frame);
+            self.cdcl.raw.try_reserve(1)?;
+            let new = self.cdcl.push_and_get_key(empty);
+            last = &mut self.cdcl[new];
+        }
+        last.propagates.try_reserve(1)?;
+        last.propagates.push(assign);
+        Ok(())
+    }
+
+    pub fn has_conflict(&self) -> bool {
+        self.conflict.is_some()
+    }
+
+    fn curr_to_root(&self) -> impl Iterator<Item = CdclIdx> + '_ {
+        let mut curr = self.cdcl.last_key();
+        core::iter::from_fn(move || {
+            let cdcl = curr?;
+            if let Some(backtrack) = self[cdcl].get_backtrack() {
+                curr = Some(backtrack);
+            } else {
+                curr = usize::from(cdcl).checked_sub(1).map(CdclIdx::from);
+            }
+            Some(cdcl)
+        })
     }
 }
 
@@ -135,9 +196,9 @@ impl std::ops::Index<StackIdx> for Stack {
     }
 }
 
-impl std::ops::Index<DecisionIdx> for Decisions {
-    type Output = Decision;
-    fn index(&self, idx: DecisionIdx) -> &Self::Output {
-        &self.0[idx]
+impl std::ops::Index<CdclIdx> for CdclTree {
+    type Output = Cdcl;
+    fn index(&self, idx: CdclIdx) -> &Self::Output {
+        &self.cdcl[idx]
     }
 }

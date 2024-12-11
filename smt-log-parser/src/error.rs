@@ -87,8 +87,7 @@ pub enum Error {
     InvalidFrameInteger(ParseIntError),
 
     // CDCL
-    NoDecision,
-    FailedBacktrack,
+    NoConflict,
     BoolLiteralNotP,
     InvalidBoolLiteral(ParseIntError),
     UnknownJustification(String),

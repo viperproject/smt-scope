@@ -14,7 +14,7 @@ use super::{
     egraph::EGraph,
     inst::{InstData, Insts},
     inter_line::{InterLine, LineKind},
-    stack::{Decisions, Stack},
+    stack::{CdclTree, Stack},
     stm2::EventLog,
     synthetic::{AnyTerm, SynthIdx, SynthTerms},
     terms::Terms,
@@ -37,7 +37,7 @@ pub struct Z3Parser {
     pub(crate) egraph: EGraph,
     pub(crate) stack: Stack,
 
-    pub(crate) decisions: Decisions,
+    pub(crate) cdcl: CdclTree,
 
     pub strings: StringTable,
     pub events: EventLog,
@@ -56,7 +56,7 @@ impl Default for Z3Parser {
             inst_stack: Default::default(),
             egraph: Default::default(),
             stack: Default::default(),
-            decisions: Default::default(),
+            cdcl: Default::default(),
             events: EventLog::new(&mut strings),
             comm: Default::default(),
             strings,
@@ -850,20 +850,21 @@ impl Z3LogParser for Z3Parser {
         let assign = self.parse_literal(&mut l)?.ok_or(E::UnexpectedNewline)?;
         let mut justification = l.next().ok_or(E::UnexpectedNewline)?;
         if justification == "decision" {
-            self.decisions
-                .new_decision(assign, self.stack.active_frame())?;
+            let frame = self.stack.active_frame();
+            self.cdcl.new_decision(assign, frame)?;
             justification = l.next().ok_or(E::UnexpectedNewline)?;
             debug_assert_eq!(justification, "axiom");
         }
         // Now `l` contains
         match justification {
             // Either a "decision" or a non-interesting assignment by e.g.
-            // internal z3 axioms.
+            // internal z3 axioms. NOT USED in the non-decision case.
             "axiom" => Self::expect_completed(l),
             // Not sure about this case, it contains one more single literal,
             // but printed as a `BoolTermIdx` and not a `TermIdx` and z3 doesn't
             // log `BoolTermIdx` so we cannot really understand it anyway.
             "bin" => {
+                // NOT USED
                 self.parse_bool_literal(&mut l)?
                     .ok_or(E::UnexpectedNewline)?;
                 Self::expect_completed(l)
@@ -878,9 +879,13 @@ impl Z3LogParser for Z3Parser {
                     .parse_bool_literal(&mut l)?
                     .ok_or(E::UnexpectedNewline)?;
                 debug_assert_eq!(assign.value, value);
+
+                let frame = self.stack.active_frame();
+                self.cdcl.new_propagate(assign, frame)?;
                 Ok(())
             }
             "justification" => {
+                // NOT USED
                 let theory_id = l.next().ok_or(E::UnexpectedNewline)?;
                 let _theory_id = theory_id
                     .strip_suffix(':')
@@ -905,13 +910,8 @@ impl Z3LogParser for Z3Parser {
             cut.try_reserve(1)?;
             cut.push(assignment);
         }
-
-        let last = self.decisions.last_mut()?;
-        debug_assert_eq!(last.frame, self.stack.active_frame());
-        last.conflict = Some(Conflict {
-            cut: cut.into_boxed_slice(),
-            backtrack: None,
-        });
+        let frame = self.stack.active_frame();
+        self.cdcl.new_conflict(cut.into_boxed_slice(), frame);
         // Backtracking will happen with the pop in the next line. We'll push
         // the new (opposite) decision there.
         Ok(())
@@ -941,22 +941,11 @@ impl Z3LogParser for Z3Parser {
         Self::expect_completed(l)?;
 
         let from_cdcl = matches!(self.comm.prev().last_line_kind, LineKind::Conflict);
-        debug_assert_eq!(
-            from_cdcl,
-            self.decisions
-                .last_mut()
-                .is_ok_and(|l| l.has_unresolved_conflict())
-        );
+        debug_assert_eq!(from_cdcl, self.cdcl.has_conflict());
         let from_cdcl = self.stack.pop_frames(num, scope, from_cdcl)?;
         self.events.new_pop(num, from_cdcl)?;
         if from_cdcl {
-            let i = self.decisions.backtrack(&self.stack)?;
-            let conflict = self.decisions.last_mut().unwrap().conflict.as_mut();
-            conflict.unwrap().backtrack = Some(i);
-
-            let frame = self.stack.active_frame();
-            let assign = self.decisions[i].assign.negate();
-            self.decisions.new_decision(assign, frame)?;
+            self.cdcl.backtrack(&self.stack)?;
         }
         Ok(())
     }
@@ -1150,10 +1139,10 @@ impl Index<StackIdx> for Z3Parser {
         &self.stack[idx]
     }
 }
-impl Index<DecisionIdx> for Z3Parser {
-    type Output = Decision;
-    fn index(&self, idx: DecisionIdx) -> &Self::Output {
-        &self.decisions[idx]
+impl Index<CdclIdx> for Z3Parser {
+    type Output = Cdcl;
+    fn index(&self, idx: CdclIdx) -> &Self::Output {
+        &self.cdcl[idx]
     }
 }
 impl Index<IString> for Z3Parser {

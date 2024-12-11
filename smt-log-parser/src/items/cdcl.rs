@@ -1,38 +1,66 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use super::{DecisionIdx, StackIdx, TermIdx};
+use super::{CdclIdx, StackIdx, TermIdx};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
-pub struct Decision {
-    /// The branching decision z3 took, it "arbitrarily" decided that this
-    /// clause has this boolean value.
-    pub assign: Assignment,
+pub struct Cdcl {
+    pub kind: CdclKind,
     pub frame: StackIdx,
     /// After an assignment some clauses may have only 1 unassigned literal
     /// left (with all others not satisfying the clause). Thus a decision
     /// propagates other assignments which are required.
     pub propagates: Vec<Assignment>,
-    pub conflict: Option<Conflict>,
 }
 
-impl Decision {
-    pub fn new(assign: Assignment, frame: StackIdx) -> Self {
+impl Cdcl {
+    /// Creates a `Empty` node in the CDCL tree.
+    pub fn new_empty(frame: StackIdx) -> Self {
         Self {
-            assign,
+            kind: CdclKind::Empty,
             frame,
             propagates: Vec::new(),
-            conflict: None,
         }
     }
 
-    pub fn has_unresolved_conflict(&self) -> bool {
-        self.conflict
-            .as_ref()
-            .is_some_and(|c| c.backtrack.is_none())
+    pub fn new_decision(assign: Assignment, frame: StackIdx) -> Self {
+        Self {
+            kind: CdclKind::Decision(assign),
+            frame,
+            propagates: Vec::new(),
+        }
     }
+
+    pub fn new_conflict(conflict: Conflict, frame: StackIdx) -> Self {
+        Self {
+            kind: CdclKind::Conflict(conflict),
+            frame,
+            propagates: Vec::new(),
+        }
+    }
+
+    pub fn get_backtrack(&self) -> Option<CdclIdx> {
+        match &self.kind {
+            CdclKind::Conflict(conflict) => Some(conflict.backtrack),
+            _ => None,
+        }
+    }
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone)]
+pub enum CdclKind {
+    /// Represents an empty node. Used as the root of the CDCL tree (in which
+    /// the solver may already propagate some facts) and when assignments are
+    /// propagated at a higher stack frame than the current decision.
+    Empty,
+    /// The branching decision z3 took, it "arbitrarily" decided that this
+    /// clause has this boolean value.
+    Decision(Assignment),
+    Conflict(Conflict),
 }
 
 /// Assignment to a literal.
@@ -47,19 +75,12 @@ pub struct Assignment {
     pub value: bool,
 }
 
-impl Assignment {
-    pub fn negate(self) -> Self {
-        Self {
-            value: !self.value,
-            ..self
-        }
-    }
-}
-
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub struct Conflict {
     pub cut: Box<[Assignment]>,
-    pub backtrack: Option<DecisionIdx>,
+    /// Which decision to backtrack to (i.e. which one is this conflict rooted
+    /// from and all between are reverted). If `None` then we backtrack all.
+    pub backtrack: CdclIdx,
 }

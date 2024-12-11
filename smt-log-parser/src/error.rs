@@ -86,6 +86,14 @@ pub enum Error {
     PopConflictMismatch,
     InvalidFrameInteger(ParseIntError),
 
+    // CDCL
+    NoDecision,
+    FailedBacktrack,
+    BoolLiteralNotP,
+    InvalidBoolLiteral(ParseIntError),
+    UnknownJustification(String),
+    MissingColonJustification,
+
     // File IO
     FileRead(std::io::Error),
 

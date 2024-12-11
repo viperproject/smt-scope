@@ -1,3 +1,4 @@
+mod cdcl;
 mod enode;
 mod equality;
 mod idx;
@@ -8,6 +9,7 @@ mod quant;
 mod stack;
 mod term;
 
+pub use cdcl::*;
 pub use enode::*;
 pub use equality::*;
 pub use idx::*;

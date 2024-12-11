@@ -2,7 +2,7 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    items::{StackFrame, StackIdx},
+    items::{Assignment, Decision, DecisionIdx, StackFrame, StackIdx},
     Error, Result, TiVec,
 };
 
@@ -102,10 +102,42 @@ impl Stack {
     }
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug, Default)]
+pub struct Decisions(pub TiVec<DecisionIdx, Decision>);
+
+impl Decisions {
+    pub fn new_decision(&mut self, assign: Assignment, frame: StackIdx) -> Result<DecisionIdx> {
+        self.0.raw.try_reserve(1)?;
+        Ok(self.0.push_and_get_key(Decision::new(assign, frame)))
+    }
+
+    pub fn last_mut(&mut self) -> Result<&mut Decision> {
+        self.0.last_mut().ok_or(Error::NoDecision)
+    }
+
+    pub fn backtrack(&self, stack: &Stack) -> Result<DecisionIdx> {
+        let i = self
+            .0
+            .iter_enumerated()
+            .rev()
+            .find_map(|(i, d)| stack[d.frame].active.status().is_active().then_some(i))
+            .ok_or(Error::FailedBacktrack)?;
+        debug_assert_eq!(self.0[i].frame, stack.active_frame());
+        Ok(i)
+    }
+}
+
 impl std::ops::Index<StackIdx> for Stack {
     type Output = StackFrame;
-
     fn index(&self, idx: StackIdx) -> &Self::Output {
         &self.stack_frames[idx]
+    }
+}
+
+impl std::ops::Index<DecisionIdx> for Decisions {
+    type Output = Decision;
+    fn index(&self, idx: DecisionIdx) -> &Self::Output {
+        &self.0[idx]
     }
 }

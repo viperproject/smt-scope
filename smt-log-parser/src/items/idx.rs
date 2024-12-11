@@ -47,6 +47,7 @@ idx!(EqGivenIdx, "≡{}");
 idx!(EqTransIdx, "={}");
 idx!(GraphIdx, "g{}");
 idx!(ProofIdx, "p{}");
+idx!(DecisionIdx, "d{}");
 
 // Not used for TiVec, but just as a typed wrapper
 

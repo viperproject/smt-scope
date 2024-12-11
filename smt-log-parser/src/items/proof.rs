@@ -8,15 +8,28 @@ use crate::{BoxSlice, FxHashMap, IString, StringTable};
 
 use super::{ProofIdx, StackIdx, TermId, TermIdx};
 
-/// A Z3 proof step and associated data.
+/// A Z3 proof step and associated data. Represents a single step where z3
+/// proved a boolean expression. These steps have dependencies which combine to
+/// build up a proof tree. Parts of this tree may be under hypotheses in which
+/// case the solver tries to do a proof by contradiction (and the proved terms
+/// are only valid under these hypotheses).
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug)]
 pub struct ProofStep {
+    /// The parsed term id of the proof step itself (corresponds to `ProofIdx`).
+    /// Only useful for debugging.
     pub id: TermId,
+    /// The kind of proof step. Which logical rule was used to derive the
+    /// result.
     pub kind: ProofStepKind,
+    /// The (boolean) term which this step proves. This might not necessarily be
+    /// a "full" proof if this step (transitively) depends on any hypotheses!
     pub result: TermIdx,
+    /// The antecedents of this proof step.
     pub prerequisites: BoxSlice<ProofIdx>,
+    /// The frame in which this proof step was created. The proof is forgotten
+    /// (and may be repeated later) when the frame is popped.
     pub frame: StackIdx,
 }
 

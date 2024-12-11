@@ -79,6 +79,7 @@ pub enum Filter {
     HideNonProof,
     ShowAsserted,
     ShowFalse,
+    ShowNamedProof(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -4,7 +4,7 @@ use std::{str::FromStr, sync::OnceLock};
 use mem_dbg::{MemDbg, MemSize};
 use strum::{EnumIter, IntoEnumIterator};
 
-use crate::{BoxSlice, FxHashMap, IString};
+use crate::{BoxSlice, FxHashMap, IString, StringTable};
 
 use super::{ProofIdx, StackIdx, TermId, TermIdx};
 
@@ -24,7 +24,7 @@ pub struct ProofStep {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter)]
 /// Taken from
 /// [z3-sys](https://docs.rs/z3-sys/0.8.1/src/z3_sys/lib.rs.html#451). Update
 /// from there if more cases are added. A few marked cases were renamed to
@@ -582,5 +582,14 @@ impl FromStr for ProofStepKind {
             map
         });
         map.get(s).copied().ok_or(())
+    }
+}
+
+impl ProofStepKind {
+    pub fn parse_existing(strings: &StringTable, value: &str) -> Option<Self> {
+        match ProofStepKind::from_str(value) {
+            Ok(kind) => Some(kind),
+            Err(_) => strings.get(value).map(IString).map(ProofStepKind::OTHER),
+        }
     }
 }

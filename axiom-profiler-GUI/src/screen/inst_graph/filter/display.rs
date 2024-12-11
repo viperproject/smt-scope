@@ -29,6 +29,7 @@ impl Filter {
             HideNonProof => "center_focus_strong",
             ShowAsserted => "input",
             ShowFalse => "bolt",
+            ShowNamedProof(_) => "fingerprint",
         }
     }
     pub fn short_text(&self, d: impl Fn(RawNodeIndex) -> Option<NodeKind>) -> String {
@@ -89,6 +90,9 @@ impl Filter {
             HideNonProof => "Hide non-proof nodes".to_string(),
             ShowAsserted => "Show asserted proofs".to_string(),
             ShowFalse => "Show contradictions".to_string(),
+            ShowNamedProof(name) => {
+                format!("Show proof steps \"{name}\"")
+            }
         }
     }
     pub fn long_text(&self, d: impl Fn(RawNodeIndex) -> Option<NodeKind>, applied: bool) -> String {
@@ -207,6 +211,12 @@ impl Filter {
             }
             ShowFalse => {
                 format!("{show} proof nodes where false was proved (can be under a hypothesis)")
+            }
+            ShowNamedProof(name) => {
+                format!(
+                    "{show} all proof steps with name \"{}\"",
+                    display(name, applied)
+                )
             }
         }
     }

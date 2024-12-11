@@ -37,15 +37,6 @@ impl Deref for CommandRegisterer {
     }
 }
 
-#[derive(Clone)]
-pub struct HistoryRegisterer(Rc<dyn Fn(Command, bool) -> CommandRef>);
-impl Deref for HistoryRegisterer {
-    type Target = dyn Fn(Command, bool) -> CommandRef;
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
-
 pub struct CommandRef(Box<dyn Fn()>, Box<dyn Fn(bool)>);
 impl Drop for CommandRef {
     fn drop(&mut self) {

@@ -61,11 +61,7 @@ impl<'a> ViewMode<'a> {
 
         let placeholder = self.placeholder().to_string();
         let oninput = link.callback(OmniboxM::Input);
-        let onkeydown = link.callback(|ev: KeyboardEvent| {
-            ev.stop_propagation();
-            ev.cancel_bubble();
-            OmniboxM::KeyDownTyping(ev)
-        });
+        let onkeydown = link.callback(OmniboxM::KeyDownTyping);
         let dropdown = self.dropdown(link).map(|inner| {
             html! {
                 <div class="omnibox-popup" onkeydown={onkeydown.clone()} tabindex={"0"}>{inner}</div>

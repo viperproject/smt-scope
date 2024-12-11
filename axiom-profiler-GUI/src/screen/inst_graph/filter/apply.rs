@@ -8,7 +8,7 @@ use smt_log_parser::{
         raw::{IndexesInstGraph, Node, NodeKind, RawInstGraph},
         InstGraph, RawNodeIndex,
     },
-    items::{InstIdx, QuantKind},
+    items::{InstIdx, ProofStepKind, QuantKind},
     Z3Parser,
 };
 
@@ -162,6 +162,15 @@ impl Filter {
             ShowFalse => graph
                 .raw
                 .set_visibility_when(false, |_, _, n| n.proof.proves_false()),
+            ShowNamedProof(ref name) => {
+                if let Some(kind) = ProofStepKind::parse_existing(&parser.strings, name) {
+                    graph.raw.set_visibility_when(false, |_, _, n| {
+                        n.kind().proof().is_some_and(|p| parser[p].kind == kind)
+                    })
+                } else {
+                    false
+                }
+            }
         };
         FilterOutput { modified, select }
     }

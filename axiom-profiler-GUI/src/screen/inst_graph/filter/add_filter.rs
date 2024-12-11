@@ -66,6 +66,7 @@ impl AddFilter<'_> {
             (true, Filter::HideNonProof, vec![]),
             (true, Filter::ShowAsserted, vec![]),
             (true, Filter::ShowFalse, vec![]),
+            (true, Filter::ShowNamedProof("name".to_string()), vec![]),
         ];
         self.filters_to_buttons(filters.into_iter())
     }

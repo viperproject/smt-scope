@@ -1,7 +1,7 @@
 use gloo::timers::callback::Timeout;
 use material_yew::icon::MatIcon;
 use smt_log_parser::items::QuantIdx;
-use web_sys::{Element, HtmlElement, HtmlInputElement};
+use web_sys::{Element, HtmlElement, HtmlInputElement, KeyboardEvent};
 use yew::{
     function_component, html, Callback, Children, Component, Context, Html, NodeRef, Properties,
 };
@@ -334,6 +334,7 @@ impl Filter {
                 | ShowNamedQuantifier(..)
                 | SelectNthMatchingLoop(..)
                 | LimitProofNodes(..)
+                | ShowNamedProof(..)
         )
     }
     pub fn update(&self, new_data: Vec<usize>, new_strings: Vec<String>) -> Filter {
@@ -359,6 +360,7 @@ impl Filter {
             HideNonProof => HideNonProof,
             ShowAsserted => ShowAsserted,
             ShowFalse => ShowFalse,
+            ShowNamedProof(_) => ShowNamedProof(new_strings[0].clone()),
         }
     }
 }
@@ -502,8 +504,10 @@ impl Component for ExistingFilterText {
                         FilterTextMsg::FocusOut(idx / 2)
                     });
                     let input_ref = input.clone();
-                    let onkeypress = Callback::from(move |e: web_sys::KeyboardEvent| {
-                        if e.key() == "Enter" {
+                    let onkeydown = Callback::from(move |ev: KeyboardEvent| {
+                        ev.stop_propagation();
+                        ev.cancel_bubble();
+                        if ev.key() == "Enter" {
                             let _ = input_ref.cast::<HtmlInputElement>().unwrap().blur();
                         }
                     });
@@ -516,7 +520,7 @@ impl Component for ExistingFilterText {
                         size = Some((value.len().max(1 + INPUT_SHRINK) - INPUT_SHRINK).to_string());
                     };
                     html! {
-                        <input ref={input} size={size} type={typ} value={value} oninput={oninput} onfocus={onfocus} onblur={onblur} onkeypress={onkeypress} />
+                        <input ref={input} size={size} type={typ} value={value} {oninput} {onfocus} {onblur} {onkeydown} />
                     }
                 }
             });

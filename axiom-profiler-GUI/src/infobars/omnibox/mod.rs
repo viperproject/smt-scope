@@ -65,6 +65,8 @@ impl Component for Omnibox {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             OmniboxM::KeyDownTyping(ev) => {
+                ev.stop_propagation();
+                ev.cancel_bubble();
                 let changed = self
                     .mode
                     .on_key(ctx.link(), &self.commands, ev.key().as_str());
@@ -149,79 +151,3 @@ impl Component for Omnibox {
         }
     }
 }
-
-// #[derive(Debug)]
-// pub struct SearchActionResult {
-//     pub query: String,
-//     pub indices: Vec<u32>,
-//     pub groups: Vec<SearchActionGroup>,
-// }
-
-// impl SearchActionResult {
-//     pub fn new(
-//         query: String,
-//         matches: Matches<'_, FxHashMap<Kind, Entry>>,
-//         parser: &RcParser,
-//         visible: Option<&VisibleInstGraph>,
-//     ) -> Self {
-//         let groups = matches
-//             .matches
-//             .into_iter()
-//             .enumerate()
-//             .map(|(idx, (score, matched, values))| {
-//                 let actions = values
-//                     .iter()
-//                     .map(|(kind, entry)| {
-//                         let visible = if let (Some(graph), Some(visible)) = (&parser.graph, visible)
-//                         {
-//                             entry.count_visible(&graph.borrow(), visible)
-//                         } else {
-//                             0
-//                         };
-//                         let hue = entry
-//                             .qidx
-//                             .map(|qidx| parser.colour_map.get_rbg_hue(Some(qidx)));
-//                         let arguments = entry
-//                             .tidx
-//                             .map(|tidx| (&*parser.parser.borrow())[tidx].child_ids.len());
-//                         SearchAction {
-//                             count: entry.count(),
-//                             visible,
-//                             kind: *kind,
-//                             hue,
-//                             arguments,
-//                         }
-//                     })
-//                     .collect();
-//                 SearchActionGroup {
-//                     score,
-//                     idx,
-//                     name: matched.to_string(),
-//                     actions,
-//                 }
-//             })
-//             .collect();
-//         SearchActionResult {
-//             query,
-//             indices: matches.indices,
-//             groups,
-//         }
-//     }
-// }
-
-// #[derive(Debug)]
-// pub struct SearchActionGroup {
-//     pub score: u16,
-//     pub idx: usize,
-//     pub name: String,
-//     pub actions: Vec<SearchAction>,
-// }
-
-// #[derive(Debug, Clone, Copy, PartialEq)]
-// pub struct SearchAction {
-//     pub count: usize,
-//     pub visible: usize,
-//     pub kind: crate::utils::lookup::Kind,
-//     pub hue: Option<f64>,
-//     pub arguments: Option<usize>,
-// }

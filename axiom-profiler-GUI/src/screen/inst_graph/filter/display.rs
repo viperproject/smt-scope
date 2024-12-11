@@ -27,6 +27,8 @@ impl Filter {
             HideUnitNodes => "mode_standby",
             LimitProofNodes(_) => "functions",
             HideNonProof => "center_focus_strong",
+            ShowAsserted => "input",
+            ShowFalse => "bolt",
         }
     }
     pub fn short_text(&self, d: impl Fn(RawNodeIndex) -> Option<NodeKind>) -> String {
@@ -85,6 +87,8 @@ impl Filter {
             HideUnitNodes => "Hide unit nodes".to_string(),
             LimitProofNodes(max) => format!("Hide all but |{max}| proofs"),
             HideNonProof => "Hide non-proof nodes".to_string(),
+            ShowAsserted => "Show asserted proofs".to_string(),
+            ShowFalse => "Show contradictions".to_string(),
         }
     }
     pub fn long_text(&self, d: impl Fn(RawNodeIndex) -> Option<NodeKind>, applied: bool) -> String {
@@ -197,6 +201,12 @@ impl Filter {
             }
             HideNonProof => {
                 format!("{hide} all non-proof nodes (instantiation nodes which are immediate parents cannot be hidden)")
+            }
+            ShowAsserted => {
+                format!("{show} proof nodes corresponding to assert expressions")
+            }
+            ShowFalse => {
+                format!("{show} proof nodes where false was proved (can be under a hypothesis)")
             }
         }
     }

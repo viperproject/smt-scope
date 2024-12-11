@@ -4,11 +4,7 @@ mod summary;
 
 use std::rc::Rc;
 
-use smt_log_parser::{
-    analysis::{InstGraph, QuantifierAnalysis},
-    formatter::TermDisplayContext,
-    parsers::ParseState,
-};
+use smt_log_parser::{analysis::InstGraph, formatter::TermDisplayContext, parsers::ParseState};
 use yew::{html, ContextHandle, ContextProvider, Html};
 
 use crate::{
@@ -160,10 +156,7 @@ impl Screen for File {
                 let parser = props.parser.parser.borrow();
                 match InstGraph::new(&parser) {
                     Ok(graph) => {
-                        let data = AnalysisData {
-                            quants: QuantifierAnalysis::new(&parser, &graph),
-                            graph,
-                        };
+                        let data = AnalysisData::new(&parser, graph);
                         self.analysis = Err(RcAnalysis::new(data));
                     }
                     Err(err) => {

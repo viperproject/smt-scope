@@ -7,10 +7,7 @@ mod manage_filter;
 use material_yew::icon::MatIcon;
 use petgraph::Direction;
 use smt_log_parser::{
-    analysis::{
-        raw::NodeKind,
-        InstGraph, RawNodeIndex,
-    },
+    analysis::{raw::NodeKind, InstGraph, RawNodeIndex},
     items::QuantIdx,
     Z3Parser,
 };
@@ -38,14 +35,14 @@ pub use manage_filter::*;
 pub const DEFAULT_NODE_COUNT: usize = 300;
 
 pub const DEFAULT_FILTER_CHAIN: &[Filter] = &[
-    Filter::IgnoreTheorySolving,
     Filter::HideUnitNodes,
+    Filter::IgnoreTheorySolving,
     Filter::AllButExpensive(DEFAULT_NODE_COUNT),
 ];
 
 pub const PROOF_FILTER_CHAIN: &[Filter] = &[
-    Filter::HideNonProof,
     Filter::HideUnitNodes,
+    Filter::HideNonProof,
     Filter::AllButExpensive(DEFAULT_NODE_COUNT),
 ];
 
@@ -80,6 +77,8 @@ pub enum Filter {
     HideUnitNodes,
     LimitProofNodes(usize),
     HideNonProof,
+    ShowAsserted,
+    ShowFalse,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -333,7 +332,7 @@ impl DisablersState {
             let allowed = if self.enable_proofs {
                 matches!(n.kind(), NodeKind::Instantiation(..) | NodeKind::Proof(..))
                     && n.proof.reaches_proof()
-                    && !(non_trivial_disabled && !n.proof.reaches_non_trivial_proof())
+                    && (!non_trivial_disabled || n.proof.reaches_non_trivial_proof())
             } else {
                 n.kind().proof().is_none()
             };

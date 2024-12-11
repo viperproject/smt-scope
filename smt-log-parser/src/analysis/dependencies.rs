@@ -49,10 +49,18 @@ impl QuantifierAnalysis {
             let ginst = &inst_graph.raw[data.iidx];
             qinfo.costs += ginst.cost;
 
+            let pat = parser.get_pattern(qpat);
+            let subpats = pat.map(|p| parser[p].child_ids.len()).unwrap_or_default();
             for (i, blame) in data.match_.pattern_matches().enumerate() {
                 // Increment the count for each expression in the pattern.
-
                 if i == qinfo.direct_deps.len() {
+                    if i >= subpats {
+                        // TODO: there is a bug in z3 whereby more matched
+                        // expressions are printed than subpatterns available.
+                        // This happens rarely so don't bother trying to
+                        // backtrack here (the results will be slightly wrong).
+                        break;
+                    }
                     qinfo.direct_deps.push(DirectDep::default());
                 }
                 let direct_dep = &mut qinfo.direct_deps[i];

@@ -300,17 +300,12 @@ impl Screen for Graph {
     }
 
     fn view(&self, link: &Scope<Self>, props: &Self::Properties) -> Html {
-        let Some(rendered) = self.rendered_graph() else {
-            return html! {};
-        };
-        let dimensions = self
-            .waiting()
-            .map_or(rendered.dims(), GraphDimensions::of_graph);
+        let dimensions = self.waiting().map(GraphDimensions::of_graph);
         html! {<>
             <GraphInfo
                 parser={props.parser.clone()}
                 analysis={props.analysis.clone()}
-                rendered={rendered.clone()}
+                rendered={self.rendered_graph().cloned()}
                 outdated={self.waiting.is_some()}
                 update_selected={link.callback(GraphM::Selection)}
                 svg_view={self.svg_view.clone()}

@@ -154,6 +154,14 @@ impl Filter {
             HideNonProof => graph
                 .raw
                 .set_visibility_when(true, |_, _, n| n.kind().proof().is_none()),
+            ShowAsserted => graph.raw.set_visibility_when(false, |_, _, n| {
+                n.kind()
+                    .proof()
+                    .is_some_and(|p| parser[p].kind.is_asserted())
+            }),
+            ShowFalse => graph
+                .raw
+                .set_visibility_when(false, |_, _, n| n.proof.proves_false()),
         };
         FilterOutput { modified, select }
     }

@@ -125,7 +125,7 @@ impl Graph {
         let (selected_nodes, selected_edges) = self.update_selected(&visible);
         let dimensions = GraphDimensions::of_graph(&visible);
 
-        log::debug!("Rendering graph with {dimensions:?}");
+        log::trace!("Rendering graph with {dimensions:?}");
         let new_permissions = dimensions.max(Self::default_permissions());
         self.filter.chain.set_permissions(new_permissions);
 
@@ -200,7 +200,7 @@ impl Graph {
                 },
             )
         );
-        // log::debug!("Graph DOT:\n{dot_output}");
+        // log::trace!("Graph DOT:\n{dot_output}");
         self.state = Ok(GraphState::RenderingGraph);
         let link = link.clone();
         wasm_bindgen_futures::spawn_local(async move {

@@ -290,7 +290,7 @@ impl Homepage {
         let stop_loading = self.stop_loading.clone();
         let link = link.clone();
 
-        log::info!("Selected file \"{}\"", file_info.name);
+        log::trace!("Selected file \"{}\"", file_info.name);
         // Turn into stream
         let blob: &web_sys::Blob = file.as_ref();
         let stream = ReadableStream::from_raw(blob.stream().unchecked_into());
@@ -303,7 +303,7 @@ impl Homepage {
                 });
             }
             Err((_err, _stream)) => {
-                log::info!("Loading to string \"{}\"", file_info.name);
+                log::trace!("Loading to string \"{}\"", file_info.name);
                 link.send_message(HomepageM::LoadingState(LoadingState::ReadingToString));
                 let reader = gloo::file::callbacks::read_as_text(&file, move |res| {
                     let text_data = match res {
@@ -316,7 +316,7 @@ impl Homepage {
                     let remaining_memory =
                         Self::BROWSER_MEM_LIMIT - text_data.len() - 64 * 1024 * 1024;
 
-                    log::info!("Parsing \"{}\"", file_info.name);
+                    log::trace!("Parsing \"{}\"", file_info.name);
                     link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
                     wasm_bindgen_futures::spawn_local(async move {
                         let parser = Z3Parser::from_str(&text_data);

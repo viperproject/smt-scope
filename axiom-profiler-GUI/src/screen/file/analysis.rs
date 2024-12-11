@@ -1,6 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
-use smt_log_parser::analysis::{InstGraph, QuantifierAnalysis};
+use smt_log_parser::{
+    analysis::{InstGraph, ProofAnalysis, QuantifierAnalysis},
+    Z3Parser,
+};
 
 #[derive(Clone)]
 pub struct RcAnalysis(Rc<RefCell<AnalysisData>>);
@@ -28,6 +31,17 @@ impl PartialEq for RcAnalysis {
 pub struct AnalysisData {
     pub graph: InstGraph,
     pub quants: QuantifierAnalysis,
+    pub proofs: ProofAnalysis,
+}
+
+impl AnalysisData {
+    pub fn new(parser: &Z3Parser, graph: InstGraph) -> Self {
+        Self {
+            quants: QuantifierAnalysis::new(parser, &graph),
+            proofs: ProofAnalysis::new(parser, &graph),
+            graph,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -54,9 +54,9 @@ impl Component for Overlay {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let class = if self.visible {
-            "overlay"
+            "overlay full-page"
         } else {
-            "overlay display-none"
+            "overlay full-page display-none"
         };
         let onclick = ctx.link().callback(|_| Msg::SetVisible(Some(false)));
         html! {

@@ -1,9 +1,16 @@
-use std::{borrow::Cow, cmp::Reverse, fmt::Debug};
+use std::{borrow::Cow, cmp::Reverse, fmt::Debug, rc::Rc};
 
-use smt_log_parser::{analysis::LogInfo, items::QuantIdx, F64Ord, Z3Parser};
+use smt_log_parser::{
+    analysis::LogInfo,
+    display_with::{DisplayCtxt, DisplayWithCtxt},
+    formatter::TermDisplayContext,
+    items::QuantIdx,
+    F64Ord, NonMaxU32, Z3Parser,
+};
 use yew::prelude::*;
 
 use crate::{
+    configuration::ConfigurationProvider,
     screen::homepage::{FileInfo, RcParser},
     utils::colouring::{QuantColourBox, QuantIdxToColourMap},
 };
@@ -31,8 +38,18 @@ pub struct SummaryProps {
 
 #[function_component]
 pub fn Summary(props: &SummaryProps) -> Html {
-    let colours = &props.parser.colour_map;
     let parser = props.parser.parser.borrow();
+
+    let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
+    let term_display = use_context::<Rc<TermDisplayContext>>().unwrap();
+    let mut ctxt = DisplayCtxt {
+        parser: &parser,
+        term_display: &term_display,
+        config: cfg.config.display,
+    };
+    ctxt.config.ast_depth_limit = NonMaxU32::new(3);
+
+    let colours = &props.parser.colour_map;
     let summary = &props.parser.summary;
     let inst = summary.log_info.inst;
     let match_ = summary.log_info.match_;
@@ -81,8 +98,22 @@ pub fn Summary(props: &SummaryProps) -> Html {
             </ul>
         </div>};
 
+        let proofs = analysis.proofs.hypothesis_cost.iter().take(5);
+        let proofs = proofs.map(|&(p, c)| {
+            let p = format!("<code class=\"margin-left-half\">{}</code>", parser[p].result.with(&ctxt));
+            let p = Html::from_html_unchecked(p.into());
+            html! { <li><div class="info-box-row">{ format!("{c:.0}:") }{ p }</div></li> }
+        });
+        let cost_proofs = html! {<div class="info-box">
+            <h2 title="The hypotheses which were the most expensive to contradict.">{ "Most expensive hypotheses" }</h2>
+            <ul>
+                { for proofs }
+            </ul>
+        </div>};
+
         html! {<>
             { cost_quants }
+            { cost_proofs }
         </>}
     });
     let graph = props.analysis.clone().map(|analysis| {

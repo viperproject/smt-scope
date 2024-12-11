@@ -11,7 +11,7 @@ use crate::screen::inst_graph::GraphDimensions;
 pub struct WarningProps {
     pub noderef: WeakComponentLink<MatDialog>,
     pub onclosed: Callback<WarningChoice>,
-    pub dimensions: GraphDimensions,
+    pub dimensions: Option<GraphDimensions>,
 }
 
 pub enum WarningChoice {
@@ -30,8 +30,9 @@ pub fn Warning(props: &WarningProps) -> Html {
         _ => onclosed.emit(WarningChoice::Cancel),
     });
 
-    let node_count = props.dimensions.node_count.to_formatted_string(&Locale::en);
-    let edge_count = props.dimensions.edge_count.to_formatted_string(&Locale::en);
+    let dimensions = props.dimensions.unwrap_or_default();
+    let node_count = dimensions.node_count.to_formatted_string(&Locale::en);
+    let edge_count = dimensions.edge_count.to_formatted_string(&Locale::en);
     let message = format!("The graph contains {node_count} nodes and {edge_count} edges, rendering might be slow. Are you sure? You can \"Cancel\" and undo the change, \"Apply\" the change without rendering, or \"Render\" the graph anyway.");
 
     html! {

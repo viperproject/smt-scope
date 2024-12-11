@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use smt_log_parser::{
     analysis::{
-        raw::{EdgeKind, Node, NodeKind},
+        raw::{EdgeKind, Node, NodeKind, RawInstGraph},
         visible::{VisibleEdge, VisibleEdgeKind},
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
     },
@@ -172,19 +172,30 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
     // Proof step specific
     pub fn proof_step_name(&self) -> Option<String> {
         let proof = self.node.kind().proof()?;
-        let parser = &self.ctxt.parser;
+        let parser = self.ctxt.parser;
         let kind = parser[proof].kind.to_z3_string();
         let kind = kind.unwrap_or_else(|other| parser[other].to_string());
         Some(kind)
     }
     pub fn prerequisites(&self) -> Option<Vec<String>> {
         let proof = self.node.kind().proof()?;
-        let parser = &self.ctxt.parser;
+        let parser = self.ctxt.parser;
         let prerequisites = &parser[proof].prerequisites;
         let prerequisites = prerequisites
             .iter()
             .map(|&pre| parser[pre].result.with(self.ctxt).to_string());
         Some(prerequisites.collect())
+    }
+    pub fn hypotheses(&self, graph: &RawInstGraph) -> Option<Vec<String>> {
+        let proof = self.node.kind().proof()?;
+        let parser = self.ctxt.parser;
+        let hypotheses = graph.hypotheses(parser, proof);
+        Some(
+            hypotheses
+                .into_iter()
+                .map(|h| parser[h].result.with(self.ctxt).to_string())
+                .collect(),
+        )
     }
 
     pub fn extra_info(&self) -> Option<Vec<(&'static str, String)>> {
@@ -284,11 +295,25 @@ pub fn SelectedNodesInfo(
             });
             let proof_step_name = info.proof_step_name().map(|name| {
                     html!{<InfoLine header="Proof Step Name" text={name} code=true />}}); 
-            let prerequisites = info.prerequisites().map(|prerequisites| {
-                prerequisites.into_iter().map(|prerequisite| html! {
-                    <InfoLine header="Prerequisite(s)" text={prerequisite} code=true />
-                }).chain([html! { <hr/> }]).collect::<Html>()
+            let mut has_hypotheses = false;
+            let hypotheses = info.hypotheses(&graph.raw).map(|h| {
+                has_hypotheses = !h.is_empty();
+                h.into_iter().map(|hypothesis| html! {
+                    <InfoLine header="Assumption" text={hypothesis} code=true />
+                }).collect::<Html>()
             });
+            let prerequisites = info.prerequisites().map(|p| {
+                has_hypotheses &= !p.is_empty();
+                let p = p.into_iter().map(|prerequisite| html! {
+                    <InfoLine header="Prerequisite" text={prerequisite} code=true />
+                });
+                if has_hypotheses {
+                    [html! { <hr/> }].into_iter().chain(p).collect::<Html>()
+                } else {
+                    p.collect::<Html>()
+                }
+            });
+            let proof_hr = proof_step_name.is_some().then(|| html! { <hr/> });
             let extra_info = info.extra_info().map(|extra_info| {
                 let extra_info: Html = extra_info.into_iter().map(|(header, info)| html! {
                     <InfoLine {header} text={info} code=true />
@@ -306,7 +331,9 @@ pub fn SelectedNodesInfo(
                     {resulting_term}
                     {yield_terms}
                     {proof_step_name}
+                    {hypotheses}
                     {prerequisites}
+                    {proof_hr}
                     {extra_info}
                     <InfoLine header="Cost"     text={format!("{:.1}", info.node.cost)} code=false />
                     <InfoLine header="To Root"  text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
@@ -402,7 +429,7 @@ pub struct SelectedEdgesInfoProps {
     pub parser: RcParser,
     pub analysis: RcAnalysis,
     pub selected_edges: Vec<(VisibleEdgeIndex, bool)>,
-    pub rendered: RcVisibleGraph,
+    pub rendered: Option<RcVisibleGraph>,
     pub on_click: Callback<VisibleEdgeIndex>,
 }
 
@@ -416,6 +443,9 @@ pub fn SelectedEdgesInfo(
         on_click,
     }: &SelectedEdgesInfoProps,
 ) -> Html {
+    let Some(rendered) = rendered else {
+        return html! {};
+    };
     let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
     let term_display = use_context::<Rc<TermDisplayContext>>().unwrap();
 

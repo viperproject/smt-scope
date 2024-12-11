@@ -43,6 +43,8 @@ pub struct RenderedGraph {
 impl PartialEq for RenderedGraph {
     fn eq(&self, other: &Self) -> bool {
         self.graph == other.graph
+            && self.selected_nodes == other.selected_nodes
+            && self.selected_edges == other.selected_edges
     }
 }
 

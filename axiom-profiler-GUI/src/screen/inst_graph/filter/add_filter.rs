@@ -62,8 +62,10 @@ impl AddFilter<'_> {
                 Filter::ShowNamedQuantifier("name".to_string()),
                 vec![],
             ),
-            (true, Filter::HideNonProof, vec![]),
             (true, Filter::LimitProofNodes(DEFAULT_NODE_COUNT), vec![]),
+            (true, Filter::HideNonProof, vec![]),
+            (true, Filter::ShowAsserted, vec![]),
+            (true, Filter::ShowFalse, vec![]),
         ];
         self.filters_to_buttons(filters.into_iter())
     }

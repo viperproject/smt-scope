@@ -22,6 +22,7 @@ pub struct GraphInfo {
     /// Which nodes from the ones that are selected should be collapsed
     collapsed_nodes: FxHashSet<RawNodeIndex>,
     collapsed_edges: FxHashSet<VisibleEdgeIndex>,
+    user_selection: Callback<UserSelectionM>,
 }
 
 pub enum GraphInfoM {
@@ -41,7 +42,7 @@ pub enum UserSelectionM {
 pub struct GraphInfoProps {
     pub parser: RcParser,
     pub analysis: RcAnalysis,
-    pub rendered: RenderedGraph,
+    pub rendered: Option<RenderedGraph>,
     pub update_selected: Callback<SelectionM>,
     pub outdated: bool,
 
@@ -54,58 +55,62 @@ impl Component for GraphInfo {
 
     type Properties = GraphInfoProps;
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         Self {
             collapsed_nodes: FxHashSet::default(),
             collapsed_edges: FxHashSet::default(),
+            user_selection: ctx.link().callback(GraphInfoM::UserSelection),
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            GraphInfoM::UserSelection(sel) => match sel {
-                UserSelectionM::ToggleNode(node_index) => {
-                    if !ctx.props().rendered.selected_nodes.contains(&node_index) {
-                        self.collapsed_nodes = FxHashSet::from_iter(
-                            ctx.props().rendered.selected_nodes.iter().copied(),
-                        );
-                    } else {
-                        self.collapsed_nodes.remove(&node_index);
+            GraphInfoM::UserSelection(sel) => {
+                let Some(rendered) = ctx.props().rendered.as_ref() else {
+                    return false;
+                };
+                match sel {
+                    UserSelectionM::ToggleNode(node_index) => {
+                        if !rendered.selected_nodes.contains(&node_index) {
+                            self.collapsed_nodes =
+                                FxHashSet::from_iter(rendered.selected_nodes.iter().copied());
+                        } else {
+                            self.collapsed_nodes.remove(&node_index);
+                        }
+                        ctx.props()
+                            .update_selected
+                            .emit(SelectionM::ToggleNode(node_index));
+                        true
                     }
-                    ctx.props()
-                        .update_selected
-                        .emit(SelectionM::ToggleNode(node_index));
-                    true
-                }
-                UserSelectionM::ToggleEdge(edge_index) => {
-                    if !ctx.props().rendered.selected_edges.contains(&edge_index) {
-                        self.collapsed_edges = FxHashSet::from_iter(
-                            ctx.props().rendered.selected_edges.iter().copied(),
-                        );
-                    } else {
-                        self.collapsed_edges.remove(&edge_index);
+                    UserSelectionM::ToggleEdge(edge_index) => {
+                        if !rendered.selected_edges.contains(&edge_index) {
+                            self.collapsed_edges =
+                                FxHashSet::from_iter(rendered.selected_edges.iter().copied());
+                        } else {
+                            self.collapsed_edges.remove(&edge_index);
+                        }
+                        ctx.props()
+                            .update_selected
+                            .emit(SelectionM::ToggleEdge(edge_index));
+                        true
                     }
-                    ctx.props()
-                        .update_selected
-                        .emit(SelectionM::ToggleEdge(edge_index));
-                    true
+                    UserSelectionM::DeselectAll => {
+                        self.collapsed_nodes.clear();
+                        self.collapsed_edges.clear();
+                        ctx.props().update_selected.emit(SelectionM::DeselectAll);
+                        true
+                    }
+                    UserSelectionM::SelectAll => {
+                        let graph = &rendered.graph.graph;
+                        let nodes = graph.node_weights().map(|n| n.idx).collect();
+                        let edges = graph.edge_indices().map(VisibleEdgeIndex).collect();
+                        ctx.props()
+                            .update_selected
+                            .emit(SelectionM::SetSelection(nodes, edges));
+                        false
+                    }
                 }
-                UserSelectionM::DeselectAll => {
-                    self.collapsed_nodes.clear();
-                    self.collapsed_edges.clear();
-                    ctx.props().update_selected.emit(SelectionM::DeselectAll);
-                    true
-                }
-                UserSelectionM::SelectAll => {
-                    let graph = &ctx.props().rendered.graph.graph;
-                    let nodes = graph.node_weights().map(|n| n.idx).collect();
-                    let edges = graph.edge_indices().map(VisibleEdgeIndex).collect();
-                    ctx.props()
-                        .update_selected
-                        .emit(SelectionM::SetSelection(nodes, edges));
-                    false
-                }
-            },
+            }
             GraphInfoM::ToggleOpenNode(node) => {
                 if !self.collapsed_nodes.insert(node) {
                     self.collapsed_nodes.remove(&node);
@@ -122,7 +127,10 @@ impl Component for GraphInfo {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let rendered = &ctx.props().rendered;
+        let rendered = ctx.props().rendered.as_ref();
+        let selected_nodes = rendered.map(|r| &*r.selected_nodes).unwrap_or_default();
+        let selected_edges = rendered.map(|r| &*r.selected_edges).unwrap_or_default();
+
         let on_node_click = {
             let link = ctx.link().clone();
             Callback::from(move |node: RawNodeIndex| {
@@ -135,17 +143,12 @@ impl Component for GraphInfo {
                 link.send_message(GraphInfoM::ToggleOpenEdge(edge))
             })
         };
-        let outdated = ctx
-            .props()
-            .outdated
-            .then(|| html! {<div class="outdated"></div>});
-        let selected_nodes: Vec<_> = rendered
-            .selected_nodes
+        let outdated = ctx.props().outdated.then_some("outdated full-page");
+        let selected_nodes: Vec<_> = selected_nodes
             .iter()
             .map(|n| (*n, !self.collapsed_nodes.contains(n)))
             .collect();
-        let selected_edges: Vec<_> = rendered
-            .selected_edges
+        let selected_edges: Vec<_> = selected_edges
             .iter()
             .map(|e| (*e, !self.collapsed_edges.contains(e)))
             .collect();
@@ -159,8 +162,7 @@ impl Component for GraphInfo {
                 right_bound: 1.0,
                 snap_positions: Vec::new(),
             };
-            let hide_right_bar =
-                rendered.selected_nodes.is_empty() && rendered.selected_edges.is_empty();
+            let hide_right_bar = selected_nodes.is_empty() && selected_edges.is_empty();
             if !hide_right_bar {
                 split.left_bound = 0.25;
                 split.snap_positions =
@@ -174,8 +176,8 @@ impl Component for GraphInfo {
         });
         let graph = html! {
             <GraphContainer
-                rendered={ctx.props().rendered.clone()}
-                selection={ctx.link().callback(GraphInfoM::UserSelection)}
+                rendered={rendered.cloned()}
+                selection={self.user_selection.clone()}
                 svg_view={ctx.props().svg_view.clone()}
             />
         };
@@ -183,7 +185,7 @@ impl Component for GraphInfo {
             <div class="graph-info">
                 {extra.info_top}
                 <SelectedNodesInfo parser={parser.clone()} analysis={analysis.clone()} {selected_nodes} on_click={on_node_click} />
-                <SelectedEdgesInfo {parser} {analysis} {selected_edges} rendered={ctx.props().rendered.graph.clone()} on_click={on_edge_click} />
+                <SelectedEdgesInfo {parser} {analysis} {selected_edges} rendered={rendered.map(|r| r.graph.clone())} on_click={on_edge_click} />
             </div>
         };
         let (left, right) = if extra.swap_split {
@@ -197,7 +199,7 @@ impl Component for GraphInfo {
                 {left}
                 {right}
             </SplitDiv>
-            {outdated}
+            <div class={outdated}></div>
             </>
         }
     }

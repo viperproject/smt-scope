@@ -8,7 +8,7 @@ use bitmask_enum::bitmask;
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::{
     graph::NodeIndex,
-    visit::Reversed,
+    visit::{Dfs, NodeFiltered, Reversed, Walker},
     Direction::{self},
 };
 
@@ -240,6 +240,28 @@ impl RawInstGraph {
     pub fn inst_to_raw_idx(&self) -> impl Fn(InstIdx) -> RawNodeIndex {
         let inst_idx = self.inst_idx;
         move |inst| RawNodeIndex(NodeIndex::new(inst_idx.0.index() + usize::from(inst)))
+    }
+
+    pub fn hypotheses(&self, parser: &Z3Parser, proof: ProofIdx) -> Vec<ProofIdx> {
+        let proof = proof.index(self);
+        let node = &self[proof];
+        if !node.proof.under_hypothesis() {
+            return Default::default();
+        }
+        let mut hypotheses = Vec::new();
+        let graph = NodeFiltered::from_fn(&*self.graph, |n| self.graph[n].proof.under_hypothesis());
+        let dfs = Dfs::new(Reversed(&graph), proof.0);
+        for n in dfs.iter(Reversed(&graph)).map(RawNodeIndex) {
+            let Some(n) = self[n].kind().proof() else {
+                debug_assert!(false, "Expected proof node");
+                continue;
+            };
+            if parser[n].kind.is_hypothesis() {
+                hypotheses.push(n);
+            }
+        }
+        hypotheses.sort_unstable();
+        hypotheses
     }
 }
 

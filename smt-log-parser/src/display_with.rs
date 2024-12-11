@@ -690,10 +690,15 @@ fn display_child<'b>(
     ctxt: &DisplayCtxt<'b>,
     data: &mut DisplayData<'b>,
 ) -> fmt::Result {
-    data.incr_ast_depth_with_limit(ctxt.config.ast_depth_limit, |data| {
-        data.with_term(child, |data| ctxt.parser[child].fmt_with(f, ctxt, data))
-    })
-    .unwrap_or_else(|| write!(f, "..."))
+    let cterm = &ctxt.parser[child];
+    let mut display =
+        |data: &mut DisplayData<'b>| data.with_term(child, |data| cterm.fmt_with(f, ctxt, data));
+    if cterm.child_ids().is_empty() {
+        display(data)
+    } else {
+        data.incr_ast_depth_with_limit(ctxt.config.ast_depth_limit, display)
+            .unwrap_or_else(|| write!(f, "..."))
+    }
 }
 
 impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResult<'a, 'a> {

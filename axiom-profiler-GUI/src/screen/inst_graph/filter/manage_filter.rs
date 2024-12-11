@@ -357,6 +357,8 @@ impl Filter {
             HideUnitNodes => HideUnitNodes,
             LimitProofNodes(_) => LimitProofNodes(new_data[0]),
             HideNonProof => HideNonProof,
+            ShowAsserted => ShowAsserted,
+            ShowFalse => ShowFalse,
         }
     }
 }

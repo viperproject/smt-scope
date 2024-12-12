@@ -32,7 +32,7 @@ impl AddFilter<'_> {
         match mode {
             GraphMode::Inst => self.inst(),
             GraphMode::Proof => self.proof(),
-            GraphMode::Cdcl => vec![],
+            GraphMode::Cdcl => self.cdcl(),
         }
     }
 
@@ -76,6 +76,17 @@ impl AddFilter<'_> {
             (true, Filter::ShowAsserted, vec![]),
             (true, Filter::ShowFalse, vec![]),
             (true, Filter::ShowNamedProof("name".to_string()), vec![]),
+        ];
+        self.filters_to_buttons(filters.into_iter())
+    }
+
+    fn cdcl(self) -> Vec<SimpleButton> {
+        let filters = [
+            (true, Filter::MaxNodeIdx(1000), vec![]),
+            (true, Filter::MinNodeIdx(1000), vec![]),
+            (true, Filter::MaxDepth(6), vec![]),
+            (true, Filter::LimitDeadCdcl(DEFAULT_NODE_COUNT), vec![]),
+            (true, Filter::LimitCdclNodes(DEFAULT_NODE_COUNT), vec![]),
         ];
         self.filters_to_buttons(filters.into_iter())
     }

@@ -46,6 +46,11 @@ pub const PROOF_FILTER_CHAIN: &[Filter] = &[
     Filter::AllButExpensive(DEFAULT_NODE_COUNT),
 ];
 
+pub const CDCL_FILTER_CHAIN: &[Filter] = &[
+    Filter::LimitDeadCdcl(DEFAULT_NODE_COUNT),
+    Filter::LimitCdclNodes(5 * DEFAULT_NODE_COUNT),
+];
+
 pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
     (Disabler::Smart, true),
     (Disabler::ENodes, false),
@@ -55,6 +60,8 @@ pub const DEFAULT_DISABLER_CHAIN: &[(Disabler, bool)] = &[
 
 pub const PROOF_DISABLER_CHAIN: &[(Disabler, bool)] =
     &[(Disabler::Smart, true), (Disabler::NonProof, false)];
+
+pub const CDCL_DISABLER_CHAIN: &[(Disabler, bool)] = &[];
 
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Filter {
@@ -80,6 +87,9 @@ pub enum Filter {
     ShowAsserted,
     ShowFalse,
     ShowNamedProof(String),
+
+    LimitDeadCdcl(usize),
+    LimitCdclNodes(usize),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

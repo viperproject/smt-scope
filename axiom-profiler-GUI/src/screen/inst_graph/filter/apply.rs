@@ -171,6 +171,28 @@ impl Filter {
                     false
                 }
             }
+            LimitDeadCdcl(mut count) => graph.raw.set_visibility_when(true, |_, _, n| {
+                if !n.proof.cdcl_dead_branch() {
+                    return false;
+                }
+                if count == 0 {
+                    true
+                } else {
+                    count -= 1;
+                    false
+                }
+            }),
+            LimitCdclNodes(mut count) => graph.raw.set_visibility_when(true, |_, _, n| {
+                if n.kind().cdcl().is_none() {
+                    return false;
+                }
+                if count == 0 {
+                    true
+                } else {
+                    count -= 1;
+                    false
+                }
+            }),
         };
         FilterOutput { modified, select }
     }

@@ -335,6 +335,8 @@ impl Filter {
                 | SelectNthMatchingLoop(..)
                 | LimitProofNodes(..)
                 | ShowNamedProof(..)
+                | LimitDeadCdcl(..)
+                | LimitCdclNodes(..)
         )
     }
     pub fn update(&self, new_data: Vec<usize>, new_strings: Vec<String>) -> Filter {
@@ -361,6 +363,8 @@ impl Filter {
             ShowAsserted => ShowAsserted,
             ShowFalse => ShowFalse,
             ShowNamedProof(_) => ShowNamedProof(new_strings[0].clone()),
+            LimitDeadCdcl(_) => LimitDeadCdcl(new_data[0]),
+            LimitCdclNodes(_) => LimitCdclNodes(new_data[0]),
         }
     }
 }

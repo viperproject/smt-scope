@@ -30,6 +30,8 @@ impl Filter {
             ShowAsserted => "input",
             ShowFalse => "bolt",
             ShowNamedProof(_) => "fingerprint",
+            LimitDeadCdcl(_) => "bolt",
+            LimitCdclNodes(_) => "functions",
         }
     }
     pub fn short_text(&self, d: impl Fn(RawNodeIndex) -> Option<NodeKind>) -> String {
@@ -93,6 +95,8 @@ impl Filter {
             ShowNamedProof(name) => {
                 format!("Show proof steps \"{name}\"")
             }
+            LimitDeadCdcl(max) => format!("Hide all but |{max}| on dead paths"),
+            LimitCdclNodes(max) => format!("Hide all but |{max}| CDCL nodes"),
         }
     }
     pub fn long_text(&self, d: impl Fn(RawNodeIndex) -> Option<NodeKind>, applied: bool) -> String {
@@ -217,6 +221,15 @@ impl Filter {
                     "{show} all proof steps with name \"{}\"",
                     display(name, applied)
                 )
+            }
+            LimitDeadCdcl(max) => {
+                format!(
+                    "{hide} all but {} CDCL nodes in dead paths (leading to a conflict)",
+                    display(max, applied)
+                )
+            }
+            LimitCdclNodes(max) => {
+                format!("{hide} all but {} CDCL nodes", display(max, applied))
             }
         }
     }

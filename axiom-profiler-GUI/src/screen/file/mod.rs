@@ -23,7 +23,8 @@ use super::{
     homepage::{FileInfo, ParseInfo, RcParser},
     inst_graph::{
         filter::{
-            DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN, PROOF_DISABLER_CHAIN, PROOF_FILTER_CHAIN,
+            CDCL_DISABLER_CHAIN, CDCL_FILTER_CHAIN, DEFAULT_DISABLER_CHAIN, DEFAULT_FILTER_CHAIN,
+            PROOF_DISABLER_CHAIN, PROOF_FILTER_CHAIN,
         },
         GraphMode, GraphProps,
     },
@@ -219,8 +220,8 @@ impl Screen for File {
                         ViewProps::Graph(GraphProps {
                             parser: props.parser.clone(),
                             analysis: analysis.clone(),
-                            default_filters: Vec::new(),
-                            default_disablers: Vec::new(),
+                            default_filters: CDCL_FILTER_CHAIN.to_vec(),
+                            default_disablers: CDCL_DISABLER_CHAIN.to_vec(),
                             extra: None,
                             mode: GraphMode::Cdcl,
                         })

@@ -26,9 +26,8 @@ impl Cdcl {
         }
     }
 
-    /// Creates the `Root` node of the CDCL tree. There may be multiple roots if
-    /// one uses the incremental solver and goes back to an empty stack.
-    pub fn new_root(frame: StackIdx) -> Self {
+    /// Creates the `Root` node of the CDCL tree. Should only be used once.
+    pub fn root(frame: StackIdx) -> Self {
         Self::new(CdclKind::Root, frame)
     }
 

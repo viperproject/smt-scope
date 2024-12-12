@@ -118,7 +118,7 @@ pub struct CdclTree {
 impl Default for CdclTree {
     fn default() -> Self {
         let mut cdcl = TiVec::default();
-        cdcl.push(Cdcl::new_root(Stack::ZERO_FRAME));
+        cdcl.push(Cdcl::root(Stack::ZERO_FRAME));
         Self {
             cdcl,
             conflict: None,

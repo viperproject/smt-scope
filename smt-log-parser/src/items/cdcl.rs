@@ -16,10 +16,19 @@ pub struct Cdcl {
 }
 
 impl Cdcl {
-    /// Creates a `Empty` node in the CDCL tree.
-    pub fn new_empty(frame: StackIdx) -> Self {
+    /// Creates the `Root` node of the CDCL tree. Should only be used once.
+    pub fn root(frame: StackIdx) -> Self {
         Self {
-            kind: CdclKind::Empty,
+            kind: CdclKind::Root,
+            frame,
+            propagates: Vec::new(),
+        }
+    }
+
+    /// Creates a `Empty` node in the CDCL tree.
+    pub fn new_empty(parent: CdclIdx, frame: StackIdx) -> Self {
+        Self {
+            kind: CdclKind::Empty(parent),
             frame,
             propagates: Vec::new(),
         }
@@ -54,9 +63,12 @@ impl Cdcl {
 #[derive(Debug, Clone)]
 pub enum CdclKind {
     /// Represents an empty node. Used as the root of the CDCL tree (in which
-    /// the solver may already propagate some facts) and when assignments are
-    /// propagated at a higher stack frame than the current decision.
-    Empty,
+    /// the solver may already propagate some facts).
+    Root,
+    /// Same as `Root` but used when assignments are propagated at a different
+    /// stack frame than the current decision. The frame of the current decision
+    /// may have been popped, thus this points to where it should be slotted in.
+    Empty(CdclIdx),
     /// The branching decision z3 took, it "arbitrarily" decided that this
     /// clause has this boolean value.
     Decision(Assignment),

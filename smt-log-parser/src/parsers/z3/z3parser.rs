@@ -880,8 +880,7 @@ impl Z3LogParser for Z3Parser {
                     .ok_or(E::UnexpectedNewline)?;
                 debug_assert_eq!(assign.value, value);
 
-                let frame = self.stack.active_frame();
-                self.cdcl.new_propagate(assign, frame)?;
+                self.cdcl.new_propagate(assign, &self.stack)?;
                 Ok(())
             }
             "justification" => {
@@ -940,11 +939,11 @@ impl Z3LogParser for Z3Parser {
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
 
-        let from_cdcl = matches!(self.comm.prev().last_line_kind, LineKind::Conflict);
-        debug_assert_eq!(from_cdcl, self.cdcl.has_conflict());
-        let from_cdcl = self.stack.pop_frames(num, scope, from_cdcl)?;
+        let conflict = matches!(self.comm.prev().last_line_kind, LineKind::Conflict);
+        debug_assert_eq!(conflict, self.cdcl.has_conflict());
+        let from_cdcl = self.stack.pop_frames(num, scope, conflict)?;
         self.events.new_pop(num, from_cdcl)?;
-        if from_cdcl {
+        if conflict {
             self.cdcl.backtrack(&self.stack)?;
         }
         Ok(())

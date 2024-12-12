@@ -85,6 +85,10 @@ impl TimeRangeStatus {
     pub fn is_ended(self) -> bool {
         matches!(self, Self::Ended)
     }
+
+    pub fn is_active_or_global(self) -> bool {
+        matches!(self, Self::Active | Self::Global)
+    }
 }
 
 impl fmt::Display for TimeRange {

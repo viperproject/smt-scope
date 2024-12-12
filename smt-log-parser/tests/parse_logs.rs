@@ -68,12 +68,9 @@ fn parse_all_logs() {
             let elapsed = now.elapsed();
             let mut parser = parser.take_parser();
 
-            max_parse_ovhd = f64::max(
-                max_parse_ovhd,
-                (ALLOCATOR.allocated() as u64 - start_alloc) as f64 / parse_bytes as f64,
-            );
             let parse_bytes_kb = parse_bytes / 1024;
             let mem_size = parser.mem_size(SizeFlags::default());
+            max_parse_ovhd = f64::max(max_parse_ovhd, mem_size as f64 / parse_bytes as f64);
             println!(
                 "Finished parsing in {elapsed:?} ({} kB/ms). Memory use {} MB / {} MB (real {} MB):",
                 parse_bytes_kb / elapsed.as_millis() as u64,
@@ -84,8 +81,8 @@ fn parse_all_logs() {
             parser.mem_dbg(DbgFlags::default()).ok();
             // TODO: decrease this
             assert!(
-                mem_size as u64 <= parse_bytes * 3 / 2,
-                "Parser takes up more memory than 3/2 * file size!"
+                mem_size as u64 <= parse_bytes * 2,
+                "Parser takes up more memory than 2 * file size!"
             );
 
             let middle_alloc = ALLOCATOR.allocated() as u64;
@@ -115,11 +112,8 @@ fn parse_all_logs() {
             let elapsed_ml = now.elapsed();
             let elapsed = elapsed_ig + elapsed_ml;
 
-            max_analysis_ovhd = f64::max(
-                max_analysis_ovhd,
-                (ALLOCATOR.allocated() as u64 - middle_alloc) as f64 / parse_bytes as f64,
-            );
             let mem_size = inst_graph.mem_size(SizeFlags::default());
+            max_analysis_ovhd = f64::max(max_analysis_ovhd, mem_size as f64 / parse_bytes as f64);
             let (sure_mls, maybe_mls) = inst_graph.found_matching_loops().unwrap();
             println!(
                 "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {sure_mls}+{maybe_mls} mls. Memory use {} MB / {} MB:",

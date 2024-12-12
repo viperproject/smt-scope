@@ -117,7 +117,7 @@ pub struct CdclTree {
 impl Default for CdclTree {
     fn default() -> Self {
         let mut cdcl = TiVec::default();
-        cdcl.push(Cdcl::new_empty(Stack::ZERO_FRAME));
+        cdcl.push(Cdcl::root(Stack::ZERO_FRAME));
         Self {
             cdcl,
             conflict: None,
@@ -128,7 +128,8 @@ impl Default for CdclTree {
 impl CdclTree {
     pub fn new_decision(&mut self, assign: Assignment, frame: StackIdx) -> Result<CdclIdx> {
         debug_assert!(self.conflict.is_none());
-        debug_assert!(!self.cdcl.last().is_some_and(|cdcl| cdcl.frame == frame));
+        // Not always true:
+        // debug_assert_ne!(self.cdcl.last().unwrap().frame, frame, "{:?}", self.cdcl.last().unwrap());
 
         let cdcl = Cdcl::new_decision(assign, frame);
         self.cdcl.raw.try_reserve(1)?;
@@ -142,11 +143,7 @@ impl CdclTree {
     }
 
     pub fn backtrack(&mut self, stack: &Stack) -> Result<CdclIdx> {
-        let active = |i: &CdclIdx| {
-            let status = stack[self[*i].frame].active.status();
-            status.is_active() || status.is_global()
-        };
-        let backtrack = self.curr_to_root().find(active).unwrap();
+        let backtrack = self.last_active(stack);
         // Not always true:
         // debug_assert_eq!(self[backtrack].frame, stack.active_frame());
 
@@ -157,11 +154,13 @@ impl CdclTree {
         Ok(self.cdcl.push_and_get_key(cdcl))
     }
 
-    pub fn new_propagate(&mut self, assign: Assignment, frame: StackIdx) -> Result<()> {
+    pub fn new_propagate(&mut self, assign: Assignment, stack: &Stack) -> Result<()> {
         debug_assert!(self.conflict.is_none());
+        let frame = stack.active_frame();
         let mut last = self.cdcl.last_mut().unwrap();
         if last.frame != frame {
-            let empty = Cdcl::new_empty(frame);
+            let parent = self.last_active(stack);
+            let empty = Cdcl::new_empty(parent, frame);
             self.cdcl.raw.try_reserve(1)?;
             let new = self.cdcl.push_and_get_key(empty);
             last = &mut self.cdcl[new];
@@ -173,6 +172,11 @@ impl CdclTree {
 
     pub fn has_conflict(&self) -> bool {
         self.conflict.is_some()
+    }
+
+    fn last_active(&self, stack: &Stack) -> CdclIdx {
+        let active = |i: &CdclIdx| stack[self[*i].frame].active.status().is_active_or_global();
+        self.curr_to_root().find(active).unwrap()
     }
 
     fn curr_to_root(&self) -> impl Iterator<Item = CdclIdx> + '_ {

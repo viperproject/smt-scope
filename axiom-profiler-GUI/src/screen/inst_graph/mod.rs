@@ -1,6 +1,7 @@
 mod dimensions;
 mod display;
 pub mod filter;
+mod mode;
 mod render;
 mod search;
 mod visible;
@@ -38,6 +39,7 @@ use self::{
 pub use self::{
     dimensions::GraphDimensions,
     display::UserSelectionM,
+    mode::GraphMode,
     visible::{RcVisibleGraph, RenderedGraph},
 };
 
@@ -49,7 +51,7 @@ pub struct GraphProps {
     pub default_disablers: Vec<(Disabler, bool)>,
     pub extra: Option<GraphExtraProps>,
     // TODO: make the graph display be generic over this (and not a parameter).
-    pub enable_proofs: bool,
+    pub mode: GraphMode,
 }
 
 impl GraphProps {
@@ -130,7 +132,7 @@ impl Screen for Graph {
                 Self::default_permissions(),
                 link,
             ),
-            disabler: DisablersState::new(props.default_disablers.clone(), props.enable_proofs),
+            disabler: DisablersState::new(props.default_disablers.clone(), props.mode),
             nodes_to_select: Vec::new(),
             svg_view: WeakComponentLink::default(),
             graph_warning: WeakComponentLink::default(),
@@ -147,11 +149,10 @@ impl Screen for Graph {
             *self = Self::create(link, props);
             return true;
         }
-        let disablers_changed = props.default_disablers != old_props.default_disablers
-            || props.enable_proofs != old_props.enable_proofs;
+        let disablers_changed =
+            props.default_disablers != old_props.default_disablers || props.mode != old_props.mode;
         if disablers_changed {
-            self.disabler =
-                DisablersState::new(props.default_disablers.clone(), props.enable_proofs);
+            self.disabler = DisablersState::new(props.default_disablers.clone(), props.mode);
         }
         if props.default_filters != old_props.default_filters {
             self.filter = FiltersState::new(
@@ -176,7 +177,7 @@ impl Screen for Graph {
                 let mut analysis = props.analysis.borrow_mut();
 
                 let (is_first, modified, update_view) =
-                    self.apply_filter(&parser, &mut analysis.graph, cmd, props.enable_proofs);
+                    self.apply_filter(&parser, &mut analysis.graph, cmd, props.mode);
                 if !modified || filter_only {
                     return update_view;
                 }
@@ -341,7 +342,7 @@ impl Screen for Graph {
             &link.callback(|f| GraphM::Filter(FilterM::AddFilter(f))),
             selected,
             reset,
-            props.enable_proofs,
+            props.mode,
         )
     }
 

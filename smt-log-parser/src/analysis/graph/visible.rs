@@ -159,6 +159,13 @@ impl std::fmt::Debug for VisibleEdge {
 }
 
 impl VisibleEdge {
+    pub fn last(&self) -> RawEdgeIndex {
+        match *self {
+            VisibleEdge::Direct(e) => e,
+            VisibleEdge::Indirect(_, to) => to,
+        }
+    }
+
     fn indirect_nodes<'a>(&'a self, graph: &'a InstGraph) -> FxHashSet<RawNodeIndex> {
         match self {
             VisibleEdge::Direct(_) => FxHashSet::default(),
@@ -178,11 +185,11 @@ impl VisibleEdge {
     pub fn is_indirect(&self, graph: &InstGraph) -> bool {
         self.indirect_nodes(graph)
             .iter()
-            .any(|n| graph.raw.graph[n.0].hidden())
+            .any(|n| graph.raw[*n].hidden())
     }
     pub fn kind(&self, graph: &InstGraph) -> VisibleEdgeKind {
-        match self {
-            VisibleEdge::Direct(e) => VisibleEdgeKind::Direct(*e, graph.raw.graph[e.0]),
+        match *self {
+            VisibleEdge::Direct(e) => VisibleEdgeKind::Direct(e, graph.raw[e]),
             VisibleEdge::Indirect(from, to) => {
                 // TODO: clean this up
                 let (all_between, non_visible_between) = graph
@@ -197,13 +204,16 @@ impl VisibleEdge {
                         all_between.len() == non_visible_between.len()
                     })
                 {
-                    return VisibleEdgeKind::Unknown(*from, *to);
+                    return VisibleEdgeKind::Unknown(from, to);
                 };
                 let non_visible_between = non_visible_between.unwrap();
 
-                let get_kind = |n| Some(graph.raw[*non_visible_between.get(n)?].kind());
+                let get_kind = |n| {
+                    let idx: RawNodeIndex = *non_visible_between.get(n)?;
+                    Some(graph.raw[idx].kind())
+                };
 
-                match (graph.raw.graph[from.0], graph.raw.graph[to.0]) {
+                match (graph.raw[from], graph.raw[to]) {
                     // Starting at Instantiation
                     (EdgeKind::Yield, EdgeKind::Blame { pattern_term })
                         if non_visible_between.len() == 1 =>
@@ -272,7 +282,7 @@ impl VisibleEdge {
                         }
                     }
 
-                    _ => VisibleEdgeKind::Unknown(*from, *to),
+                    _ => VisibleEdgeKind::Unknown(from, to),
                 }
             }
         }

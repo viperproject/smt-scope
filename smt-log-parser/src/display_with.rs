@@ -445,6 +445,17 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for EqTransIdx {
     }
 }
 
+impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for Assignment {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'_>,
+        _data: &mut (),
+    ) -> fmt::Result {
+        write!(f, "{} = {}", self.value, self.literal.with(ctxt))
+    }
+}
+
 // Others
 
 impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &MatchKind {

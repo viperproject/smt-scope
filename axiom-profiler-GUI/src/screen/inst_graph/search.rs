@@ -117,6 +117,11 @@ impl Graph {
                 NodeKind::Proof(pidx) => {
                     handle_term::<false>(parser, &mut terms, parser[pidx].result, idx, visible)
                 }
+                NodeKind::Cdcl(cdcl) => {
+                    for assign in parser[cdcl].get_assignments() {
+                        handle_term::<false>(parser, &mut terms, assign.literal, idx, visible);
+                    }
+                }
             }
         }
 

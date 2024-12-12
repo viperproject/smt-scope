@@ -3,7 +3,10 @@ use std::mem::MaybeUninit;
 use petgraph::Direction;
 
 use crate::{
-    analysis::{raw::Node, InstGraph, RawNodeIndex},
+    analysis::{
+        raw::{Node, RawInstGraph},
+        InstGraph, RawNodeIndex,
+    },
     TiVec, Z3Parser,
 };
 
@@ -67,6 +70,20 @@ pub trait TopoAnalysis<const FORWARD: bool, const SKIP_DISABLED: bool> {
     fn reset(&mut self) {}
 }
 
+impl RawInstGraph {
+    fn from_all<const SKIP_DISABLED: bool>(
+        &self,
+        curr: RawNodeIndex,
+        dir: Direction,
+    ) -> impl Iterator<Item = RawNodeIndex> + '_ {
+        if SKIP_DISABLED {
+            either::Either::Left(self.neighbors_directed(curr, dir))
+        } else {
+            either::Either::Right(self.graph.neighbors_directed(curr.0, dir).map(RawNodeIndex))
+        }
+    }
+}
+
 impl InstGraph {
     pub fn topo_analysis<
         I: TopoAnalysis<FORWARD, SKIP_DISABLED>,
@@ -101,24 +118,13 @@ impl InstGraph {
                     analysis.collect(self, curr, node, core::iter::empty)
                 } else {
                     let from_all = || {
-                        let ix_map = |i: RawNodeIndex| {
+                        self.raw.from_all::<SKIP_DISABLED>(curr, dir).map(|i| {
                             let data = &data[i];
                             // Safety: The data is initialised as the graph is a DAG
                             // and we are traversing in a topological order.
                             let data = unsafe { data.assume_init_ref() };
                             (i, data)
-                        };
-                        let iter = if SKIP_DISABLED {
-                            either::Either::Left(self.raw.neighbors_directed(curr, dir))
-                        } else {
-                            either::Either::Right(
-                                self.raw
-                                    .graph
-                                    .neighbors_directed(curr.0, dir)
-                                    .map(RawNodeIndex),
-                            )
-                        };
-                        iter.map(ix_map)
+                        })
                     };
                     analysis.collect(self, curr, node, from_all)
                 };
@@ -165,22 +171,12 @@ impl InstGraph {
         for subgraph in self.subgraphs.iter() {
             initialiser.reset();
             let for_each = |idx: RawNodeIndex| {
-                let value = if SKIP_DISABLED {
-                    let from_all = || {
-                        self.raw
-                            .neighbors_directed(idx, I::direction())
-                            .map(|i| &self.raw[i])
-                    };
-                    initialiser.collect(&self.raw.graph[idx.0], from_all)
-                } else {
-                    let from_all = || {
-                        self.raw
-                            .graph
-                            .neighbors_directed(idx.0, I::direction())
-                            .map(|i| &self.raw.graph[i])
-                    };
-                    initialiser.collect(&self.raw.graph[idx.0], from_all)
+                let from_all = || {
+                    self.raw
+                        .from_all::<SKIP_DISABLED>(idx, I::direction())
+                        .map(|i| &self.raw[i])
                 };
+                let value = initialiser.collect(&self.raw.graph[idx.0], from_all);
                 initialiser.assign(&mut self.raw.graph[idx.0], value);
             };
             let iter = subgraph.nodes.iter().copied();

@@ -70,7 +70,7 @@ pub struct DefaultCost;
 impl CostInitialiser for DefaultCost {
     fn base(&mut self, node: &Node, _parser: &Z3Parser) -> f64 {
         match node.kind() {
-            NodeKind::Instantiation(_) if !node.disabled() => 1.0,
+            NodeKind::Instantiation(_) | NodeKind::Cdcl(_) if !node.disabled() => 1.0,
             _ => 0.0,
         }
     }
@@ -84,6 +84,7 @@ impl CostInitialiser for DefaultCost {
             }
             NodeKind::Instantiation(_) => 1,
             NodeKind::Proof(_) => 0,
+            NodeKind::Cdcl(_) => 1,
         }
     }
     fn transfer(

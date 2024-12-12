@@ -4,6 +4,7 @@ use gloo::file::File;
 use gloo_net::http::Response;
 use serde::{Deserialize, Serialize};
 use smt_log_parser::{
+    analysis::CdclAnalysis,
     parsers::{AsyncBufferRead, AsyncParser, ParseState, ReaderState, StreamParser},
     LogParser, Z3Parser,
 };
@@ -43,9 +44,11 @@ impl RcParser {
     pub fn new(parser: Box<Z3Parser>) -> Self {
         let colour_map = QuantIdxToColourMap::new(&parser);
         let summary = SummaryAnalysis::new(&parser);
+        let cdcl = CdclAnalysis::new(&parser);
         let parser = Parser {
             parser: RefCell::new(*parser),
             summary,
+            cdcl,
             colour_map,
         };
         Self(Rc::new(parser))
@@ -55,6 +58,7 @@ impl RcParser {
 pub struct Parser {
     pub parser: RefCell<Z3Parser>,
     pub summary: SummaryAnalysis,
+    pub cdcl: CdclAnalysis,
     pub colour_map: QuantIdxToColourMap,
 }
 

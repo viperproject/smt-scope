@@ -26,7 +26,7 @@ use crate::{
     utils::colouring::QuantIdxToColourMap,
 };
 
-use super::{filter::RenderCommand, visible::RcVisibleGraph, Graph, GraphM};
+use super::{filter::RenderCommand, visible::RcVisibleGraph, Graph, GraphM, GraphMode};
 
 impl Graph {
     pub(super) fn apply_filter(
@@ -34,7 +34,7 @@ impl Graph {
         parser: &Z3Parser,
         graph: &mut InstGraph,
         cmd: RenderCommand,
-        enable_proofs: bool,
+        mode: GraphMode,
     ) -> (bool, bool, bool) {
         if cmd.is_full() {
             self.disabler.apply(graph, parser);
@@ -59,7 +59,7 @@ impl Graph {
         }
         // Force instantiations which are parents of visible proof nodes to be
         // visible also (regardless of filters).
-        if enable_proofs {
+        if mode.is_proof() {
             for (idx, inst) in parser.instantiations().iter_enumerated() {
                 let Some(proof) = inst.proof_id.proof() else {
                     continue;
@@ -165,18 +165,19 @@ impl Graph {
                     let (from, to) = (fg[edge_data.source()].idx, fg[edge_data.target()].idx);
                     let edge = edge_data.weight();
                     let is_indirect = edge.is_indirect(graph);
+                    let last = graph.raw[edge.last()];
                     let blame = edge.kind(graph).blame(graph);
                     let (from, to) = (graph.raw[from].kind(), graph.raw[to].kind());
                     let all = edge.all(
                         (),
                         (is_indirect, *from, *to),
+                        (is_indirect, last),
                         is_indirect,
-                        is_indirect,
-                        blame,
+                        (last, blame),
                         (),
                         (),
                         (),
-                        (),
+                        last,
                     );
                     // For edges the `id` is the `VisibleEdgeIndex` from the VisibleGraph!
                     format!("id=edge_{} {all}", edge_data.id().index())

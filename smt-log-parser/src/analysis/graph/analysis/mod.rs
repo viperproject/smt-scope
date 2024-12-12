@@ -1,3 +1,4 @@
+pub mod cdcl;
 pub mod cost;
 pub mod depth;
 pub mod matching_loop;
@@ -100,6 +101,7 @@ impl InstGraph {
     pub fn initialise_first(&mut self, parser: &Z3Parser) {
         self.initialise_collect(ProofInitialiser::<false>, parser);
         self.initialise_collect(ProofInitialiser::<true>, parser);
+        self.initialise_cdcl(parser);
 
         self.initialise_default(parser);
     }

@@ -3,11 +3,11 @@ use core::fmt;
 use smt_log_parser::{
     analysis::{
         analysis::matching_loop::{MLGraphEdge, MLGraphNode, RecurrenceKind},
-        raw::{NodeKind, ProofReach},
+        raw::{CdclEdge, EdgeKind, NodeKind, ProofReach},
         visible::VisibleEdge,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::{ENodeIdx, MatchKind, QuantPat},
+    items::{CdclKind, ENodeIdx, MatchKind, QuantPat},
     Z3Parser,
 };
 
@@ -205,6 +205,13 @@ impl
                 let name = name.map(|n| &parser[n]).unwrap_or_default();
                 name.to_string()
             }
+            Cdcl(cdcl) => match &parser[cdcl].kind {
+                CdclKind::Root => "root",
+                CdclKind::Empty(..) => "empty",
+                CdclKind::Decision(..) => "decision",
+                CdclKind::Conflict(..) => "cut",
+            }
+            .to_string(),
         }
     }
 
@@ -226,6 +233,10 @@ impl
                     "filled"
                 }
             }
+            NodeKind::Cdcl(cdcl) => match &parser[cdcl].kind {
+                CdclKind::Root | CdclKind::Empty(..) => "filled,dashed",
+                _ => "filled",
+            },
             _ => "filled",
         }
     }
@@ -238,9 +249,9 @@ impl
             (Instantiation(..), _, 0) => "invhouse",
             (Instantiation(..), _, _) => "diamond",
             (ENode(..) | GivenEquality(..) | TransEquality(..), 0, 0) => OTHER_FULL_SHAPE,
-            (Proof(..), 0, 0) => PROOF_FULL_SHAPE,
+            (Proof(..) | Cdcl(..), 0, 0) => PROOF_FULL_SHAPE,
             (ENode(..) | GivenEquality(..) | TransEquality(..), _, _) => OTHER_SHAPE,
-            (Proof(..), _, _) => PROOF_SHAPE,
+            (Proof(..) | Cdcl(..), _, _) => PROOF_SHAPE,
         }
     }
 
@@ -268,12 +279,19 @@ impl
                     PROOF_COLOUR.to_owned()
                 }
             }
+            Cdcl(cdcl) => match (parser[cdcl].conflicts, reach.cdcl_dead_branch()) {
+                (true, _) => FALSE_COLOUR,
+                (false, true) => EQ_COLOUR,
+                (false, false) => PROOF_COLOUR,
+            }
+            .to_string(),
         }
     }
 
     fn ordering(&self, (): ()) -> &'static str {
         match self {
             NodeKind::Instantiation(..) => "in",
+            NodeKind::Cdcl(..) => "out",
             _ => "",
         }
     }
@@ -639,8 +657,18 @@ pub trait DotEdgeProperties<
     }
 }
 
-impl DotEdgeProperties<(), (bool, NodeKind, NodeKind), bool, bool, NodeKind, (), (), (), ()>
-    for VisibleEdge
+impl
+    DotEdgeProperties<
+        (),
+        (bool, NodeKind, NodeKind),
+        (bool, EdgeKind),
+        bool,
+        (EdgeKind, NodeKind),
+        (),
+        (),
+        (),
+        EdgeKind,
+    > for VisibleEdge
 {
     fn tooltip(&self, (is_indirect, from, to): (bool, NodeKind, NodeKind)) -> String {
         let arrow = match is_indirect {
@@ -650,7 +678,8 @@ impl DotEdgeProperties<(), (bool, NodeKind, NodeKind), bool, bool, NodeKind, (),
         format!("{} {arrow} {}", from.label(()), to.label(()))
     }
 
-    fn style(&self, is_indirect: bool) -> &'static str {
+    fn style(&self, (is_indirect, last): (bool, EdgeKind)) -> &'static str {
+        if let EdgeKind::Cdcl(CdclEdge::Backtrack) = last { return "dotted" }
         match is_indirect {
             true => "dashed",
             false => "solid",
@@ -664,10 +693,20 @@ impl DotEdgeProperties<(), (bool, NodeKind, NodeKind), bool, bool, NodeKind, (),
         }
     }
 
-    fn arrowhead(&self, blame: NodeKind) -> &'static str {
+    fn arrowhead(&self, (last, blame): (EdgeKind, NodeKind)) -> &'static str {
+        if matches!(last, EdgeKind::Cdcl(CdclEdge::RetryFrom)) {
+            return "none";
+        }
         match blame {
             NodeKind::GivenEquality(..) | NodeKind::TransEquality(_) => "empty",
             _ => "normal",
+        }
+    }
+
+    fn constraint(&self, last: EdgeKind) -> &'static str {
+        match last {
+            EdgeKind::Cdcl(CdclEdge::Backtrack) => "false",
+            _ => "",
         }
     }
 }

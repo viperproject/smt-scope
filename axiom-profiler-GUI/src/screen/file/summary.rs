@@ -106,6 +106,7 @@ pub fn Summary(props: &SummaryProps) -> Html {
         });
         let cost_proofs = html! {<div class="info-box">
             <h2 title="The hypotheses which were the most expensive to contradict.">{ "Most expensive hypotheses" }</h2>
+            <i>{ "Try providing their negation directly." }</i>
             <ul>
                 { for proofs }
             </ul>
@@ -116,6 +117,21 @@ pub fn Summary(props: &SummaryProps) -> Html {
             { cost_proofs }
         </>}
     });
+
+    let cdcl = props.parser.cdcl.uncut_assigns.iter().take(5);
+    let cdcl = cdcl.map(|&(p, c)| {
+        let p = format!("<code class=\"margin-left-half\">{}</code>", p.with(&ctxt));
+        let p = Html::from_html_unchecked(p.into());
+        html! { <li><div class="info-box-row">{ format!("{c}:") }{ p }</div></li> }
+    });
+    let cost_cdcl = html! {<div class="info-box">
+        <h2 title="The CDCL assignments which didn't lead to a conflict.">{ "Most common assignments" }</h2>
+        <i>{ "Try assigning the truth value directly." }</i>
+        <ul>
+            { for cdcl }
+        </ul>
+    </div>};
+
     let graph = props.analysis.clone().map(|analysis| {
         let file = props.file.clone();
         html! {
@@ -130,6 +146,7 @@ pub fn Summary(props: &SummaryProps) -> Html {
             { metrics }
             { most_quants }
             { analysis }
+            { cost_cdcl }
         </div>
         {graph}
     </div>}

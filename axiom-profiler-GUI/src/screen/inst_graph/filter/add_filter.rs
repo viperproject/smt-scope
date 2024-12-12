@@ -10,6 +10,7 @@ use yew::Callback;
 
 use crate::screen::{
     extra::{Action, SimpleButton},
+    inst_graph::GraphMode,
     ml::MlData,
 };
 
@@ -27,7 +28,15 @@ impl AddFilter<'_> {
         self.graph.analysis.ml_data.as_ref().map(MlData::from)
     }
 
-    pub fn general(self) -> Vec<SimpleButton> {
+    pub fn general(self, mode: GraphMode) -> Vec<SimpleButton> {
+        match mode {
+            GraphMode::Inst => self.inst(),
+            GraphMode::Proof => self.proof(),
+            GraphMode::Cdcl => vec![],
+        }
+    }
+
+    fn inst(self) -> Vec<SimpleButton> {
         let enable_ml = self
             .ml_data()
             .is_some_and(|mls| mls.maybe_mls + mls.sure_mls > 0);
@@ -50,7 +59,7 @@ impl AddFilter<'_> {
         self.filters_to_buttons(filters.into_iter())
     }
 
-    pub fn proof(self) -> Vec<SimpleButton> {
+    fn proof(self) -> Vec<SimpleButton> {
         let filters = [
             (true, Filter::HideUnitNodes, vec![]),
             (true, Filter::MaxNodeIdx(1000), vec![]),
@@ -169,7 +178,7 @@ impl AddFilter<'_> {
         filters
             .map(|(enabled, first, other)| {
                 let icon = first.icon();
-                let fc = |i| enabled.then(|| *self.graph.raw[i].kind());
+                let fc = |i: RawNodeIndex| enabled.then(|| *self.graph.raw[i].kind());
                 let short_text = first
                     .short_text(fc)
                     .split(['|', '"', '$'])

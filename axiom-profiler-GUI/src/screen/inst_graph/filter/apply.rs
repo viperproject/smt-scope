@@ -256,6 +256,7 @@ impl Disabler {
                     parents == 0 || (parents == 1 && children == 1)
                 }
                 NodeKind::Proof(proof) => parser[proof].kind.is_trivial(),
+                NodeKind::Cdcl(_) => false,
             },
         }
     }

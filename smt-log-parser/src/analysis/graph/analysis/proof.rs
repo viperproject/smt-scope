@@ -42,12 +42,13 @@ impl<const FORWARD: bool> Initialiser<FORWARD, 3> for ProofInitialiser<FORWARD> 
     }
     fn assign(&mut self, node: &mut Node, value: Self::Value) {
         if FORWARD {
-            node.proof = value & FORWARD_MASK | node.proof & REVERSE_MASK;
+            node.proof = (value & FORWARD_MASK) | (node.proof & FORWARD_MASK.not());
         } else {
-            node.proof = value & REVERSE_MASK | node.proof & FORWARD_MASK;
+            node.proof = (value & REVERSE_MASK) | (node.proof & REVERSE_MASK.not());
         }
     }
 }
+
 impl<const FORWARD: bool> CollectInitialiser<FORWARD, false, 3> for ProofInitialiser<FORWARD> {
     fn collect<'n, T: Iterator<Item = &'n Node>>(
         &mut self,

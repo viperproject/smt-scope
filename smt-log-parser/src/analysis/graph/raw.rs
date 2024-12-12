@@ -15,8 +15,8 @@ use petgraph::{
 use crate::{
     graph_idx,
     items::{
-        ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx, StackIdx,
-        TransitiveExplSegmentKind,
+        CdclIdx, ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx,
+        StackIdx, TransitiveExplSegmentKind,
     },
     DiGraph, FxHashMap, FxHashSet, NonMaxU32, Result, Z3Parser,
 };
@@ -32,6 +32,7 @@ pub struct RawInstGraph {
     eq_trans_idx: RawNodeIndex,
     eq_given_idx: FxHashMap<(EqGivenIdx, Option<NonMaxU32>), RawNodeIndex>,
     proofs_idx: RawNodeIndex,
+    cdcl_idx: RawNodeIndex,
 
     pub(crate) stats: GraphStats,
 }
@@ -79,6 +80,11 @@ impl RawInstGraph {
         for ps_idx in parser.proofs().keys() {
             graph.add_node(Node::new(NodeKind::Proof(ps_idx)));
         }
+        let cdcl_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
+        for cdcl in parser.cdcls().keys() {
+            graph.add_node(Node::new(NodeKind::Cdcl(cdcl)));
+        }
+
         let stats = GraphStats {
             hidden: graph.node_count() as u32,
             disabled: 0,
@@ -91,6 +97,7 @@ impl RawInstGraph {
             eq_given_idx,
             eq_trans_idx,
             proofs_idx,
+            cdcl_idx,
             stats,
         };
 
@@ -178,6 +185,24 @@ impl RawInstGraph {
             self_.add_edge(iidx, proof, EdgeKind::YieldProof);
         }
 
+        // Add cdcl edges
+        for cidx in parser.cdcls().keys() {
+            let backlink = parser.cdcl.backlink(cidx);
+            match (backlink.previous, backlink.backtrack) {
+                (Some(previous), Some(backtrack)) => {
+                    self_.add_edge(backtrack, cidx, EdgeKind::Cdcl(CdclEdge::RetryFrom));
+                    self_.add_edge(previous, cidx, EdgeKind::Cdcl(CdclEdge::Backtrack));
+                }
+                (Some(previous), None) => {
+                    self_.add_edge(previous, cidx, EdgeKind::Cdcl(CdclEdge::Decide))
+                }
+                (None, Some(sidetrack)) => {
+                    self_.add_edge(sidetrack, cidx, EdgeKind::Cdcl(CdclEdge::Sidetrack))
+                }
+                (None, None) => (),
+            }
+        }
+
         debug_assert!(
             !petgraph::algo::is_cyclic_directed(&*self_.graph),
             "Graph is cyclic, this should not happen by construction!"
@@ -202,6 +227,7 @@ impl RawInstGraph {
             NodeKind::TransEquality(eq) => eq.index(self),
             NodeKind::Instantiation(inst) => inst.index(self),
             NodeKind::Proof(ps) => ps.index(self),
+            NodeKind::Cdcl(cdcl) => cdcl.index(self),
         }
     }
 
@@ -347,6 +373,9 @@ pub enum ProofReach {
     ReachesProof,
     ReachesNonTrivialProof,
     ReachesFalse,
+
+    /// Is this a CDCL dead branch (i.e. all children lead to a contradiction)
+    CdclDeadBranch,
 }
 
 impl ProofReach {
@@ -368,6 +397,10 @@ impl ProofReach {
     }
     pub fn reaches_false(self) -> bool {
         self.contains(ProofReach::ReachesFalse)
+    }
+
+    pub fn cdcl_dead_branch(self) -> bool {
+        self.contains(ProofReach::CdclDeadBranch)
     }
 }
 
@@ -411,6 +444,7 @@ impl Node {
             NodeKind::ENode(eidx) => Some(parser[eidx].frame),
             NodeKind::GivenEquality(..) | NodeKind::TransEquality(_) => None,
             NodeKind::Proof(psidx) => Some(parser[psidx].frame),
+            NodeKind::Cdcl(cdcl) => Some(parser[cdcl].frame),
         }
     }
 }
@@ -452,6 +486,7 @@ pub enum NodeKind {
     /// `Instantiation`.
     /// **Children:** (small) arbitrary count, will always be `Proof`.
     Proof(ProofIdx),
+    Cdcl(CdclIdx),
 }
 
 impl fmt::Display for NodeKind {
@@ -468,6 +503,7 @@ impl fmt::Display for NodeKind {
             NodeKind::TransEquality(eq) => write!(f, "{eq:?}"),
             NodeKind::Instantiation(inst) => write!(f, "{inst:?}"),
             NodeKind::Proof(ps) => write!(f, "{ps:?}"),
+            NodeKind::Cdcl(cdcl) => write!(f, "{cdcl:?}"),
         }
     }
 }
@@ -503,9 +539,16 @@ impl NodeKind {
             _ => None,
         }
     }
+    pub fn cdcl(&self) -> Option<CdclIdx> {
+        match self {
+            Self::Cdcl(cdcl) => Some(*cdcl),
+            _ => None,
+        }
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[derive(Debug, Clone, Copy)]
 pub enum EdgeKind {
     /// Instantiation -> ENode
@@ -526,6 +569,22 @@ pub enum EdgeKind {
     ProofStep,
     /// Instantiation -> Proof
     YieldProof,
+    /// Cdcl -> Cdcl
+    Cdcl(CdclEdge),
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
+#[derive(Debug, Clone, Copy)]
+pub enum CdclEdge {
+    /// Edge deeper into the CDCL tree
+    Decide,
+    /// Edge back to a higher level in the tree
+    Backtrack,
+    /// Edge to a side branch which may later be popped by the user.
+    Sidetrack,
+    /// Edge linking a backtracked node to the correct place in the tree.
+    RetryFrom,
 }
 
 pub trait IndexesInstGraph {
@@ -562,6 +621,13 @@ impl IndexesInstGraph for ProofIdx {
         ))
     }
 }
+impl IndexesInstGraph for CdclIdx {
+    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
+        RawNodeIndex(NodeIndex::new(
+            graph.cdcl_idx.0.index() + usize::from(*self),
+        ))
+    }
+}
 impl IndexesInstGraph for RawNodeIndex {
     fn index(&self, _graph: &RawInstGraph) -> RawNodeIndex {
         *self
@@ -579,6 +645,13 @@ impl<T: IndexesInstGraph> IndexMut<T> for RawInstGraph {
     fn index_mut(&mut self, index: T) -> &mut Self::Output {
         let index = index.index(self);
         &mut self.graph[index.0]
+    }
+}
+
+impl Index<RawEdgeIndex> for RawInstGraph {
+    type Output = EdgeKind;
+    fn index(&self, index: RawEdgeIndex) -> &Self::Output {
+        &self.graph[index.0]
     }
 }
 

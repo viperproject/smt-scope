@@ -2,7 +2,9 @@ use cap::Cap;
 use std::time::{Duration, Instant};
 
 use mem_dbg::*;
-use smt_log_parser::analysis::{InstGraph, LogInfo, QuantifierAnalysis};
+use smt_log_parser::analysis::{
+    CdclAnalysis, InstGraph, LogInfo, ProofAnalysis, QuantifierAnalysis,
+};
 use smt_log_parser::{LogParser, Z3Parser};
 
 #[global_allocator]
@@ -27,7 +29,7 @@ fn parse_all_logs() {
         .unwrap()
         .map(|r| r.unwrap())
         .collect();
-    all_logs.sort_by_key(|dir| dir.path());
+    all_logs.sort_by_key(|dir| dir.metadata().unwrap().len());
     for log in all_logs {
         // Put things in a thread to isolate memory usage more than the default.
         let t = std::thread::spawn(move || {
@@ -73,7 +75,7 @@ fn parse_all_logs() {
             max_parse_ovhd = f64::max(max_parse_ovhd, mem_size as f64 / parse_bytes as f64);
             println!(
                 "Finished parsing in {elapsed:?} ({} kB/ms). Memory use {} MB / {} MB (real {} MB):",
-                parse_bytes_kb / elapsed.as_millis() as u64,
+                1000 * parse_bytes_kb / elapsed.as_micros() as u64,
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
                 mem_size / mb as usize,
@@ -99,8 +101,10 @@ fn parse_all_logs() {
 
             let now = Instant::now();
             let _log_info = LogInfo::new(&parser);
+            let _cdcl_info = CdclAnalysis::new(&parser);
             let mut inst_graph = InstGraph::new(&parser).unwrap();
             let _quant_info = QuantifierAnalysis::new(&parser, &inst_graph);
+            let _proof_info = ProofAnalysis::new(&parser, &inst_graph);
             let elapsed_ig = now.elapsed();
             assert!(
                 elapsed_ig < timeout,
@@ -116,11 +120,12 @@ fn parse_all_logs() {
             max_analysis_ovhd = f64::max(max_analysis_ovhd, mem_size as f64 / parse_bytes as f64);
             let (sure_mls, maybe_mls) = inst_graph.found_matching_loops().unwrap();
             println!(
-                "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {sure_mls}+{maybe_mls} mls. Memory use {} MB / {} MB:",
+                "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {sure_mls}+{maybe_mls} mls. Memory use {} MB / {} MB (real {} MB):",
                 (parse_bytes_kb as u128 * 1000) / elapsed.as_micros(),
                 inst_graph.raw.graph.node_count(),
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
+                mem_size / mb as usize,
             );
             inst_graph.mem_dbg(DbgFlags::default()).ok();
             println!();

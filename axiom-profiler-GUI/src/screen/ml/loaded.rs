@@ -8,7 +8,7 @@ use crate::{
         extra::{Omnibox, OmniboxChoose},
         inst_graph::{
             filter::{Filter, DEFAULT_DISABLER_CHAIN},
-            GraphExtraProps, GraphProps,
+            GraphExtraProps, GraphMode, GraphProps,
         },
         Scope,
     },
@@ -78,7 +78,7 @@ impl MatchingLoopLoaded {
                     swap_split: false,
                     info_top: Self::renderer(link, props, initial),
                 }),
-                enable_proofs: false,
+                mode: GraphMode::Inst,
             };
             MatchingLoopRendering {
                 idx: initial,

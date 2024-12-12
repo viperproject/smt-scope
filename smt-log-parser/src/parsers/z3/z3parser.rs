@@ -37,7 +37,7 @@ pub struct Z3Parser {
     pub(crate) egraph: EGraph,
     pub(crate) stack: Stack,
 
-    pub(crate) cdcl: CdclTree,
+    pub cdcl: CdclTree,
 
     pub strings: StringTable,
     pub events: EventLog,
@@ -860,8 +860,7 @@ impl Z3LogParser for Z3Parser {
         let assign = self.parse_literal(&mut l)?.ok_or(E::UnexpectedNewline)?;
         let mut justification = l.next().ok_or(E::UnexpectedNewline)?;
         if justification == "decision" {
-            let frame = self.stack.active_frame();
-            self.cdcl.new_decision(assign, frame)?;
+            self.cdcl.new_decision(assign, &self.stack)?;
             justification = l.next().ok_or(E::UnexpectedNewline)?;
             debug_assert_eq!(justification, "axiom");
         }
@@ -995,6 +994,9 @@ impl Z3Parser {
     }
     pub fn proofs(&self) -> &TiSlice<ProofIdx, ProofStep> {
         self.terms.proof_terms.terms()
+    }
+    pub fn cdcls(&self) -> &TiSlice<CdclIdx, Cdcl> {
+        self.cdcl.cdcls()
     }
 
     pub fn patterns(&self, q: QuantIdx) -> Option<&TiSlice<PatternIdx, TermIdx>> {

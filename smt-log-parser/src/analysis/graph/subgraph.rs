@@ -73,12 +73,14 @@ impl RawInstGraph {
 
             // Construct subgraph
             let idx = subgraphs.next_key();
+            let is_cdcl = self[node].kind().cdcl().is_some();
             let (subgraph, discovered_) = Subgraph::new(
                 node,
                 &mut self.graph,
                 discovered,
                 |node, i| node.subgraph = Some((idx, i)),
                 |node| node.subgraph.unwrap().1,
+                !is_cdcl,
             )?;
             discovered = discovered_;
             subgraphs.raw.try_reserve(1)?;
@@ -125,6 +127,7 @@ impl Subgraph {
         mut visit: VisitBox<D>,
         mut f: impl FnMut(&mut N, u32),
         c: impl Fn(&N) -> u32,
+        calc_trans: bool,
     ) -> Result<(Self, VisitBox<D>)> {
         let mut start_nodes = Vec::new();
 
@@ -164,7 +167,7 @@ impl Subgraph {
 
         // Transitive closure
         let mut reach_fwd = TransitiveClosure(vec![RoaringBitmap::new(); nodes.len()]);
-        {
+        if calc_trans {
             let mut reach_fwd = &mut *reach_fwd.0;
             let mut reverse_topo = nodes.iter().enumerate().rev();
             while let (Some((idx, node)), Some((curr, others))) =

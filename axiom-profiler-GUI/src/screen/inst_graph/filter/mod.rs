@@ -27,7 +27,7 @@ use crate::{
 
 use self::add_filter::AddFilter;
 
-use super::{Graph, GraphDimensions, GraphM};
+use super::{Graph, GraphDimensions, GraphM, GraphMode};
 
 pub use chain::*;
 pub use manage_filter::*;
@@ -266,7 +266,7 @@ impl FiltersState {
         new_filter: &Callback<Filter>,
         selected: &[RawNodeIndex],
         reset: Option<Callback<()>>,
-        enable_proofs: bool,
+        mode: GraphMode,
     ) -> Topbar {
         let add_filter = AddFilter {
             parser,
@@ -274,11 +274,7 @@ impl FiltersState {
             new_filter,
         };
 
-        let mut dropdown = if enable_proofs {
-            add_filter.proof()
-        } else {
-            add_filter.general()
-        };
+        let mut dropdown = add_filter.general(mode);
         dropdown.push(SimpleButton {
             icon: "restore",
             text: "Reset operations".to_string(),
@@ -301,15 +297,15 @@ impl FiltersState {
 pub struct DisablersState {
     disablers_modified: bool,
     disablers: Vec<(Disabler, bool)>,
-    enable_proofs: bool,
+    mode: GraphMode,
 }
 
 impl DisablersState {
-    pub fn new(disablers: Vec<(Disabler, bool)>, enable_proofs: bool) -> Self {
+    pub fn new(disablers: Vec<(Disabler, bool)>, mode: GraphMode) -> Self {
         DisablersState {
             disablers_modified: true,
             disablers,
-            enable_proofs,
+            mode,
         }
     }
 
@@ -330,12 +326,14 @@ impl DisablersState {
         graph.reset_disabled_to(parser, |node, graph| {
             // TODO: hardcoded disabling based on two modes, change this
             let n = &graph[node];
-            let allowed = if self.enable_proofs {
-                matches!(n.kind(), NodeKind::Instantiation(..) | NodeKind::Proof(..))
-                    && n.proof.reaches_proof()
-                    && (!non_trivial_disabled || n.proof.reaches_non_trivial_proof())
-            } else {
-                n.kind().proof().is_none()
+            let allowed = match self.mode {
+                GraphMode::Inst => n.kind().proof().is_none(),
+                GraphMode::Proof => {
+                    matches!(n.kind(), NodeKind::Instantiation(..) | NodeKind::Proof(..))
+                        && n.proof.reaches_proof()
+                        && (!non_trivial_disabled || n.proof.reaches_non_trivial_proof())
+                }
+                GraphMode::Cdcl => n.kind().cdcl().is_some(),
             };
             if !allowed {
                 return true;

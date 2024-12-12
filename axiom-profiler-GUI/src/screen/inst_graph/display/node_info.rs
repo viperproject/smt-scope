@@ -2,13 +2,13 @@ use std::rc::Rc;
 
 use smt_log_parser::{
     analysis::{
-        raw::{EdgeKind, Node, NodeKind, RawInstGraph},
+        raw::{CdclEdge, EdgeKind, Node, NodeKind, RawInstGraph},
         visible::{VisibleEdge, VisibleEdgeKind},
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
-    items::{MatchKind, VarNames},
+    items::{CdclKind, MatchKind, VarNames},
 };
 use yew::{
     function_component, html, use_context, AttrValue, Callback, Html, MouseEvent, Properties,
@@ -68,6 +68,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 }
             }
             NodeKind::Proof(_) => "Proof",
+            NodeKind::Cdcl(_) => "CDCL",
         }
     }
     pub fn description(&self) -> Html {
@@ -101,6 +102,16 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 let detail = self.ctxt.parser[pidx].result.with(self.ctxt).to_string();
                 ("Proved", detail)
             }
+            NodeKind::Cdcl(cdcl) => match &self.ctxt.parser[cdcl].kind {
+                CdclKind::Root => ("Root", "(no assignment)".to_string()),
+                CdclKind::Empty(..) => ("Empty", "(no assignment)".to_string()),
+                CdclKind::Decision(assign) => ("Decision", assign.with(self.ctxt).to_string()),
+                CdclKind::Conflict(conflict) => {
+                    let cut = conflict.cut.iter();
+                    let cut: String = cut.map(|c| format!("<br>{}", c.with(self.ctxt))).collect();
+                    ("Cut (or'd)", cut)
+                }
+            },
         }
     }
 
@@ -194,6 +205,18 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             hypotheses
                 .into_iter()
                 .map(|h| parser[h].result.with(self.ctxt).to_string())
+                .collect(),
+        )
+    }
+
+    // CDCL specific
+    pub fn propagates(&self) -> Option<Vec<String>> {
+        let cdcl = self.node.kind().cdcl()?;
+        let propagates = &self.ctxt.parser[cdcl].propagates;
+        Some(
+            propagates
+                .iter()
+                .map(|assign| assign.with(self.ctxt).to_string())
                 .collect(),
         )
     }
@@ -314,6 +337,12 @@ pub fn SelectedNodesInfo(
                 }
             });
             let proof_hr = proof_step_name.is_some().then(|| html! { <hr/> });
+            let propagates = info.propagates().filter(|p| !p.is_empty()).map(|propagates| {
+                let propagates: Html = propagates.into_iter().map(|propagate| html! {
+                    <InfoLine header="Propagate" text={propagate} code=true />
+                }).collect();
+                html! { <>{propagates}<hr/></> }
+            });
             let extra_info = info.extra_info().map(|extra_info| {
                 let extra_info: Html = extra_info.into_iter().map(|(header, info)| html! {
                     <InfoLine {header} text={info} code=true />
@@ -334,6 +363,7 @@ pub fn SelectedNodesInfo(
                     {hypotheses}
                     {prerequisites}
                     {proof_hr}
+                    {propagates}
                     {extra_info}
                     <InfoLine header="Cost"     text={format!("{:.1}", info.node.cost)} code=false />
                     <InfoLine header="To Root"  text={format!("short {}, long {}", info.node.fwd_depth.min, info.node.fwd_depth.max)} code=false />
@@ -391,6 +421,12 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
             ),
             Direct(_, EdgeKind::ProofStep) => "Proof Step".to_string(),
             Direct(_, EdgeKind::YieldProof) => "Instantiation Proof Step".to_string(),
+            Direct(_, EdgeKind::Cdcl(kind)) => match kind {
+                CdclEdge::Decide => "Decide".to_string(),
+                CdclEdge::RetryFrom => "Retry".to_string(),
+                CdclEdge::Backtrack => "Backtrack".to_string(),
+                CdclEdge::Sidetrack => "Sidetrack".to_string(),
+            },
             YieldBlame { pattern_term, .. } => {
                 format!("Yield/Blame pattern #{pattern_term}")
             }

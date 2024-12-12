@@ -71,7 +71,7 @@ pub trait TopoAnalysis<const FORWARD: bool, const SKIP_DISABLED: bool> {
 }
 
 impl RawInstGraph {
-    fn from_all<const SKIP_DISABLED: bool>(
+    fn neighbors_directed_<const SKIP_DISABLED: bool>(
         &self,
         curr: RawNodeIndex,
         dir: Direction,
@@ -118,13 +118,15 @@ impl InstGraph {
                     analysis.collect(self, curr, node, core::iter::empty)
                 } else {
                     let from_all = || {
-                        self.raw.from_all::<SKIP_DISABLED>(curr, dir).map(|i| {
-                            let data = &data[i];
-                            // Safety: The data is initialised as the graph is a DAG
-                            // and we are traversing in a topological order.
-                            let data = unsafe { data.assume_init_ref() };
-                            (i, data)
-                        })
+                        self.raw
+                            .neighbors_directed_::<SKIP_DISABLED>(curr, dir)
+                            .map(|i| {
+                                let data = &data[i];
+                                // Safety: The data is initialised as the graph is a DAG
+                                // and we are traversing in a topological order.
+                                let data = unsafe { data.assume_init_ref() };
+                                (i, data)
+                            })
                     };
                     analysis.collect(self, curr, node, from_all)
                 };
@@ -173,7 +175,7 @@ impl InstGraph {
             let for_each = |idx: RawNodeIndex| {
                 let from_all = || {
                     self.raw
-                        .from_all::<SKIP_DISABLED>(idx, I::direction())
+                        .neighbors_directed_::<SKIP_DISABLED>(idx, I::direction())
                         .map(|i| &self.raw[i])
                 };
                 let value = initialiser.collect(&self.raw.graph[idx.0], from_all);

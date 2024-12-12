@@ -108,7 +108,11 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 CdclKind::Decision(assign) => ("Decision", assign.with(self.ctxt).to_string()),
                 CdclKind::Conflict(conflict) => {
                     let cut = conflict.cut.iter();
-                    let cut: String = cut.map(|c| format!("<br>{}", c.with(self.ctxt))).collect();
+                    let cut = cut.fold(String::new(), |mut f, c| {
+                        use std::fmt::Write;
+                        let _ = write!(f, "<br>{}", c.with(self.ctxt));
+                        f
+                    });
                     ("Cut (or'd)", cut)
                 }
             },

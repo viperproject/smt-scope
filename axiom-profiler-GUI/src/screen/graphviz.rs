@@ -679,7 +679,9 @@ impl
     }
 
     fn style(&self, (is_indirect, last): (bool, EdgeKind)) -> &'static str {
-        if let EdgeKind::Cdcl(CdclEdge::Backtrack) = last { return "dotted" }
+        if let EdgeKind::Cdcl(CdclEdge::Backtrack) = last {
+            return "dotted";
+        }
         match is_indirect {
             true => "dashed",
             false => "solid",

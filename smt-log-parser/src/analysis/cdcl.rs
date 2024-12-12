@@ -24,7 +24,7 @@ impl AssignCount {
         }
     }
 
-    fn to_vec(self) -> Vec<(Assignment, u32)> {
+    fn into_vec(self) -> Vec<(Assignment, u32)> {
         let mut v = self
             .0
             .into_iter()
@@ -75,8 +75,8 @@ impl CdclAnalysis {
                 uncut_assigns.insert(assign);
             }
         }
-        let uncut_assigns = uncut_assigns.to_vec();
-        let cut_assigns = cut_assigns.to_vec();
+        let uncut_assigns = uncut_assigns.into_vec();
+        let cut_assigns = cut_assigns.into_vec();
         Self {
             uncut_assigns,
             cut_assigns,

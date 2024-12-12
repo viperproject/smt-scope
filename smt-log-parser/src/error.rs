@@ -78,7 +78,7 @@ pub enum Error {
     // Enode
     UnknownEnode(TermIdx),
     EnodePoppedFrame(StackIdx),
-    InvalidGeneration(ParseIntError),
+    InvalidGeneration(nonmax::ParseIntError),
     EnodeRootMismatch(ENodeIdx, ENodeIdx),
 
     // Stack
@@ -90,7 +90,7 @@ pub enum Error {
     NoConflict,
     BoolLiteral,
     BoolLiteralNotP,
-    InvalidBoolLiteral(ParseIntError),
+    InvalidBoolLiteral(nonmax::ParseIntError),
     UnknownJustification(String),
     MissingColonJustification,
 

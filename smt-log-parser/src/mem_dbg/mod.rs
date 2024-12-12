@@ -110,6 +110,12 @@ macro_rules! derive_non_max {
                 self.0.fmt(f)
             }
         }
+        impl core::str::FromStr for $name {
+            type Err = <nonmax::$name as core::str::FromStr>::Err;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                nonmax::$name::from_str(s).map(Self)
+            }
+        }
     };
 }
 

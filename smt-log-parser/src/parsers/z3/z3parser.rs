@@ -1,7 +1,4 @@
-use core::{
-    num::{NonZeroU32, NonZeroUsize},
-    ops::Index,
-};
+use core::{num::NonZeroUsize, ops::Index};
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
@@ -102,8 +99,8 @@ impl Z3Parser {
         l: &mut impl Iterator<Item = &'a str>,
     ) -> Result<Option<NonMaxU32>> {
         if let Some(gen) = l.next() {
-            let gen = gen.parse::<u32>().map_err(E::InvalidGeneration)?;
-            Ok(Some(NonMaxU32::new(gen).unwrap()))
+            let gen = gen.parse::<NonMaxU32>().map_err(E::InvalidGeneration)?;
+            Ok(Some(gen))
         } else {
             Ok(None)
         }
@@ -386,7 +383,7 @@ impl Z3Parser {
     fn parse_bool_literal<'a>(
         &mut self,
         l: &mut impl Iterator<Item = &'a str>,
-    ) -> Result<Option<(Option<NonZeroU32>, bool)>> {
+    ) -> Result<Option<(Option<NonMaxU32>, bool)>> {
         let Some(lit) = l.next() else {
             return Ok(None);
         };
@@ -410,7 +407,7 @@ impl Z3Parser {
             };
             (lit.strip_prefix('p').ok_or(E::BoolLiteralNotP)?, value)
         };
-        let bool_lit = lit.parse::<NonZeroU32>().map_err(E::InvalidBoolLiteral)?;
+        let bool_lit = lit.parse::<NonMaxU32>().map_err(E::InvalidBoolLiteral)?;
         Ok(Some((Some(bool_lit), value)))
     }
 }

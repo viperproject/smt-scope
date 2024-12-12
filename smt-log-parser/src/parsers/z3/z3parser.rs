@@ -1,4 +1,7 @@
-use core::{num::NonZeroUsize, ops::Index};
+use core::{
+    num::{NonZeroU32, NonZeroUsize},
+    ops::Index,
+};
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
@@ -358,12 +361,15 @@ impl Z3Parser {
         let Some(lit) = l.next() else {
             return Ok(None);
         };
-        let (lit, value) = if lit == "(not" {
-            let lit = l.next().ok_or(E::UnexpectedNewline)?;
-            let lit = lit.strip_suffix(')').ok_or(E::TupleMissingParens)?;
-            (lit, false)
-        } else {
-            (lit, true)
+        let (lit, value) = match lit {
+            // Have never seen this, but it is possible according to z3 source.
+            "true" | "false" => return Err(E::BoolLiteral),
+            "(not" => {
+                let lit = l.next().ok_or(E::UnexpectedNewline)?;
+                let lit = lit.strip_suffix(')').ok_or(E::TupleMissingParens)?;
+                (lit, false)
+            }
+            _ => (lit, true),
         };
         let literal = self.parse_existing_app(lit)?;
         Ok(Some(Assignment { literal, value }))
@@ -375,14 +381,21 @@ impl Z3Parser {
     ///
     /// These look like `p123` and `(not p123)` in <= v4.8.9, or `123`
     /// and `-123` in >= v4.8.10. Unfortunately we don't have the
-    /// `m_bool_var2expr` map so can't translate these back to a `TermIdx`.
+    /// `m_bool_var2expr` map so can't translate these back to a `TermIdx`. The
+    /// literal is rarely also `true` or `false` (for which this returns `None`)
     fn parse_bool_literal<'a>(
         &mut self,
         l: &mut impl Iterator<Item = &'a str>,
-    ) -> Result<Option<(u32, bool)>> {
+    ) -> Result<Option<(Option<NonZeroU32>, bool)>> {
         let Some(lit) = l.next() else {
             return Ok(None);
         };
+        match lit {
+            "true" => return Ok(Some((None, true))),
+            "false" => return Ok(Some((None, false))),
+            _ => (),
+        };
+
         let new_mode = self.version_info.is_ge_version(4, 8, 10);
         let (lit, value) = if new_mode {
             let noneg = lit.strip_prefix('-');
@@ -397,8 +410,8 @@ impl Z3Parser {
             };
             (lit.strip_prefix('p').ok_or(E::BoolLiteralNotP)?, value)
         };
-        let bool_lit = lit.parse::<u32>().map_err(E::InvalidBoolLiteral)?;
-        Ok(Some((bool_lit, value)))
+        let bool_lit = lit.parse::<NonZeroU32>().map_err(E::InvalidBoolLiteral)?;
+        Ok(Some((Some(bool_lit), value)))
     }
 }
 

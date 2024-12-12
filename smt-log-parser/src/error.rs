@@ -88,6 +88,7 @@ pub enum Error {
 
     // CDCL
     NoConflict,
+    BoolLiteral,
     BoolLiteralNotP,
     InvalidBoolLiteral(ParseIntError),
     UnknownJustification(String),

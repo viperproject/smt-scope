@@ -386,6 +386,7 @@ li input.td-matcher, li input.td-formatter {
 }
 .summary .info-boxes {
     display: flex;
+    overflow: auto;
 }
 .summary .info-box-row {
     display: flex;

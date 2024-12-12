@@ -7,7 +7,7 @@ mod manage_filter;
 use material_yew::icon::MatIcon;
 use petgraph::Direction;
 use smt_log_parser::{
-    analysis::{raw::NodeKind, InstGraph, RawNodeIndex},
+    analysis::{InstGraph, RawNodeIndex},
     items::QuantIdx,
     Z3Parser,
 };
@@ -336,17 +336,16 @@ impl DisablersState {
         graph.reset_disabled_to(parser, |node, graph| {
             // TODO: hardcoded disabling based on two modes, change this
             let n = &graph[node];
-            let allowed = match self.mode {
-                GraphMode::Inst => n.kind().proof().is_none(),
-                GraphMode::Proof => {
-                    matches!(n.kind(), NodeKind::Instantiation(..) | NodeKind::Proof(..))
-                        && n.proof.reaches_proof()
-                        && (!non_trivial_disabled || n.proof.reaches_non_trivial_proof())
-                }
-                GraphMode::Cdcl => n.kind().cdcl().is_some(),
-            };
-            if !allowed {
+            if !self.mode.is_allowed(n.kind()) {
                 return true;
+            }
+            if self.mode.is_proof() {
+                if !n.proof.reaches_proof() {
+                    return true;
+                }
+                if non_trivial_disabled && !n.proof.reaches_non_trivial_proof() {
+                    return true;
+                }
             }
 
             self.disablers().any(|d| d.disable(node, graph, parser))

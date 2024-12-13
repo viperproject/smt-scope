@@ -37,15 +37,6 @@ impl Deref for CommandRegisterer {
     }
 }
 
-#[derive(Clone)]
-pub struct HistoryRegisterer(Rc<dyn Fn(Command, bool) -> CommandRef>);
-impl Deref for HistoryRegisterer {
-    type Target = dyn Fn(Command, bool) -> CommandRef;
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
-
 pub struct CommandRef(Box<dyn Fn()>, Box<dyn Fn(bool)>);
 impl Drop for CommandRef {
     fn drop(&mut self) {
@@ -159,6 +150,10 @@ pub struct ShortcutKey {
 
 impl ShortcutKey {
     pub const fn automatic(key: Key, cmd: bool, ctrl: bool, alt: bool, shift: bool) -> Shortcut {
+        assert!(
+            !(key.ignore_shift() && shift),
+            "non-letter/special keys will always register without shift"
+        );
         Shortcut::Automatic(Self {
             key,
             cmd,
@@ -180,6 +175,8 @@ impl ShortcutKey {
     pub fn alt<K: Into<Key>>(key: K) -> Shortcut {
         Self::automatic(key.into(), false, false, true, false)
     }
+    /// Only valid for letter or special keys (e.g. 'a'-'z', enter, escape). All
+    /// other keys ignore shift and should not use this function.
     pub fn shift<K: Into<Key>>(key: K) -> Shortcut {
         Self::automatic(key.into(), false, false, false, true)
     }
@@ -211,12 +208,12 @@ impl TryFrom<&KeyboardEvent> for ShortcutKey {
             cmd,
             ctrl,
             alt,
-            shift,
+            shift: shift && !key.ignore_shift(),
         })
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Key {
     Escape,
     Enter,
@@ -225,7 +222,13 @@ pub enum Key {
 
 impl From<char> for Key {
     fn from(c: char) -> Self {
-        Self::Char(c)
+        Self::Char(c.to_ascii_lowercase())
+    }
+}
+
+impl Key {
+    pub const fn ignore_shift(&self) -> bool {
+        matches!(self, Key::Char(c) if c.to_ascii_uppercase() == c.to_ascii_lowercase())
     }
 }
 

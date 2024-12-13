@@ -14,22 +14,30 @@ pub struct DropdownCtxt {
     pub toggle: Callback<Option<bool>>,
 
     pub last_hovered: Option<DropdownIdx>,
-    pub set_dropdown: Callback<DropdownIdx>,
+    pub set_dropdown: Callback<Option<DropdownIdx>>,
 }
 
 pub trait DropdownContext {
-    fn get_toggle(&self) -> Option<Callback<Option<bool>>>;
+    fn toggle_dropdown(&self, set: Option<bool>) -> Option<()>;
+    fn toggle_dropdown_idx(&self, set: Option<bool>, idx: DropdownIdx) -> Option<()>;
 }
 impl<T: Component> DropdownContext for html::Scope<T> {
-    fn get_toggle(&self) -> Option<Callback<Option<bool>>> {
-        self.context(Callback::noop())
-            .map(|(c, _): (DropdownCtxt, _)| c.toggle)
+    fn toggle_dropdown(&self, set: Option<bool>) -> Option<()> {
+        let (c, _) = self.context::<DropdownCtxt>(Callback::noop())?;
+        c.toggle.emit(set);
+        Some(())
+    }
+    fn toggle_dropdown_idx(&self, set: Option<bool>, idx: DropdownIdx) -> Option<()> {
+        let (c, _) = self.context::<DropdownCtxt>(Callback::noop())?;
+        c.set_dropdown.emit(Some(idx));
+        c.toggle.emit(set);
+        Some(())
     }
 }
 
 pub enum DropdownMsg {
     Toggle(Option<bool>),
-    Set(DropdownIdx),
+    Set(Option<DropdownIdx>),
     MouseDownGlobal(MouseEvent),
     KeyDownGlobal(KeyboardEvent),
 }
@@ -98,7 +106,7 @@ impl Component for DropdownContainer {
                 None => self.enable(ctx),
             },
             DropdownMsg::Set(tgt) => {
-                self.context.last_hovered = Some(tgt);
+                self.context.last_hovered = tgt;
                 true
             }
             DropdownMsg::MouseDownGlobal(ev) => {

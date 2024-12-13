@@ -1,7 +1,6 @@
-use yew::{
-    function_component, html, use_context, use_state_eq, Callback, Children, Html, MouseEvent,
-    Properties,
-};
+use std::cell::RefCell;
+
+use yew::prelude::*;
 
 use crate::infobars::DropdownCtxt;
 
@@ -10,43 +9,70 @@ use super::DropdownIdx;
 #[derive(Properties, Clone, PartialEq)]
 pub struct DropdownButtonProps {
     pub idx: DropdownIdx,
-    pub enable_on_click: Option<()>,
+    pub disabled: Option<bool>,
+    pub enable_on_click: Option<bool>,
     pub ontoggle: Option<Callback<bool>>,
     pub children: Children,
 }
 
 #[function_component]
 pub fn DropdownButton(props: &DropdownButtonProps) -> Html {
-    let idx = props.idx;
-    let enable_on_click = props.enable_on_click.is_some();
+    let disabled = props.disabled.unwrap_or_default();
+    let dropdown = use_context::<DropdownCtxt>().unwrap();
+    let last_hovered = dropdown.enabled && dropdown.last_hovered.is_some_and(|lh| lh == props.idx);
+
+    let last_hovered_state = use_state(|| RefCell::new(false));
+    *last_hovered_state.borrow_mut() = last_hovered;
+
+    use_effect_with_deps(
+        move |(last_hovered, toggle)| {
+            let last_hovered = last_hovered.clone();
+            let toggle = toggle.clone();
+            move || {
+                if *last_hovered.borrow() {
+                    toggle.emit(Some(false));
+                }
+            }
+        },
+        (last_hovered_state.clone(), dropdown.toggle.clone()),
+    );
+
+    if disabled && dropdown.enabled && last_hovered {
+        dropdown.toggle.emit(Some(false));
+    }
+    let enable_on_click = props.enable_on_click.unwrap_or_default();
     assert!(props.children.len() == 1 || props.children.len() == 2);
     let mut children = props.children.iter();
     let button = children.next().unwrap();
-
-    let dropdown = use_context::<DropdownCtxt>().unwrap();
 
     let old_enabled = use_state_eq(|| false);
     if let Some(ontoggle) = &props.ontoggle {
         if *old_enabled != dropdown.enabled {
             ontoggle.emit(dropdown.enabled);
         }
-        old_enabled.set(dropdown.enabled);
     }
+    old_enabled.set(dropdown.enabled);
 
-    let dropdown_enabled = dropdown.enabled && dropdown.last_hovered.is_some_and(|lh| lh == idx);
-    let dropdown_html = children.next().map(|c| {
-        let class = if dropdown_enabled {
-            "dropdown-popup"
-        } else {
-            "dropdown-popup display-none"
-        };
-        html! {<div class={class}>{c}</div>}
+    let dropdown_html = children.next();
+    let dropdown_enabled = !disabled && dropdown.enabled && last_hovered && dropdown_html.is_some();
+    let class = if dropdown_enabled {
+        "dropdown-popup"
+    } else {
+        "dropdown-popup display-none"
+    };
+    let dropdown_html = html! {<div {class}>{dropdown_html}</div>};
+
+    let enabled_and_not_hovered = !disabled && !last_hovered;
+    let onmousemove = enabled_and_not_hovered.then(|| {
+        let set_dropdown = dropdown.set_dropdown;
+        let idx = props.idx;
+        Callback::from(move |_| set_dropdown.emit(Some(idx)))
     });
-    let set_dropdown = dropdown.set_dropdown;
-    let onmousemove = Callback::from(move |_| set_dropdown.emit(idx));
-    let toggle = dropdown.toggle;
-    let onmousedown = Callback::from(move |_| {
-        toggle.emit(enable_on_click.then_some(true));
+    let click_no_effect = enable_on_click && dropdown.enabled;
+    let onmousedown = (!disabled && !click_no_effect).then(|| {
+        let toggle = dropdown.toggle;
+        let enable_on_click = enable_on_click.then_some(true);
+        Callback::from(move |_| toggle.emit(enable_on_click))
     });
 
     let class = if dropdown_enabled {

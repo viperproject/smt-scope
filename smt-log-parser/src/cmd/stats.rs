@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{cmp::Reverse, path::PathBuf};
 
 use smt_log_parser::analysis::LogInfo;
 
@@ -8,14 +8,14 @@ pub fn run(logfile: PathBuf, top_k: Option<usize>) -> Result<(), String> {
 
     let mut instantiations_occurrances: Vec<_> = info
         .quants_iter()
-        .flat_map(|(qidx, icount)| {
-            parser[qidx]
+        .flat_map(|(quant, icount)| {
+            parser[quant]
                 .kind
                 .user_name()
                 .map(|name| (&parser[name], icount))
         })
         .collect();
-    instantiations_occurrances.sort_by(|l, r| Ord::cmp(&r.1, &l.1));
+    instantiations_occurrances.sort_by_key(|a| Reverse(a.1));
 
     println!("no-enodes: {}", info.inst.enodes);
     println!("no-given-equalities: {}", info.inst.geqs);

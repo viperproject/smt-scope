@@ -1,15 +1,15 @@
+use std::cmp::Reverse;
+
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use fxhash::FxHashSet;
-
 use crate::{
-    analysis::{analysis::TopoAnalysis, raw::Node, InstGraph, RawNodeIndex},
+    analysis::{analysis::run::TopoAnalysis, raw::Node, InstGraph, RawNodeIndex},
     idx,
     items::{Blame, ENodeIdx, EqTransIdx, InstIdx, TermIdx},
     mem_dbg::InternMap,
     parsers::z3::synthetic::SynthIdx,
-    FxHashMap, TiVec, Z3Parser,
+    FxHashMap, FxHashSet, TiVec, Z3Parser,
 };
 
 use super::{
@@ -18,22 +18,22 @@ use super::{
 
 idx!(GenIdx, "${}");
 
-pub struct MlOutput<'a> {
+pub struct MlOutput {
     pub(super) signatures: TiVec<MlSigIdx, MlSignature>,
     ml_leaves: TiVec<MlSigIdx, MlSigCollection>,
     pub(super) node_to_ml: FxHashMap<InstIdx, MlNodeInfo>,
     pub(super) gens: TiVec<GenIdx, Box<[GeneralisedBlame]>>,
-    pub(super) topo: &'a FxHashMap<InstIdx, MlAnalysisInfo>,
+    pub(super) topo: FxHashMap<InstIdx, MlAnalysisInfo>,
 }
 
-impl MlOutput<'_> {
+impl MlOutput {
     pub fn others_between(
         topo: &FxHashMap<InstIdx, MlAnalysisInfo>,
         ancestor: InstIdx,
         descendant: InstIdx,
     ) -> FxHashSet<InstIdx> {
         let mut others_between = topo[&descendant].ancestors.clone();
-        for above_all in &topo[&ancestor].ancestors {
+        for above_all in topo[&ancestor].ancestors.iter() {
             others_between.remove(above_all);
         }
         assert!(others_between.contains(&descendant));
@@ -86,14 +86,15 @@ impl MlOutput<'_> {
             let (len, leaf) = ml.leaves.0[0];
             let has_complete_graph = ml.graph.as_ref().is_some_and(|g| !g.graph_incomplete);
             (
-                !has_complete_graph,
+                Reverse(has_complete_graph),
                 ml.graph.is_none(),
-                u32::MAX - len,
+                Reverse(len),
                 leaf,
             )
         });
         MlData {
             signatures: self.signatures,
+            per_inst: self.topo,
             matching_loops,
             sure_mls,
             maybe_mls,
@@ -144,11 +145,7 @@ impl<'a> MlAnalysis<'a> {
     /// Per each quantifier, finds the nodes that are part paths of length at
     /// least `MIN_MATCHING_LOOP_LENGTH`. Additionally, returns a list of the
     /// endpoints of these paths.
-    pub fn finalise(
-        self,
-        topo: &FxHashMap<InstIdx, MlAnalysisInfo>,
-        min_depth: u32,
-    ) -> MlOutput<'_> {
+    pub fn finalise(self, topo: FxHashMap<InstIdx, MlAnalysisInfo>, min_depth: u32) -> MlOutput {
         let mut ml_leaves: TiVec<MlSigIdx, MlSigCollection> = self
             .data
             .iter()
@@ -201,16 +198,16 @@ impl<'a> MlAnalysis<'a> {
             for gen in &mut sig_col.gens {
                 gen.1
                      .0
-                    .sort_unstable_by_key(|(len, idx)| (u32::MAX - *len, *idx));
+                    .sort_unstable_by_key(|(len, idx)| (Reverse(*len), *idx));
             }
             sig_col
                 .gens
-                .sort_unstable_by_key(|(gen, leaves)| (u32::MAX - leaves.0[0].0, *gen));
+                .sort_unstable_by_key(|(gen, leaves)| (Reverse(leaves.0[0].0), *gen));
 
             sig_col
                 .ungens
                 .0
-                .sort_unstable_by_key(|(len, idx)| (u32::MAX - *len, *idx));
+                .sort_unstable_by_key(|(len, idx)| (Reverse(*len), *idx));
         }
         MlOutput {
             signatures: self.data,
@@ -281,14 +278,11 @@ impl CollectedBlame {
         let owner = parser[enode].owner;
         let equalities = blame
             .equalities()
-            .filter_map(|eidx| {
-                let eq = &parser[eidx];
-                (eq.given_len != 0).then(|| {
-                    let (from, to) = parser.egraph.equalities.from_to(eidx);
-                    let from = parser[from].owner;
-                    let to = parser[to].owner;
-                    (eidx, from, to)
-                })
+            .map(|eidx| {
+                let (from, to) = parser.from_to(eidx);
+                let from = parser[from].owner;
+                let to = parser[to].owner;
+                (eidx, from, to)
             })
             .collect();
         Self {
@@ -414,7 +408,7 @@ impl MlAnalysisInner<'_> {
 
 impl MlNodeInfo {
     pub fn blames(parser: &Z3Parser, iidx: InstIdx) -> impl Iterator<Item = CollectedBlame> + '_ {
-        let blames = parser[parser[iidx].match_].trigger_matches();
+        let blames = parser[parser[iidx].match_].pattern_matches();
         blames.map(|blame| CollectedBlame::new(parser, blame))
     }
 
@@ -500,6 +494,7 @@ impl MlNodeInfo {
     }
 }
 
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default, Clone)]
 pub struct MlAnalysisInfo {
     ancestors: FxHashSet<InstIdx>,
@@ -508,7 +503,7 @@ pub struct MlAnalysisInfo {
 
 impl MlAnalysisInfo {
     fn extend(&mut self, incoming: &Self) {
-        for banned in &incoming.banned {
+        for banned in incoming.banned.iter() {
             self.ancestors.remove(banned);
         }
         self.ancestors.extend(
@@ -618,8 +613,8 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
 
         curr_info.tree_above.sort_unstable_by_key(|&pidx| {
             (
-                u32::MAX - pidx.max_depth,
-                u32::MAX - pidx.max_ungen_depth,
+                Reverse(pidx.max_depth),
+                Reverse(pidx.max_ungen_depth),
                 pidx.prev,
             )
         });

@@ -5,7 +5,7 @@ use crate::{
     TiVec,
 };
 
-use super::TopoAnalysis;
+use super::run::TopoAnalysis;
 
 pub struct BwdReachableVisAnalysis;
 
@@ -22,10 +22,10 @@ impl TopoAnalysis<false, false> for BwdReachableVisAnalysis {
     where
         Self::Value: 'n,
     {
-        if node.hidden() {
-            from_all().any(|(_, &b)| b)
-        } else {
+        if node.visible() {
             true
+        } else {
+            from_all().any(|(_, &b)| b)
         }
     }
 }
@@ -42,8 +42,44 @@ impl TopoAnalysis<false, false> for BwdReachableVisAnalysis {
 /// `TopoAnalysis::Value`.
 pub struct ReconnectAnalysis(pub TiVec<RawNodeIndex, bool>);
 
+#[derive(Debug, Default)]
+pub struct ReconnectData {
+    pub above: FxHashSet<(RawNodeIndex, RawNodeIndex, RawNodeIndex)>,
+    /// These should not be added to `above` since they can be transitively
+    /// reached.
+    pub transitive: FxHashSet<(RawNodeIndex, RawNodeIndex)>,
+}
+
+impl ReconnectData {
+    pub fn extend(&mut self, other: &Self) {
+        // Remove any that we've already added but should not have.
+        self.above
+            .retain(|&(from_vis, from_hid, ..)| !other.transitive.contains(&(from_vis, from_hid)));
+        // Add any that we can add, this is after the above line since `other`
+        // may contain nodes which it has itself forbidden.
+        self.above.extend(
+            other
+                .above
+                .iter()
+                .copied()
+                .filter(|&(from_vis, from_hid, ..)| {
+                    !self.transitive.contains(&(from_vis, from_hid))
+                }),
+        );
+        // Add the transitive ones which forbid adding.
+        self.transitive.extend(other.transitive.iter().copied());
+    }
+
+    pub fn reached_visible(&self) -> impl Iterator<Item = (RawNodeIndex, RawNodeIndex)> + '_ {
+        self.above
+            .iter()
+            .copied()
+            .map(move |(from_vis, from_hid, _)| (from_vis, from_hid))
+    }
+}
+
 impl TopoAnalysis<true, false> for ReconnectAnalysis {
-    type Value = FxHashSet<(RawNodeIndex, RawNodeIndex, RawNodeIndex)>;
+    type Value = ReconnectData;
 
     fn collect<'a, 'n, T: Iterator<Item = (RawNodeIndex, &'n Self::Value)>>(
         &mut self,
@@ -65,17 +101,22 @@ impl TopoAnalysis<true, false> for ReconnectAnalysis {
             let from = &graph.raw[fidx];
             match (from.visible(), visible) {
                 (false, false) => {
-                    data.extend(from_data.iter().copied());
+                    data.extend(from_data);
                 }
                 (true, false) => {
-                    data.insert((fidx, cidx, cidx));
+                    data.above.insert((fidx, cidx, cidx));
+                    data.transitive.extend(from_data.transitive.iter().copied());
                 }
                 (false, true) => {
-                    let new = from_data.iter().map(|&(fv, fh, _)| (fv, fh, fidx));
-                    data.extend(new)
+                    data.transitive.extend(from_data.reached_visible());
+                    let new = from_data
+                        .reached_visible()
+                        .map(|(from_vis, from_hid)| (from_vis, from_hid, fidx));
+                    data.above.extend(new)
                 }
                 (true, true) => {
-                    data.insert((fidx, fidx, fidx));
+                    data.above.insert((fidx, fidx, fidx));
+                    data.transitive.extend(from_data.transitive.iter().copied());
                 }
             }
         }

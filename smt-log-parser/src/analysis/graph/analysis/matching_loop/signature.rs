@@ -1,23 +1,18 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use fxhash::FxHashSet;
-
 use crate::{
-    analysis::InstGraph,
     display_with::{DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
-    items::{ENodeIdx, GraphIdx, InstIdx, QuantIdx, TermIdx},
-    FxHashMap, Z3Parser,
+    items::{ENodeIdx, InstIdx, QuantIdx, QuantPat},
+    FxHashMap, FxHashSet, Z3Parser,
 };
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct MlSignature {
-    pub quantifier: QuantIdx,
-    pub pattern: TermIdx,
+    pub qpat: QuantPat,
     pub parents: Box<[(InstParent, usize)]>,
-    pub subgraph: GraphIdx,
 }
 
 /// For each pattern in the matched pattern, where did the blamed term come
@@ -35,20 +30,26 @@ pub enum InstParent {
 }
 
 impl MlSignature {
-    pub fn new(graph: &InstGraph, parser: &Z3Parser, inst: InstIdx) -> Option<Self> {
-        let subgraph = graph.raw[inst].subgraph?.0;
+    pub(super) fn collect_ml_signatures(
+        parser: &Z3Parser,
+    ) -> FxHashMap<MlSignature, FxHashSet<InstIdx>> {
+        let mut signatures = FxHashMap::<_, FxHashSet<_>>::default();
+        for iidx in parser.instantiations().keys() {
+            let Some(ml_sig) = MlSignature::new(parser, iidx) else {
+                continue;
+            };
+            signatures.entry(ml_sig).or_default().insert(iidx);
+        }
+        signatures
+    }
 
+    pub fn new(parser: &Z3Parser, inst: InstIdx) -> Option<Self> {
         let match_ = &parser[parser[inst].match_];
-        let pattern = match_.kind.pattern()?;
-        // If it has a pattern then definitely also has a quant_idx
-        let quant_idx = match_.kind.quant_idx().unwrap();
+        let qpat = match_.kind.quant_pat()?;
         let parents: Box<[_]> = match_
-            .trigger_matches()
+            .pattern_matches()
             .map(|blame| {
-                let eq_len = blame
-                    .equalities()
-                    .filter(|&eq| parser[eq].given_len != 0)
-                    .count();
+                let eq_len = blame.equalities().count();
                 let blame = blame.enode();
                 let eblame = &parser[blame];
                 let Some(created_by) = eblame.created_by else {
@@ -60,12 +61,7 @@ impl MlSignature {
                 }
             })
             .collect();
-        Some(Self {
-            quantifier: quant_idx,
-            pattern,
-            parents,
-            subgraph,
-        })
+        Some(Self { qpat, parents })
     }
 
     pub fn to_string(&self, parser: &Z3Parser) -> String {
@@ -85,26 +81,9 @@ impl MlSignature {
             .collect::<Vec<_>>()
             .join(", ");
         format!(
-            "{} {} {parents:?} {:?}",
-            self.quantifier.with(&ctxt),
-            self.pattern,
-            self.subgraph,
+            "{} {:?} {parents:?}",
+            self.qpat.quant.with(&ctxt),
+            self.qpat.pat,
         )
-    }
-}
-
-impl InstGraph {
-    pub(super) fn collect_ml_signatures(
-        &self,
-        parser: &Z3Parser,
-    ) -> FxHashMap<MlSignature, FxHashSet<InstIdx>> {
-        let mut signatures = FxHashMap::<_, FxHashSet<_>>::default();
-        for (iidx, _) in parser.instantiations().iter_enumerated() {
-            let Some(ml_sig) = MlSignature::new(self, parser, iidx) else {
-                continue;
-            };
-            signatures.entry(ml_sig).or_default().insert(iidx);
-        }
-        signatures
     }
 }

@@ -5,7 +5,10 @@ use crate::{BoxSlice, Error, NonMaxU32, Result};
 use std::fmt;
 use std::ops::Index;
 
-use super::{ENodeIdx, EqTransIdx, MatchIdx, ProofIdx, QuantIdx, StackIdx, TermId, TermIdx};
+use super::{
+    ENodeIdx, EqTransIdx, MatchIdx, PatternIdx, ProofIdx, QuantIdx, QuantPat, StackIdx, TermId,
+    TermIdx,
+};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -16,12 +19,12 @@ pub struct Match {
 }
 
 impl Match {
-    /// A quantifier may have multiple possible triggers where each
+    /// A quantifier may have multiple possible patterns where each
     /// instantiation will be due to matching exactly one. Each of these
-    /// triggers has a sequence of arbitrarily many terms which must all be
+    /// patterns has a sequence of arbitrarily many terms which must all be
     /// matched. This returns a sequence of `Blame` where each explains how the
-    /// corresponding term in the trigger was matched.
-    pub fn trigger_matches(&self) -> impl Iterator<Item = Blame> {
+    /// corresponding term in the pattern was matched.
+    pub fn pattern_matches(&self) -> impl Iterator<Item = Blame> {
         let mut last = 0;
         let terms = self
             .blamed
@@ -52,16 +55,23 @@ pub enum MatchKind {
     },
     Axiom {
         axiom: QuantIdx,
-        pattern: TermIdx,
+        pattern: PatternIdx,
         bound_terms: BoxSlice<TermIdx>,
     },
     Quantifier {
         quant: QuantIdx,
-        pattern: TermIdx,
+        pattern: PatternIdx,
         bound_terms: BoxSlice<ENodeIdx>,
     },
 }
 impl MatchKind {
+    pub fn quant_pat(&self) -> Option<QuantPat> {
+        self.quant_idx().map(|quant| QuantPat {
+            quant,
+            pat: self.pattern(),
+        })
+    }
+
     pub fn quant_idx(&self) -> Option<QuantIdx> {
         match self {
             Self::MBQI { quant, .. }
@@ -70,12 +80,13 @@ impl MatchKind {
             _ => None,
         }
     }
-    pub fn pattern(&self) -> Option<TermIdx> {
+    pub fn pattern(&self) -> Option<PatternIdx> {
         match self {
             Self::MBQI { .. } | Self::TheorySolving { .. } => None,
             Self::Axiom { pattern, .. } | Self::Quantifier { pattern, .. } => Some(*pattern),
         }
     }
+
     pub fn bound_terms<T>(
         &self,
         enode: impl Fn(ENodeIdx) -> T,
@@ -142,7 +153,7 @@ impl BlameKind {
     }
 }
 
-/// Explains how a term in a trigger was matched. It will always start with an
+/// Explains how a term in a pattern was matched. It will always start with an
 /// enode and then have some sequence of equalities used to rewrite distinct
 /// subexpressions of the enode.
 #[derive(Debug, Clone, Copy)]
@@ -232,4 +243,13 @@ pub enum InstProofLink {
     /// preceding the `[instantiation]` line is generally the term we just
     /// proved.
     ProofsDisabled(Option<TermIdx>),
+}
+
+impl InstProofLink {
+    pub fn proof(&self) -> Option<ProofIdx> {
+        match self {
+            Self::HasProof(proof) => Some(*proof),
+            _ => None,
+        }
+    }
 }

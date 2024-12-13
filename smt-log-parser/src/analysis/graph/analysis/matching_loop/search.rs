@@ -1,19 +1,15 @@
 use crate::{
-    analysis::{
-        analysis::matching_loop::MlAnalysis, raw::NodeKind, visible::VisibleEdge, InstGraph,
-    },
-    items::{GraphIdx, InstIdx, QuantIdx, TermIdx, TimeRange},
+    analysis::{analysis::matching_loop::MlAnalysis, InstGraph},
+    items::{GraphIdx, InstIdx, QuantPat, TimeRange},
     Z3Parser,
 };
 
-use super::{MatchingLoop, MlData, MlOutput, MIN_MATCHING_LOOP_LENGTH};
+use super::{MatchingLoop, MlData, MlSignature, MIN_MATCHING_LOOP_LENGTH};
 
 impl InstGraph {
+    /// Search for matching loops in the graph.
     pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> &MlData {
-        let currently_disabled_nodes = self.disabled_nodes();
-        self.reset_disabled_to(parser, |_, _| false);
-
-        let signatures = self.collect_ml_signatures(parser);
+        let signatures = MlSignature::collect_ml_signatures(parser);
         // Collect all signatures instantiated at least `MIN_MATCHING_LOOP_LENGTH` times
         let mut signatures: Vec<_> = signatures
             .into_iter()
@@ -35,23 +31,10 @@ impl InstGraph {
             .into_iter_enumerated()
             .filter_map(|(i, v)| self.raw[i].kind().inst().map(|i| (i, v)))
             .collect();
-        let analysis = analysis.finalise(&topo, MIN_MATCHING_LOOP_LENGTH);
+        let analysis = analysis.finalise(topo, MIN_MATCHING_LOOP_LENGTH);
         let ml_data = analysis.ml_graphs(parser);
-        for (i, ml) in ml_data.matching_loops.iter().enumerate() {
-            let mut last = None;
-            for &member in ml.members.iter() {
-                self.raw[member].part_of_ml.insert(i);
-                if let Some(last) = last.replace(member) {
-                    for between in MlOutput::others_between(&topo, member, last) {
-                        self.raw[between].part_of_ml.insert(i);
-                    }
-                }
-            }
-        }
-        self.analysis.ml_data = Some(ml_data);
 
-        // make sure the enabled and disabled nodes stay the same as before calling the ML search
-        self.reset_disabled_to(parser, |nx, _| currently_disabled_nodes.contains(&nx));
+        self.analysis.ml_data = Some(ml_data);
         self.analysis.ml_data.as_ref().unwrap()
     }
 
@@ -103,32 +86,18 @@ impl InstGraph {
         self.matching_loops().map(|mls| mls.sure_mls)
     }
 
-    pub fn quants_per_matching_loop(&self) -> Option<impl Iterator<Item = QuantIdx> + '_> {
+    pub fn quants_per_matching_loop(&self) -> Option<impl Iterator<Item = QuantPat> + '_> {
         self.matching_loops().map(|mls| {
             mls.matching_loops
                 .iter()
-                .map(|ml| mls.signatures[ml.sig].quantifier)
+                .map(|ml| mls.signatures[ml.sig].qpat)
         })
     }
 
-    pub fn nth_matching_loop_graph(&mut self, n: usize) -> Option<MatchingLoop> {
+    pub fn nth_matching_loop_graph(&self, n: usize) -> Option<&MatchingLoop> {
         self.analysis
             .ml_data
             .as_ref()
             .and_then(|mls| mls.matching_loops.get(n))
-            .cloned()
-    }
-
-    fn _get_blame_term(&self, edge: &VisibleEdge, parser: &Z3Parser) -> Option<TermIdx> {
-        let kind = edge.kind(self);
-        let node = &self.raw[self.raw.index(kind.blame(self))];
-        match node.kind() {
-            NodeKind::ENode(enode) => Some(parser[*enode].owner),
-            NodeKind::GivenEquality(eq, _) => match parser[*eq] {
-                crate::items::EqualityExpl::Literal { eq, .. } => Some(parser[eq].owner),
-                _ => None,
-            },
-            _ => None,
-        }
     }
 }

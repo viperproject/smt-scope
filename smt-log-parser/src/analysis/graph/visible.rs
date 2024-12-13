@@ -34,10 +34,11 @@ impl InstGraph {
         let (mut nodes, mut edges) = (0, 0);
         for (idx, data) in reconnect.iter_mut_enumerated() {
             if !self.raw[idx].visible() {
-                data.clear();
+                data.above.clear();
+                continue;
             }
             nodes += 1;
-            edges += data.len();
+            edges += data.above.len();
         }
 
         let mut graph: DiGraph<VisibleNode, VisibleEdge, VisibleIx> =
@@ -70,10 +71,11 @@ impl InstGraph {
 
         for (i_idx, data) in reconnect.iter_enumerated() {
             let Some(v_idx) = self_.reverse(i_idx) else {
-                assert!(data.is_empty());
+                assert!(data.above.is_empty());
                 continue;
             };
             let mut edges_to_add: Vec<_> = data
+                .above
                 .iter()
                 .map(|&(from_v, from_h, to_h)| {
                     let v_from_v = self_.reverse(from_v).unwrap();
@@ -157,6 +159,13 @@ impl std::fmt::Debug for VisibleEdge {
 }
 
 impl VisibleEdge {
+    pub fn last(&self) -> RawEdgeIndex {
+        match *self {
+            VisibleEdge::Direct(e) => e,
+            VisibleEdge::Indirect(_, to) => to,
+        }
+    }
+
     fn indirect_nodes<'a>(&'a self, graph: &'a InstGraph) -> FxHashSet<RawNodeIndex> {
         match self {
             VisibleEdge::Direct(_) => FxHashSet::default(),
@@ -176,11 +185,11 @@ impl VisibleEdge {
     pub fn is_indirect(&self, graph: &InstGraph) -> bool {
         self.indirect_nodes(graph)
             .iter()
-            .any(|n| graph.raw.graph[n.0].hidden())
+            .any(|n| graph.raw[*n].hidden())
     }
     pub fn kind(&self, graph: &InstGraph) -> VisibleEdgeKind {
-        match self {
-            VisibleEdge::Direct(e) => VisibleEdgeKind::Direct(*e, graph.raw.graph[e.0]),
+        match *self {
+            VisibleEdge::Direct(e) => VisibleEdgeKind::Direct(e, graph.raw[e]),
             VisibleEdge::Indirect(from, to) => {
                 // TODO: clean this up
                 let (all_between, non_visible_between) = graph
@@ -195,20 +204,23 @@ impl VisibleEdge {
                         all_between.len() == non_visible_between.len()
                     })
                 {
-                    return VisibleEdgeKind::Unknown(*from, *to);
+                    return VisibleEdgeKind::Unknown(from, to);
                 };
                 let non_visible_between = non_visible_between.unwrap();
 
-                let get_kind = |n| Some(graph.raw[*non_visible_between.get(n)?].kind());
+                let get_kind = |n| {
+                    let idx: RawNodeIndex = *non_visible_between.get(n)?;
+                    Some(graph.raw[idx].kind())
+                };
 
-                match (graph.raw.graph[from.0], graph.raw.graph[to.0]) {
+                match (graph.raw[from], graph.raw[to]) {
                     // Starting at Instantiation
-                    (EdgeKind::Yield, EdgeKind::Blame { trigger_term })
+                    (EdgeKind::Yield, EdgeKind::Blame { pattern_term })
                         if non_visible_between.len() == 1 =>
                     {
                         VisibleEdgeKind::YieldBlame {
                             enode: get_kind(0).unwrap().enode().unwrap(),
-                            trigger_term,
+                            pattern_term,
                         }
                     }
                     (EdgeKind::Yield, EdgeKind::TEqualitySimple { .. })
@@ -219,7 +231,7 @@ impl VisibleEdge {
                     (
                         EdgeKind::Yield,
                         EdgeKind::BlameEq {
-                            trigger_term,
+                            pattern_term,
                             eq_order,
                         },
                     ) if non_visible_between.len() == 3 => {
@@ -232,7 +244,7 @@ impl VisibleEdge {
                         if trans == 1 {
                             VisibleEdgeKind::YieldBlameEq {
                                 given_eq,
-                                trigger_term,
+                                pattern_term,
                                 eq_order,
                             }
                         } else {
@@ -249,7 +261,7 @@ impl VisibleEdge {
                     (
                         EdgeKind::EqualityFact,
                         EdgeKind::BlameEq {
-                            trigger_term,
+                            pattern_term,
                             eq_order,
                         },
                     ) if non_visible_between.len() == 2 => {
@@ -262,7 +274,7 @@ impl VisibleEdge {
                         if trans == 1 {
                             VisibleEdgeKind::ENodeBlameEq {
                                 given_eq,
-                                trigger_term,
+                                pattern_term,
                                 eq_order,
                             }
                         } else {
@@ -270,7 +282,7 @@ impl VisibleEdge {
                         }
                     }
 
-                    _ => VisibleEdgeKind::Unknown(*from, *to),
+                    _ => VisibleEdgeKind::Unknown(from, to),
                 }
             }
         }
@@ -283,7 +295,7 @@ pub enum VisibleEdgeKind {
     /// `Instantiation` -> `ENode` -> `Instantiation`
     YieldBlame {
         enode: ENodeIdx,
-        trigger_term: u16,
+        pattern_term: u16,
     },
     /// `Instantiation` -> `ENode` -> `GivenEquality` -> `TransEquality`
     YieldEq((EqGivenIdx, Option<NonMaxU32>)),
@@ -291,7 +303,7 @@ pub enum VisibleEdgeKind {
     /// `TransEquality` (only 1 parent) -> `Instantiation`
     YieldBlameEq {
         given_eq: (EqGivenIdx, Option<NonMaxU32>),
-        trigger_term: u16,
+        pattern_term: u16,
         eq_order: u16,
     },
     /// `Instantiation` -> `ENode` -> `GivenEquality` -> ...
@@ -302,7 +314,7 @@ pub enum VisibleEdgeKind {
     /// `ENode` -> `GivenEquality` -> `TransEquality` -> `Instantiation`
     ENodeBlameEq {
         given_eq: (EqGivenIdx, Option<NonMaxU32>),
-        trigger_term: u16,
+        pattern_term: u16,
         eq_order: u16,
     },
     /// `ENode` -> `GivenEquality` -> ...
@@ -315,7 +327,7 @@ impl VisibleEdgeKind {
     pub fn blame(&self, graph: &InstGraph) -> NodeKind {
         use NodeKind::*;
         match self {
-            VisibleEdgeKind::Direct(edge, _) | VisibleEdgeKind::Unknown(edge, ..) => {
+            VisibleEdgeKind::Direct(edge, _) | VisibleEdgeKind::Unknown(.., edge) => {
                 *graph.raw.graph[graph.raw.graph.edge_endpoints(edge.0).unwrap().0].kind()
             }
 

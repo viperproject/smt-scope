@@ -1,17 +1,16 @@
-use fxhash::FxHashSet;
 use petgraph::graph::NodeIndex;
 
 use crate::{
     analysis::analysis::matching_loop::{RecurrenceKind, SimpIdx},
     items::{
         ENodeIdx, EqGivenUse, EqTransIdx, EqualityExpl, InstIdx, Term, TermIdx, TermKind,
-        TransitiveExplSegment, TransitiveExplSegmentKind,
+        TransitiveExplSegmentKind,
     },
     parsers::z3::{
         egraph::{Equalities, EqualityWalker},
         synthetic::{AnyTerm, SynthIdx},
     },
-    BoxSlice, FxHashMap, Graph, IString, Result, Z3Parser,
+    BoxSlice, FxHashMap, FxHashSet, Graph, IString, Result, Z3Parser,
 };
 
 use super::{GenIdx, MLGraphEdge, MLGraphNode, MlExplanation, MlOutput};
@@ -77,10 +76,10 @@ impl MlExplainer {
         let recurring = self.add_inst(ml_out, parser, above2, gen);
 
         // Add others between as well as their deps
-        let mut others1 = MlOutput::others_between(ml_out.topo, above1, leaf);
+        let mut others1 = MlOutput::others_between(&ml_out.topo, above1, leaf);
         assert!(others1.remove(&leaf));
 
-        let mut others2 = MlOutput::others_between(ml_out.topo, above2, above1);
+        let mut others2 = MlOutput::others_between(&ml_out.topo, above2, above1);
         assert!(others2.remove(&above1));
 
         self.add_others(ml_out, parser, others1, others2);
@@ -152,8 +151,12 @@ impl MlExplainer {
         let prev_info = &ml_out.node_to_ml[&prev];
 
         let sig = ml_out.signatures[prev_info.ml_sig].clone();
-        let pattern = sig.pattern.into();
-        let prev_inst = self.graph.add_node(MLGraphNode::QI(sig, pattern));
+        let Some(pat) = parser.get_pattern(sig.qpat) else {
+            debug_assert!(false, "Found an MBQI matching loop?");
+            self.error = true;
+            return Vec::new();
+        };
+        let prev_inst = self.graph.add_node(MLGraphNode::QI(sig, pat.into()));
         let old = self.instantiations.insert(prev, prev_inst);
         assert!(old.is_none());
 
@@ -414,15 +417,11 @@ impl MlExplainer {
 
                 let all = self.equalities().transitive[eq].all(forward);
                 for next in all {
-                    match next {
-                        TransitiveExplSegment {
-                            forward,
-                            kind: TransitiveExplSegmentKind::Given(eq_use),
-                        } => self.walk_given(eq_use, forward)?,
-                        TransitiveExplSegment {
-                            forward,
-                            kind: TransitiveExplSegmentKind::Transitive(eq),
-                        } => self.walk_trans(eq, forward)?,
+                    use TransitiveExplSegmentKind::*;
+                    match next.kind {
+                        Given(eq_use) => self.walk_given(eq_use, next.forward)?,
+                        Transitive(eq) => self.walk_trans(eq, next.forward)?,
+                        Error(_) => (),
                     }
                     ancestor_is_recurring |= self.ancestor_is_recurring;
                     self.ancestor_is_recurring = false;
@@ -435,10 +434,6 @@ impl MlExplainer {
                 eq: EqTransIdx,
                 forward: bool,
             ) -> core::result::Result<(), Self::Error> {
-                if self.equalities().transitive[eq].given_len == 0 {
-                    return Ok(());
-                }
-
                 if self.add_mode {
                     if self.burned_eqs.insert(eq) {
                         let data =
@@ -447,7 +442,7 @@ impl MlExplainer {
                                 .fixed_equalities
                                 .entry(eq)
                                 .or_insert_with(|| {
-                                    let (from, to) = self.parser.egraph.equalities.from_to(eq);
+                                    let (from, to) = self.parser.from_to(eq);
                                     let (from, to) =
                                         (self.parser[from].owner, self.parser[to].owner);
                                     let data = MLGraphNode::FixedEquality(from.into(), to.into());

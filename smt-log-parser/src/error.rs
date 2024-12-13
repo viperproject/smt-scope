@@ -5,7 +5,7 @@ use lasso::LassoError;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::items::{BlameKind, ENodeIdx, Fingerprint, StackIdx, TermId, TermIdx};
+use crate::items::{BlameKind, ENodeIdx, Fingerprint, QuantIdx, StackIdx, TermId, TermIdx};
 
 pub type Result<T> = std::result::Result<T, Error>;
 pub type FResult<T> = std::result::Result<T, FatalError>;
@@ -54,6 +54,8 @@ pub enum Error {
     UnknownQuantifierIdx(TermIdx),
     NonNullLambdaName(String),
     InvalidQVarInteger(ParseIntError),
+    NewMatchOnLambda(QuantIdx),
+    UnknownPatternIdx(TermIdx),
 
     // Inst discovered
     /// theory-solving non-rewrite axiom should blame valid enodes
@@ -76,13 +78,21 @@ pub enum Error {
     // Enode
     UnknownEnode(TermIdx),
     EnodePoppedFrame(StackIdx),
-    InvalidGeneration(ParseIntError),
+    InvalidGeneration(nonmax::ParseIntError),
     EnodeRootMismatch(ENodeIdx, ENodeIdx),
 
     // Stack
     StackFrameNotPushed,
     PopConflictMismatch,
     InvalidFrameInteger(ParseIntError),
+
+    // CDCL
+    NoConflict,
+    BoolLiteral,
+    BoolLiteralNotP,
+    InvalidBoolLiteral(nonmax::ParseIntError),
+    UnknownJustification(String),
+    MissingColonJustification,
 
     // File IO
     FileRead(std::io::Error),

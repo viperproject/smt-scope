@@ -1,4 +1,7 @@
-use crate::{items::QuantIdx, TiVec, Z3Parser};
+use crate::{
+    items::{QuantIdx, QuantPatVec},
+    Z3Parser,
+};
 
 pub struct LogInfo {
     pub match_: MatchesInfo,
@@ -6,58 +9,77 @@ pub struct LogInfo {
     pub quants: QuantsInfo,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 /// Counts of different match-line kinds. Essentially how many instantiations
 /// were from each of the different categories.
 pub struct MatchesInfo {
-    pub mbqi: u64,
-    pub theory_solving: u64,
-    pub axioms: u64,
-    pub quantifiers: u64,
+    pub mbqi: usize,
+    pub theory_solving: usize,
+    pub axioms: usize,
+    pub quantifiers: usize,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 /// Counts of different instantiation stats.
 pub struct InstsInfo {
-    pub enodes: u64,
-    pub geqs: u64,
-    pub treqs: u64,
-    pub insts: u64,
+    pub enodes: usize,
+    pub geqs: usize,
+    pub treqs: usize,
+    pub insts: usize,
+    pub geqs_trivial: usize,
+    pub treqs_error: usize,
 }
 
 impl InstsInfo {
-    pub fn total(&self) -> u64 {
+    pub fn total(&self) -> usize {
         self.enodes + self.geqs + self.treqs + self.insts
+    }
+    pub fn geqs_nontrivial(&self) -> usize {
+        self.geqs - self.geqs_trivial
+    }
+    pub fn treqs_nontrivial(&self) -> usize {
+        self.treqs
+    }
+
+    pub fn new(parser: &Z3Parser) -> Self {
+        let equalities = &parser.egraph.equalities;
+        let geqs_trivial = equalities.given.iter().filter(|eq| eq.is_trivial()).count();
+        let treqs_error = equalities
+            .transitive
+            .iter()
+            .filter(|eq| eq.given_len.is_none())
+            .count();
+        Self {
+            insts: parser.insts.insts.len(),
+            enodes: parser.egraph.enodes.len(),
+            geqs: equalities.given.len(),
+            treqs: equalities.transitive.len(),
+            geqs_trivial,
+            treqs_error,
+        }
     }
 }
 
 /// How many times each quantifier was instantiated
-pub struct QuantsInfo(pub TiVec<QuantIdx, u64>);
+pub struct QuantsInfo(pub QuantPatVec<usize>);
 
 impl LogInfo {
     pub fn new(parser: &Z3Parser) -> Self {
-        let mut quants = QuantsInfo(parser.quantifiers.iter().map(|_| 0).collect());
+        let mut quants = QuantsInfo(parser.new_quant_pat_vec(|_| 0));
         let mut match_ = MatchesInfo::default();
-        for inst in parser.instantiations().iter() {
-            let match_i = &parser[inst.match_];
-            if let Some(qidx) = match_i.kind.quant_idx() {
-                quants.0[qidx] += 1;
+        for data in parser.instantiations_data() {
+            if let Some(qpat) = data.match_.kind.quant_pat() {
+                quants.0[qpat] += 1;
             }
             use crate::items::MatchKind::*;
-            match &match_i.kind {
+            match &data.match_.kind {
                 MBQI { .. } => match_.mbqi += 1,
                 TheorySolving { .. } => match_.theory_solving += 1,
                 Axiom { .. } => match_.axioms += 1,
                 Quantifier { .. } => match_.quantifiers += 1,
             }
         }
-
-        let inst = InstsInfo {
-            insts: parser.insts.insts.len() as u64,
-            enodes: parser.egraph.enodes.len() as u64,
-            geqs: parser.egraph.equalities.given.len() as u64,
-            treqs: parser.egraph.equalities.transitive.len() as u64,
-        };
+        let inst = InstsInfo::new(parser);
 
         Self {
             match_,
@@ -66,10 +88,11 @@ impl LogInfo {
         }
     }
 
-    pub fn quants_iter(&self) -> impl Iterator<Item = (QuantIdx, u64)> + '_ {
+    pub fn quants_iter(&self) -> impl Iterator<Item = (QuantIdx, usize)> + '_ {
         self.quants
             .0
+             .0
             .iter_enumerated()
-            .map(|(i, count)| (i, *count))
+            .map(|(i, count)| (i, count.iter_enumerated().map(|(_, c)| c).sum()))
     }
 }

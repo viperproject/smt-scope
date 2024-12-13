@@ -4,26 +4,40 @@ use std::{str::FromStr, sync::OnceLock};
 use mem_dbg::{MemDbg, MemSize};
 use strum::{EnumIter, IntoEnumIterator};
 
-use crate::{BoxSlice, FxHashMap, IString};
+use crate::{BoxSlice, FxHashMap, IString, StringTable};
 
-use super::{ProofIdx, TermId, TermIdx};
+use super::{ProofIdx, StackIdx, TermId, TermIdx};
 
-/// A Z3 proof step and associated data.
+/// A Z3 proof step and associated data. Represents a single step where z3
+/// proved a boolean expression. These steps have dependencies which combine to
+/// build up a proof tree. Parts of this tree may be under hypotheses in which
+/// case the solver tries to do a proof by contradiction (and the proved terms
+/// are only valid under these hypotheses).
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug)]
 pub struct ProofStep {
+    /// The parsed term id of the proof step itself (corresponds to `ProofIdx`).
+    /// Only useful for debugging.
     pub id: TermId,
+    /// The kind of proof step. Which logical rule was used to derive the
+    /// result.
     pub kind: ProofStepKind,
+    /// The (boolean) term which this step proves. This might not necessarily be
+    /// a "full" proof if this step (transitively) depends on any hypotheses!
     pub result: TermIdx,
+    /// The antecedents of this proof step.
     pub prerequisites: BoxSlice<ProofIdx>,
+    /// The frame in which this proof step was created. The proof is forgotten
+    /// (and may be repeated later) when the frame is popped.
+    pub frame: StackIdx,
 }
 
 #[allow(non_camel_case_types)]
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter)]
 /// Taken from
 /// [z3-sys](https://docs.rs/z3-sys/0.8.1/src/z3_sys/lib.rs.html#451). Update
 /// from there if more cases are added. A few marked cases were renamed to
@@ -535,6 +549,34 @@ impl ProofStepKind {
             .to_ascii_lowercase();
         Ok(kind_str)
     }
+
+    pub fn is_trivial(self) -> bool {
+        use ProofStepKind::*;
+        matches!(
+            self,
+            PR_MP
+                | PR_REWRITE
+                | PR_MONOTONICITY
+                | PR_TRANS
+                | PR_REFL
+                | PR_COMMUTATIVITY
+                | PR_IFF_TRUE
+                | PR_IFF_FALSE
+                | PR_SYMM
+        )
+    }
+
+    pub fn is_hypothesis(self) -> bool {
+        matches!(self, ProofStepKind::PR_HYPOTHESIS)
+    }
+
+    pub fn is_asserted(self) -> bool {
+        matches!(self, ProofStepKind::PR_ASSERTED)
+    }
+
+    pub fn is_quant_inst(self) -> bool {
+        matches!(self, ProofStepKind::PR_QUANT_INST)
+    }
 }
 
 static SEARCH_MAP: OnceLock<FxHashMap<String, ProofStepKind>> = OnceLock::new();
@@ -553,5 +595,14 @@ impl FromStr for ProofStepKind {
             map
         });
         map.get(s).copied().ok_or(())
+    }
+}
+
+impl ProofStepKind {
+    pub fn parse_existing(strings: &StringTable, value: &str) -> Option<Self> {
+        match ProofStepKind::from_str(value) {
+            Ok(kind) => Some(kind),
+            Err(_) => strings.get(value).map(IString).map(ProofStepKind::OTHER),
+        }
     }
 }

@@ -33,6 +33,7 @@ macro_rules! idx {
             }
         }
         impl $struct {
+            pub const ZERO: Self = Self($crate::NonMaxU32::ZERO);
             pub const MAX: Self = Self($crate::NonMaxU32::MAX);
         }
     };
@@ -47,3 +48,8 @@ idx!(EqGivenIdx, "≡{}");
 idx!(EqTransIdx, "={}");
 idx!(GraphIdx, "g{}");
 idx!(ProofIdx, "p{}");
+idx!(CdclIdx, "c{}");
+
+// Not used for TiVec, but just as a typed wrapper
+
+idx!(PatternIdx, "{{{}}}");

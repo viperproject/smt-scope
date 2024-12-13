@@ -2,9 +2,10 @@ use fxhash::FxHashMap;
 use smt_log_parser::{
     display_with::{DisplayConfiguration, SymbolReplacement},
     formatter::TermDisplayContext,
+    NonMaxU32,
 };
 
-use crate::state::FileInfo;
+use crate::screen::homepage::FileInfo;
 
 use super::ConfigurationProvider;
 
@@ -56,9 +57,9 @@ impl Configuration {
             input: None,
             html: true,
             font_tag: false,
+            ast_depth_limit: NonMaxU32::new(50),
             // Set manually elsewhere
             enode_char_limit: None,
-            ast_depth_limit: None,
         }
     }
 }
@@ -85,5 +86,15 @@ impl Default for TermDisplayContextFiles {
             general: TermDisplayContext::basic(),
             per_file: FxHashMap::default(),
         }
+    }
+}
+
+impl TermDisplayContextFiles {
+    pub fn for_file(&self, file: &FileInfo) -> TermDisplayContext {
+        let mut term_display = self.general.clone();
+        if let Some(per_file) = self.per_file.get(&file.name) {
+            term_display.extend(per_file);
+        }
+        term_display
     }
 }

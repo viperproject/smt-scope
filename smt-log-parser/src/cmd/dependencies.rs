@@ -19,15 +19,14 @@ pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(
     if depth.is_some_and(|depth| depth == 0) {
         // TODO: deduplicate
         for (qidx, info) in qanalysis.iter_enumerated() {
-            let Some(name) = get_quant_name(&parser, qidx) else {
+            let Some(name) = get_quant_name(&parser, qidx.quant) else {
                 continue;
             };
             let percentage = (100.0 * info.costs) / total_costs as f64;
-            let total = info.direct_deps.values().sum::<u32>() as f64;
+            let total = info.values().sum::<u32>() as f64;
             let named = || {
-                info.direct_deps.iter().flat_map(|(ddep, count)| {
-                    get_quant_name(&parser, *ddep).map(|name| (name, *count))
-                })
+                info.iter()
+                    .flat_map(|(ddep, count)| get_quant_name(&parser, ddep).zip(Some(count)))
             };
             if pretty_print {
                 let named_count = named().count();
@@ -68,11 +67,11 @@ pub fn run(logfile: PathBuf, depth: Option<u32>, pretty_print: bool) -> Result<(
     let trans = qanalysis.calculate_transitive(depth);
 
     for (qidx, deps) in trans.iter_enumerated() {
-        let info = &qanalysis[qidx];
         let Some(name) = get_quant_name(&parser, qidx) else {
             continue;
         };
-        let percentage = (100.0 * info.costs as f64) / total_costs as f64;
+        let costs = qanalysis.quant_sum_cost(qidx);
+        let percentage = (100.0 * costs as f64) / total_costs as f64;
         let named = || deps.iter().flat_map(|ddep| get_quant_name(&parser, *ddep));
         if pretty_print {
             println!(

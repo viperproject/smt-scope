@@ -11,7 +11,7 @@ pub use signature::*;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::{idx, items::InstIdx, BoxSlice, Graph, TiVec};
+use crate::{idx, items::InstIdx, BoxSlice, FxHashMap, Graph, TiVec};
 
 pub const MIN_MATCHING_LOOP_LENGTH: u32 = 6;
 
@@ -21,6 +21,7 @@ idx!(MlSigIdx, "∞{}");
 #[derive(Debug, Default)]
 pub struct MlData {
     pub signatures: TiVec<MlSigIdx, MlSignature>,
+    pub per_inst: FxHashMap<InstIdx, MlAnalysisInfo>,
     pub matching_loops: Vec<MatchingLoop>,
     /// How many MLs were found for which we managed to construct a generalised
     /// graph? We are pretty confident that these are actual MLs.
@@ -67,3 +68,26 @@ pub struct MlSigCollection {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Default)]
 pub struct MlLeaves(pub Vec<(u32, InstIdx)>);
+
+impl MatchingLoop {
+    pub fn members<'a>(&'a self, data: &'a MlData) -> impl Iterator<Item = InstIdx> + 'a {
+        let mut members = self.members.iter().copied();
+        let mut last_saved = members.next();
+        let mut others_between = None::<std::collections::hash_set::IntoIter<InstIdx>>;
+        core::iter::from_fn(move || {
+            if let Some(mut ob) = others_between.take() {
+                if let Some(next) = ob.next() {
+                    others_between = Some(ob);
+                    return Some(next);
+                }
+            }
+            let last = last_saved?;
+            last_saved = members.next();
+            let member = last_saved?;
+
+            others_between =
+                Some(MlOutput::others_between(&data.per_inst, member, last).into_iter());
+            Some(member)
+        })
+    }
+}

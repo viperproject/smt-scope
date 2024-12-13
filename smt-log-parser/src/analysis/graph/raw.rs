@@ -3,19 +3,20 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+use bitmask_enum::bitmask;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::{
     graph::NodeIndex,
-    visit::Reversed,
+    visit::{Dfs, NodeFiltered, Reversed, Walker},
     Direction::{self},
 };
 
 use crate::{
     graph_idx,
     items::{
-        ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, StackIdx,
-        TransitiveExplSegmentKind,
+        CdclIdx, ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx,
+        StackIdx, TransitiveExplSegmentKind,
     },
     DiGraph, FxHashMap, FxHashSet, NonMaxU32, Result, Z3Parser,
 };
@@ -26,10 +27,12 @@ graph_idx!(raw_idx, RawNodeIndex, RawEdgeIndex, RawIx);
 #[derive(Debug)]
 pub struct RawInstGraph {
     pub graph: DiGraph<Node, EdgeKind, RawIx>,
+    inst_idx: RawNodeIndex,
     enode_idx: RawNodeIndex,
     eq_trans_idx: RawNodeIndex,
-    inst_idx: RawNodeIndex,
     eq_given_idx: FxHashMap<(EqGivenIdx, Option<NonMaxU32>), RawNodeIndex>,
+    proofs_idx: RawNodeIndex,
+    cdcl_idx: RawNodeIndex,
 
     pub(crate) stats: GraphStats,
 }
@@ -43,6 +46,10 @@ impl RawInstGraph {
         let edges_lower_bound =
             parser.insts.insts.len() + parser.egraph.equalities.transitive.len();
         let mut graph = DiGraph::with_capacity(total_nodes, edges_lower_bound);
+        let inst_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
+        for inst in parser.insts.insts.keys() {
+            graph.add_node(Node::new(NodeKind::Instantiation(inst)));
+        }
         let enode_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
         for enode in parser.egraph.enodes.keys() {
             graph.add_node(Node::new(NodeKind::ENode(enode)));
@@ -50,10 +57,6 @@ impl RawInstGraph {
         let eq_trans_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
         for eq_trans in parser.egraph.equalities.transitive.keys() {
             graph.add_node(Node::new(NodeKind::TransEquality(eq_trans)));
-        }
-        let inst_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
-        for inst in parser.insts.insts.keys() {
-            graph.add_node(Node::new(NodeKind::Instantiation(inst)));
         }
         let mut eq_given_idx = FxHashMap::default();
         eq_given_idx.try_reserve(parser.egraph.equalities.given.len())?;
@@ -73,6 +76,15 @@ impl RawInstGraph {
                 }
             }
         }
+        let proofs_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
+        for ps_idx in parser.proofs().keys() {
+            graph.add_node(Node::new(NodeKind::Proof(ps_idx)));
+        }
+        let cdcl_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
+        for cdcl in parser.cdcls().keys() {
+            graph.add_node(Node::new(NodeKind::Cdcl(cdcl)));
+        }
+
         let stats = GraphStats {
             hidden: graph.node_count() as u32,
             disabled: 0,
@@ -80,10 +92,12 @@ impl RawInstGraph {
         };
         let mut self_ = RawInstGraph {
             graph,
+            inst_idx,
             enode_idx,
             eq_given_idx,
             eq_trans_idx,
-            inst_idx,
+            proofs_idx,
+            cdcl_idx,
             stats,
         };
 
@@ -93,17 +107,17 @@ impl RawInstGraph {
                 self_.add_edge(idx, *yields, EdgeKind::Yield);
             }
             for (i, blame) in parser.insts.matches[inst.match_]
-                .trigger_matches()
+                .pattern_matches()
                 .enumerate()
             {
-                let trigger_term = i as u16;
-                self_.add_edge(blame.enode(), idx, EdgeKind::Blame { trigger_term });
+                let pattern_term = i as u16;
+                self_.add_edge(blame.enode(), idx, EdgeKind::Blame { pattern_term });
                 for (i, eq) in blame.equalities().enumerate() {
                     self_.add_edge(
                         eq,
                         idx,
                         EdgeKind::BlameEq {
-                            trigger_term,
+                            pattern_term,
                             eq_order: i as u16,
                         },
                     );
@@ -136,24 +150,59 @@ impl RawInstGraph {
         for (idx, eq) in parser.egraph.equalities.transitive.iter_enumerated() {
             let all = eq.all(true);
             for parent in all {
+                use TransitiveExplSegmentKind::*;
                 match parent.kind {
-                    TransitiveExplSegmentKind::Given((eq, use_)) => self_.add_edge(
+                    Given((eq, use_)) => self_.add_edge(
                         (eq, use_),
                         idx,
                         EdgeKind::TEqualitySimple {
                             forward: parent.forward,
                         },
                     ),
-                    TransitiveExplSegmentKind::Transitive(eq) => self_.add_edge(
+                    Transitive(eq) => self_.add_edge(
                         eq,
                         idx,
                         EdgeKind::TEqualityTransitive {
                             forward: parent.forward,
                         },
                     ),
+                    Error(..) => (),
                 }
             }
         }
+
+        // Add proof step edges
+        for (idx, ps) in parser.proofs().iter_enumerated() {
+            for pre in ps.prerequisites.iter() {
+                self_.add_edge(*pre, idx, EdgeKind::ProofStep)
+            }
+        }
+
+        for (iidx, inst) in parser.insts.insts.iter_enumerated() {
+            let Some(proof) = inst.proof_id.proof() else {
+                continue;
+            };
+            self_.add_edge(iidx, proof, EdgeKind::YieldProof);
+        }
+
+        // Add cdcl edges
+        for cidx in parser.cdcls().keys() {
+            let backlink = parser.cdcl.backlink(cidx);
+            match (backlink.previous, backlink.backtrack) {
+                (Some(previous), Some(backtrack)) => {
+                    self_.add_edge(backtrack, cidx, EdgeKind::Cdcl(CdclEdge::RetryFrom));
+                    self_.add_edge(previous, cidx, EdgeKind::Cdcl(CdclEdge::Backtrack));
+                }
+                (Some(previous), None) => {
+                    self_.add_edge(previous, cidx, EdgeKind::Cdcl(CdclEdge::Decide))
+                }
+                (None, Some(sidetrack)) => {
+                    self_.add_edge(sidetrack, cidx, EdgeKind::Cdcl(CdclEdge::Sidetrack))
+                }
+                (None, None) => (),
+            }
+        }
+
         debug_assert!(
             !petgraph::algo::is_cyclic_directed(&*self_.graph),
             "Graph is cyclic, this should not happen by construction!"
@@ -177,6 +226,8 @@ impl RawInstGraph {
             NodeKind::GivenEquality(eq, use_) => (eq, use_).index(self),
             NodeKind::TransEquality(eq) => eq.index(self),
             NodeKind::Instantiation(inst) => inst.index(self),
+            NodeKind::Proof(ps) => ps.index(self),
+            NodeKind::Cdcl(cdcl) => cdcl.index(self),
         }
     }
 
@@ -216,6 +267,28 @@ impl RawInstGraph {
         let inst_idx = self.inst_idx;
         move |inst| RawNodeIndex(NodeIndex::new(inst_idx.0.index() + usize::from(inst)))
     }
+
+    pub fn hypotheses(&self, parser: &Z3Parser, proof: ProofIdx) -> Vec<ProofIdx> {
+        let proof = proof.index(self);
+        let node = &self[proof];
+        if !node.proof.under_hypothesis() {
+            return Default::default();
+        }
+        let mut hypotheses = Vec::new();
+        let graph = NodeFiltered::from_fn(&*self.graph, |n| self.graph[n].proof.under_hypothesis());
+        let dfs = Dfs::new(Reversed(&graph), proof.0);
+        for n in dfs.iter(Reversed(&graph)).map(RawNodeIndex) {
+            let Some(n) = self[n].kind().proof() else {
+                debug_assert!(false, "Expected proof node");
+                continue;
+            };
+            if parser[n].kind.is_hypothesis() {
+                hypotheses.push(n);
+            }
+        }
+        hypotheses.sort_unstable();
+        hypotheses
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -253,14 +326,14 @@ impl GraphStats {
 #[derive(Debug, Clone)]
 pub struct Node {
     state: NodeState,
+    kind: NodeKind,
     pub cost: f64,
     pub fwd_depth: Depth,
     pub bwd_depth: Depth,
     pub subgraph: Option<(GraphIdx, u32)>,
-    kind: NodeKind,
-    pub inst_parents: NextInsts,
-    pub inst_children: NextInsts,
-    pub part_of_ml: FxHashSet<usize>,
+    pub parents: NextNodes,
+    pub children: NextNodes,
+    pub proof: ProofReach,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -275,16 +348,60 @@ pub enum NodeState {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Depth {
     /// What is the shortest path to a root/leaf
-    pub min: u32,
+    pub min: u16,
     /// What is the longest path to a root/leaf
-    pub max: u32,
+    pub max: u16,
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Default)]
-pub struct NextInsts {
+pub struct NextNodes {
     /// What are the immediate next instantiation nodes
-    pub nodes: FxHashSet<InstIdx>,
+    pub insts: FxHashSet<InstIdx>,
+    /// How many parents/children does this node have (not-necessarily
+    /// instantiation nodes), walking through disabled nodes.
+    pub count: u32,
+}
+
+#[bitmask(u8)]
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
+#[derive(Default)]
+pub enum ProofReach {
+    ProvesFalse,
+    UnderHypothesis,
+    ReachesProof,
+    ReachesNonTrivialProof,
+    ReachesFalse,
+
+    /// Is this a CDCL dead branch (i.e. all children lead to a contradiction)
+    CdclDeadBranch,
+}
+
+impl ProofReach {
+    pub fn if_(self, cond: bool) -> Self {
+        cond.then_some(self).unwrap_or_default()
+    }
+
+    pub fn proves_false(self) -> bool {
+        self.contains(ProofReach::ProvesFalse)
+    }
+    pub fn under_hypothesis(self) -> bool {
+        self.contains(ProofReach::UnderHypothesis)
+    }
+    pub fn reaches_proof(self) -> bool {
+        self.contains(ProofReach::ReachesProof)
+    }
+    pub fn reaches_non_trivial_proof(self) -> bool {
+        self.contains(ProofReach::ReachesNonTrivialProof)
+    }
+    pub fn reaches_false(self) -> bool {
+        self.contains(ProofReach::ReachesFalse)
+    }
+
+    pub fn cdcl_dead_branch(self) -> bool {
+        self.contains(ProofReach::CdclDeadBranch)
+    }
 }
 
 impl Node {
@@ -296,9 +413,9 @@ impl Node {
             bwd_depth: Depth::default(),
             subgraph: None,
             kind,
-            inst_parents: NextInsts::default(),
-            inst_children: NextInsts::default(),
-            part_of_ml: FxHashSet::default(),
+            parents: NextNodes::default(),
+            children: NextNodes::default(),
+            proof: ProofReach::default(),
         }
     }
     pub fn kind(&self) -> &NodeKind {
@@ -323,9 +440,11 @@ impl Node {
 
     pub fn frame(&self, parser: &Z3Parser) -> Option<StackIdx> {
         match *self.kind() {
-            NodeKind::ENode(enode_idx) => Some(parser[enode_idx].frame),
-            NodeKind::Instantiation(inst_idx) => Some(parser.insts[inst_idx].frame),
+            NodeKind::Instantiation(iidx) => Some(parser[iidx].frame),
+            NodeKind::ENode(eidx) => Some(parser[eidx].frame),
             NodeKind::GivenEquality(..) | NodeKind::TransEquality(_) => None,
+            NodeKind::Proof(psidx) => Some(parser[psidx].frame),
+            NodeKind::Cdcl(cdcl) => Some(parser[cdcl].frame),
         }
     }
 }
@@ -333,32 +452,41 @@ impl Node {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Copy)]
 pub enum NodeKind {
+    /// Corresponds to `InstIdx`.
+    ///
+    /// **Parents:** (small) arbitrary count, will always be `ENode` or
+    /// `TransEquality`.\
+    /// **Children:** (small) arbitrary count, will always be `ENode`.
+    Instantiation(InstIdx),
     /// Corresponds to `ENodeIdx`.
     ///
     /// **Parents:** will always have 0 or 1 parents, if 1 then this will be an `Instantiation`.\
-    /// **Children:** arbitrary count, will always be either `Instantiation` or
-    /// `GivenEquality` of type `EqualityExpl::Literal`.
+    /// **Children:** (large) arbitrary count, will always be either
+    /// `Instantiation` or `GivenEquality` of type `EqualityExpl::Literal`.
     ENode(ENodeIdx),
     /// Corresponds to `EqGivenIdx`.
     ///
     /// **Parents:** will always have 0 or 1 parents, if 1 then this will be an
     /// `ENode` or a `TransEquality` depending on if it's a `Literal` or
     /// `Congruence` resp.\
-    /// **Children:** arbitrary count, will always be `TransEquality` of type.
+    /// **Children:** (small) arbitrary count, will always be `TransEquality` of
+    /// type.
     GivenEquality(EqGivenIdx, Option<NonMaxU32>),
     /// Corresponds to `EqTransIdx`.
     ///
     /// **Parents:** arbitrary count, will always be `GivenEquality` or
     /// `TransEquality`. The number of immediately reachable `GivenEquality` con
     /// be found in `TransitiveExpl::given_len`.\
-    /// **Children:** arbitrary count, can be `GivenEquality`, `TransEquality`
-    /// or `Instantiation`.
+    /// **Children:** (large) arbitrary count, can be `GivenEquality`,
+    /// `TransEquality` or `Instantiation`.
     TransEquality(EqTransIdx),
-    /// Corresponds to `InstIdx`.
+    /// Corresponds to `ProofIdx`.
     ///
-    /// **Parents:** arbitrary count, will always be `ENode` or `TransEquality`.\
-    /// **Children:** arbitrary count, will always be `ENode`.
-    Instantiation(InstIdx),
+    /// **Parents:** (small) arbitrary count, will always be `Proof` or
+    /// `Instantiation`.
+    /// **Children:** (small) arbitrary count, will always be `Proof`.
+    Proof(ProofIdx),
+    Cdcl(CdclIdx),
 }
 
 impl fmt::Display for NodeKind {
@@ -374,11 +502,19 @@ impl fmt::Display for NodeKind {
             ),
             NodeKind::TransEquality(eq) => write!(f, "{eq:?}"),
             NodeKind::Instantiation(inst) => write!(f, "{inst:?}"),
+            NodeKind::Proof(ps) => write!(f, "{ps:?}"),
+            NodeKind::Cdcl(cdcl) => write!(f, "{cdcl:?}"),
         }
     }
 }
 
 impl NodeKind {
+    pub fn inst(&self) -> Option<InstIdx> {
+        match self {
+            Self::Instantiation(inst) => Some(*inst),
+            _ => None,
+        }
+    }
     pub fn enode(&self) -> Option<ENodeIdx> {
         match self {
             Self::ENode(enode) => Some(*enode),
@@ -397,23 +533,30 @@ impl NodeKind {
             _ => None,
         }
     }
-    pub fn inst(&self) -> Option<InstIdx> {
+    pub fn proof(&self) -> Option<ProofIdx> {
         match self {
-            Self::Instantiation(inst) => Some(*inst),
+            Self::Proof(ps) => Some(*ps),
+            _ => None,
+        }
+    }
+    pub fn cdcl(&self) -> Option<CdclIdx> {
+        match self {
+            Self::Cdcl(cdcl) => Some(*cdcl),
             _ => None,
         }
     }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
 #[derive(Debug, Clone, Copy)]
 pub enum EdgeKind {
     /// Instantiation -> ENode
     Yield,
     /// ENode -> Instantiation
-    Blame { trigger_term: u16 },
+    Blame { pattern_term: u16 },
     /// TransEquality -> Instantiation
-    BlameEq { trigger_term: u16, eq_order: u16 },
+    BlameEq { pattern_term: u16, eq_order: u16 },
     /// ENode -> GivenEquality (`EqualityExpl::Literal`)
     EqualityFact,
     /// TransEquality -> GivenEquality (`EqualityExpl::Congruence`)
@@ -422,10 +565,35 @@ pub enum EdgeKind {
     TEqualitySimple { forward: bool },
     /// TransEquality -> TransEquality (`TransitiveExplSegmentKind::Transitive`)
     TEqualityTransitive { forward: bool },
+    /// Proof -> Proof
+    ProofStep,
+    /// Instantiation -> Proof
+    YieldProof,
+    /// Cdcl -> Cdcl
+    Cdcl(CdclEdge),
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
+#[derive(Debug, Clone, Copy)]
+pub enum CdclEdge {
+    /// Edge deeper into the CDCL tree
+    Decide,
+    /// Edge back to a higher level in the tree
+    Backtrack,
+    /// Edge to a side branch which may later be popped by the user.
+    Sidetrack,
+    /// Edge linking a backtracked node to the correct place in the tree.
+    RetryFrom,
 }
 
 pub trait IndexesInstGraph {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex;
+}
+impl IndexesInstGraph for InstIdx {
+    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
+        graph.inst_to_raw_idx()(*self)
+    }
 }
 impl IndexesInstGraph for ENodeIdx {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
@@ -441,14 +609,23 @@ impl IndexesInstGraph for EqTransIdx {
         ))
     }
 }
-impl IndexesInstGraph for InstIdx {
-    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
-        graph.inst_to_raw_idx()(*self)
-    }
-}
 impl IndexesInstGraph for (EqGivenIdx, Option<NonMaxU32>) {
     fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
         graph.eq_given_idx[self]
+    }
+}
+impl IndexesInstGraph for ProofIdx {
+    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
+        RawNodeIndex(NodeIndex::new(
+            graph.proofs_idx.0.index() + usize::from(*self),
+        ))
+    }
+}
+impl IndexesInstGraph for CdclIdx {
+    fn index(&self, graph: &RawInstGraph) -> RawNodeIndex {
+        RawNodeIndex(NodeIndex::new(
+            graph.cdcl_idx.0.index() + usize::from(*self),
+        ))
     }
 }
 impl IndexesInstGraph for RawNodeIndex {
@@ -468,6 +645,13 @@ impl<T: IndexesInstGraph> IndexMut<T> for RawInstGraph {
     fn index_mut(&mut self, index: T) -> &mut Self::Output {
         let index = index.index(self);
         &mut self.graph[index.0]
+    }
+}
+
+impl Index<RawEdgeIndex> for RawInstGraph {
+    type Output = EdgeKind;
+    fn index(&self, index: RawEdgeIndex) -> &Self::Output {
+        &self.graph[index.0]
     }
 }
 

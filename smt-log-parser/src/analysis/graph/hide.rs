@@ -9,20 +9,26 @@ use super::{
 };
 
 impl RawInstGraph {
-    pub fn reset_visibility_to(&mut self, hidden: bool) {
+    pub fn reset_visibility_to(&mut self, hidden: bool) -> bool {
         let state = if hidden {
             NodeState::Hidden
         } else {
             NodeState::Visible
         };
+        let mut modified = false;
         for node in self.graph.node_weights_mut().filter(|n| !n.disabled()) {
-            self.stats.set_state(node, state);
+            modified |= self.stats.set_state(node, state);
         }
+        modified
     }
-    pub fn set_visibility(&mut self, hidden: bool, node: RawNodeIndex) {
+    pub fn can_set_visibility(&self, node: &Node, hidden: bool) -> bool {
+        !node.disabled() && node.hidden() != hidden
+    }
+    pub fn set_visibility<I: IndexesInstGraph>(&mut self, node: I, hidden: bool) -> bool {
+        let node = node.index(self);
         let node = &mut self.graph[node.0];
         if node.disabled() {
-            return;
+            return false;
         }
         self.stats.set_state(
             node,
@@ -31,58 +37,89 @@ impl RawInstGraph {
             } else {
                 NodeState::Visible
             },
-        );
+        )
     }
 
-    pub fn keep_first_n(&mut self, nodes: impl Iterator<Item = RawNodeIndex>, mut n: usize) {
+    pub fn keep_first_n(
+        &mut self,
+        nodes: impl Iterator<Item = RawNodeIndex>,
+        mut n: usize,
+    ) -> bool {
+        let mut modified = false;
         for node in nodes {
             if n == 0 {
-                self.set_visibility(true, node);
-            } else if self.graph[node.0].visible() {
+                modified |= self.set_visibility(node, true);
+            } else if self[node].visible() {
                 n -= 1;
             }
         }
+        modified
     }
 
     /// When predicate `p` evaluates to true the visibility of the corresponding
-    /// node is set to `hidden`.
+    /// node is set to `hidden`. Use this when hiding nodes and the predicate is
+    /// expensive as it avoids calling the predicate a lot more than
+    /// `set_visibility_all`.
     pub fn set_visibility_when(
         &mut self,
         hidden: bool,
-        mut p: impl FnMut(RawNodeIndex, &Node) -> bool,
-    ) {
+        mut p: impl FnMut(&Self, RawNodeIndex, &Node) -> bool,
+    ) -> bool {
+        let mut modified = false;
         for node in self.graph.node_indices().map(RawNodeIndex) {
-            let n = &self.graph[node.0];
+            let n = &self[node];
+            if !self.can_set_visibility(n, hidden) {
+                continue;
+            }
+            if p(self, node, n) {
+                modified |= self.set_visibility(node, hidden);
+            }
+        }
+        modified
+    }
+    /// When predicate `p` evaluates to `Some` the visibility of the corresponding
+    /// node is set to `hidden` (`true`) or `visible` (`false`).
+    pub fn set_visibility_all(
+        &mut self,
+        mut p: impl FnMut(&Self, RawNodeIndex, &Node) -> Option<bool>,
+    ) -> bool {
+        let mut modified = false;
+        for node in self.graph.node_indices().map(RawNodeIndex) {
+            let n = &self[node];
             if n.disabled() {
                 continue;
             }
-            if p(node, n) {
-                self.set_visibility(hidden, node);
+            if let Some(hidden) = p(self, node, n) {
+                modified |= self.set_visibility(node, hidden);
             }
         }
+        modified
     }
+
     pub fn set_visibility_many<I: IndexesInstGraph>(
         &mut self,
         hidden: bool,
         nodes: impl Iterator<Item = I>,
-    ) {
+    ) -> bool {
+        let mut modified = false;
         for node in nodes {
             let node = node.index(self);
-            self.set_visibility(hidden, node);
+            modified |= self.set_visibility(node, hidden);
         }
+        modified
     }
 
     fn filter_path(
         &self,
         edge: impl EdgeRef<NodeId = NodeIndex<RawIx>>,
-        f: impl Fn(&Node) -> u32,
+        f: impl Fn(&Node) -> u16,
     ) -> bool {
         let from = &self.graph[edge.source()];
         let to = &self.graph[edge.target()];
         if from.disabled() {
             f(from) == f(to)
         } else {
-            f(from) == f(to) + 1
+            f(from) == f(to).saturating_add(1)
         }
     }
     /// A graph with edges that aren't part of any `longest/shortest` path to a
@@ -128,7 +165,7 @@ impl RawInstGraph {
         EdgeFiltered::from_fn(&self.graph, filter)
     }
 
-    pub fn show_longest_path_through(&mut self, node: RawNodeIndex) -> Vec<RawNodeIndex> {
+    pub fn show_longest_path_through(&mut self, node: RawNodeIndex) -> (bool, Vec<RawNodeIndex>) {
         let mut path: Vec<_> = {
             let to_root = self.path_to_root_graph(true);
             Bfs::new(&to_root, node.0)
@@ -142,29 +179,29 @@ impl RawInstGraph {
             let to_leaf = Bfs::new(&to_leaf, node.0).iter(&to_leaf).skip(1);
             path.extend(to_leaf.map(RawNodeIndex));
         };
-        path.retain(|&n| !self.graph[n.0].disabled());
-        self.set_visibility_many(false, path.iter().copied());
-        path
+        path.retain(|&n| !self[n].disabled());
+        let modified = self.set_visibility_many(false, path.iter().copied());
+        (modified, path)
     }
 }
 
 impl InstGraph {
-    pub fn keep_first_n_cost(&mut self, n: usize) {
-        let cost = self.analysis.cost.iter().copied();
+    pub fn keep_first_n_cost(&mut self, n: usize) -> bool {
+        let (top_cost, other) = self.analysis.first_n_cost(&self.raw, n);
+        let cost = top_cost.iter().chain(other).copied();
         let cost = cost.chain(self.subgraphs.singletons());
         self.raw.keep_first_n(cost, n)
     }
-    pub fn keep_first_n_children(&mut self, n: usize) {
-        let children = self.analysis.children.iter().copied();
+    pub fn keep_first_n_children(&mut self, n: usize) -> bool {
+        let (top_children, other) = self.analysis.first_n_children(&self.raw, n);
+        let children = top_children.iter().chain(other).copied();
         let children = children.chain(self.subgraphs.singletons());
         self.raw.keep_first_n(children, n)
     }
-    pub fn keep_first_n_fwd_depth_min(&mut self, n: usize) {
-        let fwd_depth_min = self.analysis.fwd_depth_min.iter().copied();
+    pub fn keep_first_n_fwd_depth_min(&mut self, n: usize) -> bool {
+        let (top_fwd_depth_min, other) = self.analysis.first_n_fwd_depth_min(&self.raw, n);
+        let fwd_depth_min = top_fwd_depth_min.iter().chain(other).copied();
         let fwd_depth_min = fwd_depth_min.chain(self.subgraphs.singletons());
         self.raw.keep_first_n(fwd_depth_min, n)
     }
-    // pub fn keep_first_n_max_depth(&mut self, n: usize) {
-    //     self.raw.keep_first_n(self.analysis.max_depth.iter().copied(), n)
-    // }
 }

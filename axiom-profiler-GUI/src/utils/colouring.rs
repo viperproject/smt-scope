@@ -2,6 +2,20 @@ use std::num::NonZeroUsize;
 
 use palette::{encoding::Srgb, white_point::D65, FromColor, Hsluv, Hsv, LuvHue};
 use smt_log_parser::{items::QuantIdx, FxHashMap, TiVec, Z3Parser};
+use yew::prelude::*;
+
+#[derive(Properties, Clone, PartialEq)]
+pub struct QuantColourBoxProps {
+    pub hue: Option<f64>,
+}
+
+#[function_component]
+pub fn QuantColourBox(props: &QuantColourBoxProps) -> Html {
+    let style = props
+        .hue
+        .map(|hue| format!("background-color: hsl({hue}, 79%, 76%)"));
+    html! { <div class="node-colour" {style}></div> }
+}
 
 #[derive(Debug, Clone)]
 pub struct QuantIdxToColourMap {
@@ -14,9 +28,8 @@ impl QuantIdxToColourMap {
     pub fn new(parser: &Z3Parser) -> Self {
         let mut instd: TiVec<QuantIdx, bool> = parser.quantifiers().iter().map(|_| false).collect();
         let mut non_quant_insts = false;
-        for inst in parser.instantiations() {
-            let match_ = &parser[inst.match_];
-            let Some(qidx) = match_.kind.quant_idx() else {
+        for data in parser.instantiations_data() {
+            let Some(qidx) = data.match_.kind.quant_idx() else {
                 non_quant_insts = true;
                 continue;
             };
@@ -47,17 +60,19 @@ impl QuantIdxToColourMap {
         self.quants.len()
     }
 
-    pub fn get(&self, qidx: Option<QuantIdx>) -> LuvHue<f64> {
-        let idx = self.quants[&qidx] as usize;
+    pub fn get(&self, qidx: Option<QuantIdx>) -> Option<LuvHue<f64>> {
+        let idx = *self.quants.get(&qidx)? as usize;
         // debug_assert!(idx < idx);
         let idx_perm = (idx * self.coprime.get() + self.shift) % self.total_count();
-        LuvHue::new(360. * idx_perm as f64 / self.total_count() as f64)
+        Some(LuvHue::new(
+            360. * idx_perm as f64 / self.total_count() as f64,
+        ))
     }
-    pub fn get_rbg_hue(&self, qidx: Option<QuantIdx>) -> f64 {
-        let hue = self.get(qidx);
+    pub fn get_rbg_hue(&self, qidx: Option<QuantIdx>) -> Option<f64> {
+        let hue = self.get(qidx)?;
         let colour = Hsluv::<D65, f64>::new(hue, 100.0, 50.0);
         let colour = Hsv::<Srgb, f64>::from_color(colour);
-        colour.hue.into_positive_degrees()
+        Some(colour.hue.into_positive_degrees())
     }
 
     #[allow(clippy::out_of_bounds_indexing)]

@@ -59,8 +59,7 @@ impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
         Ok(self
             .term_id_map
             .get_term(&term_id)
-            .map(Either::Left)
-            .unwrap_or(Either::Right(term_id)))
+            .map_or(Either::Right(term_id), Either::Left))
     }
     pub(super) fn parse_existing_id(&self, strings: &mut StringTable, id: &str) -> Result<K> {
         self.parse_id(strings, id)?

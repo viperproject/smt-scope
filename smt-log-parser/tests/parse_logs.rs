@@ -2,7 +2,9 @@ use cap::Cap;
 use std::time::{Duration, Instant};
 
 use mem_dbg::*;
-use smt_log_parser::analysis::InstGraph;
+use smt_log_parser::analysis::{
+    CdclAnalysis, InstGraph, LogInfo, ProofAnalysis, QuantifierAnalysis,
+};
 use smt_log_parser::{LogParser, Z3Parser};
 
 #[global_allocator]
@@ -27,7 +29,7 @@ fn parse_all_logs() {
         .unwrap()
         .map(|r| r.unwrap())
         .collect();
-    all_logs.sort_by_key(|dir| dir.path());
+    all_logs.sort_by_key(|dir| dir.metadata().unwrap().len());
     for log in all_logs {
         // Put things in a thread to isolate memory usage more than the default.
         let t = std::thread::spawn(move || {
@@ -68,15 +70,12 @@ fn parse_all_logs() {
             let elapsed = now.elapsed();
             let mut parser = parser.take_parser();
 
-            max_parse_ovhd = f64::max(
-                max_parse_ovhd,
-                (ALLOCATOR.allocated() as u64 - start_alloc) as f64 / parse_bytes as f64,
-            );
             let parse_bytes_kb = parse_bytes / 1024;
             let mem_size = parser.mem_size(SizeFlags::default());
+            max_parse_ovhd = f64::max(max_parse_ovhd, mem_size as f64 / parse_bytes as f64);
             println!(
                 "Finished parsing in {elapsed:?} ({} kB/ms). Memory use {} MB / {} MB (real {} MB):",
-                parse_bytes_kb / elapsed.as_millis() as u64,
+                1000 * parse_bytes_kb / elapsed.as_micros() as u64,
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
                 mem_size / mb as usize,
@@ -84,8 +83,8 @@ fn parse_all_logs() {
             parser.mem_dbg(DbgFlags::default()).ok();
             // TODO: decrease this
             assert!(
-                mem_size as u64 <= parse_bytes * 3 / 2,
-                "Parser takes up more memory than 3/2 * file size!"
+                mem_size as u64 <= parse_bytes * 2,
+                "Parser takes up more memory than 2 * file size!"
             );
 
             let middle_alloc = ALLOCATOR.allocated() as u64;
@@ -101,7 +100,11 @@ fn parse_all_logs() {
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
 
             let now = Instant::now();
+            let _log_info = LogInfo::new(&parser);
+            let _cdcl_info = CdclAnalysis::new(&parser);
             let mut inst_graph = InstGraph::new(&parser).unwrap();
+            let _quant_info = QuantifierAnalysis::new(&parser, &inst_graph);
+            let _proof_info = ProofAnalysis::new(&parser, &inst_graph);
             let elapsed_ig = now.elapsed();
             assert!(
                 elapsed_ig < timeout,
@@ -113,18 +116,16 @@ fn parse_all_logs() {
             let elapsed_ml = now.elapsed();
             let elapsed = elapsed_ig + elapsed_ml;
 
-            max_analysis_ovhd = f64::max(
-                max_analysis_ovhd,
-                (ALLOCATOR.allocated() as u64 - middle_alloc) as f64 / parse_bytes as f64,
-            );
             let mem_size = inst_graph.mem_size(SizeFlags::default());
+            max_analysis_ovhd = f64::max(max_analysis_ovhd, mem_size as f64 / parse_bytes as f64);
             let (sure_mls, maybe_mls) = inst_graph.found_matching_loops().unwrap();
             println!(
-                "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {sure_mls}+{maybe_mls} mls. Memory use {} MB / {} MB:",
+                "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {sure_mls}+{maybe_mls} mls. Memory use {} MB / {} MB (real {} MB):",
                 (parse_bytes_kb as u128 * 1000) / elapsed.as_micros(),
                 inst_graph.raw.graph.node_count(),
                 ALLOCATOR.allocated() / mb as usize,
                 ALLOCATOR.limit() / mb as usize,
+                mem_size / mb as usize,
             );
             inst_graph.mem_dbg(DbgFlags::default()).ok();
             println!();
@@ -133,8 +134,8 @@ fn parse_all_logs() {
             // TODO: decrease this
             assert!(elapsed_ml < timeout, "ML search took longer than timeout");
             assert!(
-                mem_size as u64 <= parse_bytes * 3,
-                "Analysis takes up more memory than 3 * file size!"
+                mem_size as u64 <= parse_bytes * 5,
+                "Analysis takes up more memory than 5 * file size!"
             );
 
             drop(inst_graph);

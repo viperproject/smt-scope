@@ -334,13 +334,15 @@ impl SearchMode {
             FocusSearch {
                 results, select, ..
             } => {
+                if select.is_none() {
+                    commands.can_select(true);
+                }
                 let default = PickedSuggestion {
                     ridx,
                     choice_idx: None,
                 };
                 let new = select.filter(|s| s.ridx == ridx).unwrap_or(default);
                 *select = Some(new);
-                commands.can_select(true);
 
                 let entry = new.index(results, omnibox);
                 self.input = entry.search_text.clone();

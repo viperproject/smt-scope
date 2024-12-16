@@ -165,7 +165,7 @@ impl Component for SplitDiv {
         let style_right = format!(
             "width:calc({}% - {}px); height:100%;",
             inverse * 100.0,
-            middle_width * position
+            middle_width * inverse
         );
         let mut children = ctx.props().children.iter();
         html! {

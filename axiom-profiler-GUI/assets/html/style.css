@@ -432,6 +432,7 @@ ul.selected-info {
 /* Simple dot-svg view */
 
 .dot {
+    display: inline-block;
     position: relative;
 }
 .dot.scaled {

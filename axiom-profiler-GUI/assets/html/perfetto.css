@@ -850,3 +850,65 @@ input[type="file"] {
 	color: rgba(0, 0, 0, 0.5);
 	text-decoration: none;
 }
+
+/* Details panel */
+
+.handle {
+    background-color: hsl(215, 1%, 95%);
+    /* border: 1px solid rgba(0, 0, 0, 0.1); */
+    border-bottom: none;
+    /* cursor: row-resize; */
+    user-select: none;
+    display: flex;
+}
+
+.handle .tabs {
+    display: flex;
+    overflow: hidden;
+    flex: 1;
+}
+.handle .tabs .tab {
+    font-family: "Roboto Condensed", sans-serif;
+    color: #3c4b5d;
+    padding: 4px;
+    margin-top: 3px;
+    align-items: center;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 3px 3px 0 0;
+    background-color: rgba(0, 0, 0, 0.0588235294);
+    border-right: solid 1px hsl(0, 0%, 75%);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    z-index: 5;
+    box-shadow: rgba(0, 0, 0, 0.231372549) 0px 0px 3px 1px;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+}
+.handle .tabs .tab:nth-child(1) {
+    margin-left: 3px;
+}
+.handle .tabs .tab[active] {
+    background-color: white;
+    cursor: default;
+}
+
+.handle .tabs .tab .pf-tab-title {
+    margin: 0px 4px;
+    overflow: hidden;
+}
+
+.pf-details-shell {
+    box-shadow: rgba(0, 0, 0, 0.231372549) 0px 0px 3px 1px;
+    overflow: auto;
+	font-family: "Roboto Condensed", sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.pf-details-shell.pf-fill-parent {
+    width: 100%;
+    overflow-x: hidden;
+}

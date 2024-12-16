@@ -11,3 +11,4 @@ pub mod toggle_list;
 pub mod toggle_switch;
 pub mod updater;
 pub mod usize_input;
+pub mod tab;

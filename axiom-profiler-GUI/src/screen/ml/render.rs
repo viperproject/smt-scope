@@ -13,7 +13,7 @@ use crate::{
         graphviz::{DotEdgeProperties, DotNodeProperties},
         homepage::{FileInfo, RcParser},
     },
-    utils::{colouring::QuantIdxToColourMap, graphviz::Dot},
+    utils::{colouring::QuantIdxToColourMap, graphviz::Dot, tab::Tab},
 };
 
 #[derive(Properties, Clone)]
@@ -65,10 +65,10 @@ pub fn MlgRenderer(props: &MlgrProps) -> Html {
         props.file.name.split('.').next().unwrap(),
         props.idx + 1
     );
-    html! {<>
-        <h2>{"Generalised Matching Loop "}{warning}</h2>
+    html! {<Tab title="Matching Loop">
+        {warning}
         <Dot {dot} {filename} scale={false} />
-    </>}
+    </Tab>}
 }
 
 impl MlgRenderer {

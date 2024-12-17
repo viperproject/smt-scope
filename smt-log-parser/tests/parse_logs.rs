@@ -2,13 +2,13 @@ use cap::Cap;
 use std::time::{Duration, Instant};
 
 use mem_dbg::*;
-use smt_log_parser::analysis::{
-    CdclAnalysis, InstGraph, LogInfo, ProofAnalysis, QuantifierAnalysis,
-};
+use smt_log_parser::analysis;
 use smt_log_parser::{LogParser, Z3Parser};
 
 #[global_allocator]
 static ALLOCATOR: Cap<std::alloc::System> = Cap::new(std::alloc::System, usize::MAX);
+
+const MB: u64 = 1024_u64 * 1024_u64;
 
 #[test]
 fn parse_all_logs() {
@@ -32,7 +32,8 @@ fn parse_all_logs() {
     all_logs.sort_by_key(|dir| dir.metadata().unwrap().len());
     for log in all_logs {
         // Put things in a thread to isolate memory usage more than the default.
-        let t = std::thread::spawn(move || {
+        let builder = std::thread::Builder::new().stack_size(8 * MB as usize);
+        let t = builder.spawn(move || {
             // Some memory usage is still left over from previous loop iterations, so we'll need to subtract that.
             let start_alloc = ALLOCATOR.allocated() as u64;
 
@@ -40,27 +41,26 @@ fn parse_all_logs() {
             let (metadata, mut parser) = Z3Parser::from_file(&filename).unwrap();
             let file_size = metadata.len();
             let parse_bytes = file_size.min(parse_limit);
-            let mb = 1024_u64 * 1024_u64;
             let file_info = (file_size != parse_bytes)
-                .then(|| format!(" / {} MB", file_size / mb))
+                .then(|| format!(" / {} MB", file_size / MB))
                 .unwrap_or_default();
-            let parse_bytes_ovhd = parse_bytes + 8 * mb;
+            let parse_bytes_ovhd = parse_bytes + 8 * MB;
 
             // Gives 100 millis per MB (or 100 secs per GB)
             let timeout = Duration::from_millis(parse_bytes / (10 * 1024) + 500);
             // Limit memory usage to `PARSER_OVERHEAD`x the parse amount + 64MiB. Reduce this if
             // we optimise memory usage more.
-            let fixed_overhead = 64 * mb;
+            let fixed_overhead = 64 * MB;
             let mem_limit = start_alloc + parse_bytes * PARSER_OVERHEAD + fixed_overhead;
             assert!(mem_limit <= mem, "{start_alloc} + {parse_bytes}/{parse_limit} * {PARSER_OVERHEAD} + {fixed_overhead} > {mem}");
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
             println!(
                 "Parsing {} ({} MB{file_info}). MemC {} MB, MemL {} MB ({} MB), TimeL {timeout:?}.",
                 filename.display(),
-                parse_bytes / mb,
-                start_alloc / mb,
-                (mem_limit - start_alloc) / mb,
-                mem_limit / mb,
+                parse_bytes / MB,
+                start_alloc / MB,
+                (mem_limit - start_alloc) / MB,
+                mem_limit / MB,
             );
             let now = Instant::now();
 
@@ -77,9 +77,9 @@ fn parse_all_logs() {
             println!(
                 "Finished parsing in {elapsed:?} ({} kB/ms). Memory use {} MB / {} MB (real {} MB):",
                 1000 * parse_bytes_kb / elapsed.as_micros() as u64,
-                ALLOCATOR.allocated() / mb as usize,
-                ALLOCATOR.limit() / mb as usize,
-                mem_size / mb as usize,
+                ALLOCATOR.allocated() / MB as usize,
+                ALLOCATOR.limit() / MB as usize,
+                mem_size / MB as usize,
             );
             parser.mem_dbg(DbgFlags::default()).ok();
             // TODO: decrease this
@@ -94,18 +94,14 @@ fn parse_all_logs() {
             let mem_limit = middle_alloc + parse_bytes * ANALYSIS_OVERHEAD + fixed_overhead;
             println!(
                 "Running analysis. MemC {} MB, MemL {} MB ({} MB)",
-                middle_alloc / mb,
-                (mem_limit - middle_alloc) / mb,
-                mem_limit / mb,
+                middle_alloc / MB,
+                (mem_limit - middle_alloc) / MB,
+                mem_limit / MB,
             );
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
 
             let now = Instant::now();
-            let _log_info = LogInfo::new(&parser);
-            let _cdcl_info = CdclAnalysis::new(&parser);
-            let mut inst_graph = InstGraph::new(&parser).unwrap();
-            let _quant_info = QuantifierAnalysis::new(&parser, &inst_graph);
-            let _proof_info = ProofAnalysis::new(&parser, &inst_graph);
+            let mut inst_graph = analysis::run_all(&parser);
             let elapsed_ig = now.elapsed();
             assert!(
                 elapsed_ig < timeout,
@@ -124,9 +120,9 @@ fn parse_all_logs() {
                 "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {sure_mls}+{maybe_mls} mls. Memory use {} MB / {} MB (real {} MB):",
                 (parse_bytes_kb as u128 * 1000) / elapsed.as_micros(),
                 inst_graph.raw.graph.node_count(),
-                ALLOCATOR.allocated() / mb as usize,
-                ALLOCATOR.limit() / mb as usize,
-                mem_size / mb as usize,
+                ALLOCATOR.allocated() / MB as usize,
+                ALLOCATOR.limit() / MB as usize,
+                mem_size / MB as usize,
             );
             inst_graph.mem_dbg(DbgFlags::default()).ok();
             println!();
@@ -142,7 +138,7 @@ fn parse_all_logs() {
             drop(inst_graph);
             drop(parser);
             (max_parse_ovhd, max_analysis_ovhd)
-        });
+        }).unwrap();
         let (p, a) = t.join().unwrap();
         max_parse_ovhd = p;
         max_analysis_ovhd = a;

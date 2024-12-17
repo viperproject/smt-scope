@@ -33,6 +33,14 @@ impl Subgraphs {
     pub fn singletons(&self) -> impl Iterator<Item = RawNodeIndex> + '_ {
         self.singletons.iter().copied()
     }
+
+    pub fn in_transitive_closure(&self, from: (GraphIdx, u32), to: (GraphIdx, u32)) -> bool {
+        from.0 == to.0
+            && self[from.0]
+                .reach_fwd
+                .as_ref()
+                .map_or(true, |tc| tc.in_transitive_closure(from.1, to.1))
+    }
 }
 
 impl Deref for Subgraphs {
@@ -73,14 +81,15 @@ impl RawInstGraph {
 
             // Construct subgraph
             let idx = subgraphs.next_key();
-            let is_cdcl = self[node].kind().cdcl().is_some();
+            let kind = self[node].kind();
+            let skip_trans = kind.cdcl().is_some() || kind.proof().is_some();
             let (subgraph, discovered_) = Subgraph::new(
                 node,
                 &mut self.graph,
                 discovered,
                 |node, i| node.subgraph = Some((idx, i)),
                 |node| node.subgraph.unwrap().1,
-                !is_cdcl,
+                !skip_trans,
             )?;
             discovered = discovered_;
             subgraphs.raw.try_reserve(1)?;
@@ -107,7 +116,7 @@ impl RawInstGraph {
 pub struct Subgraph {
     pub(super) nodes: Vec<RawNodeIndex>,
     /// `reach_fwd[idx]` gives the set of nodes that can be reached from `idx`
-    pub reach_fwd: TransitiveClosure,
+    pub reach_fwd: Option<TransitiveClosure>,
 }
 
 pub struct VisitBox<D: VisitMap<NodeIndex<RawIx>>> {
@@ -166,29 +175,32 @@ impl Subgraph {
         }
 
         // Transitive closure
-        let mut reach_fwd = TransitiveClosure(vec![RoaringBitmap::new(); nodes.len()]);
-        if calc_trans {
-            let mut reach_fwd = &mut *reach_fwd.0;
-            let mut reverse_topo = nodes.iter().enumerate().rev();
-            while let (Some((idx, node)), Some((curr, others))) =
-                (reverse_topo.next(), reach_fwd.split_last_mut())
-            {
-                reach_fwd = others;
-                curr.insert(idx as u32);
+        let reach_fwd = calc_trans
+            .then(|| {
+                let mut tc = TransitiveClosure(vec![RoaringBitmap::new(); nodes.len()]);
+                let mut reach_fwd = &mut *tc.0;
+                let mut reverse_topo = nodes.iter().enumerate().rev();
+                while let (Some((idx, node)), Some((curr, others))) =
+                    (reverse_topo.next(), reach_fwd.split_last_mut())
+                {
+                    reach_fwd = others;
+                    curr.insert(idx as u32);
 
-                if cfg!(feature = "never_panic") {
-                    let neighbors = graph.neighbors_directed(node.0, Incoming).count();
-                    let mut allocation = Vec::<u8>::new();
-                    allocation.try_reserve_exact(2 * neighbors * curr.serialized_size())?;
-                    drop(allocation);
-                }
+                    if cfg!(feature = "never_panic") {
+                        let neighbors = graph.neighbors_directed(node.0, Incoming).count();
+                        let mut allocation = Vec::<u8>::new();
+                        allocation.try_reserve_exact(2 * neighbors * curr.serialized_size())?;
+                        drop(allocation);
+                    }
 
-                for parent in graph.neighbors_directed(node.0, Incoming) {
-                    let parent = c(&graph[parent]);
-                    reach_fwd[parent as usize] |= &*curr;
+                    for parent in graph.neighbors_directed(node.0, Incoming) {
+                        let parent = c(&graph[parent]);
+                        reach_fwd[parent as usize] |= &*curr;
+                    }
                 }
-            }
-        }
+                Result::Ok(tc)
+            })
+            .transpose()?;
 
         // let mut tc_combined = RoaringBitmap::new();
         // for (idx, tc) in transitive_closures.into_iter().enumerate() {
@@ -238,7 +250,7 @@ impl InstGraph {
         let from_node = &self.raw[from];
         let to_node = &self.raw[to];
         let (from_subgraph, _) = from_node.subgraph?;
-        let (to_subgraph, to_idx) = to_node.subgraph?;
+        let to_sg @ (to_subgraph, _) = to_node.subgraph?;
         if from_subgraph != to_subgraph {
             return None;
         }
@@ -246,12 +258,9 @@ impl InstGraph {
         let filtered = NodeFiltered::from_fn(&*self.raw.graph, |n| {
             let node = &self.raw.graph[n];
             !node.visible()
-                && node.subgraph.is_some_and(|(subgraph, idx)| {
-                    subgraph == from_subgraph
-                        && self.subgraphs[subgraph]
-                            .reach_fwd
-                            .in_transitive_closure(idx, to_idx)
-                })
+                && node
+                    .subgraph
+                    .is_some_and(|curr_sg| self.subgraphs.in_transitive_closure(curr_sg, to_sg))
         });
 
         let mut paths_between: FxHashSet<_> = [to].into_iter().collect();

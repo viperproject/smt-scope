@@ -7,7 +7,7 @@ use smt_log_parser::{
         visible::VisibleEdge,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::{CdclKind, ENodeIdx, MatchKind, QuantPat},
+    items::{CdclKind, MatchKind, QuantPat, TermIdx},
     Z3Parser,
 };
 
@@ -167,9 +167,15 @@ impl
 
     fn tooltip(&self, parser: &Z3Parser) -> String {
         use NodeKind::*;
-        fn get_name(parser: &Z3Parser, enode: ENodeIdx) -> &str {
-            let name = parser[parser[enode].owner].kind.app_name();
-            name.map(|n| &parser[n]).unwrap_or_default()
+        fn get_name(parser: &Z3Parser, tidx: TermIdx) -> String {
+            let owner = &parser[tidx];
+            let name = owner.kind.app_name();
+            let name = name.map(|n| &parser[n]).unwrap_or_default();
+            if owner.child_ids.is_empty() {
+                name.to_string()
+            } else {
+                format!("{}(...)", name)
+            }
         }
         match *self {
             Instantiation(inst) => match &parser[parser[inst].match_].kind {
@@ -186,25 +192,27 @@ impl
                     .unwrap()
                     .to_string(),
             },
-            ENode(enode) => get_name(parser, enode).to_string(),
+            ENode(enode) => get_name(parser, parser[enode].owner),
             GivenEquality(eq, _) => {
                 let eq = &parser[eq];
                 let kind = eq.kind_str(&parser.strings);
-                let (from, to) = (get_name(parser, eq.from()), get_name(parser, eq.to()));
+                let (from, to) = (
+                    get_name(parser, parser[eq.from()].owner),
+                    get_name(parser, parser[eq.to()].owner),
+                );
                 format!("{kind}: {from} = {to}")
             }
             TransEquality(eq) => {
                 let (from, to) = parser.from_to(eq);
-                let (from, to) = (get_name(parser, from), get_name(parser, to));
+                let (from, to) = (
+                    get_name(parser, parser[from].owner),
+                    get_name(parser, parser[to].owner),
+                );
                 let len = parser[eq].given_len.map(|l| l.to_string());
                 let len = len.as_deref().unwrap_or("?");
                 format!("{from} =[{len}] {to}")
             }
-            Proof(proof) => {
-                let name = &parser[parser[proof].result].kind.app_name();
-                let name = name.map(|n| &parser[n]).unwrap_or_default();
-                name.to_string()
-            }
+            Proof(proof) => get_name(parser, parser[proof].result),
             Cdcl(cdcl) => match &parser[cdcl].kind {
                 CdclKind::Root => "root",
                 CdclKind::Empty(..) => "empty",

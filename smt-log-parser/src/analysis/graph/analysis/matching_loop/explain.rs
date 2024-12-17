@@ -427,6 +427,13 @@ impl MlExplainer {
                     self.ancestor_is_recurring = false;
                 }
                 self.ancestor_is_recurring = ancestor_is_recurring;
+                if self.ancestor_is_recurring && !self.add_mode {
+                    self.burned_eqs.insert(eq);
+                    self.add_mode = true;
+                    self.super_walk_trans(eq, forward)?;
+                    self.add_mode = false;
+                    assert!(self.ancestor_is_recurring);
+                }
                 Ok(())
             }
             fn walk_trans(
@@ -464,15 +471,7 @@ impl MlExplainer {
                     return Ok(());
                 }
 
-                self.super_walk_trans(eq, forward)?;
-                if self.ancestor_is_recurring {
-                    self.burned_eqs.insert(eq);
-                    self.add_mode = true;
-                    self.super_walk_trans(eq, forward)?;
-                    self.add_mode = false;
-                    assert!(self.ancestor_is_recurring);
-                }
-                Ok(())
+                self.super_walk_trans(eq, forward)
             }
         }
         let mut walker = TransEqGraphWalker {

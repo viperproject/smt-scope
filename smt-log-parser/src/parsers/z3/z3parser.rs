@@ -837,7 +837,7 @@ impl Z3LogParser for Z3Parser {
         // `[instance]` repeated twice with the same fingerprint (without an
         // intermediate `[new-match]`). We can try to remove the `can_duplicate`
         // in the future.
-        let can_duplicate = self.version_info.is_version_minor(4, 12);
+        let can_duplicate = true;//self.version_info.is_version_minor(4, 12);
         let iidx = self.insts.new_inst(fingerprint, inst, can_duplicate)?;
         self.events.new_inst();
         self.inst_stack.try_reserve(1)?;

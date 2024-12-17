@@ -4,7 +4,10 @@ mod svg_graph;
 
 use crate::{
     screen::{file::RcAnalysis, homepage::RcParser},
-    utils::{split_div::{SplitDiv, SplitDivProps}, tab::TabContainer},
+    utils::{
+        split_div::{SplitDiv, SplitDivProps},
+        tab::TabContainer,
+    },
 };
 use material_yew::WeakComponentLink;
 use smt_log_parser::{

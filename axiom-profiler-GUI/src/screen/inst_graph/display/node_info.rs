@@ -21,7 +21,8 @@ use crate::{
         graphviz::{DotEdgeProperties, DotNodeProperties},
         homepage::RcParser,
         inst_graph::RcVisibleGraph,
-    }, utils::tab::Tab,
+    },
+    utils::tab::Tab,
 };
 
 #[derive(Properties, PartialEq)]

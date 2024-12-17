@@ -548,17 +548,7 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a AnyTe
                 _ => None,
             });
             if let Some(meaning) = meaning {
-                let mut fn_ = |f: &mut fmt::Formatter| {
-                    ctxt.config
-                        .with_html_italic(f, |f| meaning.fmt_with(f, ctxt, data))
-                };
-                // The text block inside graphviz messes up the text alignment,
-                // skip it in that case.
-                if ctxt.config.font_tag() {
-                    fn_(f)
-                } else {
-                    ctxt.config.with_html_colour(f, "#666666", fn_)
-                }
+                meaning.fmt_with(f, ctxt, data)
             } else {
                 self.kind().fmt_with(f, ctxt, data)
             }
@@ -858,11 +848,19 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Meaning {
         ctxt: &DisplayCtxt<'a>,
         _data: &mut DisplayData<'a>,
     ) -> fmt::Result {
-        match self {
+        let fn_ = |f: &mut fmt::Formatter| match self {
             Meaning::Arith(value) => write!(f, "{value}"),
             &Meaning::Unknown { theory, value } => {
                 write!(f, "/{} {}\\", &ctxt.parser[theory], &ctxt.parser[value])
             }
+        };
+        // The text block inside graphviz messes up the text alignment,
+        // skip it in that case.
+        if ctxt.config.font_tag() {
+            fn_(f)
+        } else {
+            ctxt.config
+                .with_html_colour(f, "#666666", |f| ctxt.config.with_html_italic(f, fn_))
         }
     }
 }

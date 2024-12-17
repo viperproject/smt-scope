@@ -43,5 +43,9 @@ pub enum Commands {
     Reconstruct {
         /// The path to the smt log file
         logfile: std::path::PathBuf,
+        /// Whether to print out the file without details about what happened
+        /// after each line
+        #[arg(short, long, default_value_t = false)]
+        clean: bool,
     },
 }

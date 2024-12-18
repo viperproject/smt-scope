@@ -14,7 +14,7 @@ use super::{
     egraph::EGraph,
     inst::{InstData, Insts},
     inter_line::{InterLine, LineKind},
-    stack::{CdclTree, Stack},
+    stack::{CdclTree, HasFrame, Stack},
     stm2::EventLog,
     synthetic::{AnyTerm, SynthIdx, SynthTerms},
     terms::Terms,
@@ -65,39 +65,43 @@ impl Default for Z3Parser {
 }
 
 impl Z3Parser {
-    pub fn parse_new_full_id(&mut self, id: Option<&str>) -> Result<TermId> {
+    fn parse_new_full_id(&mut self, id: Option<&str>) -> Result<TermId> {
         let full_id = id.ok_or(E::UnexpectedNewline)?;
         TermId::parse(&mut self.strings, full_id)
     }
 
-    pub fn parse_existing_app(&mut self, id: &str) -> Result<TermIdx> {
+    fn parse_existing_app(&mut self, id: &str) -> Result<TermIdx> {
         self.terms
             .app_terms
             .parse_existing_id(&mut self.strings, id)
     }
 
-    pub fn parse_existing_proof(&mut self, id: &str) -> Result<ProofIdx> {
+    fn parse_existing_proof(&mut self, id: &str) -> Result<ProofIdx> {
         self.terms
             .proof_terms
             .parse_existing_id(&mut self.strings, id)
     }
 
-    pub fn parse_existing_enode(&mut self, id: &str) -> Result<ENodeIdx> {
+    fn parse_existing_enode(&mut self, id: &str) -> Result<ENodeIdx> {
         let idx = self.parse_existing_app(id)?;
         let enode = self.egraph.get_enode(idx, &self.stack);
-        if self.version_info.is_version(4, 12, 2) && enode.is_err() {
-            // Very rarely in version 4.12.2, an `[attach-enode]` is not emitted. Create it here.
+        let Err(E::EnodePoppedFrame(..)) = enode else {
+            return enode;
+        };
+        // Terms with meanings or bool consts sometimes do not get a new enode
+        // before being bound in MBQI.
+        // Very rarely in version <= 4.12.2, an `[attach-enode]` is not emitted. Create it here.
+        if self.version_info.is_le_version(4, 12, 2) && self.terms.is_internal(idx, &self.strings) {
             // TODO: log somewhere when this happens.
             self.egraph.new_enode(None, idx, None, &self.stack)?;
             self.events.new_enode();
-            return self.egraph.get_enode(idx, &self.stack);
+            self.egraph.get_enode(idx, &self.stack)
+        } else {
+            enode
         }
-        enode
     }
 
-    pub fn parse_z3_generation<'a>(
-        l: &mut impl Iterator<Item = &'a str>,
-    ) -> Result<Option<NonMaxU32>> {
+    fn parse_z3_generation<'a>(l: &mut impl Iterator<Item = &'a str>) -> Result<Option<NonMaxU32>> {
         if let Some(gen) = l.next() {
             let gen = gen.parse::<NonMaxU32>().map_err(E::InvalidGeneration)?;
             Ok(Some(gen))
@@ -726,6 +730,7 @@ impl Z3LogParser for Z3Parser {
         let match_ = Match {
             kind,
             blamed: blamed.into(),
+            frame: self.stack.active_frame(),
         };
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
@@ -790,6 +795,7 @@ impl Z3LogParser for Z3Parser {
         let match_ = Match {
             kind,
             blamed: blamed.into(),
+            frame: self.stack.active_frame(),
         };
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
@@ -826,19 +832,14 @@ impl Z3LogParser for Z3Parser {
             .get_match(fingerprint)
             .ok_or(E::UnknownFingerprint(fingerprint))?;
         let inst = Instantiation {
-            frame: self.stack.active_frame(),
             match_,
             fingerprint,
             proof_id,
             z3_generation,
             yields_terms: Default::default(),
+            frame: self.stack.active_frame(),
         };
-        // In version 4.12.2 & 4.12.4, I have on very rare occasions seen an
-        // `[instance]` repeated twice with the same fingerprint (without an
-        // intermediate `[new-match]`). We can try to remove the `can_duplicate`
-        // in the future.
-        let can_duplicate = true;//self.version_info.is_version_minor(4, 12);
-        let iidx = self.insts.new_inst(fingerprint, inst, can_duplicate)?;
+        let iidx = self.insts.new_inst(fingerprint, inst, &self.stack)?;
         self.events.new_inst();
         self.inst_stack.try_reserve(1)?;
         self.inst_stack.push((iidx, Vec::new()));
@@ -1022,6 +1023,10 @@ impl Z3Parser {
 
     pub fn get_pattern(&self, qpat: QuantPat) -> Option<TermIdx> {
         qpat.pat.map(|pat| self.patterns(qpat.quant).unwrap()[pat])
+    }
+
+    pub fn get_frame(&self, idx: impl HasFrame) -> &StackFrame {
+        &self.stack[idx.frame(self)]
     }
 
     /// Does the proof step `pidx` prove `false`? This can may be under a

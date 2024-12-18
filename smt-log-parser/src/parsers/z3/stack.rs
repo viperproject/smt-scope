@@ -3,8 +3,11 @@ use mem_dbg::{MemDbg, MemSize};
 use typed_index_collections::TiSlice;
 
 use crate::{
-    items::{Assignment, Cdcl, CdclBacklink, CdclIdx, CdclKind, Conflict, StackFrame, StackIdx},
-    Error, Result, TiVec,
+    items::{
+        Assignment, Cdcl, CdclBacklink, CdclIdx, CdclKind, Conflict, ENodeIdx, InstIdx, MatchIdx,
+        ProofIdx, StackFrame, StackIdx,
+    },
+    Error, Result, TiVec, Z3Parser,
 };
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -104,6 +107,10 @@ impl Stack {
     pub(super) fn is_speculative(&self) -> bool {
         self.stack_frames[self.active_frame()].from_cdcl
     }
+
+    pub(super) fn is_active_or_global(&self, frame: StackIdx) -> bool {
+        self[frame].active.status().is_active_or_global()
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -137,11 +144,7 @@ impl CdclTree {
     }
 
     fn check_frame_decision(&mut self, stack: &Stack) -> Result<()> {
-        if stack[self.cdcl.last().unwrap().frame]
-            .active
-            .status()
-            .is_active_or_global()
-        {
+        if stack.is_active_or_global(self.cdcl.last().unwrap().frame) {
             return Ok(());
         }
         // Just before making a decision z3 will always push a new frame.
@@ -211,7 +214,7 @@ impl CdclTree {
     }
 
     fn last_active(&self, stack: &Stack) -> CdclIdx {
-        let active = |i: &CdclIdx| stack[self[*i].frame].active.status().is_active_or_global();
+        let active = |i: &CdclIdx| stack.is_active_or_global(self[*i].frame);
         self.curr_to_root().find(active).unwrap()
     }
 
@@ -270,3 +273,19 @@ impl std::ops::Index<CdclIdx> for CdclTree {
         &self.cdcl[idx]
     }
 }
+
+pub trait HasFrame {
+    fn frame(self, parser: &Z3Parser) -> StackIdx;
+}
+
+macro_rules! impl_has_frame {
+    ($($ty:ty),*) => {
+        $(impl HasFrame for $ty {
+            fn frame(self, parser: &Z3Parser) -> StackIdx {
+                parser[self].frame
+            }
+        })*
+    };
+}
+
+impl_has_frame!(ENodeIdx, MatchIdx, InstIdx, ProofIdx, CdclIdx);

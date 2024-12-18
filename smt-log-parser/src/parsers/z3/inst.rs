@@ -3,6 +3,7 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
     items::{Fingerprint, InstIdx, Instantiation, Match, MatchIdx},
+    parsers::z3::stack::Stack,
     FxHashMap, Result, TiVec,
 };
 
@@ -45,17 +46,20 @@ impl Insts {
         &mut self,
         fingerprint: Fingerprint,
         inst: Instantiation,
-        can_duplicate: bool,
+        stack: &Stack,
     ) -> Result<InstIdx> {
-        let (_, inst_idx) = self
+        let (match_idx, inst_idx) = self
             .fingerprint_to_match
             .get_mut(&fingerprint)
             .unwrap_or_else(|| panic!("{:x}", fingerprint.0));
         self.insts.raw.try_reserve(1)?;
         let idx = self.insts.push_and_get_key(inst);
+        // I have on very rare occasions seen an `[instance]` repeated twice
+        // with the same fingerprint (without an intermediate `[new-match]`).
         debug_assert!(
-            can_duplicate || inst_idx.is_none(),
-            "duplicate fingerprint {fingerprint}"
+            stack.is_active_or_global(self.matches[*match_idx].frame)
+                && !inst_idx.is_some_and(|i| stack.is_active_or_global(self.insts[i].frame)),
+            "duplicate instantiation of fingerprint {fingerprint}",
         );
         *inst_idx = Some(idx);
         Ok(idx)

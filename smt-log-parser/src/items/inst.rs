@@ -16,6 +16,7 @@ use super::{
 pub struct Match {
     pub kind: MatchKind,
     pub blamed: Box<[BlameKind]>,
+    pub frame: StackIdx,
 }
 
 impl Match {
@@ -217,11 +218,11 @@ pub struct Instantiation {
     pub fingerprint: Fingerprint,
     pub proof_id: InstProofLink,
     pub z3_generation: Option<NonMaxU32>,
-    pub frame: StackIdx,
     /// The enodes that were yielded by the instantiation along with the
     /// generalised terms for them (`MaybeSynthIdx::Parsed` if the yielded term
     /// doesn't contain any quantified variables)
     pub yields_terms: BoxSlice<ENodeIdx>,
+    pub frame: StackIdx,
 }
 
 /// A Z3 instantiation.

@@ -48,7 +48,7 @@ impl InstGraph {
             .map(|inst| {
                 (
                     self.raw[inst].subgraph.map(|s| s.0),
-                    parser[parser[inst].frame].active,
+                    parser.get_frame(inst).active,
                 )
             })
             .collect();

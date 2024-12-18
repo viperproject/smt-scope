@@ -82,10 +82,7 @@ impl EGraph {
         self.term_to_enode.try_reserve(1)?;
         let _old = self.term_to_enode.insert(term, enode);
         // TODO: why does this happen sometimes?
-        // if let Some(old) = old {
-        //     assert!(self.enodes[old].frame.is_some());
-        //     assert!(!stack.stack_frames[self.enodes[old].frame.unwrap()].active);
-        // }
+        // debug_assert!(!old.is_some_and(|o| stack.is_active_or_global(self[o].frame)));
         Ok(enode)
     }
 
@@ -94,13 +91,10 @@ impl EGraph {
             .term_to_enode
             .get(&term)
             .ok_or_else(|| Error::UnknownEnode(term))?;
-        let frame = self.enodes[enode].frame;
-        let frame_status = stack.stack_frames[frame].active.status();
-        // This cannot be an enode if it points to a popped stack frame
-        if frame_status.is_ended() {
-            Err(Error::EnodePoppedFrame(frame))
-        } else {
+        if stack.is_active_or_global(self[enode].frame) {
             Ok(enode)
+        } else {
+            Err(Error::EnodePoppedFrame(enode, self[enode].frame))
         }
     }
 

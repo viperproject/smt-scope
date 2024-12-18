@@ -77,7 +77,7 @@ pub enum Error {
 
     // Enode
     UnknownEnode(TermIdx),
-    EnodePoppedFrame(StackIdx),
+    EnodePoppedFrame(ENodeIdx, StackIdx),
     InvalidGeneration(nonmax::ParseIntError),
     EnodeRootMismatch(ENodeIdx, ENodeIdx),
 
@@ -99,6 +99,10 @@ pub enum Error {
 
     Allocation(TryReserveError),
     Lasso(LassoError),
+
+    /// Unused, kept for debugging to see error line instead of simply panicking
+    /// at `debug_assert`.
+    Debug,
 }
 
 impl From<semver::Error> for Error {

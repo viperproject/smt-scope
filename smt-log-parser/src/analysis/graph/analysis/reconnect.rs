@@ -1,8 +1,10 @@
+use std::collections::hash_map::Entry;
+
 use fxhash::FxHashSet;
 
 use crate::{
     analysis::{raw::Node, InstGraph, RawNodeIndex},
-    TiVec,
+    BoxSlice, FxHashMap, TiVec,
 };
 
 use super::run::TopoAnalysis;
@@ -32,9 +34,9 @@ impl TopoAnalysis<false, false> for BwdReachableVisAnalysis {
 
 /// Looks for tuples of 4 indices:
 ///  - `from`: a visible node
-///  - `from_child`: a non-visible child of `from`
-///  - `to_parent`: a non-visible node reachable from `from_child` but not
-///    reachable by any visible node also reachable from `from_child`
+///  - `from_child`: (optional) a non-visible child of `from`
+///  - `to_parent`: a non-visible node reachable from `from_child`
+///    but not reachable by any visible node also reachable from `from_child`
 ///    (note that it's possible for `from_child == to_parent`)
 ///  - `to`: a visible child of `to_parent`
 ///
@@ -44,37 +46,107 @@ pub struct ReconnectAnalysis(pub TiVec<RawNodeIndex, bool>);
 
 #[derive(Debug, Default)]
 pub struct ReconnectData {
-    pub above: FxHashSet<(RawNodeIndex, RawNodeIndex, RawNodeIndex)>,
+    /// Edges, along with a path if they have only a single one possible.
+    pub above: FxHashMap<ReconnectEdge, Option<BoxSlice<RawNodeIndex>>>,
     /// These should not be added to `above` since they can be transitively
     /// reached.
-    pub transitive: FxHashSet<(RawNodeIndex, RawNodeIndex)>,
+    pub transitive: FxHashSet<ReconnectFrom>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ReconnectFrom {
+    /// A visible node to reconnect from.
+    pub visible: RawNodeIndex,
+    /// A non-visible child of `from_v`, set only if
+    /// `from_v.reconnect_children()`.
+    pub hidden: Option<RawNodeIndex>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ReconnectEdge {
+    pub from: ReconnectFrom,
+    /// A non-visible parent of the current visible node, set only if
+    /// `to_v.reconnect_parents()`.
+    pub to_h: RawNodeIndex,
+    /// Did we walk through any `hidden` nodes on a path between `from_v` and
+    /// `to_v`?
+    pub indirect: bool,
+}
+
+impl ReconnectEdge {
+    /// Create a special `ReconnectEdge` representing a connection between two
+    /// visible nodes.
+    fn direct_visible(from: RawNodeIndex) -> Self {
+        Self {
+            from: ReconnectFrom {
+                visible: from,
+                hidden: None,
+            },
+            to_h: from,
+            indirect: false,
+        }
+    }
+
+    pub fn is_direct_visible(&self) -> bool {
+        self.from.visible == self.to_h
+    }
+
+    fn set_indirect(self, indirect: bool) -> Self {
+        Self {
+            indirect: indirect || self.indirect,
+            ..self
+        }
+    }
+
+    fn set_to_h(self, to_h: RawNodeIndex) -> Self {
+        assert_eq!(self.from.visible, self.to_h);
+        Self { to_h, ..self }
+    }
 }
 
 impl ReconnectData {
-    pub fn extend(&mut self, other: &Self) {
+    fn above(&self) -> impl Iterator<Item = (ReconnectEdge, Option<&[RawNodeIndex]>)> + '_ {
+        self.above
+            .iter()
+            .map(|(edge, path)| (*edge, path.as_deref()))
+    }
+
+    pub fn insert(
+        &mut self,
+        edge: ReconnectEdge,
+        path: Option<&[RawNodeIndex]>,
+        prev: Option<RawNodeIndex>,
+    ) {
+        match self.above.entry(edge) {
+            Entry::Occupied(o) => *o.into_mut() = None,
+            Entry::Vacant(v) => {
+                v.insert(path.map(|p| p.iter().copied().chain(prev).collect()));
+            }
+        }
+    }
+
+    pub fn extend(&mut self, other: &Self, prev: RawNodeIndex, hidden: bool) {
         // Remove any that we've already added but should not have.
         self.above
-            .retain(|&(from_vis, from_hid, ..)| !other.transitive.contains(&(from_vis, from_hid)));
+            .retain(|above, _| !other.transitive.contains(&above.from));
         // Add any that we can add, this is after the above line since `other`
         // may contain nodes which it has itself forbidden.
-        self.above.extend(
-            other
-                .above
-                .iter()
-                .copied()
-                .filter(|&(from_vis, from_hid, ..)| {
-                    !self.transitive.contains(&(from_vis, from_hid))
-                }),
-        );
+        for (edge, path) in other.above() {
+            if self.transitive.contains(&edge.from) {
+                continue;
+            }
+            self.insert(edge.set_indirect(hidden), path, Some(prev));
+        }
         // Add the transitive ones which forbid adding.
         self.transitive.extend(other.transitive.iter().copied());
     }
 
-    pub fn reached_visible(&self) -> impl Iterator<Item = (RawNodeIndex, RawNodeIndex)> + '_ {
-        self.above
-            .iter()
-            .copied()
-            .map(move |(from_vis, from_hid, _)| (from_vis, from_hid))
+    pub fn reached_visible(&mut self, other: &Self, prev: RawNodeIndex) {
+        let transitive = other.above().map(|(above, _)| above.from);
+        self.transitive.extend(transitive);
+        for (edge, path) in other.above() {
+            self.insert(edge.set_to_h(prev), path, None);
+        }
     }
 }
 
@@ -97,25 +169,31 @@ impl TopoAnalysis<true, false> for ReconnectAnalysis {
         }
 
         let visible = node.visible();
+        let hidden = node.hidden();
         for (fidx, from_data) in from_all() {
             let from = &graph.raw[fidx];
             match (from.visible(), visible) {
                 (false, false) => {
-                    data.extend(from_data);
+                    data.extend(from_data, fidx, hidden);
                 }
                 (true, false) => {
-                    data.above.insert((fidx, cidx, cidx));
+                    let cidx = Some(cidx).filter(|_| from.kind().reconnect_child(node.kind()));
+                    let edge = ReconnectEdge {
+                        from: ReconnectFrom {
+                            visible: fidx,
+                            hidden: cidx,
+                        },
+                        to_h: fidx,
+                        indirect: hidden,
+                    };
+                    data.insert(edge, Some(&[]), None);
                     data.transitive.extend(from_data.transitive.iter().copied());
                 }
                 (false, true) => {
-                    data.transitive.extend(from_data.reached_visible());
-                    let new = from_data
-                        .reached_visible()
-                        .map(|(from_vis, from_hid)| (from_vis, from_hid, fidx));
-                    data.above.extend(new)
+                    data.reached_visible(from_data, fidx);
                 }
                 (true, true) => {
-                    data.above.insert((fidx, fidx, fidx));
+                    data.insert(ReconnectEdge::direct_visible(fidx), Some(&[]), None);
                     data.transitive.extend(from_data.transitive.iter().copied());
                 }
             }

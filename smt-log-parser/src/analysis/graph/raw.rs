@@ -474,8 +474,8 @@ pub enum NodeKind {
     GivenEquality(EqGivenIdx, Option<NonMaxU32>),
     /// Corresponds to `EqTransIdx`.
     ///
-    /// **Parents:** arbitrary count, will always be `GivenEquality` or
-    /// `TransEquality`. The number of immediately reachable `GivenEquality` con
+    /// **Parents:** (small) arbitrary count, will always be `GivenEquality` or
+    /// `TransEquality`. The number of immediately reachable `GivenEquality` can
     /// be found in `TransitiveExpl::given_len`.\
     /// **Children:** (large) arbitrary count, can be `GivenEquality`,
     /// `TransEquality` or `Instantiation`.
@@ -486,6 +486,12 @@ pub enum NodeKind {
     /// `Instantiation`.
     /// **Children:** (small) arbitrary count, will always be `Proof`.
     Proof(ProofIdx),
+    /// Corresponds to `CdclIdx`. Only connected to other `Cdcl` nodes.
+    ///
+    /// **Parents:** will always have between 0 and 2 parents, if 2 then only
+    /// one is a real edge and the other is a backtracking edge.
+    /// **Children:** (generally small) arbitrary count, depends on how many
+    /// times we backtracked here.
     Cdcl(CdclIdx),
 }
 
@@ -544,6 +550,18 @@ impl NodeKind {
             Self::Cdcl(cdcl) => Some(*cdcl),
             _ => None,
         }
+    }
+
+    /// Same as `reconnect_parents` but for children. Do we reconnect hidden
+    /// children of this visible node or just this node itself?
+    pub fn reconnect_child(&self, child: &Self) -> bool {
+        !matches!(
+            (self, child),
+            (
+                Self::ENode(..) | Self::TransEquality(..),
+                Self::Instantiation(..)
+            )
+        )
     }
 }
 

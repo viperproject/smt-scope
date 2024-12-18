@@ -32,7 +32,6 @@ pub struct Z3Parser {
     pub(crate) quantifiers: TiVec<QuantIdx, Quantifier>,
 
     pub(crate) insts: Insts,
-    pub(crate) inst_stack: Vec<(InstIdx, Vec<ENodeIdx>)>,
 
     pub(crate) egraph: EGraph,
     pub(crate) stack: Stack,
@@ -53,7 +52,6 @@ impl Default for Z3Parser {
             synth_terms: Default::default(),
             quantifiers: Default::default(),
             insts: Default::default(),
-            inst_stack: Default::default(),
             egraph: Default::default(),
             stack: Default::default(),
             cdcl: Default::default(),
@@ -576,7 +574,7 @@ impl Z3LogParser for Z3Parser {
         Self::expect_completed(l)?;
 
         debug_assert!(self[idx].kind.app_name().is_some());
-        let created_by = self.inst_stack.last_mut();
+        let created_by = self.insts.inst_stack.last_mut();
         let iidx = created_by.as_ref().map(|(i, _)| *i);
         let enode = self
             .egraph
@@ -825,16 +823,17 @@ impl Z3LogParser for Z3Parser {
             yields_terms: Default::default(),
             frame: self.stack.active_frame(),
         };
-        let iidx = self.insts.new_inst(fingerprint, inst, &self.stack)?;
+        // I have very rarely seen duplicate `[instance]` lines with the same
+        // fingerprint in v4.12.4. Allow these there and debug panic otherwise.
+        let can_duplicate = self.version_info.is_version(4, 12, 4);
+        self.insts
+            .new_inst(fingerprint, inst, &self.stack, can_duplicate)?;
         self.events.new_inst();
-        self.inst_stack.try_reserve(1)?;
-        self.inst_stack.push((iidx, Vec::new()));
         Ok(())
     }
 
     fn end_of_instance<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()> {
-        let (iidx, yield_terms) = self.inst_stack.pop().ok_or(E::UnmatchedEndOfInstance)?;
-        self.insts[iidx].yields_terms = yield_terms.into();
+        self.insts.end_inst()?;
         Self::expect_completed(l)
     }
 

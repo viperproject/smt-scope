@@ -22,12 +22,16 @@ pub struct MatchesInfo {
 #[derive(Default, Clone, Copy)]
 /// Counts of different instantiation stats.
 pub struct InstsInfo {
+    pub insts: usize,
     pub enodes: usize,
     pub geqs: usize,
     pub treqs: usize,
-    pub insts: usize,
     pub geqs_trivial: usize,
     pub treqs_error: usize,
+    pub proofs: usize,
+    /// Proof nodes which are not trivial and not QI related
+    pub proofs_nt_nq: usize,
+    pub cdcls: usize,
 }
 
 impl InstsInfo {
@@ -49,13 +53,19 @@ impl InstsInfo {
             .iter()
             .filter(|eq| eq.given_len.is_none())
             .count();
+        let proofs = parser.proofs().iter();
         Self {
-            insts: parser.insts.insts.len(),
+            insts: parser.instantiations().len(),
             enodes: parser.egraph.enodes.len(),
             geqs: equalities.given.len(),
             treqs: equalities.transitive.len(),
             geqs_trivial,
             treqs_error,
+            proofs: parser.proofs().len(),
+            proofs_nt_nq: proofs
+                .filter(|p| !p.kind.is_quant_inst() && !p.kind.is_trivial())
+                .count(),
+            cdcls: parser.cdcls().len(),
         }
     }
 }

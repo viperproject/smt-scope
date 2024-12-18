@@ -81,15 +81,13 @@ impl RawInstGraph {
 
             // Construct subgraph
             let idx = subgraphs.next_key();
-            let kind = self[node].kind();
-            let skip_trans = kind.cdcl().is_some() || kind.proof().is_some();
             let (subgraph, discovered_) = Subgraph::new(
                 node,
                 &mut self.graph,
                 discovered,
                 |node, i| node.subgraph = Some((idx, i)),
                 |node| node.subgraph.unwrap().1,
-                !skip_trans,
+                |node| node.kind().cdcl().is_none() && node.kind().proof().is_none(),
             )?;
             discovered = discovered_;
             subgraphs.raw.try_reserve(1)?;
@@ -136,9 +134,10 @@ impl Subgraph {
         mut visit: VisitBox<D>,
         mut f: impl FnMut(&mut N, u32),
         c: impl Fn(&N) -> u32,
-        calc_trans: bool,
+        calc_trans: impl Fn(&N) -> bool,
     ) -> Result<(Self, VisitBox<D>)> {
         let mut start_nodes = Vec::new();
+        let mut trans = true;
 
         let mut un_graph = std::mem::replace(graph, DiGraph::<N, E, RawIx>::with_capacity(0, 0))
             .into_edge_type::<Undirected>();
@@ -168,14 +167,16 @@ impl Subgraph {
             start_nodes: &start_nodes,
             graph,
         }) {
-            f(&mut graph[node], count);
+            let n = &mut graph[node];
+            f(n, count);
+            trans &= calc_trans(n);
             count += 1;
             nodes.try_reserve(1)?;
             nodes.push(RawNodeIndex(node));
         }
 
         // Transitive closure
-        let reach_fwd = calc_trans
+        let reach_fwd = trans
             .then(|| {
                 let mut tc = TransitiveClosure(vec![RoaringBitmap::new(); nodes.len()]);
                 let mut reach_fwd = &mut *tc.0;

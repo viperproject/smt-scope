@@ -82,7 +82,18 @@ impl Z3Parser {
 
     fn parse_existing_enode(&mut self, id: &str) -> Result<ENodeIdx> {
         let idx = self.parse_existing_app(id)?;
-        self.egraph.get_enode(idx, &self.stack)
+        let res = self.egraph.get_enode(idx, &self.stack);
+        let can_error =
+            self.version_info.is_ge_version(4, 8, 9) && self.version_info.is_le_version(4, 11, 2);
+        if can_error && res.is_err() {
+            // Very rarely in v4.8.17 & v4.11.2, an `[attach-enode]` is not
+            // emitted. Create it here.
+            // TODO: log somewhere when this happens.
+            self.egraph.new_enode(None, idx, None, &self.stack)?;
+            self.events.new_enode();
+            return self.egraph.get_enode(idx, &self.stack);
+        }
+        res
     }
 
     fn parse_z3_generation<'a>(l: &mut impl Iterator<Item = &'a str>) -> Result<Option<NonMaxU32>> {

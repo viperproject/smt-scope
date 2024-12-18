@@ -380,17 +380,21 @@ li input.td-matcher, li input.td-formatter {
     overflow: scroll;
 }
 
-.summary .info-box {
-    display: inline;
-    padding: 10px;
-}
-.summary .info-boxes {
-    display: flex;
+.summary .pf-content {
     overflow: auto;
+    font-family: "Roboto Condensed", sans-serif;
 }
+.summary .pf-section header .pf-tip {
+    font-size: 14px;
+}
+
 .summary .info-box-row {
     display: flex;
     align-items: center;
+}
+.summary .pf-tree .tree-sublist {
+    margin: 0;
+    padding-inline-start: 20px;
 }
 
 .quant-graph {

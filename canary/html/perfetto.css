@@ -912,3 +912,59 @@ input[type="file"] {
     width: 100%;
     overflow-x: hidden;
 }
+
+.pf-grid-layout {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    margin: 8px;
+    align-items: start;
+}
+.pf-section {
+    border-radius: 2px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+.pf-section header {
+    padding: 6px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+.pf-section article {
+    padding: 6px;
+    font-size: 14px;
+}
+
+.pf-tree {
+    font-family: "Roboto Condensed", sans-serif;
+    display: grid;
+    grid-template-columns: [left] auto [right] 1fr;
+    row-gap: 5px;
+}
+.pf-tree .pf-tree-node {
+    display: contents;
+}
+.pf-tree .pf-tree-node:hover {
+    background: var(--section-background);
+}
+.pf-tree .pf-tree-node .pf-tree-left {
+    grid-column: left;
+    background: inherit;
+    min-width: max-content;
+    border-radius: 2px 0 0 2px;
+    font-weight: bolder;
+}
+.pf-tree .pf-tree-node .pf-tree-gutter {
+    display: inline-flex;
+    position: relative;
+    width: 16px;
+    justify-content: center;
+    align-items: center;
+}
+.pf-tree .pf-tree-node .pf-tree-right {
+    grid-column: right;
+    background: inherit;
+    padding: 0 0 0 15px;
+    border-radius: 0 2px 2px 0;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    min-width: 0;
+}

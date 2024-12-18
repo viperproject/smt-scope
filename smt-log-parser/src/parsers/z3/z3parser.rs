@@ -84,21 +84,7 @@ impl Z3Parser {
 
     fn parse_existing_enode(&mut self, id: &str) -> Result<ENodeIdx> {
         let idx = self.parse_existing_app(id)?;
-        let enode = self.egraph.get_enode(idx, &self.stack);
-        let Err(E::EnodePoppedFrame(..)) = enode else {
-            return enode;
-        };
-        // Terms with meanings or bool consts sometimes do not get a new enode
-        // before being bound in MBQI.
-        // Very rarely in version <= 4.12.2, an `[attach-enode]` is not emitted. Create it here.
-        if self.version_info.is_le_version(4, 12, 2) && self.terms.is_internal(idx, &self.strings) {
-            // TODO: log somewhere when this happens.
-            self.egraph.new_enode(None, idx, None, &self.stack)?;
-            self.events.new_enode();
-            self.egraph.get_enode(idx, &self.stack)
-        } else {
-            enode
-        }
+        self.egraph.get_enode(idx, &self.stack)
     }
 
     fn parse_z3_generation<'a>(l: &mut impl Iterator<Item = &'a str>) -> Result<Option<NonMaxU32>> {

@@ -156,25 +156,6 @@ impl Terms {
             })
             .map(|(idx, _)| idx)
     }
-
-    /// Is this a term with a meaning or is it `true` or `false`?
-    pub(super) fn is_internal(&self, tidx: TermIdx, strings: &StringTable) -> bool {
-        let term = &self[tidx];
-        let is_internal = match term.kind.app_name().map(|n| &strings[*n]) {
-            Some("true" | "false") => true,
-            // Some(name)
-            //     if {
-            //         let mut name = name.split("!val!").skip(1);
-            //         name.next().is_some_and(|id| id.parse::<u32>().is_ok()) && name.next().is_none()
-            //     } =>
-            // {
-            //     true
-            // }
-            _ => self.meaning(tidx).is_some(),
-        };
-        debug_assert!(!is_internal || term.child_ids.is_empty());
-        is_internal
-    }
 }
 
 impl std::ops::Index<TermIdx> for Terms {

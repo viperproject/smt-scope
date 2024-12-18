@@ -21,7 +21,7 @@ use super::stack::Stack;
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
 pub struct EGraph {
-    term_to_enode: FxHashMap<TermIdx, ENodeIdx>,
+    term_to_enode: FxHashMap<TermIdx, TermToEnode>,
     pub(crate) enodes: TiVec<ENodeIdx, ENode>,
     pub equalities: Equalities,
 }
@@ -79,23 +79,13 @@ impl EGraph {
             transitive: FxHashMap::default(),
             self_transitive: None,
         });
-        self.term_to_enode.try_reserve(1)?;
-        let _old = self.term_to_enode.insert(term, enode);
-        // TODO: why does this happen sometimes?
-        // debug_assert!(!old.is_some_and(|o| stack.is_active_or_global(self[o].frame)));
+        self.insert_tte(term, enode, stack)?;
         Ok(enode)
     }
 
-    pub fn get_enode(&self, term: TermIdx, stack: &Stack) -> Result<ENodeIdx> {
-        let enode = *self
-            .term_to_enode
-            .get(&term)
-            .ok_or_else(|| Error::UnknownEnode(term))?;
-        if stack.is_active_or_global(self[enode].frame) {
-            Ok(enode)
-        } else {
-            Err(Error::EnodePoppedFrame(enode, self[enode].frame))
-        }
+    pub fn get_enode(&mut self, term: TermIdx, stack: &Stack) -> Result<ENodeIdx> {
+        self.get_tte(term, stack)
+            .ok_or_else(|| Error::UnknownEnode(term))
     }
 
     pub fn get_owner(&self, enode: ENodeIdx) -> TermIdx {
@@ -741,6 +731,80 @@ impl Graph {
             }
         } else {
             None
+        }
+    }
+}
+
+/// The complexity of this arises from the fact that z3 will sometimes create a
+/// new enode in a higher frame when one in a lower frame already exists. This
+/// new enode might then be popped, but z3 will still want to use the old enode.
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug)]
+enum TermToEnode {
+    Single(ENodeIdx),
+    Multiple(Vec<ENodeIdx>),
+}
+
+impl Default for TermToEnode {
+    fn default() -> Self {
+        Self::Multiple(Vec::default())
+    }
+}
+
+impl EGraph {
+    pub fn insert_tte(&mut self, term: TermIdx, enode: ENodeIdx, stack: &Stack) -> Result<()> {
+        let remove = |e: &ENodeIdx| !stack.is_active_or_global(self.enodes[*e].frame);
+        self.term_to_enode.try_reserve(1)?;
+        let tte = self.term_to_enode.entry(term).or_default();
+        let mut vec = match tte {
+            TermToEnode::Single(e) => [*e].into_iter().filter(|e| !remove(e)).collect(),
+            TermToEnode::Multiple(es) => {
+                let mut es = core::mem::take(es);
+                let idx = es.iter().position(remove).unwrap_or(es.len());
+                debug_assert!(es[idx..].iter().all(remove));
+                es.drain(idx..);
+                es
+            }
+        };
+        if vec.is_empty() {
+            *tte = TermToEnode::Single(enode);
+        } else {
+            vec.push(enode);
+            *tte = TermToEnode::Multiple(vec);
+        }
+        // TODO: why does this happen sometimes?
+        // debug_assert!(!old.is_some_and(|o| stack.is_active_or_global(self[o].frame)));
+        Ok(())
+    }
+
+    pub fn get_tte(&mut self, term: TermIdx, stack: &Stack) -> Option<ENodeIdx> {
+        let Entry::Occupied(mut o) = self.term_to_enode.entry(term) else {
+            return None;
+        };
+        let remove = |e: &ENodeIdx| !stack.is_active_or_global(self.enodes[*e].frame);
+        match o.get_mut() {
+            TermToEnode::Single(e) => {
+                if remove(&*e) {
+                    o.remove();
+                    None
+                } else {
+                    Some(*e)
+                }
+            }
+            TermToEnode::Multiple(es) => {
+                let idx = es.iter().position(remove).unwrap_or(es.len());
+                debug_assert!(es[idx..].iter().all(remove));
+                es.drain(idx..);
+                if let Some(last) = es.last().copied() {
+                    if es.len() == 1 {
+                        *o.get_mut() = TermToEnode::Single(last);
+                    }
+                    Some(last)
+                } else {
+                    o.remove();
+                    None
+                }
+            }
         }
     }
 }

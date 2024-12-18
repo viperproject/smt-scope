@@ -73,7 +73,7 @@ fn parse_all_logs() {
 
             let parse_bytes_kb = parse_bytes / 1024;
             let mem_size = parser.mem_size(SizeFlags::default());
-            max_parse_ovhd = f64::max(max_parse_ovhd, mem_size as f64 / parse_bytes as f64);
+            max_parse_ovhd = f64::max(max_parse_ovhd, mem_size as f64 / parse_bytes_ovhd as f64);
             println!(
                 "Finished parsing in {elapsed:?} ({} kB/ms). Memory use {} MB / {} MB (real {} MB):",
                 1000 * parse_bytes_kb / elapsed.as_micros() as u64,
@@ -114,7 +114,7 @@ fn parse_all_logs() {
             let elapsed = elapsed_ig + elapsed_ml;
 
             let mem_size = inst_graph.mem_size(SizeFlags::default());
-            max_analysis_ovhd = f64::max(max_analysis_ovhd, mem_size as f64 / parse_bytes as f64);
+            max_analysis_ovhd = f64::max(max_analysis_ovhd, mem_size as f64 / parse_bytes_ovhd as f64);
             let (sure_mls, maybe_mls) = inst_graph.found_matching_loops().unwrap();
             println!(
                 "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {sure_mls}+{maybe_mls} mls. Memory use {} MB / {} MB (real {} MB):",
@@ -131,7 +131,7 @@ fn parse_all_logs() {
             // TODO: decrease this
             assert!(elapsed_ml < timeout, "ML search took longer than timeout");
             assert!(
-                mem_size as u64 <= parse_bytes_ovhd * 5,
+                mem_size as u64 <= parse_bytes_ovhd * 4,
                 "Analysis takes up more memory than 5 * file size!"
             );
 

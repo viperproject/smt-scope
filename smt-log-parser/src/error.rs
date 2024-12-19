@@ -37,7 +37,7 @@ pub enum Error {
     InvalidVersion(semver::Error),
 
     // Id parsing
-    InvalidIdNumber(ParseIntError),
+    InvalidIdNumber(nonmax::ParseIntError),
     InvalidIdHash(String),
     UnknownId(TermId),
 
@@ -84,6 +84,9 @@ pub enum Error {
     StackFrameNotPushed,
     PopConflictMismatch,
     InvalidFrameInteger(ParseIntError),
+
+    // Proof
+    ProvedVar(TermIdx),
 
     // CDCL
     NoConflict,

@@ -48,7 +48,7 @@ impl Default for Z3Parser {
         let mut strings = StringTable::with_hasher(fxhash::FxBuildHasher::default());
         Self {
             version_info: VersionInfo::default(),
-            terms: Terms::new(&mut strings),
+            terms: Terms::default(),
             synth_terms: Default::default(),
             quantifiers: Default::default(),
             insts: Default::default(),
@@ -89,7 +89,8 @@ impl Z3Parser {
             // Very rarely in v4.8.17 & v4.11.2, an `[attach-enode]` is not
             // emitted. Create it here.
             // TODO: log somewhere when this happens.
-            self.egraph.new_enode(None, idx, None, &self.stack)?;
+            self.egraph
+                .new_enode(ENodeBlame::Unknown, idx, NonMaxU32::ZERO, &self.stack)?;
             self.events.new_enode();
             return self.egraph.get_enode(idx, &self.stack);
         }
@@ -484,12 +485,15 @@ impl Z3LogParser for Z3Parser {
     }
 
     fn mk_app<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
-        let full_id = self.parse_new_full_id(l.next())?;
+        let full_id = l.next().ok_or(E::UnexpectedNewline)?;
+        let id = TermId::parse(&mut self.strings, full_id)?;
         let name = l.next().ok_or(E::UnexpectedNewline)?;
+        debug_assert!(name != "true" || full_id == "#1");
+        debug_assert!(name != "false" || full_id == "#2");
         let name = self.mk_string(name)?;
         let child_ids = self.gobble_term_children(l)?;
         let term = Term {
-            id: full_id,
+            id,
             kind: TermKind::App(name),
             child_ids,
         };
@@ -528,6 +532,8 @@ impl Z3LogParser for Z3Parser {
             frame: self.stack.active_frame(),
         };
         let proof_idx = self.terms.proof_terms.new_term(proof_step)?;
+        self.egraph
+            .new_proof(result, proof_idx, &self.terms, &self.stack)?;
         self.events.new_proof_step(
             proof_idx,
             &self.terms[proof_idx],
@@ -580,18 +586,21 @@ impl Z3LogParser for Z3Parser {
                 return idx.map(|_| ());
             }
         };
-        let z3_generation = Self::parse_z3_generation(&mut l)?;
+        let z3_gen = Self::parse_z3_generation(&mut l)?.ok_or(E::UnexpectedNewline)?;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
 
         debug_assert!(self[idx].kind.app_name().is_some());
         let created_by = self.insts.inst_stack.last_mut();
         let iidx = created_by.as_ref().map(|(i, _)| *i);
-        let enode = self
-            .egraph
-            .new_enode(iidx, idx, z3_generation, &self.stack)?;
+        let blame = self.egraph.get_blame(idx, iidx, &self.terms, &self.stack);
+        let enode = self.egraph.new_enode(blame, idx, z3_gen, &self.stack)?;
         self.events.new_enode();
-        if let Some((_, yields_terms)) = created_by {
+        if let Some((i, yields_terms)) = created_by {
+            debug_assert!(!self.insts.insts[*i]
+                .kind
+                .z3_generation()
+                .is_some_and(|g| g != z3_gen));
             // If `None` then this is a ground term not created by an instantiation.
             yields_terms.try_reserve(1)?;
             yields_terms.push(enode);
@@ -821,6 +830,16 @@ impl Z3LogParser for Z3Parser {
         };
         Self::expect_completed(proof)?;
         let z3_generation = Self::parse_z3_generation(&mut l)?;
+        let kind = if let Some(z3_generation) = z3_generation {
+            debug_assert!(!fingerprint.is_zero());
+            InstantiationKind::NonAxiom {
+                fingerprint,
+                z3_generation,
+            }
+        } else {
+            debug_assert!(fingerprint.is_zero());
+            InstantiationKind::Axiom
+        };
 
         let match_ = self
             .insts
@@ -828,9 +847,8 @@ impl Z3LogParser for Z3Parser {
             .ok_or(E::UnknownFingerprint(fingerprint))?;
         let inst = Instantiation {
             match_,
-            fingerprint,
+            kind,
             proof_id,
-            z3_generation,
             yields_terms: Default::default(),
             frame: self.stack.active_frame(),
         };
@@ -1039,24 +1057,21 @@ impl Z3Parser {
     /// Returns the size in AST nodes of the term `tidx`. Note that z3 eagerly
     /// reduces terms such as `1 + 1` to `2` meaning that a matching loop can be
     /// constant in this size metric!
-    pub fn ast_size(&self, tidx: TermIdx) -> Option<u32> {
+    pub fn ast_size(&self, tidx: TermIdx) -> core::result::Result<u32, TermIdx> {
         let mut size = 0;
-        let mut todo = vec![tidx];
-        while let Some(next) = todo.pop() {
+        let walk = self.terms.app_terms.ast_walk(tidx, |tidx, term| {
             size += 1;
-            let term = &self[next];
             match term.kind {
-                TermKind::Var(_) => return None,
-                TermKind::App(_) => {
-                    todo.extend_from_slice(&term.child_ids);
-                }
+                TermKind::Var(_) => Err(tidx),
+                TermKind::App(_) => Ok(&term.child_ids),
                 // TODO: decide if we want to return a size for quantifiers
                 TermKind::Quant(_) => {
-                    todo.push(*term.child_ids.last().unwrap());
+                    let body = term.child_ids.last().map(core::slice::from_ref);
+                    Ok(body.unwrap_or_default())
                 }
             }
-        }
-        Some(size)
+        });
+        walk.map_or(Ok(size), Err)
     }
 
     pub fn inst_ast_size(&self, iidx: InstIdx) -> u32 {

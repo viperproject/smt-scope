@@ -52,7 +52,7 @@ impl MlSignature {
                 let eq_len = blame.equalities().count();
                 let blame = blame.enode();
                 let eblame = &parser[blame];
-                let Some(created_by) = eblame.created_by else {
+                let Some(created_by) = eblame.blame.inst() else {
                     return (InstParent::Const(blame), eq_len);
                 };
                 match parser[parser[created_by].match_].kind.quant_idx() {

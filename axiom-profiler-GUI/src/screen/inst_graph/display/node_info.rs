@@ -232,7 +232,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             .node
             .kind()
             .inst()
-            .and_then(|i| self.ctxt.parser[i].z3_generation)
+            .and_then(|i| self.ctxt.parser[i].kind.z3_generation())
         {
             extra_info.push(("z3 gen", z3gen.to_string()));
         }

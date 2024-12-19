@@ -65,7 +65,7 @@ impl QuantifierAnalysis {
                 }
                 let direct_dep = &mut qinfo.direct_deps[i];
 
-                let created_by = parser[blame.enode()].created_by;
+                let created_by = parser[blame.enode()].blame.inst();
                 let created_by =
                     created_by.and_then(|iidx| parser.get_inst(iidx).match_.kind.quant_idx());
                 *direct_dep.enode.entry(created_by).or_default() += 1;

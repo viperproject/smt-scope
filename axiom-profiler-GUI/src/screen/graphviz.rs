@@ -180,8 +180,8 @@ impl
         match *self {
             Instantiation(inst) => match &parser[parser[inst].match_].kind {
                 MatchKind::TheorySolving { axiom_id, .. } => {
-                    let namespace = &parser[axiom_id.namespace];
-                    let id = axiom_id.id.map(|id| format!("[{id}]")).unwrap_or_default();
+                    let (namespace, id) = axiom_id.to_string_components(&parser.strings);
+                    let id = id.map(|id| format!("[{id}]")).unwrap_or_default();
                     format!("{namespace}{id}")
                 }
                 MatchKind::MBQI { quant, .. }

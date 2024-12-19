@@ -58,7 +58,7 @@ impl TermKind {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, Default, Hash, PartialEq, Eq)]
 pub struct TermId {
-    pub namespace: IString,
+    pub namespace: Option<IString>,
     pub id: Option<NonMaxU32>,
 }
 impl TermId {
@@ -68,21 +68,29 @@ impl TermId {
     pub fn parse(strings: &mut StringTable, value: &str) -> Result<Self> {
         let hash_idx = value.bytes().position(|b| b == b'#');
         let hash_idx = hash_idx.ok_or_else(|| Error::InvalidIdHash(value.to_string()))?;
-        let namespace = IString(strings.get_or_intern(&value[..hash_idx]));
+        let namespace = (hash_idx != 0).then(|| IString(strings.get_or_intern(&value[..hash_idx])));
         let id = &value[hash_idx + 1..];
         let id = match id {
             "" => None,
-            id => Some(NonMaxU32::new(id.parse::<u32>().map_err(Error::InvalidIdNumber)?).unwrap()),
+            id => Some(id.parse::<NonMaxU32>().map_err(Error::InvalidIdNumber)?),
         };
         Ok(Self { namespace, id })
     }
     pub fn order(&self) -> u32 {
         self.id.map(|id| id.get() + 1).unwrap_or_default()
     }
+
+    pub fn to_string_components<'a>(
+        &self,
+        strings: &'a StringTable,
+    ) -> (&'a str, Option<NonMaxU32>) {
+        let namespace = self.namespace.map(|ns| &strings[*ns]).unwrap_or_default();
+        (namespace, self.id)
+    }
     pub fn to_string(&self, strings: &StringTable) -> String {
-        let namespace = &strings[*self.namespace];
-        let id = self.id.map(|id| id.to_string()).unwrap_or_default();
-        format!("{}#{}", namespace, id)
+        let (namespace, id) = self.to_string_components(strings);
+        let id = id.map(|id| id.to_string()).unwrap_or_default();
+        format!("{namespace}#{id}")
     }
 }
 
@@ -93,25 +101,27 @@ impl TermId {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
 pub struct TermIdToIdxMap<K: Copy> {
-    empty_string: IString,
     empty_namespace: Vec<Option<K>>,
     namespace_map: FxHashMap<IString, Vec<Option<K>>>,
 }
-impl<K: Copy> TermIdToIdxMap<K> {
-    pub fn new(strings: &mut StringTable) -> Self {
+
+impl<K: Copy> Default for TermIdToIdxMap<K> {
+    fn default() -> Self {
         Self {
-            empty_string: IString(strings.get_or_intern_static("")),
             empty_namespace: Vec::new(),
             namespace_map: FxHashMap::default(),
         }
     }
-    fn get_vec_mut(&mut self, namespace: IString) -> Result<&mut Vec<Option<K>>> {
-        if self.empty_string == namespace {
-            // Special handling of common case for empty namespace
-            Ok(&mut self.empty_namespace)
-        } else {
+}
+
+impl<K: Copy> TermIdToIdxMap<K> {
+    fn get_vec_mut(&mut self, namespace: Option<IString>) -> Result<&mut Vec<Option<K>>> {
+        if let Some(namespace) = namespace {
             self.namespace_map.try_reserve(1)?;
             Ok(self.namespace_map.entry(namespace).or_default())
+        } else {
+            // Special handling of common case for empty namespace
+            Ok(&mut self.empty_namespace)
         }
     }
     pub fn register_term(&mut self, id: TermId, idx: K) -> Result<()> {
@@ -128,11 +138,11 @@ impl<K: Copy> TermIdToIdxMap<K> {
         vec[id_idx].replace(idx);
         Ok(())
     }
-    fn get_vec(&self, namespace: IString) -> Option<&Vec<Option<K>>> {
-        if self.empty_string == namespace {
-            Some(&self.empty_namespace)
-        } else {
+    fn get_vec(&self, namespace: Option<IString>) -> Option<&Vec<Option<K>>> {
+        if let Some(namespace) = namespace {
             self.namespace_map.get(&namespace)
+        } else {
+            Some(&self.empty_namespace)
         }
     }
     pub fn get_term(&self, id: &TermId) -> Option<K> {

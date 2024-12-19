@@ -486,10 +486,8 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &MatchKind {
                 quant.fmt_with(f, ctxt, data)
             }
             MatchKind::TheorySolving { axiom_id, .. } => {
-                write!(f, "[TheorySolving] {}#", &ctxt.parser[axiom_id.namespace])?;
-                if let Some(id) = axiom_id.id {
-                    write!(f, "{id}")?;
-                }
+                write!(f, "[TheorySolving] ")?;
+                axiom_id.fmt_with(f, ctxt, data)?;
                 Ok(())
             }
             MatchKind::Axiom { axiom, .. } => {
@@ -617,9 +615,13 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, ()> for &'a TermId {
         ctxt: &DisplayCtxt<'b>,
         _data: &mut (),
     ) -> fmt::Result {
-        let namespace = &ctxt.parser[self.namespace];
-        let id = self.id.map(|id| id.to_string()).unwrap_or_default();
-        write!(f, "{namespace}#{id}")
+        let (namespace, id) = self.to_string_components(&ctxt.parser.strings);
+        write!(f, "{namespace}#")?;
+        if let Some(id) = id {
+            write!(f, "{id}")
+        } else {
+            Ok(())
+        }
     }
 }
 

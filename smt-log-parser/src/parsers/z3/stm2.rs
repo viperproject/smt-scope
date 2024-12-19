@@ -67,7 +67,7 @@ impl EventLog {
         term: &Term,
         strings: &StringTable,
     ) -> Result<()> {
-        if !strings[*term.id.namespace].is_empty() {
+        if term.id.namespace.is_some() {
             return Ok(());
         }
         let Some(iname) = term.kind.app_name() else {

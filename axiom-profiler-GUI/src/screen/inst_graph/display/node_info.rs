@@ -405,6 +405,7 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
         use VisibleEdgeKind::*;
         match self.kind {
             Direct(_, EdgeKind::Yield) => "Yield".to_string(),
+            Direct(_, EdgeKind::Asserted) => "Asserted".to_string(),
             Direct(_, EdgeKind::Blame { pattern_term }) => {
                 format!("Blame pattern #{pattern_term}")
             }

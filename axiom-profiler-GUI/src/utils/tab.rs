@@ -58,9 +58,9 @@ pub struct DetailContainerProps {
 
 #[function_component]
 pub fn DetailContainer(props: &DetailContainerProps) -> Html {
-    html! {<article class="pf-content"><div class="pf-grid-layout">
+    html! {<div class="pf-grid-layout">
         {props.children.clone()}
-    </div></article>}
+    </div>}
 }
 
 // Tree

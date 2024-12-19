@@ -41,9 +41,6 @@ html {
     -ms-user-select: none;
     user-select: none;
 }
-.margin-left-half {
-    margin-left: 0.5em;
-}
 
 div.page .full-page {
     position: absolute;
@@ -397,8 +394,13 @@ li input.td-matcher, li input.td-formatter {
     padding-inline-start: 20px;
 }
 
+.expand-collapse {
+    cursor: pointer;
+}
+
 .quant-graph {
     max-height: 400px;
+    margin: 5px;
 }
 
 /* Graph view */

@@ -164,7 +164,7 @@ impl Graph {
                 &|fg, edge_data| {
                     let (from, to) = (fg[edge_data.source()].idx, fg[edge_data.target()].idx);
                     let edge = edge_data.weight();
-                    let is_indirect = edge.is_indirect(graph);
+                    let is_indirect = edge.is_indirect();
                     let last = graph.raw[edge.last()];
                     let blame = edge.kind(graph).blame(graph);
                     let (from, to) = (graph.raw[from].kind(), graph.raw[to].kind());

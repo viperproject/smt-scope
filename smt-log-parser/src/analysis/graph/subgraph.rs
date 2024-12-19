@@ -9,11 +9,10 @@ use petgraph::{
     Direction::{self, Incoming, Outgoing},
     Undirected,
 };
-use roaring::RoaringBitmap;
 
 use super::{
     raw::{RawInstGraph, RawIx},
-    InstGraph, RawNodeIndex,
+    RawNodeIndex,
 };
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -32,14 +31,6 @@ impl Subgraphs {
     }
     pub fn singletons(&self) -> impl Iterator<Item = RawNodeIndex> + '_ {
         self.singletons.iter().copied()
-    }
-
-    pub fn in_transitive_closure(&self, from: (GraphIdx, u32), to: (GraphIdx, u32)) -> bool {
-        from.0 == to.0
-            && self[from.0]
-                .reach_fwd
-                .as_ref()
-                .map_or(true, |tc| tc.in_transitive_closure(from.1, to.1))
     }
 }
 
@@ -81,14 +72,10 @@ impl RawInstGraph {
 
             // Construct subgraph
             let idx = subgraphs.next_key();
-            let (subgraph, discovered_) = Subgraph::new(
-                node,
-                &mut self.graph,
-                discovered,
-                |node, i| node.subgraph = Some((idx, i)),
-                |node| node.subgraph.unwrap().1,
-                |node| node.kind().cdcl().is_none() && node.kind().proof().is_none(),
-            )?;
+            let (subgraph, discovered_) =
+                Subgraph::new(node, &mut self.graph, discovered, |node, i| {
+                    node.subgraph = Some((idx, i))
+                })?;
             discovered = discovered_;
             subgraphs.raw.try_reserve(1)?;
             subgraphs.push(subgraph);
@@ -113,8 +100,6 @@ impl RawInstGraph {
 #[derive(Debug)]
 pub struct Subgraph {
     pub(super) nodes: Vec<RawNodeIndex>,
-    /// `reach_fwd[idx]` gives the set of nodes that can be reached from `idx`
-    pub reach_fwd: Option<TransitiveClosure>,
 }
 
 pub struct VisitBox<D: VisitMap<NodeIndex<RawIx>>> {
@@ -133,11 +118,8 @@ impl Subgraph {
         graph: &mut DiGraph<N, E, RawIx>,
         mut visit: VisitBox<D>,
         mut f: impl FnMut(&mut N, u32),
-        c: impl Fn(&N) -> u32,
-        calc_trans: impl Fn(&N) -> bool,
     ) -> Result<(Self, VisitBox<D>)> {
         let mut start_nodes = Vec::new();
-        let mut trans = true;
 
         let mut un_graph = std::mem::replace(graph, DiGraph::<N, E, RawIx>::with_capacity(0, 0))
             .into_edge_type::<Undirected>();
@@ -169,133 +151,12 @@ impl Subgraph {
         }) {
             let n = &mut graph[node];
             f(n, count);
-            trans &= calc_trans(n);
             count += 1;
             nodes.try_reserve(1)?;
             nodes.push(RawNodeIndex(node));
         }
 
-        // Transitive closure
-        let reach_fwd = trans
-            .then(|| {
-                let mut tc = TransitiveClosure(vec![RoaringBitmap::new(); nodes.len()]);
-                let mut reach_fwd = &mut *tc.0;
-                let mut reverse_topo = nodes.iter().enumerate().rev();
-                while let (Some((idx, node)), Some((curr, others))) =
-                    (reverse_topo.next(), reach_fwd.split_last_mut())
-                {
-                    reach_fwd = others;
-                    curr.insert(idx as u32);
-
-                    if cfg!(feature = "never_panic") {
-                        let neighbors = graph.neighbors_directed(node.0, Incoming).count();
-                        let mut allocation = Vec::<u8>::new();
-                        allocation.try_reserve_exact(2 * neighbors * curr.serialized_size())?;
-                        drop(allocation);
-                    }
-
-                    for parent in graph.neighbors_directed(node.0, Incoming) {
-                        let parent = c(&graph[parent]);
-                        reach_fwd[parent as usize] |= &*curr;
-                    }
-                }
-                Result::Ok(tc)
-            })
-            .transpose()?;
-
-        // let mut tc_combined = RoaringBitmap::new();
-        // for (idx, tc) in transitive_closures.into_iter().enumerate() {
-        //     let offset = (idx * nodes.len()) as u32;
-        //     tc_combined.append(tc.into_iter().map(|x| x + offset));
-        // }
-
-        Ok((Self { nodes, reach_fwd }, visit))
-    }
-}
-
-#[derive(Debug)]
-pub struct TransitiveClosure(Vec<RoaringBitmap>);
-impl TransitiveClosure {
-    pub fn in_transitive_closure(&self, from: u32, to: u32) -> bool {
-        // self.reach_fwd.contains(from * self.nodes.len() as u32 + to)
-        self.0[from as usize].contains(to)
-    }
-    pub fn reachable_from(&self, from: u32) -> impl Iterator<Item = u32> + '_ {
-        // (0..self.nodes.len() as u32).filter(move |&to| self.in_transitive_closure(from, to))
-        self.0[from as usize].iter()
-    }
-    pub fn reachable_from_many(&self, from: impl Iterator<Item = u32>) -> RoaringBitmap {
-        let mut reachable = RoaringBitmap::new();
-        for from in from {
-            reachable |= &self.0[from as usize];
-        }
-        reachable
-    }
-
-    #[cfg(feature = "mem_dbg")]
-    pub(crate) fn inner(&self) -> &Vec<RoaringBitmap> {
-        &self.0
-    }
-}
-
-impl InstGraph {
-    pub fn non_visible_paths_between(
-        &self,
-        from: RawNodeIndex,
-        to: RawNodeIndex,
-    ) -> Option<(FxHashSet<RawNodeIndex>, Option<Vec<RawNodeIndex>>)> {
-        if from == to {
-            return Some(([to].into_iter().collect(), Some(vec![to])));
-        }
-
-        let from_node = &self.raw[from];
-        let to_node = &self.raw[to];
-        let (from_subgraph, _) = from_node.subgraph?;
-        let to_sg @ (to_subgraph, _) = to_node.subgraph?;
-        if from_subgraph != to_subgraph {
-            return None;
-        }
-
-        let filtered = NodeFiltered::from_fn(&*self.raw.graph, |n| {
-            let node = &self.raw.graph[n];
-            !node.visible()
-                && node
-                    .subgraph
-                    .is_some_and(|curr_sg| self.subgraphs.in_transitive_closure(curr_sg, to_sg))
-        });
-
-        let mut paths_between: FxHashSet<_> = [to].into_iter().collect();
-        let mut simple_path = None;
-
-        let mut path = vec![from];
-        let mut stack = vec![filtered
-            .neighbors_directed(from.0, Outgoing)
-            .map(RawNodeIndex)
-            .collect::<Vec<_>>()];
-        while let Some(mut neighbours) = stack.pop() {
-            if let Some(next) = neighbours.pop() {
-                stack.push(neighbours);
-                if paths_between.contains(&next) {
-                    paths_between.extend(path.iter().copied());
-                    if simple_path.is_none() {
-                        path.push(next);
-                        simple_path = Some(path);
-                    }
-                    path = Vec::new();
-                } else {
-                    path.push(next);
-                    stack.push(
-                        filtered
-                            .neighbors_directed(next.0, Outgoing)
-                            .map(RawNodeIndex)
-                            .collect::<Vec<_>>(),
-                    );
-                }
-            } else {
-                path.pop();
-            }
-        }
-        Some((paths_between, simple_path))
+        Ok((Self { nodes }, visit))
     }
 }
 

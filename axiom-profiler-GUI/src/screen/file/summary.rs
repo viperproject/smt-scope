@@ -52,6 +52,7 @@ pub fn Summary(props: &SummaryProps) -> Html {
         analysis: props.analysis.clone(),
         term_display: term_display.clone(),
         config: cfg.config.display,
+        avg_weighing: cfg.config.avg_weighing.0,
     };
 
     let graph = props.analysis.clone().map(|analysis| {
@@ -68,6 +69,7 @@ pub fn Summary(props: &SummaryProps) -> Html {
             <Metrics ..inner.clone() />
             <MostQuants ..inner.clone() />
             <CostQuants ..inner.clone() />
+            <MultQuants ..inner.clone() />
         </DetailContainer><DetailContainer>
             <CostLemmas ..inner.clone() />
             <CostCdcl ..inner />
@@ -82,6 +84,7 @@ pub struct SummaryPropsInner {
     pub analysis: Option<RcAnalysis>,
     pub term_display: Rc<TermDisplayContext>,
     pub config: DisplayConfiguration,
+    pub avg_weighing: f64,
 }
 
 impl SummaryPropsInner {
@@ -138,13 +141,13 @@ pub fn MostQuants(props: &SummaryPropsInner) -> Html {
     let summary = &props.parser.summary;
     let colours = &props.parser.colour_map;
 
-    let quants = summary.log_info.quants_iter();
-    let quants = quants_ordered::<_, true>(&parser, colours, quants);
+    let quants = summary.log_info.quants_iter().map(|(q, c)| (q, (), c));
+    let quants = quants_ordered::<(), _, true>(&parser, colours, quants);
     let quants = quants
         .iter()
         .take(DISPLAY_TOP_N)
         .take_while(|(.., c)| *c > 0);
-    let quants = quants.map(|(q, hue, c)| {
+    let quants = quants.map(|(q, hue, (), c)| {
         let left = format_to_html(*c);
         let right = html! { <div class="info-box-row">{ format!("{q}") }<QuantColourBox {hue} /></div> };
         (left, right)
@@ -158,20 +161,59 @@ pub fn MostQuants(props: &SummaryPropsInner) -> Html {
 #[function_component]
 pub fn CostQuants(props: &SummaryPropsInner) -> Html {
     props.analysis.as_ref().map(|analysis| {
+        let log_info = &props.parser.summary.log_info;
         let parser = props.parser.parser.borrow();
         let analysis = analysis.borrow();
         let colours = &props.parser.colour_map;
+        let offset = log_info.match_.quantifiers as f64 * props.avg_weighing / 100.;
 
-        let costs = analysis.quants.quants_costs().map(|(q, c)| (q, F64Ord(c)));
-        let costs = quants_ordered::<_, true>(&parser, colours, costs);
+        let costs = analysis.quants.quants_costs().map(|(q, c)| {
+            let qis = log_info.quant_insts(q);
+            if qis == 0 {
+                (q, 0.0, F64Ord(0.0))
+            } else {
+                (q, c / qis as f64, F64Ord(c / (qis as f64 + offset)))
+            }
+        });
+        let costs = quants_ordered::<_, _, true>(&parser, colours, costs);
         let costs = costs.iter().take(DISPLAY_TOP_N).take_while(|(.., c)| c.0 > 0.0);
-        let costs = costs.map(|(q, hue, c)| {
-            let left = format_to_html(c.0 as u64);
+        let costs = costs.map(|(q, hue, c, _)| {
+            let left = html!{{ format!("{c:.1}") }};
             let right = html! { <div class="info-box-row">{ format!("{q}") }<QuantColourBox {hue} /></div> };
             (left, right)
         }).collect::<Vec<_>>();
-        html! {<Detail title="Most expensive quantifiers" hover="The quantifiers upon which the most instantiations depend.">
+        html! {<Detail title="Average cost" hover="The quantifiers upon which the most instantiations causally depend. See average weighing flag.">
             <TreeList elements={costs} />
+        </Detail>}
+    }).unwrap_or_default()
+}
+
+#[function_component]
+pub fn MultQuants(props: &SummaryPropsInner) -> Html {
+    props.analysis.as_ref().map(|analysis| {
+        let log_info = &props.parser.summary.log_info;
+        let parser = props.parser.parser.borrow();
+        let analysis = analysis.borrow();
+        let colours = &props.parser.colour_map;
+        let offset = log_info.match_.quantifiers as f64 * props.avg_weighing / 100.;
+
+        let mults = analysis.quants.quants_children().map(|(q, c)| {
+            let qis = log_info.quant_insts(q);
+            if qis == 0 {
+                (q, 0.0, F64Ord(0.0))
+            } else {
+                (q, c / qis as f64, F64Ord(c / (qis as f64 + offset)))
+            }
+        });
+        let mults = quants_ordered::<_, _, true>(&parser, colours, mults);
+        let mults = mults.iter().take(DISPLAY_TOP_N).take_while(|(.., c)| c.0 > 0.0);
+        let mults = mults.map(|(q, hue, c, _)| {
+            let left = html!{{ format!("{c:.1}") }};
+            let right = html! { <div class="info-box-row">{ format!("{q}") }<QuantColourBox {hue} /></div> };
+            (left, right)
+        }).collect::<Vec<_>>();
+        html! {<Detail title="Average multiplicativity" hover="The quantifiers which the highest multiplicative factor, i.e. those that on average directly cause N other instantiations. See average weighing flag.">
+            <TreeList elements={mults} />
         </Detail>}
     }).unwrap_or_default()
 }
@@ -213,17 +255,17 @@ fn format_to_html<F: ToFormattedString>(f: F) -> Html {
     html! {{ f.to_formatted_string(&Locale::en) }}
 }
 
-fn quants_ordered<'a, T: Ord + Copy + Debug, const REVERSE: bool>(
+fn quants_ordered<'a, D, T: Ord + Copy + Debug, const REVERSE: bool>(
     parser: &'a Z3Parser,
     colour_map: &QuantIdxToColourMap,
-    quants: impl Iterator<Item = (QuantIdx, T)>,
-) -> Vec<(Cow<'a, str>, Option<f64>, T)> {
+    quants: impl Iterator<Item = (QuantIdx, D, T)>,
+) -> Vec<(Cow<'a, str>, Option<f64>, D, T)> {
     let mut quants = quants
-        .filter_map(|(q, c)| {
+        .filter_map(|(q, d, c)| {
             let name = parser[q].kind.name(&parser.strings)?;
             let hue = colour_map.get_rbg_hue(Some(q));
             // log::info!("{name}: {hue:?} | {c:?}");
-            Some((name, hue, c))
+            Some((name, hue, d, c))
         })
         .collect::<Vec<_>>();
     if REVERSE {

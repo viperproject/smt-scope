@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    analysis::reconnect::{BwdReachableVisAnalysis, ReconnectAnalysis},
+    analysis::reconnect::{BwdReachableAnalysis, ReachVisible, ReconnectAnalysis},
     raw::{EdgeKind, NodeKind},
     InstGraph, RawEdgeIndex, RawNodeIndex,
 };
@@ -30,7 +30,8 @@ pub struct VisibleInstGraph {
 
 impl InstGraph {
     pub fn to_visible(&self) -> VisibleInstGraph {
-        let bwd_vis_reachable = self.topo_analysis(&mut BwdReachableVisAnalysis);
+        let mut reach = BwdReachableAnalysis::<ReachVisible>::default();
+        let bwd_vis_reachable = self.topo_analysis(&mut reach);
         let mut reconnect = self.topo_analysis(&mut ReconnectAnalysis(bwd_vis_reachable));
         let (mut nodes, mut edges) = (0, 0);
         for (idx, data) in reconnect.iter_mut_enumerated() {
@@ -49,8 +50,14 @@ impl InstGraph {
             if !self.raw[idx].visible() {
                 continue;
             }
-            let hidden_parents = self.raw.neighbors_directed(idx, Incoming).count_hidden();
-            let hidden_children = self.raw.neighbors_directed(idx, Outgoing).count_hidden();
+            let hidden_parents = self
+                .raw
+                .neighbors_directed(idx, Incoming, &self.analysis.reach)
+                .count_hidden();
+            let hidden_children = self
+                .raw
+                .neighbors_directed(idx, Outgoing, &self.analysis.reach)
+                .count_hidden();
             let v_node = VisibleNode {
                 idx,
                 hidden_parents: hidden_parents as u32,

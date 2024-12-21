@@ -51,7 +51,10 @@ impl Filter {
             }
             MaxBranching(n) => graph.keep_first_n_children(n),
             ShowNeighbours(nidx, direction) => {
-                let nodes: Vec<_> = graph.raw.neighbors_directed(nidx, direction).collect();
+                let nodes: Vec<_> = graph
+                    .raw
+                    .neighbors_directed(nidx, direction, &graph.analysis.reach)
+                    .collect();
                 let modified = graph.raw.set_visibility_many(false, nodes.iter().copied());
                 select = Some(nodes);
                 modified

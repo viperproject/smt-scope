@@ -2,7 +2,7 @@ use fxhash::FxHashMap;
 use smt_log_parser::{
     display_with::{DisplayConfiguration, SymbolReplacement},
     formatter::TermDisplayContext,
-    NonMaxU32,
+    F64Ord, NonMaxU32,
 };
 
 use crate::screen::homepage::FileInfo;
@@ -47,6 +47,7 @@ impl ConfigurationProvider {
 pub struct Configuration {
     pub display: DisplayConfiguration,
     pub term_display: TermDisplayContextFiles,
+    pub avg_weighing: F64Ord,
 }
 impl Configuration {
     pub const fn default_display() -> DisplayConfiguration {
@@ -69,6 +70,7 @@ impl Default for Configuration {
         Self {
             display: Self::default_display(),
             term_display: TermDisplayContextFiles::default(),
+            avg_weighing: F64Ord(1.0),
         }
     }
 }

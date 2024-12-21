@@ -52,6 +52,7 @@ div.page .full-page {
 
 div.page .overlay {
     background-color: #fff;
+    z-index: 10;
 }
 div.page .overlay .close-button {
     position: absolute;

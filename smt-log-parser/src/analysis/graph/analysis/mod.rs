@@ -14,13 +14,14 @@ use mem_dbg::{MemDbg, MemSize};
 
 use matching_loop::MlData;
 
-use crate::{F64Ord, Result, Z3Parser};
+use crate::{F64Ord, Result, TiVec, Z3Parser};
 
 use self::{
     cost::{DefaultCost, ProofCost},
     depth::DefaultDepth,
     next_nodes::NextInstsInit,
     proof::ProofInitialiser,
+    reconnect::{BwdReachableAnalysis, ReachNonDisabled},
 };
 
 use super::{raw::RawInstGraph, InstGraph, RawNodeIndex};
@@ -28,6 +29,7 @@ use super::{raw::RawInstGraph, InstGraph, RawNodeIndex};
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
 pub struct Analysis {
+    pub reach: TiVec<RawNodeIndex, ReachNonDisabled>,
     // Highest to lowest
     pub cost: OrderingAnalysis,
     // Most to least
@@ -89,6 +91,7 @@ impl Analysis {
         // Alloc `fwd_depth_min` vector
         let fwd_depth_min = cost.duplicate()?;
         Ok(Self {
+            reach: Default::default(),
             cost,
             children,
             fwd_depth_min,
@@ -107,6 +110,9 @@ impl InstGraph {
     }
 
     pub fn initialise_default(&mut self, parser: &Z3Parser) {
+        let mut reach = BwdReachableAnalysis::<ReachNonDisabled>::default();
+        self.analysis.reach = self.topo_analysis(&mut reach);
+
         self.initialise_transfer(DefaultCost, parser);
         self.initialise_transfer(ProofCost, parser);
         self.initialise_collect(DefaultDepth::<true>, parser);

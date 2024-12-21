@@ -1,5 +1,8 @@
 use std::collections::hash_map::Entry;
 
+#[cfg(feature = "mem_dbg")]
+use mem_dbg::{MemDbg, MemSize};
+
 use fxhash::FxHashSet;
 
 use crate::{
@@ -9,10 +12,52 @@ use crate::{
 
 use super::run::TopoAnalysis;
 
-pub struct BwdReachableVisAnalysis;
+pub trait ReachKind: Copy + core::fmt::Debug + From<bool> + Into<bool> {
+    fn current(node: &Node) -> Self;
+    fn value(self) -> bool {
+        self.into()
+    }
+}
 
-impl TopoAnalysis<false, false> for BwdReachableVisAnalysis {
-    type Value = bool;
+macro_rules! reach_kind {
+    ($name:ident($node:ident => $e:expr)) => {
+        #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+        #[cfg_attr(feature = "mem_dbg", copy_type)]
+        #[derive(Debug, Clone, Copy)]
+        pub struct $name(bool);
+        impl ReachKind for $name {
+            fn current($node: &Node) -> Self {
+                Self($e)
+            }
+        }
+        impl From<bool> for $name {
+            fn from(b: bool) -> Self {
+                Self(b)
+            }
+        }
+        impl From<$name> for bool {
+            fn from(b: $name) -> bool {
+                b.0
+            }
+        }
+    };
+}
+
+reach_kind!(ReachVisible(node => node.visible()));
+reach_kind!(ReachNonDisabled(node => !node.disabled()));
+
+/// If `VIS` is true, then it checks if a visible node is reachable from this
+/// one, otherwise it checks if any non-disabled node is reachable.
+#[derive(Clone, Copy)]
+pub struct BwdReachableAnalysis<Kind: ReachKind>(core::marker::PhantomData<Kind>);
+impl<Kind: ReachKind> Default for BwdReachableAnalysis<Kind> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<Kind: ReachKind> TopoAnalysis<false, false> for BwdReachableAnalysis<Kind> {
+    type Value = Kind;
 
     fn collect<'a, 'n, T: Iterator<Item = (RawNodeIndex, &'n Self::Value)>>(
         &mut self,
@@ -24,11 +69,9 @@ impl TopoAnalysis<false, false> for BwdReachableVisAnalysis {
     where
         Self::Value: 'n,
     {
-        if node.visible() {
-            true
-        } else {
-            from_all().any(|(_, &b)| b)
-        }
+        let curr = Kind::current(node).value();
+        let reach = curr || from_all().any(|(_, &b)| b.value());
+        reach.into()
     }
 }
 
@@ -42,7 +85,7 @@ impl TopoAnalysis<false, false> for BwdReachableVisAnalysis {
 ///
 /// The `to` is implicit in the index which we used to reach the
 /// `TopoAnalysis::Value`.
-pub struct ReconnectAnalysis(pub TiVec<RawNodeIndex, bool>);
+pub struct ReconnectAnalysis(pub TiVec<RawNodeIndex, ReachVisible>);
 
 #[derive(Debug, Default)]
 pub struct ReconnectData {
@@ -164,7 +207,7 @@ impl TopoAnalysis<true, false> for ReconnectAnalysis {
         Self::Value: 'n,
     {
         let mut data = Self::Value::default();
-        if !self.0[cidx] {
+        if !self.0[cidx].value() {
             return data;
         }
 

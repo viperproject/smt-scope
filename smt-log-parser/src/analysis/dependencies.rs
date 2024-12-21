@@ -17,6 +17,9 @@ pub struct QuantPatInfo {
     /// How much total cost did this quantifier + pattern accrue from individual
     /// instantiations.
     pub costs: f64,
+    /// How many other instantiations of other quantifiers is this quantifier
+    /// _directly_ responsible for.
+    pub children: f64,
     /// How many times does an instantiation of this quantifier depend on an
     /// instantiation of the other quantifier.
     pub direct_deps: Vec<DirectDep>,
@@ -48,6 +51,16 @@ impl QuantifierAnalysis {
 
             let ginst = &inst_graph.raw[data.iidx];
             qinfo.costs += ginst.cost;
+
+            for &child in ginst.children.insts.iter() {
+                let cq = parser.get_inst(child).match_.kind.quant_idx();
+                if cq.is_some_and(|q| q == qpat.quant) {
+                    // Skip self references.
+                    continue;
+                }
+                let parents = inst_graph.raw[child].parents.insts.len() as f64;
+                qinfo.children += 1.0 / parents;
+            }
 
             let pat = parser.get_pattern(qpat);
             let subpats = pat.map(|p| parser[p].child_ids.len()).unwrap_or_default();
@@ -95,6 +108,13 @@ impl QuantifierAnalysis {
              .0
             .iter_enumerated()
             .map(|(quant, data)| (quant, data.iter_enumerated().map(|(_, d)| d.costs).sum()))
+    }
+
+    pub fn quants_children(&self) -> impl Iterator<Item = (QuantIdx, f64)> + '_ {
+        self.0
+             .0
+            .iter_enumerated()
+            .map(|(quant, data)| (quant, data.iter_enumerated().map(|(_, d)| d.children).sum()))
     }
 
     pub fn calculate_transitive(&self, mut steps: Option<u32>) -> TransQuantAnalaysis {

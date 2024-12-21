@@ -116,7 +116,7 @@ impl AddFilter<'_> {
             mk_filter(
                 &nodes,
                 |&(n, _, _)| {
-                    raw.neighbors_directed(n, Direction::Outgoing)
+                    raw.neighbors_directed(n, Direction::Outgoing, &self.graph.analysis.reach)
                         .count_hidden()
                         > 0
                 },
@@ -125,7 +125,7 @@ impl AddFilter<'_> {
             mk_filter(
                 &nodes,
                 |&(n, _, _)| {
-                    raw.neighbors_directed(n, Direction::Incoming)
+                    raw.neighbors_directed(n, Direction::Incoming, &self.graph.analysis.reach)
                         .count_hidden()
                         > 0
                 },

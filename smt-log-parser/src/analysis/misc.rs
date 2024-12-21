@@ -105,4 +105,11 @@ impl LogInfo {
             .iter_enumerated()
             .map(|(i, count)| (i, count.iter_enumerated().map(|(_, c)| c).sum()))
     }
+
+    pub fn quant_insts(&self, qidx: QuantIdx) -> usize {
+        self.quants.0 .0[qidx]
+            .iter_enumerated()
+            .map(|(_, c)| *c)
+            .sum()
+    }
 }

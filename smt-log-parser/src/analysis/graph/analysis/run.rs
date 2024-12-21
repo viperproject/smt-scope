@@ -10,6 +10,8 @@ use crate::{
     TiVec, Z3Parser,
 };
 
+use super::reconnect::ReachNonDisabled;
+
 // FIXME: `ID` makes the implementations unique, but is not a great solution.
 /// FORWARD: Do a forward or reverse topological walk?
 pub trait Initialiser<const FORWARD: bool, const ID: u8> {
@@ -75,9 +77,10 @@ impl RawInstGraph {
         &self,
         curr: RawNodeIndex,
         dir: Direction,
+        reach: &TiVec<RawNodeIndex, ReachNonDisabled>,
     ) -> impl Iterator<Item = RawNodeIndex> + '_ {
         if SKIP_DISABLED {
-            either::Either::Left(self.neighbors_directed(curr, dir))
+            either::Either::Left(self.neighbors_directed(curr, dir, reach))
         } else {
             either::Either::Right(self.graph.neighbors_directed(curr.0, dir).map(RawNodeIndex))
         }
@@ -119,7 +122,7 @@ impl InstGraph {
                 } else {
                     let from_all = || {
                         self.raw
-                            .neighbors_directed_::<SKIP_DISABLED>(curr, dir)
+                            .neighbors_directed_::<SKIP_DISABLED>(curr, dir, &self.analysis.reach)
                             .map(|i| {
                                 let data = &data[i];
                                 // Safety: The data is initialised as the graph is a DAG
@@ -175,7 +178,11 @@ impl InstGraph {
             let for_each = |idx: RawNodeIndex| {
                 let from_all = || {
                     self.raw
-                        .neighbors_directed_::<SKIP_DISABLED>(idx, I::direction())
+                        .neighbors_directed_::<SKIP_DISABLED>(
+                            idx,
+                            I::direction(),
+                            &self.analysis.reach,
+                        )
                         .map(|i| &self.raw[i])
                 };
                 let value = initialiser.collect(&self.raw.graph[idx.0], from_all);
@@ -209,11 +216,14 @@ impl InstGraph {
             let for_each = |idx: RawNodeIndex| {
                 let incoming: Vec<_> = self
                     .raw
-                    .neighbors_directed(idx, I::direction())
+                    .neighbors_directed(idx, I::direction(), &self.analysis.reach)
                     .map(|i| initialiser.observe(&self.raw[i], parser))
                     .collect();
                 let mut i = 0;
-                let mut neighbors = self.raw.neighbors_directed(idx, I::direction()).detach();
+                let mut neighbors = self
+                    .raw
+                    .neighbors_directed(idx, I::direction(), &self.analysis.reach)
+                    .detach();
                 while let Some(neighbor) = neighbors.next(&self.raw) {
                     let transfer = initialiser.transfer(&self.raw.graph[idx.0], idx, i, &incoming);
                     initialiser.add(&mut self.raw[neighbor], transfer);

@@ -68,6 +68,7 @@ pub fn Summary(props: &SummaryProps) -> Html {
             <Metrics ..inner.clone() />
             <MostQuants ..inner.clone() />
             <CostQuants ..inner.clone() />
+            <MultQuants ..inner.clone() />
         </DetailContainer><DetailContainer>
             <CostLemmas ..inner.clone() />
             <CostCdcl ..inner />
@@ -158,20 +159,57 @@ pub fn MostQuants(props: &SummaryPropsInner) -> Html {
 #[function_component]
 pub fn CostQuants(props: &SummaryPropsInner) -> Html {
     props.analysis.as_ref().map(|analysis| {
+        let log_info = &props.parser.summary.log_info;
         let parser = props.parser.parser.borrow();
         let analysis = analysis.borrow();
         let colours = &props.parser.colour_map;
 
-        let costs = analysis.quants.quants_costs().map(|(q, c)| (q, F64Ord(c)));
+        let costs = analysis.quants.quants_costs().map(|(q, c)| {
+            let qis = log_info.quant_insts(q);
+            if qis == 0 {
+                (q, F64Ord(0.0))
+            } else {
+                (q, F64Ord(c / qis as f64))
+            }
+        });
         let costs = quants_ordered::<_, true>(&parser, colours, costs);
         let costs = costs.iter().take(DISPLAY_TOP_N).take_while(|(.., c)| c.0 > 0.0);
         let costs = costs.map(|(q, hue, c)| {
-            let left = format_to_html(c.0 as u64);
+            let left = html!{{ format!("{:.1}", c.0) }};
             let right = html! { <div class="info-box-row">{ format!("{q}") }<QuantColourBox {hue} /></div> };
             (left, right)
         }).collect::<Vec<_>>();
         html! {<Detail title="Most expensive quantifiers" hover="The quantifiers upon which the most instantiations depend.">
             <TreeList elements={costs} />
+        </Detail>}
+    }).unwrap_or_default()
+}
+
+#[function_component]
+pub fn MultQuants(props: &SummaryPropsInner) -> Html {
+    props.analysis.as_ref().map(|analysis| {
+        let log_info = &props.parser.summary.log_info;
+        let parser = props.parser.parser.borrow();
+        let analysis = analysis.borrow();
+        let colours = &props.parser.colour_map;
+
+        let mults = analysis.quants.quants_children().map(|(q, c)| {
+            let qis = log_info.quant_insts(q);
+            if qis == 0 {
+                (q, F64Ord(0.0))
+            } else {
+                (q, F64Ord(c / qis as f64))
+            }
+        });
+        let mults = quants_ordered::<_, true>(&parser, colours, mults);
+        let mults = mults.iter().take(DISPLAY_TOP_N).take_while(|(.., c)| c.0 > 0.0);
+        let mults = mults.map(|(q, hue, c)| {
+            let left = html!{{ format!("{:.1}", c.0) }};
+            let right = html! { <div class="info-box-row">{ format!("{q}") }<QuantColourBox {hue} /></div> };
+            (left, right)
+        }).collect::<Vec<_>>();
+        html! {<Detail title="Multiplicative quantifiers" hover="The quantifiers which the highest multiplicative factor, i.e. those that on average directly cause N other instantiations.">
+            <TreeList elements={mults} />
         </Detail>}
     }).unwrap_or_default()
 }

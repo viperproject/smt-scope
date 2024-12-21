@@ -10,19 +10,23 @@ use petgraph::{
 
 use crate::{
     items::{
-        ENode, ENodeIdx, EqGivenIdx, EqGivenUse, EqTransIdx, Equality, EqualityExpl, InstIdx,
-        TermIdx, TransitiveExpl, TransitiveExplSegment, TransitiveExplSegmentKind,
+        ENode, ENodeBlame, ENodeIdx, EqGivenIdx, EqGivenUse, EqTransIdx, Equality, EqualityExpl,
+        InstIdx, ProofIdx, TermIdx, TransitiveExpl, TransitiveExplSegment,
+        TransitiveExplSegmentKind,
     },
     BoxSlice, Error, FxHashMap, NonMaxU32, Result, TiVec,
 };
 
-use super::stack::Stack;
+use super::{stack::Stack, terms::Terms};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
 pub struct EGraph {
     term_to_enode: FxHashMap<TermIdx, TermToEnode>,
     pub(crate) enodes: TiVec<ENodeIdx, ENode>,
+    /// Which terms have we seen in a proof and might therefore get an enode
+    /// from them?
+    proofs: FxHashMap<TermIdx, ProofIdx>,
     pub equalities: Equalities,
 }
 
@@ -54,11 +58,32 @@ impl Equalities {
 }
 
 impl EGraph {
+    pub fn get_blame(
+        &self,
+        tidx: TermIdx,
+        inst: Option<InstIdx>,
+        terms: &Terms,
+        stack: &Stack,
+    ) -> ENodeBlame {
+        if terms.is_bool_const(tidx) {
+            return ENodeBlame::BoolConst;
+        }
+        if let Some(inst) = inst {
+            return ENodeBlame::Inst(inst);
+        }
+        let proof = self.proofs.get(&tidx).copied();
+        let proof = proof.filter(|&p| stack.is_active_or_global(terms[p].frame));
+        if let Some(proof) = proof {
+            return ENodeBlame::Proof(proof);
+        }
+        ENodeBlame::Unknown
+    }
+
     pub fn new_enode(
         &mut self,
-        created_by: Option<InstIdx>,
+        blame: ENodeBlame,
         term: TermIdx,
-        z3_generation: Option<NonMaxU32>,
+        z3_generation: NonMaxU32,
         stack: &Stack,
     ) -> Result<ENodeIdx> {
         // TODO: why does this happen sometimes?
@@ -72,12 +97,11 @@ impl EGraph {
         self.enodes.raw.try_reserve(1)?;
         let enode = self.enodes.push_and_get_key(ENode {
             frame: stack.active_frame(),
-            created_by,
+            blame,
             owner: term,
             z3_generation,
             equalities: Vec::new(),
             transitive: FxHashMap::default(),
-            self_transitive: None,
         });
         self.insert_tte(term, enode, stack)?;
         Ok(enode)
@@ -90,6 +114,34 @@ impl EGraph {
 
     pub fn get_owner(&self, enode: ENodeIdx) -> TermIdx {
         self.enodes[enode].owner
+    }
+
+    pub(super) fn new_proof(
+        &mut self,
+        term: TermIdx,
+        proof: ProofIdx,
+        terms: &Terms,
+        stack: &Stack,
+    ) -> Result<()> {
+        if !terms[proof].kind.is_asserted() {
+            return Ok(());
+        }
+        terms.app_walk(term, |tidx, app| {
+            self.proofs.try_reserve(1)?;
+            match self.proofs.entry(tidx) {
+                Entry::Occupied(mut o) => {
+                    if stack.is_active_or_global(terms[*o.get()].frame) {
+                        return Ok(&[]);
+                    } else {
+                        o.insert(proof);
+                    }
+                }
+                Entry::Vacant(v) => {
+                    v.insert(proof);
+                }
+            }
+            Ok(&app.child_ids)
+        })
     }
 
     pub fn new_given_equality(

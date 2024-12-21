@@ -15,8 +15,8 @@ use petgraph::{
 use crate::{
     graph_idx,
     items::{
-        CdclIdx, ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx,
-        StackIdx, TransitiveExplSegmentKind,
+        CdclIdx, ENodeBlame, ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx,
+        ProofIdx, StackIdx, TransitiveExplSegmentKind,
     },
     DiGraph, FxHashMap, FxHashSet, NonMaxU32, Result, Z3Parser,
 };
@@ -101,11 +101,8 @@ impl RawInstGraph {
             stats,
         };
 
-        // Add instantiation blamed and yield edges
+        // Add instantiation blamed edges
         for (idx, inst) in parser.insts.insts.iter_enumerated() {
-            for yields in inst.yields_terms.iter() {
-                self_.add_edge(idx, *yields, EdgeKind::Yield);
-            }
             for (i, blame) in parser.insts.matches[inst.match_]
                 .pattern_matches()
                 .enumerate()
@@ -122,6 +119,15 @@ impl RawInstGraph {
                         },
                     );
                 }
+            }
+        }
+
+        // Add enode blamed edges
+        for (idx, enode) in parser.egraph.enodes.iter_enumerated() {
+            match enode.blame {
+                ENodeBlame::Inst(iidx) => self_.add_edge(iidx, idx, EdgeKind::Asserted),
+                ENodeBlame::Proof(pidx) => self_.add_edge(pidx, idx, EdgeKind::Yield),
+                ENodeBlame::BoolConst | ENodeBlame::Unknown => (),
             }
         }
 
@@ -571,6 +577,8 @@ impl NodeKind {
 pub enum EdgeKind {
     /// Instantiation -> ENode
     Yield,
+    /// Proof (asserted) -> ENode
+    Asserted,
     /// ENode -> Instantiation
     Blame { pattern_term: u16 },
     /// TransEquality -> Instantiation

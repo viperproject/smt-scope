@@ -25,7 +25,7 @@ impl GraphMode {
                 true
             }
             (Self::Inst, _) => false,
-            (Self::Proof, Instantiation(..) | Proof(..)) => true,
+            (Self::Proof, Instantiation(..) | ENode(..) | Proof(..)) => true,
             (Self::Proof, _) => false,
             (Self::Cdcl, Cdcl(..)) => true,
             (Self::Cdcl, _) => false,

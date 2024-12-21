@@ -47,13 +47,11 @@ pub fn Summary(props: &SummaryProps) -> Html {
     let cfg = use_context::<Rc<ConfigurationProvider>>().unwrap();
     let term_display = use_context::<Rc<TermDisplayContext>>().unwrap();
 
-    let mut config = cfg.config.display;
-    config.ast_depth_limit = NonMaxU32::new(3);
     let inner = SummaryPropsInner {
         parser: props.parser.clone(),
         analysis: props.analysis.clone(),
         term_display: term_display.clone(),
-        config,
+        config: cfg.config.display,
     };
 
     let graph = props.analysis.clone().map(|analysis| {
@@ -66,13 +64,14 @@ pub fn Summary(props: &SummaryProps) -> Html {
     });
 
     html! {<div class="summary">
-        <DetailContainer>
+        <article class="pf-content"><DetailContainer>
             <Metrics ..inner.clone() />
             <MostQuants ..inner.clone() />
             <CostQuants ..inner.clone() />
-            <CostProofs ..inner.clone() />
+        </DetailContainer><DetailContainer>
+            <CostLemmas ..inner.clone() />
             <CostCdcl ..inner />
-        </DetailContainer>
+        </DetailContainer></article>
         {graph}
     </div>}
 }
@@ -178,20 +177,18 @@ pub fn CostQuants(props: &SummaryPropsInner) -> Html {
 }
 
 #[function_component]
-pub fn CostProofs(props: &SummaryPropsInner) -> Html {
+pub fn CostLemmas(props: &SummaryPropsInner) -> Html {
     props.analysis.as_ref().map(|analysis| {
         let parser = props.parser.parser.borrow();
         let analysis = analysis.borrow();
-        let ctxt = props.ctxt(&parser);
-        let proofs = analysis.proofs.hypothesis_cost.iter().take(DISPLAY_TOP_N);
-        let proofs = proofs.map(|&(p, c)| {
-            let p = format!("<code class=\"margin-left-half\">{}</code>", parser[p].result.with(&ctxt));
-            let right = Html::from_html_unchecked(p.into());
+        let lemmas = analysis.proofs.lemmas_cost.iter().take(DISPLAY_TOP_N);
+        let lemmas = lemmas.map(|&(l, c)| {
             let left = format_to_html(c as u64);
+            let right = collapsed_expanded(l, props.ctxt(&parser));
             (left, right)
         }).collect::<Vec<_>>();
-        html! {<Detail title="Most expensive hypotheses" hover="The hypotheses which were the most expensive to contradict." tip="Try providing their negation directly.">
-            <TreeList elements={proofs} />
+        html! {<Detail title="Most expensive lemmas" hover="The lemmas which were the most expensive to prove (by contradiction)." tip="Try providing them directly.">
+            <TreeList elements={lemmas} />
         </Detail>}
     }).unwrap_or_default()
 }
@@ -199,13 +196,11 @@ pub fn CostProofs(props: &SummaryPropsInner) -> Html {
 #[function_component]
 pub fn CostCdcl(props: &SummaryPropsInner) -> Html {
     let parser = props.parser.parser.borrow();
-    let ctxt = props.ctxt(&parser);
     let cdcl = props.parser.cdcl.uncut_assigns.iter().take(DISPLAY_TOP_N);
     let cdcl = cdcl
         .map(|&(p, c)| {
-            let p = format!("<code class=\"margin-left-half\">{}</code>", p.with(&ctxt));
-            let right = Html::from_html_unchecked(p.into());
             let left = format_to_html(c);
+            let right = collapsed_expanded(p, props.ctxt(&parser));
             (left, right)
         })
         .collect::<Vec<_>>();
@@ -237,4 +232,49 @@ fn quants_ordered<'a, T: Ord + Copy + Debug, const REVERSE: bool>(
         quants.sort_by_key(|(.., c)| *c);
     }
     quants
+}
+
+fn collapsed_expanded<'a, D: Default>(
+    display: impl DisplayWithCtxt<DisplayCtxt<'a>, D> + Copy,
+    mut ctxt: DisplayCtxt<'a>,
+) -> Html {
+    let expanded = format!("<code>{}</code>", display.with(&ctxt));
+    ctxt.config.ast_depth_limit = NonMaxU32::new(2);
+    let collapsed = format!("<code>{}</code>", display.with(&ctxt));
+    if expanded == collapsed {
+        Html::from_html_unchecked(expanded.into())
+    } else {
+        let expanded = Html::from_html_unchecked(expanded.into());
+        let collapsed = Html::from_html_unchecked(collapsed.into());
+        html! {<ExpandOnFocus {collapsed} {expanded} />}
+    }
+}
+
+#[derive(Properties, Clone, PartialEq)]
+pub struct EofProps {
+    pub collapsed: Html,
+    pub expanded: Html,
+}
+
+#[function_component]
+pub fn ExpandOnFocus(props: &EofProps) -> Html {
+    let focused = use_state_eq(|| false);
+    let f = *focused;
+    let focused_ref = focused.clone();
+    let onblur = Callback::from(move |_| focused_ref.set(false));
+
+    let moved = use_mut_ref(|| false);
+    let moved_ref = moved.clone();
+    let onmousedown = Callback::from(move |_| *moved_ref.borrow_mut() = false);
+    let moved_ref = moved.clone();
+    let onmousemove = Callback::from(move |_| *moved_ref.borrow_mut() = true);
+    let (focused_ref, moved_ref) = (focused, moved);
+    let onmouseup = Callback::from(move |_| {
+        if !*moved_ref.borrow() {
+            focused_ref.set(!f)
+        }
+    });
+    html! {<div tabindex="0" class="expand-collapse" {onmousedown} {onmousemove} {onmouseup} {onblur}>
+        {if f { props.expanded.clone() } else { props.collapsed.clone() }}
+    </div>}
 }

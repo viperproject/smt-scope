@@ -89,16 +89,16 @@ impl CostInitialiser for DefaultCost {
     }
     fn transfer(
         &mut self,
-        node: &Node,
+        child: &Node,
         _from_idx: RawNodeIndex,
-        idx: usize,
-        incoming: &[Self::Observed],
+        parent_idx: usize,
+        parents: &[Self::Observed],
     ) -> f64 {
-        let total = incoming.iter().sum::<usize>();
-        if total == 0 {
+        let total = parents.iter().sum::<usize>();
+        if total == 0 || child.kind().proof().is_some() {
             return 0.0;
         }
-        node.cost * incoming[idx] as f64 / total as f64
+        child.cost * parents[parent_idx] as f64 / total as f64
     }
 }
 
@@ -127,17 +127,17 @@ impl CostInitialiser<true> for ProofCost {
         &mut self,
         node: &Node,
         _from_idx: RawNodeIndex,
-        idx: usize,
-        incoming: &[Self::Observed],
+        child_idx: usize,
+        children: &[Self::Observed],
     ) -> f64 {
         if node.kind().proof().is_none() {
             return 0.0;
         }
 
-        let total = incoming.iter().sum::<usize>();
+        let total = children.iter().sum::<usize>();
         if total == 0 {
             return 0.0;
         }
-        node.cost * incoming[idx] as f64 / total as f64
+        node.cost * children[child_idx] as f64 / total as f64
     }
 }

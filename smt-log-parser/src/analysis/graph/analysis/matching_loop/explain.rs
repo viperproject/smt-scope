@@ -334,7 +334,7 @@ impl MlExplainer {
 
     fn add_enode(&mut self, parser: &Z3Parser, enode: ENodeIdx, result_enode: NodeIndex) -> bool {
         let enode_data = &parser[enode];
-        let created_by = enode_data.created_by;
+        let created_by = enode_data.blame.inst();
         let created_by = created_by.and_then(|cb| self.instantiations.get(&cb));
         if let Some(created_by) = created_by {
             self.graph
@@ -375,7 +375,7 @@ impl MlExplainer {
                 let eq_expl = &self.equalities().given[eq];
                 match eq_expl {
                     &EqualityExpl::Literal { eq, .. } => {
-                        let created_by = self.parser[eq].created_by;
+                        let created_by = self.parser[eq].blame.inst();
                         let created_by =
                             created_by.and_then(|iidx| self.explainer.instantiations.get(&iidx));
                         if let Some(created_by) = created_by {

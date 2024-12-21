@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use smt_log_parser::{display_with::SymbolReplacement, NonMaxU32};
+use smt_log_parser::{display_with::SymbolReplacement, F64Ord, NonMaxU32};
 use wasm_bindgen::JsCast;
 use yew::{
     function_component, use_context, use_effect_with_deps, Callback, Event, Html, Properties,
@@ -129,6 +129,19 @@ pub fn Flags(props: &FlagsProps) -> Html {
     );
     use_effect_with_deps(move |deps| effect(deps), deps);
 
+    let (summary_weighing, effect, deps) = flag_widget!(
+        cfg,
+        default,
+        avg_weighing,
+        "Average weighing",
+        "When sorting by average, how much weight should be given to the total count. Currently only affects quantifier sorting on the summary screen. A weight of 0% means sorting exactly by the average, while N% means that anything with < N% of the total will be heavily down-ranked.", |
+        if F64Ord(0.0) => "0%",
+        if F64Ord(1.0) => "1%",
+        if F64Ord(10.0) => "10%",
+        if F64Ord(100.0) => "100%",
+    );
+    use_effect_with_deps(move |deps| effect(deps), deps);
+
     yew::html! {
         <div class="flags-page"><div class="flags-content">
             <h1>{"Configuration flags"}</h1>
@@ -136,6 +149,7 @@ pub fn Flags(props: &FlagsProps) -> Html {
             {debug}
             {replace_symbols}
             {ast_depth_limit}
+            {summary_weighing}
             <TermDisplayFlag cfg={cfg.clone()} file={props.file.clone()} />
         </div></div>
     }

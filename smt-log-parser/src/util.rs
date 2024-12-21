@@ -1,5 +1,11 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy)]
 pub struct F64Ord(pub f64);
+impl std::cmp::PartialEq for F64Ord {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.total_cmp(&other.0).is_eq()
+    }
+}
 impl std::cmp::Eq for F64Ord {}
 impl std::cmp::PartialOrd for F64Ord {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {

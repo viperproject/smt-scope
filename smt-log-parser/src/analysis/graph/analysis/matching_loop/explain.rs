@@ -149,6 +149,7 @@ impl MlExplainer {
         gen: GenIdx,
     ) -> Vec<(usize, Option<usize>, u32)> {
         let prev_info = &ml_out.node_to_ml[&prev];
+
         let sig = ml_out.signatures[prev_info.ml_sig].clone();
         let Some(pat) = parser.get_pattern(sig.qpat) else {
             debug_assert!(false, "Found an MBQI matching loop?");
@@ -483,7 +484,7 @@ impl MlExplainer {
                 forward: bool,
             ) -> core::result::Result<(), Never> {
                 self.super_walk_trans(eq, forward)?;
-                if self.ancestor_is_recurring {
+                if self.ancestor_is_recurring && !self.add_mode {
                     self.burned_eqs.insert(eq);
                     self.add_mode = true;
                     self.super_walk_trans(eq, forward)?;

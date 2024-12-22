@@ -249,15 +249,15 @@ let wasm_bindgen;
         return cachedDataViewMemory0;
     }
     function __wbg_adapter_18(arg0, arg1, arg2) {
-        wasm._dyn_core__ops__function__Fn__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__hf071b25c3aff0905(arg0, arg1, addHeapObject(arg2));
+        wasm._dyn_core__ops__function__Fn__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h9c6d0de985e8f351(arg0, arg1, addHeapObject(arg2));
     }
 
     function __wbg_adapter_21(arg0, arg1, arg2) {
-        wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h6486c0a0df2f5ad3(arg0, arg1, addHeapObject(arg2));
+        wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__he43361b33fc62655(arg0, arg1, addHeapObject(arg2));
     }
 
     function __wbg_adapter_70(arg0, arg1, arg2, arg3) {
-        wasm.wasm_bindgen__convert__closures__invoke2_mut__h0ab433ee07f88018(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
+        wasm.wasm_bindgen__convert__closures__invoke2_mut__h386c90eea5ccc401(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
     }
 
     const __wbindgen_enum_ReadableStreamType = ["bytes"];

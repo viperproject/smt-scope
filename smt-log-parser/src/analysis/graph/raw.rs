@@ -253,11 +253,11 @@ impl RawInstGraph {
     /// Similar to `self.graph.neighbors` but will walk through disabled nodes.
     ///
     /// Note: Iterating the neighbors is **not** a O(1) operation.
-    pub fn neighbors(
-        &self,
+    pub fn neighbors<'a>(
+        &'a self,
         node: RawNodeIndex,
-        reach: &TiVec<RawNodeIndex, ReachNonDisabled>,
-    ) -> Neighbors<'_> {
+        reach: &'a TiVec<RawNodeIndex, ReachNonDisabled>,
+    ) -> Neighbors<'a> {
         self.neighbors_directed(node, Direction::Outgoing, reach)
     }
 
@@ -265,24 +265,24 @@ impl RawInstGraph {
     /// disabled nodes.
     ///
     /// Note: Iterating the neighbors is **not** a O(1) operation.
-    pub fn neighbors_directed(
-        &self,
+    pub fn neighbors_directed<'a>(
+        &'a self,
         node: RawNodeIndex,
         dir: Direction,
-        reach: &TiVec<RawNodeIndex, ReachNonDisabled>,
-    ) -> Neighbors<'_> {
+        reach: &'a TiVec<RawNodeIndex, ReachNonDisabled>,
+    ) -> Neighbors<'a> {
         let direct = self.graph.neighbors_directed(node.0, dir).detach();
-        let walk = if reach.get(node).is_some_and(|v| !v.value()) {
-            WalkNeighbors::None
-        } else {
-            WalkNeighbors::Some {
-                dir,
-                visited: FxHashSet::default(),
-                stack: Vec::new(),
-                direct,
-            }
+        let walk = WalkNeighbors {
+            dir,
+            visited: FxHashSet::default(),
+            stack: Vec::new(),
+            direct,
         };
-        Neighbors { raw: self, walk }
+        Neighbors {
+            raw: self,
+            reach,
+            walk,
+        }
     }
 
     pub fn inst_to_raw_idx(&self) -> impl Fn(InstIdx) -> RawNodeIndex {
@@ -700,6 +700,7 @@ impl Index<RawEdgeIndex> for RawInstGraph {
 #[derive(Clone)]
 pub struct Neighbors<'a> {
     pub raw: &'a RawInstGraph,
+    pub reach: &'a TiVec<RawNodeIndex, ReachNonDisabled>,
     pub walk: WalkNeighbors,
 }
 
@@ -717,32 +718,39 @@ impl<'a> Neighbors<'a> {
 impl Iterator for Neighbors<'_> {
     type Item = RawNodeIndex;
     fn next(&mut self) -> Option<Self::Item> {
-        self.walk.next(self.raw)
+        self.walk.next(self.raw, self.reach)
     }
 }
 
 #[derive(Clone)]
-pub enum WalkNeighbors {
-    None,
-    Some {
-        dir: Direction,
-        visited: FxHashSet<RawNodeIndex>,
-        stack: Vec<RawNodeIndex>,
-        direct: petgraph::graph::WalkNeighbors<RawIx>,
-    },
+pub struct WalkNeighbors {
+    pub dir: Direction,
+    pub visited: FxHashSet<RawNodeIndex>,
+    pub stack: Vec<RawNodeIndex>,
+    pub direct: petgraph::graph::WalkNeighbors<RawIx>,
 }
 
 impl WalkNeighbors {
-    pub fn next(&mut self, raw: &RawInstGraph) -> Option<RawNodeIndex> {
-        let WalkNeighbors::Some {
-            dir,
-            visited,
-            stack,
-            direct,
-        } = self
-        else {
-            return None;
-        };
+    fn next_direct(
+        &mut self,
+        raw: &RawInstGraph,
+        reach: &TiVec<RawNodeIndex, ReachNonDisabled>,
+    ) -> Option<RawNodeIndex> {
+        while let Some((_, n)) = self.direct.next(&raw.graph) {
+            let n = RawNodeIndex(n);
+            let skip = reach.get(n).is_some_and(|v| !v.value());
+            if !skip {
+                return Some(n);
+            }
+        }
+        None
+    }
+
+    pub fn next(
+        &mut self,
+        raw: &RawInstGraph,
+        reach: &TiVec<RawNodeIndex, ReachNonDisabled>,
+    ) -> Option<RawNodeIndex> {
         // TODO: decide if we want to prevent direct neighbors from being
         // visited multiple times if there are multiple direct edges.
         loop {
@@ -755,17 +763,15 @@ impl WalkNeighbors {
             //     }
             // }
             // let idx = idx.or_else(|| self.stack.pop())?;
-            let idx = direct
-                .next(&raw.graph)
-                .map(|(_, n)| RawNodeIndex(n))
-                .or_else(|| stack.pop())?;
+            let idx = self.next_direct(raw, reach).or_else(|| self.stack.pop())?;
             let node = &raw[idx];
             if !node.disabled() {
                 return Some(idx);
             }
-            for n in raw.graph.neighbors_directed(idx.0, *dir).map(RawNodeIndex) {
-                if visited.insert(n) {
-                    stack.push(n);
+            for n in raw.graph.neighbors_directed(idx.0, self.dir) {
+                let n = RawNodeIndex(n);
+                if self.visited.insert(n) {
+                    self.stack.push(n);
                 }
             }
         }

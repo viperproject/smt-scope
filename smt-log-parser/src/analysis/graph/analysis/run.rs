@@ -73,12 +73,12 @@ pub trait TopoAnalysis<const FORWARD: bool, const SKIP_DISABLED: bool> {
 }
 
 impl RawInstGraph {
-    fn neighbors_directed_<const SKIP_DISABLED: bool>(
-        &self,
+    fn neighbors_directed_<'a, const SKIP_DISABLED: bool>(
+        &'a self,
         curr: RawNodeIndex,
         dir: Direction,
-        reach: &TiVec<RawNodeIndex, ReachNonDisabled>,
-    ) -> impl Iterator<Item = RawNodeIndex> + '_ {
+        reach: &'a TiVec<RawNodeIndex, ReachNonDisabled>,
+    ) -> impl Iterator<Item = RawNodeIndex> + 'a {
         if SKIP_DISABLED {
             either::Either::Left(self.neighbors_directed(curr, dir, reach))
         } else {
@@ -224,7 +224,7 @@ impl InstGraph {
                     .raw
                     .neighbors_directed(idx, I::direction(), &self.analysis.reach)
                     .detach();
-                while let Some(neighbor) = neighbors.next(&self.raw) {
+                while let Some(neighbor) = neighbors.next(&self.raw, &self.analysis.reach) {
                     let transfer = initialiser.transfer(&self.raw.graph[idx.0], idx, i, &incoming);
                     initialiser.add(&mut self.raw[neighbor], transfer);
                     i += 1;

@@ -17,7 +17,7 @@ pub fn run() -> Result<(), String> {
             pretty_print,
         } => dependencies::run(logfile, depth, pretty_print)?,
         args::Commands::Stats { logfile, k } => stats::run(logfile, k)?,
-        args::Commands::Test { logfiles, timeout } => test::run(logfiles, timeout)?,
+        args::Commands::Test { logfiles, timeout, memory } => test::run(logfiles, timeout, memory)?,
         args::Commands::Reconstruct { logfile, clean } => reconstruct::run(logfile, clean)?,
     }
 

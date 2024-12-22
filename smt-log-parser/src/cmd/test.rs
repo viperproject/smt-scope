@@ -9,12 +9,12 @@ use wasm_timer::Instant;
 
 const MB: u64 = 1024_u64 * 1024_u64;
 
-pub fn run(logfiles: Vec<PathBuf>, timeout: f32) -> Result<(), String> {
+pub fn run(logfiles: Vec<PathBuf>, timeout: f32, memory: bool) -> Result<(), String> {
     for path in logfiles {
         let builder = std::thread::Builder::new().stack_size(8 * MB as usize);
         let t = builder
             .spawn(move || {
-                run_file(path, timeout);
+                run_file(path, timeout, memory);
             })
             .unwrap();
         t.join().unwrap();
@@ -22,7 +22,7 @@ pub fn run(logfiles: Vec<PathBuf>, timeout: f32) -> Result<(), String> {
     Ok(())
 }
 
-fn run_file(path: PathBuf, timeout: f32) {
+fn run_file(path: PathBuf, timeout: f32, memory: bool) {
     let path = std::path::Path::new(&path);
     let filename = path
         .file_name()
@@ -42,8 +42,10 @@ fn run_file(path: PathBuf, timeout: f32) {
     let (_metadata, parser) = Z3Parser::from_file(path).unwrap();
     let (timeout, mut result) = parser.process_all_timeout(to);
     let elapsed_time = time.elapsed();
-    #[cfg(feature = "mem_dbg")]
-    result.mem_dbg(DbgFlags::default()).ok();
+    if memory {
+        #[cfg(feature = "mem_dbg")]
+        result.mem_dbg(DbgFlags::default()).ok();
+    }
     println!(
         "{} parsing after {} seconds (timeout {timeout:?})",
         if timeout.is_timeout() {
@@ -65,8 +67,10 @@ fn run_file(path: PathBuf, timeout: f32) {
             .unwrap()
             .map(|q| result[q.quant].kind.debug(&result))
             .collect();
-        #[cfg(feature = "mem_dbg")]
-        inst_graph.mem_dbg(DbgFlags::default()).ok();
+        if memory {
+            #[cfg(feature = "mem_dbg")]
+            inst_graph.mem_dbg(DbgFlags::default()).ok();
+        }
         println!(
             "Finished analysing after {} seconds. Found {sure_mls} sure mls, {maybe_mls} maybe mls. Quants involved {quants_involved:?}",
             (process_time - elapsed_time).as_secs_f32(),

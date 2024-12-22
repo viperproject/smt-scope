@@ -437,6 +437,7 @@ ul.selected-info {
 .dot {
     display: inline-block;
     position: relative;
+    overflow-x: auto;
 }
 .dot.scaled {
     width: 100%;

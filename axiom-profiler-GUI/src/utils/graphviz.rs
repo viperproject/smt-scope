@@ -35,7 +35,7 @@ pub fn Dot(props: &DotProps) -> Html {
                     return;
                 }
             };
-            log::trace!(
+            log::debug!(
                 "Converting dot-String to SVG took {}ms",
                 elapsed.as_millis()
             );

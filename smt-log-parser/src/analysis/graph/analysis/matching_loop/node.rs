@@ -1,4 +1,4 @@
-use crate::parsers::z3::synthetic::SynthIdx;
+use crate::{items::QuantIdx, parsers::z3::synthetic::SynthIdx};
 
 use super::MlSignature;
 
@@ -9,7 +9,8 @@ use mem_dbg::{MemDbg, MemSize};
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum MLGraphNode {
     HiddenNode(Option<bool>),
-    QI(MlSignature, SimpIdx),
+    QI(MlSignature, QuantIdx, SimpIdx),
+    InstBody(QuantIdx, SimpIdx),
     FixedENode(SimpIdx),
     RecurringENode(SimpIdx, RecurrenceKind),
     FixedEquality(SimpIdx, SimpIdx),
@@ -22,6 +23,7 @@ pub enum MLGraphEdge {
     HiddenEdge(bool, u32),
     Blame(usize),
     BlameEq(usize),
+    Instantiation,
     Yield,
     YieldEq,
     CombineEq,

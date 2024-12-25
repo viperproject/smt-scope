@@ -577,6 +577,10 @@ impl ProofStepKind {
     pub fn is_quant_inst(self) -> bool {
         matches!(self, ProofStepKind::PR_QUANT_INST)
     }
+
+    pub fn is_lemma(self) -> bool {
+        matches!(self, ProofStepKind::PR_LEMMA)
+    }
 }
 
 static SEARCH_MAP: OnceLock<FxHashMap<String, ProofStepKind>> = OnceLock::new();

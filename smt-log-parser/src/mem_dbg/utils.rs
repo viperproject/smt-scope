@@ -1,7 +1,10 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use core::ops::{Deref, DerefMut};
+use core::{
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
+};
 
 use super::{FxHashMap, TiVec};
 
@@ -9,7 +12,7 @@ use super::{FxHashMap, TiVec};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub enum BoxSlice<T> {
     Large(Box<[T]>),
     Small(T),
@@ -89,6 +92,43 @@ impl<T> core::borrow::BorrowMut<[T]> for BoxSlice<T> {
     }
 }
 
+impl<T> PartialEq for BoxSlice<T>
+where
+    [T]: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        (**self).eq(&**other)
+    }
+}
+impl<T> Eq for BoxSlice<T> where [T]: Eq {}
+
+impl<T> PartialOrd for BoxSlice<T>
+where
+    [T]: PartialOrd,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+}
+
+impl<T> Ord for BoxSlice<T>
+where
+    [T]: Ord,
+{
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        (**self).cmp(&**other)
+    }
+}
+
+impl<T> Hash for BoxSlice<T>
+where
+    [T]: Hash,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state)
+    }
+}
+
 // InternMap
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -98,14 +138,12 @@ struct ValueRef<V: ?Sized + 'static> {
 }
 
 #[derive(Debug)]
-pub struct InternMap<K: Copy + From<usize>, V: Eq + core::hash::Hash + ?Sized + 'static> {
+pub struct InternMap<K: Copy + From<usize>, V: Eq + Hash + ?Sized + 'static> {
     map: FxHashMap<ValueRef<V>, K>,
     interned: TiVec<K, Box<V>>,
 }
 
-impl<K: Copy + From<usize>, V: ?Sized + Eq + core::hash::Hash + 'static> Default
-    for InternMap<K, V>
-{
+impl<K: Copy + From<usize>, V: ?Sized + Eq + Hash + 'static> Default for InternMap<K, V> {
     fn default() -> Self {
         Self {
             map: Default::default(),
@@ -114,7 +152,7 @@ impl<K: Copy + From<usize>, V: ?Sized + Eq + core::hash::Hash + 'static> Default
     }
 }
 
-impl<K: Copy + From<usize>, V: ?Sized + Eq + core::hash::Hash + 'static> InternMap<K, V> {
+impl<K: Copy + From<usize>, V: ?Sized + Eq + Hash + 'static> InternMap<K, V> {
     pub fn intern(&mut self, v: Box<V>) -> K {
         // SAFETY: `v` is stored in the `interned` vector, behind a `Box` so it
         // will not be moved or dropped until the whole `InternMap` is dropped.
@@ -134,7 +172,7 @@ impl<K: Copy + From<usize>, V: ?Sized + Eq + core::hash::Hash + 'static> InternM
     }
 }
 
-impl<K: Copy + From<usize>, V: ?Sized + Eq + core::hash::Hash + 'static> Deref for InternMap<K, V> {
+impl<K: Copy + From<usize>, V: ?Sized + Eq + Hash + 'static> Deref for InternMap<K, V> {
     type Target = TiVec<K, Box<V>>;
     fn deref(&self) -> &Self::Target {
         &self.interned

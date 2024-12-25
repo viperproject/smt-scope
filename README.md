@@ -69,6 +69,12 @@ In all cases, the Z3 log should be stored in `./z3.log` (this can also be altere
 
 See these instructions in Dafny's wiki: [Investigating slow verification performance](https://github.com/dafny-lang/dafny/wiki/Investigating-slow-verification-performance).
 
+```
+dafny /compile:0 /print:file.bpl /vcsCores:1 /proverLog:file.smt2 /proverOpt:O:trace-file-name=file.log /proverOpt:O:trace=true /proverOpt:O:proof=true file.dfy
+```
+
+To dump the whole chain of `.dfy -> .bpl -> .smt2 -> .log` files, try using the above command.
+
 ### FStar
 
 See these instructions in FStar's wiki: [Profiling Z3 queries](https://github.com/FStarLang/FStar/wiki/Profiling-Z3-queries).

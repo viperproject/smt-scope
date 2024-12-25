@@ -2,8 +2,9 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    items::{Fingerprint, InstIdx, Instantiation, Match, MatchIdx},
-    FxHashMap, Result, TiVec,
+    items::{ENodeIdx, Fingerprint, InstIdx, Instantiation, Match, MatchIdx},
+    parsers::z3::stack::Stack,
+    Error, FxHashMap, Result, TiVec,
 };
 
 pub struct InstData<'a> {
@@ -20,6 +21,8 @@ pub struct Insts {
     fingerprint_to_match: FxHashMap<Fingerprint, (MatchIdx, Option<InstIdx>)>,
     pub(crate) matches: TiVec<MatchIdx, Match>,
     pub(crate) insts: TiVec<InstIdx, Instantiation>,
+
+    pub(crate) inst_stack: Vec<(InstIdx, Vec<ENodeIdx>)>,
 
     has_theory_solving_inst: bool,
 }
@@ -45,20 +48,32 @@ impl Insts {
         &mut self,
         fingerprint: Fingerprint,
         inst: Instantiation,
+        stack: &Stack,
         can_duplicate: bool,
     ) -> Result<InstIdx> {
-        let (_, inst_idx) = self
+        let (match_idx, inst_idx) = self
             .fingerprint_to_match
             .get_mut(&fingerprint)
             .unwrap_or_else(|| panic!("{:x}", fingerprint.0));
         self.insts.raw.try_reserve(1)?;
         let idx = self.insts.push_and_get_key(inst);
+        // I have on very rare occasions seen an `[instance]` repeated twice
+        // with the same fingerprint (without an intermediate `[new-match]`).
         debug_assert!(
-            can_duplicate || inst_idx.is_none(),
-            "duplicate fingerprint {fingerprint}"
+            stack.is_active_or_global(self.matches[*match_idx].frame)
+                && (can_duplicate
+                    || !inst_idx.is_some_and(|i| stack.is_active_or_global(self.insts[i].frame))),
+            "duplicate instantiation of fingerprint {fingerprint}",
         );
         *inst_idx = Some(idx);
+        self.inst_stack.try_reserve(1)?;
+        self.inst_stack.push((idx, Vec::new()));
         Ok(idx)
+    }
+    pub fn end_inst(&mut self) -> Result<()> {
+        let (iidx, yield_terms) = self.inst_stack.pop().ok_or(Error::UnmatchedEndOfInstance)?;
+        self[iidx].yields_terms = yield_terms.into();
+        Ok(())
     }
 
     pub fn has_theory_solving_inst(&self) -> bool {

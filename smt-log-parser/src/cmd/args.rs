@@ -38,10 +38,17 @@ pub enum Commands {
         /// The maximum time to spend parsing each file (in seconds)
         #[arg(short, long, default_value_t = 15.0)]
         timeout: f32,
+        /// Whether to print out memory usage information
+        #[arg(short, long, default_value_t = false)]
+        memory: bool,
     },
     /// Try to reconstruct the `.smt2` file
     Reconstruct {
         /// The path to the smt log file
         logfile: std::path::PathBuf,
+        /// Whether to print out the file without details about what happened
+        /// after each line
+        #[arg(short, long, default_value_t = false)]
+        clean: bool,
     },
 }

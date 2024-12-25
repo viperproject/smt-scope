@@ -16,6 +16,7 @@ use super::{
 pub struct Match {
     pub kind: MatchKind,
     pub blamed: Box<[BlameKind]>,
+    pub frame: StackIdx,
 }
 
 impl Match {
@@ -214,14 +215,41 @@ impl fmt::Display for Fingerprint {
 #[derive(Debug, Clone)]
 pub struct Instantiation {
     pub match_: MatchIdx,
-    pub fingerprint: Fingerprint,
+    pub kind: InstantiationKind,
     pub proof_id: InstProofLink,
-    pub z3_generation: Option<NonMaxU32>,
-    pub frame: StackIdx,
     /// The enodes that were yielded by the instantiation along with the
     /// generalised terms for them (`MaybeSynthIdx::Parsed` if the yielded term
     /// doesn't contain any quantified variables)
     pub yields_terms: BoxSlice<ENodeIdx>,
+    pub frame: StackIdx,
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy)]
+pub enum InstantiationKind {
+    Axiom,
+    NonAxiom {
+        fingerprint: Fingerprint,
+        z3_generation: NonMaxU32,
+    },
+}
+
+impl InstantiationKind {
+    pub fn fingerprint(&self) -> Fingerprint {
+        match self {
+            Self::NonAxiom { fingerprint, .. } => *fingerprint,
+            _ => Fingerprint(0),
+        }
+    }
+
+    pub fn z3_generation(&self) -> Option<NonMaxU32> {
+        match self {
+            Self::NonAxiom { z3_generation, .. } => Some(*z3_generation),
+            _ => None,
+        }
+    }
 }
 
 /// A Z3 instantiation.

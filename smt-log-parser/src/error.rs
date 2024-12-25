@@ -5,7 +5,7 @@ use lasso::LassoError;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::items::{BlameKind, ENodeIdx, Fingerprint, QuantIdx, StackIdx, TermId, TermIdx};
+use crate::items::{BlameKind, ENodeIdx, Fingerprint, QuantIdx, TermId, TermIdx};
 
 pub type Result<T> = std::result::Result<T, Error>;
 pub type FResult<T> = std::result::Result<T, FatalError>;
@@ -37,7 +37,7 @@ pub enum Error {
     InvalidVersion(semver::Error),
 
     // Id parsing
-    InvalidIdNumber(ParseIntError),
+    InvalidIdNumber(nonmax::ParseIntError),
     InvalidIdHash(String),
     UnknownId(TermId),
 
@@ -77,7 +77,6 @@ pub enum Error {
 
     // Enode
     UnknownEnode(TermIdx),
-    EnodePoppedFrame(StackIdx),
     InvalidGeneration(nonmax::ParseIntError),
     EnodeRootMismatch(ENodeIdx, ENodeIdx),
 
@@ -85,6 +84,9 @@ pub enum Error {
     StackFrameNotPushed,
     PopConflictMismatch,
     InvalidFrameInteger(ParseIntError),
+
+    // Proof
+    ProvedVar(TermIdx),
 
     // CDCL
     NoConflict,
@@ -99,6 +101,10 @@ pub enum Error {
 
     Allocation(TryReserveError),
     Lasso(LassoError),
+
+    /// Unused, kept for debugging to see error line instead of simply panicking
+    /// at `debug_assert`.
+    Debug,
 }
 
 impl From<semver::Error> for Error {

@@ -15,11 +15,13 @@ use petgraph::{
 use crate::{
     graph_idx,
     items::{
-        CdclIdx, ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx, ProofIdx,
-        StackIdx, TransitiveExplSegmentKind,
+        CdclIdx, ENodeBlame, ENodeIdx, EqGivenIdx, EqTransIdx, EqualityExpl, GraphIdx, InstIdx,
+        ProofIdx, StackIdx, TransitiveExplSegmentKind,
     },
-    DiGraph, FxHashMap, FxHashSet, NonMaxU32, Result, Z3Parser,
+    DiGraph, FxHashMap, FxHashSet, NonMaxU32, Result, TiVec, Z3Parser,
 };
+
+use super::analysis::reconnect::{ReachKind, ReachNonDisabled};
 
 graph_idx!(raw_idx, RawNodeIndex, RawEdgeIndex, RawIx);
 
@@ -101,11 +103,8 @@ impl RawInstGraph {
             stats,
         };
 
-        // Add instantiation blamed and yield edges
+        // Add instantiation blamed edges
         for (idx, inst) in parser.insts.insts.iter_enumerated() {
-            for yields in inst.yields_terms.iter() {
-                self_.add_edge(idx, *yields, EdgeKind::Yield);
-            }
             for (i, blame) in parser.insts.matches[inst.match_]
                 .pattern_matches()
                 .enumerate()
@@ -122,6 +121,15 @@ impl RawInstGraph {
                         },
                     );
                 }
+            }
+        }
+
+        // Add enode blamed edges
+        for (idx, enode) in parser.egraph.enodes.iter_enumerated() {
+            match enode.blame {
+                ENodeBlame::Inst(iidx) => self_.add_edge(iidx, idx, EdgeKind::Asserted),
+                ENodeBlame::Proof(pidx) => self_.add_edge(pidx, idx, EdgeKind::Yield),
+                ENodeBlame::BoolConst | ENodeBlame::Unknown => (),
             }
         }
 
@@ -245,14 +253,24 @@ impl RawInstGraph {
     /// Similar to `self.graph.neighbors` but will walk through disabled nodes.
     ///
     /// Note: Iterating the neighbors is **not** a O(1) operation.
-    pub fn neighbors(&self, node: RawNodeIndex) -> Neighbors<'_> {
-        self.neighbors_directed(node, Direction::Outgoing)
+    pub fn neighbors<'a>(
+        &'a self,
+        node: RawNodeIndex,
+        reach: &'a TiVec<RawNodeIndex, ReachNonDisabled>,
+    ) -> Neighbors<'a> {
+        self.neighbors_directed(node, Direction::Outgoing, reach)
     }
+
     /// Similar to `self.graph.neighbors_directed` but will walk through
     /// disabled nodes.
     ///
     /// Note: Iterating the neighbors is **not** a O(1) operation.
-    pub fn neighbors_directed(&self, node: RawNodeIndex, dir: Direction) -> Neighbors<'_> {
+    pub fn neighbors_directed<'a>(
+        &'a self,
+        node: RawNodeIndex,
+        dir: Direction,
+        reach: &'a TiVec<RawNodeIndex, ReachNonDisabled>,
+    ) -> Neighbors<'a> {
         let direct = self.graph.neighbors_directed(node.0, dir).detach();
         let walk = WalkNeighbors {
             dir,
@@ -260,7 +278,11 @@ impl RawInstGraph {
             stack: Vec::new(),
             direct,
         };
-        Neighbors { raw: self, walk }
+        Neighbors {
+            raw: self,
+            reach,
+            walk,
+        }
     }
 
     pub fn inst_to_raw_idx(&self) -> impl Fn(InstIdx) -> RawNodeIndex {
@@ -474,18 +496,24 @@ pub enum NodeKind {
     GivenEquality(EqGivenIdx, Option<NonMaxU32>),
     /// Corresponds to `EqTransIdx`.
     ///
-    /// **Parents:** arbitrary count, will always be `GivenEquality` or
-    /// `TransEquality`. The number of immediately reachable `GivenEquality` con
+    /// **Parents:** (small) arbitrary count, will always be `GivenEquality` or
+    /// `TransEquality`. The number of immediately reachable `GivenEquality` can
     /// be found in `TransitiveExpl::given_len`.\
     /// **Children:** (large) arbitrary count, can be `GivenEquality`,
     /// `TransEquality` or `Instantiation`.
     TransEquality(EqTransIdx),
     /// Corresponds to `ProofIdx`.
     ///
-    /// **Parents:** (small) arbitrary count, will always be `Proof` or
+    /// **Parents:** (large) arbitrary count, will always be `Proof` or
     /// `Instantiation`.
-    /// **Children:** (small) arbitrary count, will always be `Proof`.
+    /// **Children:** (small?) arbitrary count, will always be `Proof`.
     Proof(ProofIdx),
+    /// Corresponds to `CdclIdx`. Only connected to other `Cdcl` nodes.
+    ///
+    /// **Parents:** will always have between 0 and 2 parents, if 2 then only
+    /// one is a real edge and the other is a backtracking edge.
+    /// **Children:** (generally small) arbitrary count, depends on how many
+    /// times we backtracked here.
     Cdcl(CdclIdx),
 }
 
@@ -545,6 +573,18 @@ impl NodeKind {
             _ => None,
         }
     }
+
+    /// Same as `reconnect_parents` but for children. Do we reconnect hidden
+    /// children of this visible node or just this node itself?
+    pub fn reconnect_child(&self, child: &Self) -> bool {
+        !matches!(
+            (self, child),
+            (
+                Self::ENode(..) | Self::TransEquality(..),
+                Self::Instantiation(..)
+            ) | (Self::Proof(..), Self::Proof(..))
+        )
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -553,6 +593,8 @@ impl NodeKind {
 pub enum EdgeKind {
     /// Instantiation -> ENode
     Yield,
+    /// Proof (asserted) -> ENode
+    Asserted,
     /// ENode -> Instantiation
     Blame { pattern_term: u16 },
     /// TransEquality -> Instantiation
@@ -658,6 +700,7 @@ impl Index<RawEdgeIndex> for RawInstGraph {
 #[derive(Clone)]
 pub struct Neighbors<'a> {
     pub raw: &'a RawInstGraph,
+    pub reach: &'a TiVec<RawNodeIndex, ReachNonDisabled>,
     pub walk: WalkNeighbors,
 }
 
@@ -675,7 +718,7 @@ impl<'a> Neighbors<'a> {
 impl Iterator for Neighbors<'_> {
     type Item = RawNodeIndex;
     fn next(&mut self) -> Option<Self::Item> {
-        self.walk.next(self.raw)
+        self.walk.next(self.raw, self.reach)
     }
 }
 
@@ -688,7 +731,26 @@ pub struct WalkNeighbors {
 }
 
 impl WalkNeighbors {
-    pub fn next(&mut self, raw: &RawInstGraph) -> Option<RawNodeIndex> {
+    fn next_direct(
+        &mut self,
+        raw: &RawInstGraph,
+        reach: &TiVec<RawNodeIndex, ReachNonDisabled>,
+    ) -> Option<RawNodeIndex> {
+        while let Some((_, n)) = self.direct.next(&raw.graph) {
+            let n = RawNodeIndex(n);
+            let skip = reach.get(n).is_some_and(|v| !v.value());
+            if !skip {
+                return Some(n);
+            }
+        }
+        None
+    }
+
+    pub fn next(
+        &mut self,
+        raw: &RawInstGraph,
+        reach: &TiVec<RawNodeIndex, ReachNonDisabled>,
+    ) -> Option<RawNodeIndex> {
         // TODO: decide if we want to prevent direct neighbors from being
         // visited multiple times if there are multiple direct edges.
         loop {
@@ -701,20 +763,13 @@ impl WalkNeighbors {
             //     }
             // }
             // let idx = idx.or_else(|| self.stack.pop())?;
-            let idx = self
-                .direct
-                .next(&raw.graph)
-                .map(|(_, n)| RawNodeIndex(n))
-                .or_else(|| self.stack.pop())?;
+            let idx = self.next_direct(raw, reach).or_else(|| self.stack.pop())?;
             let node = &raw[idx];
             if !node.disabled() {
                 return Some(idx);
             }
-            for n in raw
-                .graph
-                .neighbors_directed(idx.0, self.dir)
-                .map(RawNodeIndex)
-            {
+            for n in raw.graph.neighbors_directed(idx.0, self.dir) {
+                let n = RawNodeIndex(n);
                 if self.visited.insert(n) {
                     self.stack.push(n);
                 }

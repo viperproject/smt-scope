@@ -184,7 +184,7 @@ impl Screen for Homepage {
                 self.load_example(example, response, link)
             }
             HomepageM::LoadingState(mut state) => {
-                log::trace!("New state \"{state:?}\"");
+                log::debug!("New state \"{state:?}\"");
                 if let (LoadingState::Parsing(parsing, _), LoadingState::Parsing(old, _)) =
                     (&mut state, &self.progress)
                 {

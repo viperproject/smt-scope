@@ -13,7 +13,7 @@ use crate::{
         graphviz::{DotEdgeProperties, DotNodeProperties},
         homepage::{FileInfo, RcParser},
     },
-    utils::{colouring::QuantIdxToColourMap, graphviz::Dot},
+    utils::{colouring::QuantIdxToColourMap, graphviz::Dot, tab::Tab},
 };
 
 #[derive(Properties, Clone)]
@@ -52,7 +52,7 @@ pub fn MlgRenderer(props: &MlgrProps) -> Html {
     };
     ctxt.config.font_tag = true;
     let dot = MlgRenderer::generate_dot(graph, ctxt, &props.parser.colour_map);
-    log::trace!("ML Graph DOT:\n{dot}");
+    log::debug!("ML Graph DOT:\n{dot}");
 
     let warning = if graph.graph_incomplete {
         html! { <span class="warning" title="Error during graph construction, the graph is incomplete!">{"⚠️ Incomplete ⚠️"}</span> }
@@ -65,10 +65,10 @@ pub fn MlgRenderer(props: &MlgrProps) -> Html {
         props.file.name.split('.').next().unwrap(),
         props.idx + 1
     );
-    html! {<>
-        <h2>{"Generalised Matching Loop "}{warning}</h2>
+    html! {<Tab title="Matching Loop">
+        {warning}
         <Dot {dot} {filename} scale={false} />
-    </>}
+    </Tab>}
 }
 
 impl MlgRenderer {
@@ -119,7 +119,7 @@ impl MlgRenderer {
         let cluster_fixed = cluster("fixed", "gray96", fixeds.join(join));
         let cluster_out = cluster("out", "aliceblue", outputs.join(join));
         format!(
-            "digraph {{{join}{}{join}{cluster_in}{join}{cluster_fixed}{join}{cluster_out}{join}{}\n}}",
+            "digraph {{{join}{}{join}{cluster_in}{join}{cluster_fixed}{join}{cluster_out}\n{}\n}}",
             settings.join(join),
             outside.join("\n"),
         )

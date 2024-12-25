@@ -10,19 +10,23 @@ use petgraph::{
 
 use crate::{
     items::{
-        ENode, ENodeIdx, EqGivenIdx, EqGivenUse, EqTransIdx, Equality, EqualityExpl, InstIdx,
-        TermIdx, TransitiveExpl, TransitiveExplSegment, TransitiveExplSegmentKind,
+        ENode, ENodeBlame, ENodeIdx, EqGivenIdx, EqGivenUse, EqTransIdx, Equality, EqualityExpl,
+        InstIdx, ProofIdx, TermIdx, TransitiveExpl, TransitiveExplSegment,
+        TransitiveExplSegmentKind,
     },
     BoxSlice, Error, FxHashMap, NonMaxU32, Result, TiVec,
 };
 
-use super::stack::Stack;
+use super::{stack::Stack, terms::Terms};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
 pub struct EGraph {
-    term_to_enode: FxHashMap<TermIdx, ENodeIdx>,
+    term_to_enode: FxHashMap<TermIdx, TermToEnode>,
     pub(crate) enodes: TiVec<ENodeIdx, ENode>,
+    /// Which terms have we seen in a proof and might therefore get an enode
+    /// from them?
+    proofs: FxHashMap<TermIdx, ProofIdx>,
     pub equalities: Equalities,
 }
 
@@ -54,11 +58,32 @@ impl Equalities {
 }
 
 impl EGraph {
+    pub fn get_blame(
+        &self,
+        tidx: TermIdx,
+        inst: Option<InstIdx>,
+        terms: &Terms,
+        stack: &Stack,
+    ) -> ENodeBlame {
+        if terms.is_bool_const(tidx) {
+            return ENodeBlame::BoolConst;
+        }
+        if let Some(inst) = inst {
+            return ENodeBlame::Inst(inst);
+        }
+        let proof = self.proofs.get(&tidx).copied();
+        let proof = proof.filter(|&p| stack.is_active_or_global(terms[p].frame));
+        if let Some(proof) = proof {
+            return ENodeBlame::Proof(proof);
+        }
+        ENodeBlame::Unknown
+    }
+
     pub fn new_enode(
         &mut self,
-        created_by: Option<InstIdx>,
+        blame: ENodeBlame,
         term: TermIdx,
-        z3_generation: Option<NonMaxU32>,
+        z3_generation: NonMaxU32,
         stack: &Stack,
     ) -> Result<ENodeIdx> {
         // TODO: why does this happen sometimes?
@@ -72,40 +97,51 @@ impl EGraph {
         self.enodes.raw.try_reserve(1)?;
         let enode = self.enodes.push_and_get_key(ENode {
             frame: stack.active_frame(),
-            created_by,
+            blame,
             owner: term,
             z3_generation,
             equalities: Vec::new(),
             transitive: FxHashMap::default(),
-            self_transitive: None,
         });
-        self.term_to_enode.try_reserve(1)?;
-        let _old = self.term_to_enode.insert(term, enode);
-        // TODO: why does this happen sometimes?
-        // if let Some(old) = old {
-        //     assert!(self.enodes[old].frame.is_some());
-        //     assert!(!stack.stack_frames[self.enodes[old].frame.unwrap()].active);
-        // }
+        self.insert_tte(term, enode, stack)?;
         Ok(enode)
     }
 
-    pub fn get_enode(&self, term: TermIdx, stack: &Stack) -> Result<ENodeIdx> {
-        let enode = *self
-            .term_to_enode
-            .get(&term)
-            .ok_or_else(|| Error::UnknownEnode(term))?;
-        let frame = self.enodes[enode].frame;
-        let frame_status = stack.stack_frames[frame].active.status();
-        // This cannot be an enode if it points to a popped stack frame
-        if frame_status.is_ended() {
-            Err(Error::EnodePoppedFrame(frame))
-        } else {
-            Ok(enode)
-        }
+    pub fn get_enode(&mut self, term: TermIdx, stack: &Stack) -> Result<ENodeIdx> {
+        self.get_tte(term, stack)
+            .ok_or_else(|| Error::UnknownEnode(term))
     }
 
     pub fn get_owner(&self, enode: ENodeIdx) -> TermIdx {
         self.enodes[enode].owner
+    }
+
+    pub(super) fn new_proof(
+        &mut self,
+        term: TermIdx,
+        proof: ProofIdx,
+        terms: &Terms,
+        stack: &Stack,
+    ) -> Result<()> {
+        if !terms[proof].kind.is_asserted() {
+            return Ok(());
+        }
+        terms.app_walk(term, |tidx, app| {
+            self.proofs.try_reserve(1)?;
+            match self.proofs.entry(tidx) {
+                Entry::Occupied(mut o) => {
+                    if stack.is_active_or_global(terms[*o.get()].frame) {
+                        return Ok(&[]);
+                    } else {
+                        o.insert(proof);
+                    }
+                }
+                Entry::Vacant(v) => {
+                    v.insert(proof);
+                }
+            }
+            Ok(&app.child_ids)
+        })
     }
 
     pub fn new_given_equality(
@@ -747,6 +783,80 @@ impl Graph {
             }
         } else {
             None
+        }
+    }
+}
+
+/// The complexity of this arises from the fact that z3 will sometimes create a
+/// new enode in a higher frame when one in a lower frame already exists. This
+/// new enode might then be popped, but z3 will still want to use the old enode.
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug)]
+enum TermToEnode {
+    Single(ENodeIdx),
+    Multiple(Vec<ENodeIdx>),
+}
+
+impl Default for TermToEnode {
+    fn default() -> Self {
+        Self::Multiple(Vec::default())
+    }
+}
+
+impl EGraph {
+    pub fn insert_tte(&mut self, term: TermIdx, enode: ENodeIdx, stack: &Stack) -> Result<()> {
+        let remove = |e: &ENodeIdx| !stack.is_active_or_global(self.enodes[*e].frame);
+        self.term_to_enode.try_reserve(1)?;
+        let tte = self.term_to_enode.entry(term).or_default();
+        let mut vec = match tte {
+            TermToEnode::Single(e) => [*e].into_iter().filter(|e| !remove(e)).collect(),
+            TermToEnode::Multiple(es) => {
+                let mut es = core::mem::take(es);
+                let idx = es.iter().position(remove).unwrap_or(es.len());
+                debug_assert!(es[idx..].iter().all(remove));
+                es.drain(idx..);
+                es
+            }
+        };
+        if vec.is_empty() {
+            *tte = TermToEnode::Single(enode);
+        } else {
+            vec.push(enode);
+            *tte = TermToEnode::Multiple(vec);
+        }
+        // TODO: why does this happen sometimes?
+        // debug_assert!(!old.is_some_and(|o| stack.is_active_or_global(self[o].frame)));
+        Ok(())
+    }
+
+    pub fn get_tte(&mut self, term: TermIdx, stack: &Stack) -> Option<ENodeIdx> {
+        let Entry::Occupied(mut o) = self.term_to_enode.entry(term) else {
+            return None;
+        };
+        let remove = |e: &ENodeIdx| !stack.is_active_or_global(self.enodes[*e].frame);
+        match o.get_mut() {
+            TermToEnode::Single(e) => {
+                if remove(&*e) {
+                    o.remove();
+                    None
+                } else {
+                    Some(*e)
+                }
+            }
+            TermToEnode::Multiple(es) => {
+                let idx = es.iter().position(remove).unwrap_or(es.len());
+                debug_assert!(es[idx..].iter().all(remove));
+                es.drain(idx..);
+                if let Some(last) = es.last().copied() {
+                    if es.len() == 1 {
+                        *o.get_mut() = TermToEnode::Single(last);
+                    }
+                    Some(last)
+                } else {
+                    o.remove();
+                    None
+                }
+            }
         }
     }
 }

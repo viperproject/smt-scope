@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 use typed_index_collections::TiSlice;
@@ -6,7 +8,7 @@ use crate::{
     error::Either,
     items::{
         InstProofLink, Instantiation, Meaning, ProofIdx, ProofStep, ProofStepKind, QuantIdx, Term,
-        TermId, TermIdToIdxMap, TermIdx,
+        TermId, TermIdToIdxMap, TermIdx, TermKind,
     },
     Error, FxHashMap, Result, StringTable, TiVec,
 };
@@ -34,14 +36,16 @@ pub struct TermStorage<K: From<usize> + Copy, V: HasTermId> {
     terms: TiVec<K, V>,
 }
 
-impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
-    pub(super) fn new(strings: &mut StringTable) -> Self {
+impl<K: From<usize> + Copy, V: HasTermId> Default for TermStorage<K, V> {
+    fn default() -> Self {
         Self {
-            term_id_map: TermIdToIdxMap::new(strings),
+            term_id_map: TermIdToIdxMap::default(),
             terms: TiVec::default(),
         }
     }
+}
 
+impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
     pub(super) fn new_term(&mut self, term: V) -> Result<K> {
         self.terms.raw.try_reserve(1)?;
         let id = term.term_id();
@@ -70,10 +74,32 @@ impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
     pub(super) fn terms(&self) -> &TiSlice<K, V> {
         &self.terms
     }
+
+    /// Perform a top-down dfs walk of the AST rooted at `idx` calling `f` on
+    /// each node. If `f` returns `None` then the walk is terminated early.
+    /// Otherwise the walk is restricted to the children returned by `f`.
+    pub fn ast_walk<T>(
+        &self,
+        idx: K,
+        mut f: impl FnMut(K, &V) -> core::result::Result<&[K], T>,
+    ) -> Option<T>
+    where
+        usize: From<K>,
+    {
+        let mut todo = vec![idx];
+        while let Some(idx) = todo.pop() {
+            let next = &self.terms[idx];
+            match f(idx, next) {
+                Ok(to_walk) => todo.extend_from_slice(to_walk),
+                Err(t) => return Some(t),
+            }
+        }
+        None
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Terms {
     pub(super) app_terms: TermStorage<TermIdx, Term>,
     pub(super) proof_terms: TermStorage<ProofIdx, ProofStep>,
@@ -82,15 +108,6 @@ pub struct Terms {
 }
 
 impl Terms {
-    pub(super) fn new(strings: &mut StringTable) -> Self {
-        Self {
-            app_terms: TermStorage::new(strings),
-            proof_terms: TermStorage::new(strings),
-
-            meanings: FxHashMap::default(),
-        }
-    }
-
     pub(crate) fn meaning(&self, tidx: TermIdx) -> Option<&Meaning> {
         self.meanings.get(&tidx)
     }
@@ -123,7 +140,6 @@ impl Terms {
 
     pub(super) fn new_meaning(&mut self, term: TermIdx, meaning: Meaning) -> Result<&Meaning> {
         self.meanings.try_reserve(1)?;
-        use std::collections::hash_map::Entry;
         match self.meanings.entry(term) {
             Entry::Occupied(old) => assert_eq!(old.get(), &meaning),
             Entry::Vacant(empty) => {
@@ -131,6 +147,23 @@ impl Terms {
             }
         };
         Ok(&self.meanings[&term])
+    }
+
+    /// Perform a top-down walk of the AST rooted at `tidx` calling `f` on each
+    /// node of kind `App` and walking the children that are returned. `Quant`
+    /// and `Var` nodes are skipped.
+    pub(super) fn app_walk<T>(
+        &self,
+        tidx: TermIdx,
+        mut f: impl FnMut(TermIdx, &Term) -> core::result::Result<&[TermIdx], T>,
+    ) -> core::result::Result<(), T> {
+        self.app_terms
+            .ast_walk(tidx, |tidx, term| match term.kind {
+                TermKind::Var(_) => Ok(&[]),
+                TermKind::App(_) => f(tidx, term),
+                TermKind::Quant(_) => Ok(&[]),
+            })
+            .map_or(Ok(()), Err)
     }
 
     /// Heuristic to get body of instantiated quantifier. See documentation of
@@ -155,6 +188,18 @@ impl Terms {
                     }
             })
             .map(|(idx, _)| idx)
+    }
+
+    pub fn is_true_const(&self, tidx: TermIdx) -> bool {
+        let id = self[tidx].id;
+        id.namespace.is_none() && id.id.is_some_and(|id| id.get() == 1)
+    }
+    pub fn is_false_const(&self, tidx: TermIdx) -> bool {
+        let id = self[tidx].id;
+        id.namespace.is_none() && id.id.is_some_and(|id| id.get() == 2)
+    }
+    pub fn is_bool_const(&self, tidx: TermIdx) -> bool {
+        self.is_true_const(tidx) || self.is_false_const(tidx)
     }
 }
 

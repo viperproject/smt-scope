@@ -14,7 +14,7 @@ use super::{
     egraph::EGraph,
     inst::{InstData, Insts},
     inter_line::{InterLine, LineKind},
-    stack::{CdclTree, Stack},
+    stack::{CdclTree, HasFrame, Stack},
     stm2::EventLog,
     synthetic::{AnyTerm, SynthIdx, SynthTerms},
     terms::Terms,
@@ -32,7 +32,6 @@ pub struct Z3Parser {
     pub(crate) quantifiers: TiVec<QuantIdx, Quantifier>,
 
     pub(crate) insts: Insts,
-    pub(crate) inst_stack: Vec<(InstIdx, Vec<ENodeIdx>)>,
 
     pub(crate) egraph: EGraph,
     pub(crate) stack: Stack,
@@ -49,11 +48,10 @@ impl Default for Z3Parser {
         let mut strings = StringTable::with_hasher(fxhash::FxBuildHasher::default());
         Self {
             version_info: VersionInfo::default(),
-            terms: Terms::new(&mut strings),
+            terms: Terms::default(),
             synth_terms: Default::default(),
             quantifiers: Default::default(),
             insts: Default::default(),
-            inst_stack: Default::default(),
             egraph: Default::default(),
             stack: Default::default(),
             cdcl: Default::default(),
@@ -65,39 +63,41 @@ impl Default for Z3Parser {
 }
 
 impl Z3Parser {
-    pub fn parse_new_full_id(&mut self, id: Option<&str>) -> Result<TermId> {
+    fn parse_new_full_id(&mut self, id: Option<&str>) -> Result<TermId> {
         let full_id = id.ok_or(E::UnexpectedNewline)?;
         TermId::parse(&mut self.strings, full_id)
     }
 
-    pub fn parse_existing_app(&mut self, id: &str) -> Result<TermIdx> {
+    fn parse_existing_app(&mut self, id: &str) -> Result<TermIdx> {
         self.terms
             .app_terms
             .parse_existing_id(&mut self.strings, id)
     }
 
-    pub fn parse_existing_proof(&mut self, id: &str) -> Result<ProofIdx> {
+    fn parse_existing_proof(&mut self, id: &str) -> Result<ProofIdx> {
         self.terms
             .proof_terms
             .parse_existing_id(&mut self.strings, id)
     }
 
-    pub fn parse_existing_enode(&mut self, id: &str) -> Result<ENodeIdx> {
+    fn parse_existing_enode(&mut self, id: &str) -> Result<ENodeIdx> {
         let idx = self.parse_existing_app(id)?;
-        let enode = self.egraph.get_enode(idx, &self.stack);
-        if self.version_info.is_version(4, 12, 2) && enode.is_err() {
-            // Very rarely in version 4.12.2, an `[attach-enode]` is not emitted. Create it here.
+        let res = self.egraph.get_enode(idx, &self.stack);
+        let can_error =
+            self.version_info.is_ge_version(4, 8, 9) && self.version_info.is_le_version(4, 11, 2);
+        if can_error && res.is_err() {
+            // Very rarely in v4.8.17 & v4.11.2, an `[attach-enode]` is not
+            // emitted. Create it here.
             // TODO: log somewhere when this happens.
-            self.egraph.new_enode(None, idx, None, &self.stack)?;
+            self.egraph
+                .new_enode(ENodeBlame::Unknown, idx, NonMaxU32::ZERO, &self.stack)?;
             self.events.new_enode();
             return self.egraph.get_enode(idx, &self.stack);
         }
-        enode
+        res
     }
 
-    pub fn parse_z3_generation<'a>(
-        l: &mut impl Iterator<Item = &'a str>,
-    ) -> Result<Option<NonMaxU32>> {
+    fn parse_z3_generation<'a>(l: &mut impl Iterator<Item = &'a str>) -> Result<Option<NonMaxU32>> {
         if let Some(gen) = l.next() {
             let gen = gen.parse::<NonMaxU32>().map_err(E::InvalidGeneration)?;
             Ok(Some(gen))
@@ -485,12 +485,15 @@ impl Z3LogParser for Z3Parser {
     }
 
     fn mk_app<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
-        let full_id = self.parse_new_full_id(l.next())?;
+        let full_id = l.next().ok_or(E::UnexpectedNewline)?;
+        let id = TermId::parse(&mut self.strings, full_id)?;
         let name = l.next().ok_or(E::UnexpectedNewline)?;
+        debug_assert!(name != "true" || full_id == "#1");
+        debug_assert!(name != "false" || full_id == "#2");
         let name = self.mk_string(name)?;
         let child_ids = self.gobble_term_children(l)?;
         let term = Term {
-            id: full_id,
+            id,
             kind: TermKind::App(name),
             child_ids,
         };
@@ -529,6 +532,8 @@ impl Z3LogParser for Z3Parser {
             frame: self.stack.active_frame(),
         };
         let proof_idx = self.terms.proof_terms.new_term(proof_step)?;
+        self.egraph
+            .new_proof(result, proof_idx, &self.terms, &self.stack)?;
         self.events.new_proof_step(
             proof_idx,
             &self.terms[proof_idx],
@@ -581,18 +586,21 @@ impl Z3LogParser for Z3Parser {
                 return idx.map(|_| ());
             }
         };
-        let z3_generation = Self::parse_z3_generation(&mut l)?;
+        let z3_gen = Self::parse_z3_generation(&mut l)?.ok_or(E::UnexpectedNewline)?;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
 
         debug_assert!(self[idx].kind.app_name().is_some());
-        let created_by = self.inst_stack.last_mut();
+        let created_by = self.insts.inst_stack.last_mut();
         let iidx = created_by.as_ref().map(|(i, _)| *i);
-        let enode = self
-            .egraph
-            .new_enode(iidx, idx, z3_generation, &self.stack)?;
+        let blame = self.egraph.get_blame(idx, iidx, &self.terms, &self.stack);
+        let enode = self.egraph.new_enode(blame, idx, z3_gen, &self.stack)?;
         self.events.new_enode();
-        if let Some((_, yields_terms)) = created_by {
+        if let Some((i, yields_terms)) = created_by {
+            debug_assert!(!self.insts.insts[*i]
+                .kind
+                .z3_generation()
+                .is_some_and(|g| g != z3_gen));
             // If `None` then this is a ground term not created by an instantiation.
             yields_terms.try_reserve(1)?;
             yields_terms.push(enode);
@@ -726,6 +734,7 @@ impl Z3LogParser for Z3Parser {
         let match_ = Match {
             kind,
             blamed: blamed.into(),
+            frame: self.stack.active_frame(),
         };
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
@@ -790,6 +799,7 @@ impl Z3LogParser for Z3Parser {
         let match_ = Match {
             kind,
             blamed: blamed.into(),
+            frame: self.stack.active_frame(),
         };
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
@@ -820,34 +830,39 @@ impl Z3LogParser for Z3Parser {
         };
         Self::expect_completed(proof)?;
         let z3_generation = Self::parse_z3_generation(&mut l)?;
+        let kind = if let Some(z3_generation) = z3_generation {
+            debug_assert!(!fingerprint.is_zero());
+            InstantiationKind::NonAxiom {
+                fingerprint,
+                z3_generation,
+            }
+        } else {
+            debug_assert!(fingerprint.is_zero());
+            InstantiationKind::Axiom
+        };
 
         let match_ = self
             .insts
             .get_match(fingerprint)
             .ok_or(E::UnknownFingerprint(fingerprint))?;
         let inst = Instantiation {
-            frame: self.stack.active_frame(),
             match_,
-            fingerprint,
+            kind,
             proof_id,
-            z3_generation,
             yields_terms: Default::default(),
+            frame: self.stack.active_frame(),
         };
-        // In version 4.12.2 & 4.12.4, I have on very rare occasions seen an
-        // `[instance]` repeated twice with the same fingerprint (without an
-        // intermediate `[new-match]`). We can try to remove the `can_duplicate`
-        // in the future.
-        let can_duplicate = self.version_info.is_version_minor(4, 12);
-        let iidx = self.insts.new_inst(fingerprint, inst, can_duplicate)?;
+        // I have very rarely seen duplicate `[instance]` lines with the same
+        // fingerprint in v4.12.4. Allow these there and debug panic otherwise.
+        let can_duplicate = self.version_info.is_version(4, 12, 4);
+        self.insts
+            .new_inst(fingerprint, inst, &self.stack, can_duplicate)?;
         self.events.new_inst();
-        self.inst_stack.try_reserve(1)?;
-        self.inst_stack.push((iidx, Vec::new()));
         Ok(())
     }
 
     fn end_of_instance<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()> {
-        let (iidx, yield_terms) = self.inst_stack.pop().ok_or(E::UnmatchedEndOfInstance)?;
-        self.insts[iidx].yields_terms = yield_terms.into();
+        self.insts.end_inst()?;
         Self::expect_completed(l)
     }
 
@@ -999,6 +1014,11 @@ impl Z3Parser {
         self.cdcl.cdcls()
     }
 
+    pub fn quantifier_body(&self, qidx: QuantIdx) -> Option<TermIdx> {
+        let children = &self[self[qidx].term].child_ids;
+        children.last().copied()
+    }
+
     pub fn patterns(&self, q: QuantIdx) -> Option<&TiSlice<PatternIdx, TermIdx>> {
         let child_ids = &self[self[q].term].child_ids;
         child_ids
@@ -1024,6 +1044,10 @@ impl Z3Parser {
         qpat.pat.map(|pat| self.patterns(qpat.quant).unwrap()[pat])
     }
 
+    pub fn get_frame(&self, idx: impl HasFrame) -> &StackFrame {
+        &self.stack[idx.frame(self)]
+    }
+
     /// Does the proof step `pidx` prove `false`? This can may be under a
     /// hypothesis so might not necessarily imply unsat.
     pub fn proves_false(&self, pidx: ProofIdx) -> bool {
@@ -1038,24 +1062,21 @@ impl Z3Parser {
     /// Returns the size in AST nodes of the term `tidx`. Note that z3 eagerly
     /// reduces terms such as `1 + 1` to `2` meaning that a matching loop can be
     /// constant in this size metric!
-    pub fn ast_size(&self, tidx: TermIdx) -> Option<u32> {
+    pub fn ast_size(&self, tidx: TermIdx) -> core::result::Result<u32, TermIdx> {
         let mut size = 0;
-        let mut todo = vec![tidx];
-        while let Some(next) = todo.pop() {
+        let walk = self.terms.app_terms.ast_walk(tidx, |tidx, term| {
             size += 1;
-            let term = &self[next];
             match term.kind {
-                TermKind::Var(_) => return None,
-                TermKind::App(_) => {
-                    todo.extend_from_slice(&term.child_ids);
-                }
+                TermKind::Var(_) => Err(tidx),
+                TermKind::App(_) => Ok(&term.child_ids),
                 // TODO: decide if we want to return a size for quantifiers
                 TermKind::Quant(_) => {
-                    todo.push(*term.child_ids.last().unwrap());
+                    let body = term.child_ids.last().map(core::slice::from_ref);
+                    Ok(body.unwrap_or_default())
                 }
             }
-        }
-        Some(size)
+        });
+        walk.map_or(Ok(size), Err)
     }
 
     pub fn inst_ast_size(&self, iidx: InstIdx) -> u32 {

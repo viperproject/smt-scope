@@ -46,7 +46,7 @@ impl Graph {
 
         for (can_select, idx, filter) in cmd.filters() {
             let output = filter.apply(graph, parser);
-            log::trace!("Applied filter {filter:?} -> {output:?}");
+            log::debug!("Applied filter {filter:?} -> {output:?}");
 
             modified |= output.modified;
             if !output.modified {
@@ -125,7 +125,7 @@ impl Graph {
         let (selected_nodes, selected_edges) = self.update_selected(&visible);
         let dimensions = GraphDimensions::of_graph(&visible);
 
-        log::trace!("Rendering graph with {dimensions:?}");
+        log::debug!("Rendering graph with {dimensions:?}");
         let new_permissions = dimensions.max(Self::default_permissions());
         self.filter.chain.set_permissions(new_permissions);
 
@@ -164,7 +164,7 @@ impl Graph {
                 &|fg, edge_data| {
                     let (from, to) = (fg[edge_data.source()].idx, fg[edge_data.target()].idx);
                     let edge = edge_data.weight();
-                    let is_indirect = edge.is_indirect(graph);
+                    let is_indirect = edge.is_indirect();
                     let last = graph.raw[edge.last()];
                     let blame = edge.kind(graph).blame(graph);
                     let (from, to) = (graph.raw[from].kind(), graph.raw[to].kind());
@@ -201,7 +201,7 @@ impl Graph {
                 },
             )
         );
-        // log::trace!("Graph DOT:\n{dot_output}");
+        // log::debug!("Graph DOT:\n{dot_output}");
         self.state = Ok(GraphState::RenderingGraph);
         let link = link.clone();
         wasm_bindgen_futures::spawn_local(async move {
@@ -219,7 +219,7 @@ impl Graph {
                 }
             };
             let elapsed = start.elapsed();
-            log::trace!(
+            log::debug!(
                 "Graph: Converting dot-String to SVG took {} seconds",
                 elapsed.as_secs()
             );

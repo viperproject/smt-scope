@@ -103,9 +103,9 @@ jobs:
         id: configure-z3-id
         run: |
           # Generate filename comaptible version: 4.8.7 -> 4_8_7
-          echo "z3_v_clean=$(echo "${{ matrix.z3version }}" | sed 's/\./_/g')" >> $GITHUB_OUTPUT
+          echo "z3_v_clean=$(echo "${{ matrix.z3version.version }}" | sed 's/\./_/g')" >> $GITHUB_OUTPUT
           # Generate regex compatible version: 4.8.7 -> 4\.8\.7
-          echo "z3_v_regex=$(echo "${{ matrix.z3version }}" | sed 's/\./\\./g')" >> $GITHUB_OUTPUT
+          echo "z3_v_regex=$(echo "${{ matrix.z3version.version }}" | sed 's/\./\\./g')" >> $GITHUB_OUTPUT
 
       - name: Cache log files
         id: cache-log
@@ -115,17 +115,20 @@ jobs:
           key: logs-${{ steps.configure-z3-id.outputs.z3_v_clean }}-${{ hashFiles('smt-problems/**/*.smt2') }}
           restore-keys: logs-${{ steps.configure-z3-id.outputs.z3_v_clean }}-
 
-      - name: Run Z3 solver on changed smt2 files and compress
-        id: run_z3_and_upload
+      - name: Create logs directory if it doesn't exist
+        id: make_logs_dir
         run: |
           # Create the 'logs' directory
           test -d "logs" || mkdir "logs"
 
+      - name: Run Z3 solver on changed smt2 files and compress
+        id: run_z3_and_upload
+        run: |
           # Loop through all files and check that log exists
-          for file in smt-problems/**/*.smt2; do
-              test -f "$file" || break
+          for file in `find ./smt-problems -name "*.smt2" -type f`; do
+              test -f "$file"
               # Skip if the file if the first line is a comment with 
-              [ "$(sed -n '/^;[^\n]*${{ steps.configure-z3-id.outputs.z3_v_regex }}/p;q' $file)" ] && echo "Skipping $file since the first line contains \"${{ matrix.z3version }}\"" && continue || true
+              [ "$(sed -n '/^;[^\n]*${{ steps.configure-z3-id.outputs.z3_v_regex }}/p;q' $file)" ] && echo "Skipping $file since the first line contains \"${{ matrix.z3version.version }}\"" && continue || true
               # Get the file hash
               file_hash=$(shasum -a 256 "$file" | cut -d' ' -f1)
               # Get the filename without extension
@@ -133,7 +136,7 @@ jobs:
               # Log file name
               log_file_name="logs/${base_name}_fHash_${file_hash}.log"
               # Skip if log file exists and is not empty
-              test -s "${log_file_name}" && continue || true
+              test -s "${log_file_name}" && echo "Skipping \"$file\" as \"$log_file_name\" exists" && continue || true
 
               rm -f "logs/${base_name}_fHash_*.log"
               echo "Processing \"$file\" to \"$log_file_name\""

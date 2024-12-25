@@ -51,7 +51,10 @@ impl Filter {
             }
             MaxBranching(n) => graph.keep_first_n_children(n),
             ShowNeighbours(nidx, direction) => {
-                let nodes: Vec<_> = graph.raw.neighbors_directed(nidx, direction).collect();
+                let nodes: Vec<_> = graph
+                    .raw
+                    .neighbors_directed(nidx, direction, &graph.analysis.reach)
+                    .collect();
                 let modified = graph.raw.set_visibility_many(false, nodes.iter().copied());
                 select = Some(nodes);
                 modified
@@ -208,7 +211,10 @@ impl Filter {
         let rev_graph = graph.raw.rev();
         let relevant_non_qi_nodes: Vec<_> = Dfs::new(rev_graph, start)
             .iter(rev_graph)
-            .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
+            // TODO: this is left out for now because the first iteration of a
+            // matching loop is generally left out by the analysis and this will
+            // keep it in the displayed view:
+            // .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
             .filter(|nx| {
                 let node = &graph.raw.graph[*nx];
                 nodes_of_nth_matching_loop

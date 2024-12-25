@@ -234,6 +234,7 @@ mod private {
         quant: Vec<&'a Quantifier>,
         bind_power: BindPowerPair,
         ast_depth: u32,
+        newline_spaces: u32,
     }
     impl<'a> DisplayData<'a> {
         pub(super) fn new(term: SynthIdx) -> Self {
@@ -243,6 +244,7 @@ mod private {
                 quant: Vec::new(),
                 bind_power: BindPowerPair::symmetric(DEFAULT_BIND_POWER),
                 ast_depth: 0,
+                newline_spaces: 0,
             }
         }
         pub(super) fn with_children<T>(
@@ -327,6 +329,19 @@ mod private {
             let result = f(self);
             self.ast_depth -= 1;
             Some(result)
+        }
+
+        pub(super) fn with_indented<'b>(
+            &mut self,
+            spaces: u32,
+            f: &mut fmt::Formatter<'b>,
+            inner: impl FnOnce(&mut Self, &mut fmt::Formatter<'b>) -> fmt::Result,
+        ) -> fmt::Result {
+            self.newline_spaces += spaces;
+            write!(f, "\n{: <1$}", "", self.newline_spaces as usize)?;
+            let result = inner(self, f);
+            self.newline_spaces -= spaces;
+            result
         }
     }
 }
@@ -471,10 +486,8 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &MatchKind {
                 quant.fmt_with(f, ctxt, data)
             }
             MatchKind::TheorySolving { axiom_id, .. } => {
-                write!(f, "[TheorySolving] {}#", &ctxt.parser[axiom_id.namespace])?;
-                if let Some(id) = axiom_id.id {
-                    write!(f, "{id}")?;
-                }
+                write!(f, "[TheorySolving] ")?;
+                axiom_id.fmt_with(f, ctxt, data)?;
                 Ok(())
             }
             MatchKind::Axiom { axiom, .. } => {
@@ -548,17 +561,7 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a AnyTe
                 _ => None,
             });
             if let Some(meaning) = meaning {
-                let mut fn_ = |f: &mut fmt::Formatter| {
-                    ctxt.config
-                        .with_html_italic(f, |f| meaning.fmt_with(f, ctxt, data))
-                };
-                // The text block inside graphviz messes up the text alignment,
-                // skip it in that case.
-                if ctxt.config.font_tag() {
-                    fn_(f)
-                } else {
-                    ctxt.config.with_html_colour(f, "#666666", fn_)
-                }
+                meaning.fmt_with(f, ctxt, data)
             } else {
                 self.kind().fmt_with(f, ctxt, data)
             }
@@ -595,8 +598,8 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTerm
             SynthTermKind::Variable(var) => write!(f, "${var}"),
             SynthTermKind::Input(offset) => match offset {
                 Some(offset) => {
-                    write!(f, "⭐ + ")?;
-                    offset.fmt_with(f, ctxt, &mut None)
+                    offset.fmt_with(f, ctxt, &mut None)?;
+                    write!(f, " + ⭐")
                 }
                 None => write!(f, "⭐"),
             },
@@ -612,9 +615,13 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, ()> for &'a TermId {
         ctxt: &DisplayCtxt<'b>,
         _data: &mut (),
     ) -> fmt::Result {
-        let namespace = &ctxt.parser[self.namespace];
-        let id = self.id.map(|id| id.to_string()).unwrap_or_default();
-        write!(f, "{namespace}#{id}")
+        let (namespace, id) = self.to_string_components(&ctxt.parser.strings);
+        write!(f, "{namespace}#")?;
+        if let Some(id) = id {
+            write!(f, "{id}")
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -858,11 +865,19 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Meaning {
         ctxt: &DisplayCtxt<'a>,
         _data: &mut DisplayData<'a>,
     ) -> fmt::Result {
-        match self {
+        let fn_ = |f: &mut fmt::Formatter| match self {
             Meaning::Arith(value) => write!(f, "{value}"),
             &Meaning::Unknown { theory, value } => {
                 write!(f, "/{} {}\\", &ctxt.parser[theory], &ctxt.parser[value])
             }
+        };
+        // The text block inside graphviz messes up the text alignment,
+        // skip it in that case.
+        if ctxt.config.font_tag() {
+            fn_(f)
+        } else {
+            ctxt.config
+                .with_html_colour(f, "#666666", |f| ctxt.config.with_html_italic(f, fn_))
         }
     }
 }
@@ -903,16 +918,15 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                         }
                         write!(f, "({name} {})", ty.unwrap_or("?"))?;
                     }
-                    write!(f, ") (!\n  ")?;
-                    display_child(f, *body, ctxt, data)?;
+                    write!(f, ") (!")?;
+                    data.with_indented(2, f, |data, f| display_child(f, *body, ctxt, data))?;
                     for &pattern in patterns.iter() {
-                        write!(f, "\n  ")?;
-                        display_child(f, pattern, ctxt, data)?;
+                        data.with_indented(2, f, |data, f| display_child(f, pattern, ctxt, data))?;
                     }
                     if let Some(name) = self.kind.user_name() {
-                        write!(f, "\n  :qid {}", &ctxt.parser[name])?;
+                        data.with_indented(2, f, |_, f| write!(f, ":qid {}", &ctxt.parser[name]))?;
                     }
-                    write!(f, "\n))")?;
+                    data.with_indented(0, f, |_, f| write!(f, "))"))?;
                 } else {
                     let (start, sep) = match ctxt.config.replace_symbols {
                         SymbolReplacement::Math => ("∀", "."),

@@ -4,7 +4,10 @@ mod svg_graph;
 
 use crate::{
     screen::{file::RcAnalysis, homepage::RcParser},
-    utils::split_div::{SplitDiv, SplitDivProps},
+    utils::{
+        split_div::{SplitDiv, SplitDivProps},
+        tab::TabContainer,
+    },
 };
 use material_yew::WeakComponentLink;
 use smt_log_parser::{
@@ -182,11 +185,11 @@ impl Component for GraphInfo {
             />
         };
         let info = html! {
-            <div class="graph-info">
+            <TabContainer>
                 {extra.info_top}
                 <SelectedNodesInfo parser={parser.clone()} analysis={analysis.clone()} {selected_nodes} on_click={on_node_click} />
                 <SelectedEdgesInfo {parser} {analysis} {selected_edges} rendered={rendered.map(|r| r.graph.clone())} on_click={on_edge_click} />
-            </div>
+            </TabContainer>
         };
         let (left, right) = if extra.swap_split {
             (info, graph)

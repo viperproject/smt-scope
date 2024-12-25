@@ -7,6 +7,7 @@ pub mod overlay_page;
 pub mod position;
 pub mod split_div;
 pub mod svg;
+pub mod tab;
 pub mod toggle_list;
 pub mod toggle_switch;
 pub mod updater;

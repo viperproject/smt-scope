@@ -5,7 +5,7 @@ use smt_log_parser::{
     formatter::TermDisplayContext,
 };
 
-pub fn run(logfile: PathBuf) -> Result<(), String> {
+pub fn run(logfile: PathBuf, clean: bool) -> Result<(), String> {
     let parser = super::run_on_logfile(logfile)?;
     let config = DisplayConfiguration {
         replace_symbols: SymbolReplacement::None,
@@ -18,12 +18,12 @@ pub fn run(logfile: PathBuf) -> Result<(), String> {
         term_display: &term_display,
     };
     for event in parser.events.events() {
-        println!(
-            "{} ; {} enodes | {} insts",
-            event.kind.with(&ctxt),
-            event.enodes,
-            event.insts
-        );
+        print!("{}", event.kind.with(&ctxt));
+        if !clean {
+            println!(" ; {} enodes | {} insts", event.enodes, event.insts);
+        } else {
+            println!();
+        }
     }
 
     Ok(())

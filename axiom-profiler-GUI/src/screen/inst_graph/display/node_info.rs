@@ -22,6 +22,7 @@ use crate::{
         homepage::RcParser,
         inst_graph::RcVisibleGraph,
     },
+    utils::tab::Tab,
 };
 
 #[derive(Properties, PartialEq)]
@@ -231,7 +232,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             .node
             .kind()
             .inst()
-            .and_then(|i| self.ctxt.parser[i].z3_generation)
+            .and_then(|i| self.ctxt.parser[i].kind.z3_generation())
         {
             extra_info.push(("z3 gen", z3gen.to_string()));
         }
@@ -382,14 +383,9 @@ pub fn SelectedNodesInfo(
                 </details>
             }
         });
-    html! {
-    <>
-        <h2>{"Selected Nodes"}</h2>
-        <div class="selected-info-box">
-            {for infos}
-        </div>
-    </>
-    }
+    html! {<Tab title="Selected Nodes">
+        {for infos}
+    </Tab>}
 }
 
 pub struct EdgeInfo<'a, 'b> {
@@ -409,6 +405,7 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
         use VisibleEdgeKind::*;
         match self.kind {
             Direct(_, EdgeKind::Yield) => "Yield".to_string(),
+            Direct(_, EdgeKind::Asserted) => "Asserted".to_string(),
             Direct(_, EdgeKind::Blame { pattern_term }) => {
                 format!("Blame pattern #{pattern_term}")
             }
@@ -442,22 +439,24 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
             ENodeEqOther(_) => "ENode Equality Other".to_string(),
             Unknown(start, end) => {
                 let ctxt = self.ctxt;
-                let hidden_from = self.graph.raw.graph.edge_endpoints(start.0).unwrap().1;
+                let hidden_from =
+                    start.map(|s| self.graph.raw.graph.edge_endpoints(s.0).unwrap().1);
                 let hidden_to = self.graph.raw.graph.edge_endpoints(end.0).unwrap().0;
-                let hidden_from = NodeInfo {
-                    node: &self.graph.raw.graph[hidden_from],
+                let hidden_from = hidden_from.map(|hf| NodeInfo {
+                    node: &self.graph.raw.graph[hf],
                     ctxt,
-                };
+                });
                 let hidden_to = NodeInfo {
                     node: &self.graph.raw.graph[hidden_to],
                     ctxt,
                 };
-                format!("Compound {} to {}", hidden_from.kind(), hidden_to.kind())
+                let from_kind = hidden_from.map(|hf| hf.kind()).unwrap_or("Instantiation");
+                format!("Compound {from_kind} to {}", hidden_to.kind())
             }
         }
     }
     pub fn tooltip(&self) -> String {
-        let is_indirect = self.edge.is_indirect(self.graph);
+        let is_indirect = self.edge.is_indirect();
         let from = self.graph.raw[self.from].kind();
         let to = self.graph.raw[self.to].kind();
         self.edge.tooltip((is_indirect, *from, *to))
@@ -532,12 +531,7 @@ pub fn SelectedEdgesInfo(
             </details>
         }
     });
-    html! {
-    <>
-        <h2>{"Selected Dependencies"}</h2>
-        <div class="selected-info-box">
-            {for infos}
-        </div>
-    </>
-    }
+    html! {<Tab title="Selected Dependencies">
+        {for infos}
+    </Tab>}
 }

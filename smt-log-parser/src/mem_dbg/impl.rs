@@ -4,8 +4,6 @@ use petgraph::{
     EdgeType,
 };
 
-#[cfg(feature = "analysis")]
-use crate::analysis::subgraph::TransitiveClosure;
 use crate::parsers::z3::VersionInfo;
 
 use super::{
@@ -135,26 +133,6 @@ impl MemSize for StringTable {
             }
             + self.0.len() * std::mem::size_of::<IString>()
     }
-}
-
-// TransitiveClosure
-
-#[cfg(feature = "analysis")]
-impl MemDbgImpl for TransitiveClosure {}
-#[cfg(feature = "analysis")]
-impl MemSize for TransitiveClosure {
-    fn mem_size(&self, _flags: mem_dbg::SizeFlags) -> usize {
-        core::mem::size_of::<Self>()
-            + self
-                .inner()
-                .iter()
-                .map(|r| r.serialized_size())
-                .sum::<usize>()
-    }
-}
-#[cfg(feature = "analysis")]
-impl CopyType for TransitiveClosure {
-    type Copy = False;
 }
 
 // Graph

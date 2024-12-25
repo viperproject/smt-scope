@@ -7,7 +7,7 @@ use smt_log_parser::{
         visible::VisibleEdge,
     },
     display_with::{DisplayCtxt, DisplayWithCtxt},
-    items::{CdclKind, ENodeIdx, MatchKind, QuantPat},
+    items::{CdclKind, MatchKind, QuantPat, TermIdx},
     Z3Parser,
 };
 
@@ -167,15 +167,21 @@ impl
 
     fn tooltip(&self, parser: &Z3Parser) -> String {
         use NodeKind::*;
-        fn get_name(parser: &Z3Parser, enode: ENodeIdx) -> &str {
-            let name = parser[parser[enode].owner].kind.app_name();
-            name.map(|n| &parser[n]).unwrap_or_default()
+        fn get_name(parser: &Z3Parser, tidx: TermIdx) -> String {
+            let owner = &parser[tidx];
+            let name = owner.kind.app_name();
+            let name = name.map(|n| &parser[n]).unwrap_or_default();
+            if owner.child_ids.is_empty() {
+                name.to_string()
+            } else {
+                format!("{}(...)", name)
+            }
         }
         match *self {
             Instantiation(inst) => match &parser[parser[inst].match_].kind {
                 MatchKind::TheorySolving { axiom_id, .. } => {
-                    let namespace = &parser[axiom_id.namespace];
-                    let id = axiom_id.id.map(|id| format!("[{id}]")).unwrap_or_default();
+                    let (namespace, id) = axiom_id.to_string_components(&parser.strings);
+                    let id = id.map(|id| format!("[{id}]")).unwrap_or_default();
                     format!("{namespace}{id}")
                 }
                 MatchKind::MBQI { quant, .. }
@@ -186,25 +192,27 @@ impl
                     .unwrap()
                     .to_string(),
             },
-            ENode(enode) => get_name(parser, enode).to_string(),
+            ENode(enode) => get_name(parser, parser[enode].owner),
             GivenEquality(eq, _) => {
                 let eq = &parser[eq];
                 let kind = eq.kind_str(&parser.strings);
-                let (from, to) = (get_name(parser, eq.from()), get_name(parser, eq.to()));
+                let (from, to) = (
+                    get_name(parser, parser[eq.from()].owner),
+                    get_name(parser, parser[eq.to()].owner),
+                );
                 format!("{kind}: {from} = {to}")
             }
             TransEquality(eq) => {
                 let (from, to) = parser.from_to(eq);
-                let (from, to) = (get_name(parser, from), get_name(parser, to));
+                let (from, to) = (
+                    get_name(parser, parser[from].owner),
+                    get_name(parser, parser[to].owner),
+                );
                 let len = parser[eq].given_len.map(|l| l.to_string());
                 let len = len.as_deref().unwrap_or("?");
                 format!("{from} =[{len}] {to}")
             }
-            Proof(proof) => {
-                let name = &parser[parser[proof].result].kind.app_name();
-                let name = name.map(|n| &parser[n]).unwrap_or_default();
-                name.to_string()
-            }
+            Proof(proof) => get_name(parser, parser[proof].result),
             Cdcl(cdcl) => match &parser[cdcl].kind {
                 CdclKind::Root => "root",
                 CdclKind::Empty(..) => "empty",
@@ -318,9 +326,9 @@ impl
                 Some(false) => "output".to_owned(),
                 None => "const".to_owned(),
             },
-            QI(ref sig, pattern) => pattern
+            QI(_, quantifier, term) | InstBody(quantifier, term) => term
                 .simp
-                .with_data(&ctxt, &mut Some(sig.qpat.quant))
+                .with_data(&ctxt, &mut Some(quantifier))
                 .to_string(),
             FixedENode(matched_term) => matched_term.simp.with(&ctxt).to_string(),
             RecurringENode(matched_term, input) => {
@@ -354,7 +362,9 @@ impl
                     "Fixed nodes which do not change but are used in each iteration.".to_owned()
                 }
             },
-            QI(ref sig, _) => ctxt.parser[sig.qpat.quant].kind.with(&ctxt).to_string(),
+            QI(_, quantifier, _) | InstBody(quantifier, _) => {
+                ctxt.parser[*quantifier].kind.with(&ctxt).to_string()
+            }
             FixedENode(matched_term) => matched_term.orig.with(&ctxt).to_string(),
             RecurringENode(matched_term, input) => {
                 ctxt.config.input = input.rec_input();
@@ -374,7 +384,7 @@ impl
         use MLGraphNode::*;
         match self {
             HiddenNode(..) => "",
-            QI(..) | RecurringENode(..) | RecurringEquality(..) => "filled",
+            QI(..) | InstBody(..) | RecurringENode(..) | RecurringEquality(..) => "filled",
             FixedENode(..) | FixedEquality(..) => "filled,dashed",
         }
     }
@@ -390,8 +400,8 @@ impl
         use MLGraphNode::*;
         match self {
             HiddenNode(..) => Default::default(),
-            QI(sig, _) => {
-                let hue = ctx.get_rbg_hue(Some(sig.qpat.quant)).unwrap() / 360.0;
+            QI(_, quantifier, _) | InstBody(quantifier, _) => {
+                let hue = ctx.get_rbg_hue(Some(*quantifier)).unwrap() / 360.0;
                 format!("{hue} {NODE_COLOUR_SATURATION} {NODE_COLOUR_VALUE}")
             }
             FixedENode(..) | RecurringENode(..) => ENODE_COLOUR.to_owned(),
@@ -413,7 +423,7 @@ impl
                 Some(false) => "output",
                 None => "fixed",
             },
-            QI(..) => "middle",
+            QI(..) | InstBody(..) => "middle",
         };
         class.to_string()
     }
@@ -733,7 +743,7 @@ impl DotEdgeProperties<bool, (), (), (), (), (), (), (), ()> for MLGraphEdge {
         use MLGraphEdge::*;
         match self {
             HiddenEdge(..) => "none",
-            Blame(..) | Yield => "normal",
+            Instantiation | Blame(..) | Yield => "normal",
             BlameEq(..) | YieldEq | CombineEq => "empty",
         }
     }

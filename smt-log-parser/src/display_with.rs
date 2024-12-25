@@ -598,8 +598,8 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTerm
             SynthTermKind::Variable(var) => write!(f, "${var}"),
             SynthTermKind::Input(offset) => match offset {
                 Some(offset) => {
-                    write!(f, "⭐ + ")?;
-                    offset.fmt_with(f, ctxt, &mut None)
+                    offset.fmt_with(f, ctxt, &mut None)?;
+                    write!(f, " + ⭐")
                 }
                 None => write!(f, "⭐"),
             },

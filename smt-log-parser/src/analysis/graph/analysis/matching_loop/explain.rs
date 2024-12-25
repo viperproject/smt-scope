@@ -156,8 +156,18 @@ impl MlExplainer {
             self.error = true;
             return Vec::new();
         };
-        let prev_inst = self.graph.add_node(MLGraphNode::QI(sig, pat.into()));
-        let old = self.instantiations.insert(prev, prev_inst);
+        let quantifier = sig.qpat.quant;
+
+        let prev_inst = MLGraphNode::QI(sig, quantifier, pat.into());
+        let prev_inst = self.graph.add_node(prev_inst);
+
+        let body = parser.quantifier_body(quantifier).unwrap().into();
+        let inst_body = MLGraphNode::InstBody(quantifier, body);
+        let inst_body = self.graph.add_node(inst_body);
+
+        self.graph
+            .add_edge(prev_inst, inst_body, MLGraphEdge::Instantiation);
+        let old = self.instantiations.insert(prev, inst_body);
         assert!(old.is_none());
 
         let mut recurring = Vec::new();
@@ -427,13 +437,6 @@ impl MlExplainer {
                     self.ancestor_is_recurring = false;
                 }
                 self.ancestor_is_recurring = ancestor_is_recurring;
-                if self.ancestor_is_recurring && !self.add_mode {
-                    self.burned_eqs.insert(eq);
-                    self.add_mode = true;
-                    self.super_walk_trans(eq, forward)?;
-                    self.add_mode = false;
-                    assert!(self.ancestor_is_recurring);
-                }
                 Ok(())
             }
             fn walk_trans(
@@ -471,7 +474,24 @@ impl MlExplainer {
                     return Ok(());
                 }
 
-                self.super_walk_trans(eq, forward)
+                self.super_walk_and_rewalk(eq, forward)
+            }
+        }
+        impl TransEqGraphWalker<'_> {
+            fn super_walk_and_rewalk(
+                &mut self,
+                eq: EqTransIdx,
+                forward: bool,
+            ) -> core::result::Result<(), Never> {
+                self.super_walk_trans(eq, forward)?;
+                if self.ancestor_is_recurring && !self.add_mode {
+                    self.burned_eqs.insert(eq);
+                    self.add_mode = true;
+                    self.super_walk_trans(eq, forward)?;
+                    self.add_mode = false;
+                    assert!(self.ancestor_is_recurring);
+                }
+                Ok(())
             }
         }
         let mut walker = TransEqGraphWalker {
@@ -482,22 +502,18 @@ impl MlExplainer {
             add_mode: false,
             burned_eqs: FxHashSet::default(),
         };
-        walker.super_walk_trans(eqidx, true).unwrap();
+        walker.super_walk_and_rewalk(eqidx, true).unwrap();
         walker.ancestor_is_recurring
     }
 
     pub fn simplify_terms(mut self, parser: &mut Z3Parser) -> Result<MlExplanation> {
         let mut collector = QVarParentCollector::new(parser);
         for &i in self.instantiations.values() {
-            let MLGraphNode::QI(_, pattern) = &self.graph[i] else {
-                unreachable!();
-            };
-            let pattern = parser.synth_terms.as_tidx(pattern.orig).unwrap();
-            let has_qvars = collector.collect_term(pattern);
-            debug_assert!(has_qvars);
+            self.collect_inst(&mut collector, i);
         }
         let mut simplifier = TermSimplifier {
             forbidden_apps: collector.forbidden_apps,
+            terms_with_qvars: collector.terms_with_qvars,
             parser,
             simplifications: FxHashMap::default(),
             stack: Vec::new(),
@@ -507,28 +523,56 @@ impl MlExplainer {
         }
         Ok(self.graph)
     }
+
+    fn collect_inst(&self, collector: &mut QVarParentCollector<'_>, i: NodeIndex) {
+        let MLGraphNode::InstBody(_, body) = &self.graph[i] else {
+            unreachable!();
+        };
+        collector.stack = None;
+        let body = collector.parser.synth_terms.as_tidx(body.orig).unwrap();
+        let _has_qvars = collector.collect_term(body);
+
+        let dir = petgraph::Direction::Incoming;
+        let mut parents = self.graph.neighbors_directed(i, dir);
+        let i = parents.next().unwrap();
+        assert_eq!(parents.next(), None);
+        let MLGraphNode::QI(_, _, pattern) = &self.graph[i] else {
+            unreachable!();
+        };
+        collector.stack = Some(Vec::new());
+        let pattern = collector.parser.synth_terms.as_tidx(pattern.orig).unwrap();
+        let has_qvars = collector.collect_term(pattern);
+        debug_assert!(has_qvars);
+    }
 }
 
 struct QVarParentCollector<'a> {
     parser: &'a Z3Parser,
-    stack: Vec<IString>,
+    stack: Option<Vec<IString>>,
     forbidden_apps: FxHashSet<BoxSlice<IString>>,
+    terms_with_qvars: FxHashSet<TermIdx>,
 }
 
 impl<'a> QVarParentCollector<'a> {
     fn new(parser: &'a Z3Parser) -> Self {
         Self {
             parser,
-            stack: Default::default(),
+            stack: Some(Default::default()),
             forbidden_apps: Default::default(),
+            terms_with_qvars: Default::default(),
         }
     }
     fn collect_term(&mut self, tidx: TermIdx) -> bool {
         let term = &self.parser[tidx];
         match term.kind {
-            TermKind::Var(_) => true,
+            TermKind::Var(_) => {
+                self.terms_with_qvars.insert(tidx);
+                true
+            }
             TermKind::App(app) => {
-                self.stack.push(app);
+                if let Some(stack) = &mut self.stack {
+                    stack.push(app);
+                }
 
                 let mut has_qvar = false;
                 for &child in term.child_ids.iter() {
@@ -536,15 +580,20 @@ impl<'a> QVarParentCollector<'a> {
                 }
 
                 if has_qvar {
+                    self.terms_with_qvars.insert(tidx);
                     // I have qvars so prevent sequences of terms like me being
                     // replaced.
-                    for i in 0..self.stack.len() {
-                        let forbidden_app = self.stack[i..].iter().copied().collect();
-                        self.forbidden_apps.insert(forbidden_app);
+                    if let Some(stack) = &self.stack {
+                        for i in 0..stack.len() {
+                            let forbidden_app = stack[i..].iter().copied().collect();
+                            self.forbidden_apps.insert(forbidden_app);
+                        }
                     }
                 }
 
-                self.stack.pop();
+                if let Some(stack) = &mut self.stack {
+                    stack.pop();
+                }
                 has_qvar
             }
             TermKind::Quant(..) => unreachable!(),
@@ -558,13 +607,15 @@ struct TermSimplifier<'a> {
 
     stack: Vec<IString>,
     forbidden_apps: FxHashSet<BoxSlice<IString>>,
+    terms_with_qvars: FxHashSet<TermIdx>,
 }
 
 impl TermSimplifier<'_> {
     fn simplify_node(&mut self, node: &mut MLGraphNode) -> Result<()> {
         match node {
             MLGraphNode::HiddenNode(..) => (),
-            MLGraphNode::QI(_, idx)
+            MLGraphNode::QI(_, _, idx)
+            | MLGraphNode::InstBody(_, idx)
             | MLGraphNode::FixedENode(idx)
             | MLGraphNode::RecurringENode(idx, _) => {
                 idx.simp = self.simplify_term(idx.simp)?;
@@ -579,7 +630,9 @@ impl TermSimplifier<'_> {
 
     fn simplify_term(&mut self, idx: SynthIdx) -> Result<SynthIdx> {
         let tidx = self.parser.synth_terms.as_tidx(idx);
+        let has_qvars = tidx.is_some_and(|tidx| self.terms_with_qvars.contains(&tidx));
         if let Some(tidx) = tidx.and_then(|tidx| self.simplifications.get(&tidx)) {
+            assert!(!has_qvars);
             return Ok(*tidx);
         }
         let term = &self.parser[idx];
@@ -597,7 +650,8 @@ impl TermSimplifier<'_> {
             }) if {
                 self.stack.push(*name);
                 *must_pop = true;
-                !self.forbidden_apps.contains(self.stack.as_slice())
+                let is_forbidden = self.forbidden_apps.contains(self.stack.as_slice());
+                !is_forbidden && !has_qvars
             } =>
             {
                 self.stack.pop();

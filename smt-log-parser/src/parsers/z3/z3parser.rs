@@ -1014,6 +1014,11 @@ impl Z3Parser {
         self.cdcl.cdcls()
     }
 
+    pub fn quantifier_body(&self, qidx: QuantIdx) -> Option<TermIdx> {
+        let children = &self[self[qidx].term].child_ids;
+        children.last().copied()
+    }
+
     pub fn patterns(&self, q: QuantIdx) -> Option<&TiSlice<PatternIdx, TermIdx>> {
         let child_ids = &self[self[q].term].child_ids;
         child_ids

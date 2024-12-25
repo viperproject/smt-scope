@@ -504,9 +504,9 @@ pub enum NodeKind {
     TransEquality(EqTransIdx),
     /// Corresponds to `ProofIdx`.
     ///
-    /// **Parents:** (small) arbitrary count, will always be `Proof` or
+    /// **Parents:** (large) arbitrary count, will always be `Proof` or
     /// `Instantiation`.
-    /// **Children:** (small) arbitrary count, will always be `Proof`.
+    /// **Children:** (small?) arbitrary count, will always be `Proof`.
     Proof(ProofIdx),
     /// Corresponds to `CdclIdx`. Only connected to other `Cdcl` nodes.
     ///
@@ -582,7 +582,7 @@ impl NodeKind {
             (
                 Self::ENode(..) | Self::TransEquality(..),
                 Self::Instantiation(..)
-            )
+            ) | (Self::Proof(..), Self::Proof(..))
         )
     }
 }

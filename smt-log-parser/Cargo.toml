@@ -32,6 +32,9 @@ duplicate = "1.0"
 strum = { version = "0.26", features = ["derive"] }
 # For the command line interface
 clap = { version = "4.5.4", features = ["derive"] }
+# Z3 functionality
+cc = { version = "~1.1", optional = true }
+z3 = { git = "https://github.com/prove-rs/z3.rs", rev = "4f9fcfe43ff2c78aadfaf57c4fab1f7cbe4aa8a8", optional = true }
 
 [dev-dependencies]
 memory-stats = "1.1.0"
@@ -39,10 +42,11 @@ cap = "0.1.2"
 smt-log-parser = { path = ".", features = ["mem_dbg"] }
 
 [features]
-default = ["display", "analysis"]
+default = ["display", "analysis", "z3"]
 display = ["dep:regex"]
 display_html = ["dep:ammonia"]
 analysis = []
+z3 = ["dep:z3", "dep:cc"]
 # Tries to catch memory allocation errors, in some cases spends some extra time with test allocations
 # when a crate doesn't support `try_reserve`. Currently some panics may still happen.
 never_panic = []

@@ -51,4 +51,9 @@ pub enum Commands {
         #[arg(short, long, default_value_t = false)]
         clean: bool,
     },
+    #[cfg(feature = "z3")]
+    Z3 {
+        /// The path to the `.smt2` file
+        smt2_file: std::path::PathBuf,
+    },
 }

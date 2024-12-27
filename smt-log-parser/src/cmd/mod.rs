@@ -4,6 +4,8 @@ mod dependencies;
 mod reconstruct;
 mod stats;
 mod test;
+#[cfg(feature = "z3")]
+mod z3;
 
 use clap::Parser;
 use smt_log_parser::{LogParser, Z3Parser};
@@ -23,6 +25,8 @@ pub fn run() -> Result<(), String> {
             memory,
         } => test::run(logfiles, timeout, memory)?,
         args::Commands::Reconstruct { logfile, clean } => reconstruct::run(logfile, clean)?,
+        #[cfg(feature = "z3")]
+        args::Commands::Z3 { smt2_file } => z3::run(smt2_file)?,
     }
 
     Ok(())

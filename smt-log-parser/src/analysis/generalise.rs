@@ -30,6 +30,7 @@ impl SynthTerms {
             && smaller_term.kind == larger_term.kind
             && smaller_term.child_ids.len() == larger_term.child_ids.len()
         {
+            // TODO: remove this depth restriction
             if depth == 0 {
                 return Ok(None);
             }

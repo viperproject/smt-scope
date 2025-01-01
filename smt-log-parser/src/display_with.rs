@@ -9,7 +9,7 @@ use crate::{
     parsers::z3::{
         stm2::EventKind,
         synthetic::{AnyTerm, SynthIdx, SynthTermKind},
-        z3parser::Z3Parser,
+        Z3Parser,
     },
     NonMaxU32, StringTable,
 };
@@ -867,6 +867,13 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Meaning {
     ) -> fmt::Result {
         let fn_ = |f: &mut fmt::Formatter| match self {
             Meaning::Arith(value) => write!(f, "{value}"),
+            Meaning::BitVec(value) => {
+                write!(f, "0x")?;
+                for digit in value.value.iter_u64_digits() {
+                    write!(f, "{:x}", digit)?;
+                }
+                Ok(())
+            }
             &Meaning::Unknown { theory, value } => {
                 write!(f, "/{} {}\\", &ctxt.parser[theory], &ctxt.parser[value])
             }

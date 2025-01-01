@@ -4,7 +4,7 @@ use crate::{
         synthetic::{AnyTerm, SynthIdx, SynthTermKind, SynthTerms},
         terms::Terms,
     },
-    Result,
+    FxHashMap, Result,
 };
 
 impl SynthTerms {
@@ -13,6 +13,7 @@ impl SynthTerms {
         table: &Terms,
         smaller: TermIdx,
         larger: TermIdx,
+        depth: usize,
     ) -> Result<Option<SynthIdx>> {
         if smaller == larger {
             // if terms are equal, no need to generalize
@@ -29,11 +30,15 @@ impl SynthTerms {
             && smaller_term.kind == larger_term.kind
             && smaller_term.child_ids.len() == larger_term.child_ids.len()
         {
+            // TODO: remove this depth restriction
+            if depth == 0 {
+                return Ok(None);
+            }
             let Some(child_ids) = smaller_term
                 .child_ids
                 .iter()
                 .zip(&*larger_term.child_ids)
-                .map(|(&sc, &lc)| self.generalise_first(table, sc, lc))
+                .map(|(&sc, &lc)| self.generalise_first(table, sc, lc, depth - 1))
                 .collect::<Result<Option<_>>>()?
             else {
                 return Ok(None);
@@ -60,11 +65,29 @@ impl SynthTerms {
     ) -> Result<Option<SynthIdx>> {
         assert_ne!(larger, smaller);
         let smaller_meaning = table.meaning(smaller);
+        let mut cache = FxHashMap::default();
         let (found_smaller, replaced) =
-            self.input_replace_inner(table, smaller, smaller_meaning, larger)?;
+            self.input_replace_inner(table, smaller, smaller_meaning, larger, &mut cache)?;
         // If we didn't find the smaller term in the bigger one, then it's
         // probably not a repeating pattern getting larger (so return `None`).
         Ok(found_smaller.then_some(replaced))
+    }
+
+    fn input_replace_cached(
+        &mut self,
+        table: &Terms,
+        smaller: TermIdx,
+        smaller_meaning: Option<&Meaning>,
+        larger: TermIdx,
+        cache: &mut FxHashMap<TermIdx, (bool, SynthIdx)>,
+    ) -> Result<(bool, SynthIdx)> {
+        if let Some((found_smaller, replaced)) = cache.get(&larger) {
+            return Ok((*found_smaller, *replaced));
+        }
+        let (found_smaller, replaced) =
+            self.input_replace_inner(table, smaller, smaller_meaning, larger, cache)?;
+        cache.insert(larger, (found_smaller, replaced));
+        Ok((found_smaller, replaced))
     }
 
     fn input_replace_inner(
@@ -73,6 +96,7 @@ impl SynthTerms {
         smaller: TermIdx,
         smaller_meaning: Option<&Meaning>,
         larger: TermIdx,
+        cache: &mut FxHashMap<TermIdx, (bool, SynthIdx)>,
     ) -> Result<(bool, SynthIdx)> {
         if larger == smaller {
             return Ok((true, self.new_input(None)?));
@@ -98,7 +122,7 @@ impl SynthTerms {
             .iter()
             .map(|&c| {
                 let (found, replaced) =
-                    self.input_replace_inner(table, smaller, smaller_meaning, c)?;
+                    self.input_replace_cached(table, smaller, smaller_meaning, c, cache)?;
                 found_smaller |= found;
                 Ok(replaced)
             })

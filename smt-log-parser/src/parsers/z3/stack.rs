@@ -7,8 +7,10 @@ use crate::{
         Assignment, Cdcl, CdclBacklink, CdclIdx, CdclKind, Conflict, ENodeIdx, InstIdx, MatchIdx,
         ProofIdx, StackFrame, StackIdx,
     },
-    Error, Result, TiVec, Z3Parser,
+    Error, Result, TiVec,
 };
+
+use super::Z3Parser;
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
@@ -108,8 +110,8 @@ impl Stack {
         self.stack_frames[self.active_frame()].from_cdcl
     }
 
-    pub(super) fn is_active_or_global(&self, frame: StackIdx) -> bool {
-        self[frame].active.status().is_active_or_global()
+    pub(super) fn is_alive(&self, frame: StackIdx) -> bool {
+        self[frame].active.status().is_alive()
     }
 }
 
@@ -144,7 +146,7 @@ impl CdclTree {
     }
 
     fn check_frame_decision(&mut self, stack: &Stack) -> Result<()> {
-        if stack.is_active_or_global(self.cdcl.last().unwrap().frame) {
+        if stack.is_alive(self.cdcl.last().unwrap().frame) {
             return Ok(());
         }
         // Just before making a decision z3 will always push a new frame.
@@ -214,7 +216,7 @@ impl CdclTree {
     }
 
     fn last_active(&self, stack: &Stack) -> CdclIdx {
-        let active = |i: &CdclIdx| stack.is_active_or_global(self[*i].frame);
+        let active = |i: &CdclIdx| stack.is_alive(self[*i].frame);
         self.curr_to_root().find(active).unwrap()
     }
 

@@ -10,7 +10,7 @@ use crate::{
         InstProofLink, Instantiation, Meaning, ProofIdx, ProofStep, ProofStepKind, QuantIdx, Term,
         TermId, TermIdToIdxMap, TermIdx, TermKind,
     },
-    Error, FxHashMap, Result, StringTable, TiVec,
+    Error, FxHashMap, IString, Result, StringTable, TiVec,
 };
 
 pub trait HasTermId {
@@ -54,16 +54,18 @@ impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
         Ok(idx)
     }
 
+    fn get_term(&self, term_id: TermId) -> Either<K, TermId> {
+        self.term_id_map
+            .get_term(&term_id)
+            .map_or(Either::Right(term_id), Either::Left)
+    }
     pub(super) fn parse_id(
         &self,
         strings: &mut StringTable,
         id: &str,
     ) -> Result<Either<K, TermId>> {
         let term_id = TermId::parse(strings, id)?;
-        Ok(self
-            .term_id_map
-            .get_term(&term_id)
-            .map_or(Either::Right(term_id), Either::Left))
+        Ok(self.get_term(term_id))
     }
     pub(super) fn parse_existing_id(&self, strings: &mut StringTable, id: &str) -> Result<K> {
         self.parse_id(strings, id)?
@@ -96,6 +98,49 @@ impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
         }
         None
     }
+
+    /// Perform a bottom-up dfs walk of the AST rooted at `idx` calling `d` on
+    /// each node while walking down and `u` on each node while walking up.
+    pub fn ast_walk_cached<'a, D>(
+        &self,
+        idx: K,
+        cache: &'a mut FxHashMap<K, D>,
+        mut d: impl FnMut(K, &V) -> &[K],
+        mut u: impl FnMut(K, &V, &FxHashMap<K, D>) -> D,
+    ) -> &'a D
+    where
+        usize: From<K>,
+        K: Eq + core::hash::Hash,
+    {
+        fn trim<T: Eq + core::hash::Hash, V>(
+            node: &mut core::slice::Iter<T>,
+            cache: &FxHashMap<T, V>,
+        ) {
+            let slice = node.as_slice();
+            let nk = slice.iter().position(|idx| !cache.contains_key(idx));
+            *node = slice[nk.unwrap_or(slice.len())..].iter()
+        }
+
+        let mut todo = vec![core::slice::from_ref(&idx).iter()];
+        while let Some(mut node) = todo.pop() {
+            trim(&mut node, cache);
+            while let Some(idx) = node.as_slice().first().copied() {
+                todo.push(node);
+                node = d(idx, &self.terms[idx]).iter();
+                trim(&mut node, cache);
+            }
+
+            let Some(node) = todo.last_mut() else {
+                break;
+            };
+            let idx = node.next().copied().unwrap();
+            let next = &self.terms[idx];
+            let data = u(idx, next, &*cache);
+            let old = cache.insert(idx, data);
+            assert!(old.is_none());
+        }
+        &cache[&idx]
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -105,6 +150,10 @@ pub struct Terms {
     pub(super) proof_terms: TermStorage<ProofIdx, ProofStep>,
 
     meanings: FxHashMap<TermIdx, Meaning>,
+    /// See https://github.com/viperproject/axiom-profiler-2/issues/100. Solve
+    /// this by switching to an artificial namespace after a "string" mk_app.
+    get_model: Option<IString>,
+    get_model_idx: u32,
 }
 
 impl Terms {
@@ -138,15 +187,21 @@ impl Terms {
             .ok_or_else(|| Error::UnknownQuantifierIdx(quant))
     }
 
-    pub(super) fn new_meaning(&mut self, term: TermIdx, meaning: Meaning) -> Result<&Meaning> {
+    pub(super) fn new_meaning(&mut self, mut tidx: TermIdx, meaning: Meaning) -> Result<TermIdx> {
         self.meanings.try_reserve(1)?;
-        match self.meanings.entry(term) {
-            Entry::Occupied(old) => assert_eq!(old.get(), &meaning),
+        match self.meanings.entry(tidx) {
+            Entry::Occupied(old) => {
+                if old.get() != &meaning {
+                    let term = self.app_terms.terms[tidx].clone();
+                    tidx = self.app_terms.new_term(term)?;
+                    self.meanings.insert(tidx, meaning);
+                }
+            }
             Entry::Vacant(empty) => {
                 empty.insert(meaning);
             }
         };
-        Ok(&self.meanings[&term])
+        Ok(tidx)
     }
 
     /// Perform a top-down walk of the AST rooted at `tidx` calling `f` on each
@@ -200,6 +255,45 @@ impl Terms {
     }
     pub fn is_bool_const(&self, tidx: TermIdx) -> bool {
         self.is_true_const(tidx) || self.is_false_const(tidx)
+    }
+
+    /// Normally one would use `app_terms.parse_existing_id`, but here we
+    /// implement the workaround for `get_model`.
+    pub fn parse_app_child_id(&self, strings: &mut StringTable, id: &str) -> Result<TermIdx> {
+        let mut term_id = TermId::parse(strings, id)?;
+        if let Some(namespace) = self.get_model {
+            debug_assert!(term_id.namespace.is_none());
+            term_id.namespace = Some(namespace);
+        }
+        self.app_terms
+            .get_term(term_id)
+            .into_result()
+            .map_err(Error::UnknownId)
+    }
+
+    pub fn check_get_model(&mut self, id: &mut TermId, name: &str, strings: &mut StringTable) {
+        let get_model = self.get_model.take();
+        if id.namespace.is_some() {
+            return;
+        }
+        // See https://github.com/Z3Prover/z3/blob/z3-4.13.4/src/ast/format.cpp#L45-L52
+        let Some(get_model) = get_model else {
+            // Is a mk_app line with this term the start of a get-model command?
+            if name == "string" {
+                let namespace = format!("get-model-{}", self.get_model_idx);
+                self.get_model_idx += 1;
+                self.get_model = Some(IString(strings.get_or_intern(namespace)));
+                id.namespace = self.get_model;
+            }
+            return;
+        };
+        match name {
+            "string" | "cr" | "compose" | "indent" | "choice" => {
+                self.get_model = Some(get_model);
+                id.namespace = Some(get_model);
+            }
+            _ => (),
+        }
     }
 }
 

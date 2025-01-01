@@ -6,10 +6,10 @@ use mem_dbg::{MemDbg, MemSize};
 use crate::{
     idx,
     items::{Meaning, Term, TermId, TermIdx, TermKind},
-    BoxSlice, FxHashMap, Result, TiVec, Z3Parser,
+    BoxSlice, FxHashMap, Result, TiVec,
 };
 
-use super::terms::Terms;
+use super::{terms::Terms, Z3Parser};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

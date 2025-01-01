@@ -7,7 +7,8 @@ use petgraph::{
 use crate::parsers::z3::VersionInfo;
 
 use super::{
-    BigRational, FxHashMap, FxHashSet, Graph, IString, NonMaxU32, NonMaxUsize, StringTable, TiVec,
+    BigRational, BigUint, FxHashMap, FxHashSet, Graph, IString, NonMaxU32, NonMaxUsize,
+    StringTable, TiVec,
 };
 
 macro_rules! copy_impl {
@@ -39,6 +40,17 @@ impl MemSize for BigRational {
         core::mem::size_of::<Self>()
             + numer.iter_u64_digits().len() * core::mem::size_of::<u64>()
             + denom.iter_u64_digits().len() * core::mem::size_of::<u64>()
+    }
+}
+
+// BigUint
+
+impl MemDbgImpl for BigUint {}
+
+impl MemSize for BigUint {
+    fn mem_size(&self, _flags: mem_dbg::SizeFlags) -> usize {
+        let digits = self.iter_u64_digits();
+        core::mem::size_of::<Self>() + digits.len() * core::mem::size_of::<u64>()
     }
 }
 

@@ -17,3 +17,10 @@ impl std::cmp::Ord for F64Ord {
         self.0.total_cmp(&other.0)
     }
 }
+
+#[cfg(test)]
+pub(crate) fn test_parser() -> crate::Z3Parser {
+    use crate::LogParser;
+    let file = include_str!("../tests/data/z3.log");
+    crate::Z3Parser::from_str(file).process_all().unwrap()
+}

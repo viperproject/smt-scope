@@ -122,7 +122,7 @@ pub fn Flags(props: &FlagsProps) -> Html {
         "Printing depth limit",
         "Stop printing terms once this AST depth has been reached. Only needed to avoid crashes with huge proof terms.", |
         if NonMaxU32::new(10) => "10",
-        if NonMaxU32::new(25) => "25",
+        if NonMaxU32::new(20) => "20",
         if NonMaxU32::new(50) => "50",
         if NonMaxU32::new(100) => "100",
         if None => "Disabled"

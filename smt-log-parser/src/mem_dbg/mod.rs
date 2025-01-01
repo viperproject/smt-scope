@@ -132,6 +132,16 @@ impl fmt::Display for BigRational {
     }
 }
 
+// BigUint
+
+derive_wrapper!(num::BigUint: PartialEq + Eq + PartialOrd + Ord + Hash);
+
+impl fmt::Display for BigUint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 // TiVec
 
 derive_wrapper!(typed_index_collections::TiVec<K, V>);

@@ -938,6 +938,7 @@ input[type="file"] {
     display: grid;
     grid-template-columns: [left] auto [right] 1fr;
     row-gap: 5px;
+	overflow-x: scroll;
 }
 .pf-tree .pf-tree-node {
     display: contents;

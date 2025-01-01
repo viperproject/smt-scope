@@ -142,7 +142,8 @@ impl ReconnectEdge {
     }
 
     fn set_to_h(self, to_h: RawNodeIndex) -> Self {
-        assert_eq!(self.from.visible, self.to_h);
+        debug_assert_eq!(self.from.visible, self.to_h);
+        debug_assert_ne!(self.to_h, to_h);
         Self { to_h, ..self }
     }
 }

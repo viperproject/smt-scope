@@ -70,10 +70,12 @@ pub fn Summary(props: &SummaryProps) -> Html {
             <MostQuants ..inner.clone() />
             <CostQuants ..inner.clone() />
             <MultQuants ..inner.clone() />
-        </DetailContainer><DetailContainer>
+        </DetailContainer>
+        <DetailContainer>
             <CostLemmas ..inner.clone() />
             <CostCdcl ..inner />
-        </DetailContainer></article>
+        </DetailContainer>
+        </article>
         {graph}
     </div>}
 }
@@ -149,7 +151,7 @@ pub fn MostQuants(props: &SummaryPropsInner) -> Html {
         .take_while(|(.., c)| *c > 0);
     let quants = quants.map(|(q, hue, (), c)| {
         let left = format_to_html(*c);
-        let right = html! { <div class="info-box-row">{ format!("{q}") }<QuantColourBox {hue} /></div> };
+        let right = html! { <div class="info-box-row"><QuantColourBox margin_right={true} {hue} />{ format!("{q}") }</div> };
         (left, right)
     }).collect::<Vec<_>>();
 
@@ -179,7 +181,7 @@ pub fn CostQuants(props: &SummaryPropsInner) -> Html {
         let costs = costs.iter().take(DISPLAY_TOP_N).take_while(|(.., c)| c.0 > 0.0);
         let costs = costs.map(|(q, hue, c, _)| {
             let left = html!{{ format!("{c:.1}") }};
-            let right = html! { <div class="info-box-row">{ format!("{q}") }<QuantColourBox {hue} /></div> };
+            let right = html! { <div class="info-box-row"><QuantColourBox margin_right={true} {hue} />{ format!("{q}") }</div> };
             (left, right)
         }).collect::<Vec<_>>();
         html! {<Detail title="Average cost" hover="The quantifiers upon which the most instantiations causally depend. See average weighing flag.">
@@ -209,7 +211,7 @@ pub fn MultQuants(props: &SummaryPropsInner) -> Html {
         let mults = mults.iter().take(DISPLAY_TOP_N).take_while(|(.., c)| c.0 > 0.0);
         let mults = mults.map(|(q, hue, c, _)| {
             let left = html!{{ format!("{c:.1}") }};
-            let right = html! { <div class="info-box-row">{ format!("{q}") }<QuantColourBox {hue} /></div> };
+            let right = html! { <div class="info-box-row"><QuantColourBox margin_right={true} {hue} />{ format!("{q}") }</div> };
             (left, right)
         }).collect::<Vec<_>>();
         html! {<Detail title="Average multiplicativity" hover="The quantifiers which the highest multiplicative factor, i.e. those that on average directly cause N other instantiations. See average weighing flag.">

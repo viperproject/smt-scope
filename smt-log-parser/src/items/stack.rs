@@ -86,8 +86,8 @@ impl TimeRangeStatus {
         matches!(self, Self::Ended)
     }
 
-    pub fn is_active_or_global(self) -> bool {
-        matches!(self, Self::Active | Self::Global)
+    pub fn is_alive(self) -> bool {
+        !self.is_ended()
     }
 }
 

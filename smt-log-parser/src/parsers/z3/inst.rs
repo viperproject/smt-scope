@@ -60,9 +60,9 @@ impl Insts {
         // I have on very rare occasions seen an `[instance]` repeated twice
         // with the same fingerprint (without an intermediate `[new-match]`).
         debug_assert!(
-            stack.is_active_or_global(self.matches[*match_idx].frame)
+            stack.is_alive(self.matches[*match_idx].frame)
                 && (can_duplicate
-                    || !inst_idx.is_some_and(|i| stack.is_active_or_global(self.insts[i].frame))),
+                    || !inst_idx.is_some_and(|i| stack.is_alive(self.insts[i].frame))),
             "duplicate instantiation of fingerprint {fingerprint}",
         );
         *inst_idx = Some(idx);

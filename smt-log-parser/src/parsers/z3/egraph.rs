@@ -72,7 +72,7 @@ impl EGraph {
             return ENodeBlame::Inst(inst);
         }
         let proof = self.proofs.get(&tidx).copied();
-        let proof = proof.filter(|&p| stack.is_active_or_global(terms[p].frame));
+        let proof = proof.filter(|&p| stack.is_alive(terms[p].frame));
         if let Some(proof) = proof {
             return ENodeBlame::Proof(proof);
         }
@@ -130,7 +130,7 @@ impl EGraph {
             self.proofs.try_reserve(1)?;
             match self.proofs.entry(tidx) {
                 Entry::Occupied(mut o) => {
-                    if stack.is_active_or_global(terms[*o.get()].frame) {
+                    if stack.is_alive(terms[*o.get()].frame) {
                         return Ok(&[]);
                     } else {
                         o.insert(proof);
@@ -805,7 +805,7 @@ impl Default for TermToEnode {
 
 impl EGraph {
     pub fn insert_tte(&mut self, term: TermIdx, enode: ENodeIdx, stack: &Stack) -> Result<()> {
-        let remove = |e: &ENodeIdx| !stack.is_active_or_global(self.enodes[*e].frame);
+        let remove = |e: &ENodeIdx| !stack.is_alive(self.enodes[*e].frame);
         self.term_to_enode.try_reserve(1)?;
         let tte = self.term_to_enode.entry(term).or_default();
         let mut vec = match tte {
@@ -825,7 +825,7 @@ impl EGraph {
             *tte = TermToEnode::Multiple(vec);
         }
         // TODO: why does this happen sometimes?
-        // debug_assert!(!old.is_some_and(|o| stack.is_active_or_global(self[o].frame)));
+        // debug_assert!(!old.is_some_and(|o| stack.is_alive(self[o].frame)));
         Ok(())
     }
 
@@ -833,7 +833,7 @@ impl EGraph {
         let Entry::Occupied(mut o) = self.term_to_enode.entry(term) else {
             return None;
         };
-        let remove = |e: &ENodeIdx| !stack.is_active_or_global(self.enodes[*e].frame);
+        let remove = |e: &ENodeIdx| !stack.is_alive(self.enodes[*e].frame);
         match o.get_mut() {
             TermToEnode::Single(e) => {
                 if remove(&*e) {

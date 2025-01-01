@@ -1,5 +1,7 @@
 use core::num::NonZeroUsize;
 
+use num::Num;
+
 use crate::{
     items::*,
     parsers::z3::{VersionInfo, Z3LogParser},
@@ -512,6 +514,22 @@ impl Z3LogParser for Z3Parser {
                 let num = Self::parse_arith(&value)?;
                 Meaning::Arith(Box::new(num))
             }
+            "bv" => {
+                let (value, bits) = if let Some(data) = value.strip_prefix("#x") {
+                    let value = num::BigUint::from_str_radix(data, 16);
+                    (value, data.len() as u32 * 4)
+                } else if let Some(data) = value.strip_prefix("#b") {
+                    let value = num::BigUint::from_str_radix(data, 2);
+                    (value, data.len() as u32)
+                } else {
+                    return Err(E::ParseError(value));
+                };
+                let value = BitVec {
+                    value: value.map_err(E::ParseBigUintError)?.into(),
+                    bits,
+                };
+                Meaning::BitVec(Box::new(value))
+            }
             theory => {
                 let theory = self.mk_string(theory)?;
                 let value = self.mk_string(&value)?;
@@ -519,7 +537,8 @@ impl Z3LogParser for Z3Parser {
             }
         };
         let idx = self.parse_existing_app(id)?;
-        let meaning = self.terms.new_meaning(idx, meaning)?;
+        let idx = self.terms.new_meaning(idx, meaning)?;
+        let meaning = self.terms.meaning(idx).unwrap();
         self.events.new_meaning(idx, meaning, &self.strings)?;
         Ok(())
     }

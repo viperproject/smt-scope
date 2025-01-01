@@ -19,8 +19,8 @@ mod util;
 
 pub use error::{Error, FResult, FatalError, Result};
 pub use mem_dbg::{
-    BigRational, BoxSlice, DiGraph, FxHashMap, FxHashSet, Graph, IString, NonMaxU32, NonMaxUsize,
-    StringTable, TiVec, UnGraph,
+    BigRational, BigUint, BoxSlice, DiGraph, FxHashMap, FxHashSet, Graph, IString, NonMaxU32,
+    NonMaxUsize, StringTable, TiVec, UnGraph,
 };
 pub use parsers::z3::Z3Parser;
 pub use parsers::LogParser;

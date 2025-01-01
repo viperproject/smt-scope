@@ -187,15 +187,21 @@ impl Terms {
             .ok_or_else(|| Error::UnknownQuantifierIdx(quant))
     }
 
-    pub(super) fn new_meaning(&mut self, term: TermIdx, meaning: Meaning) -> Result<&Meaning> {
+    pub(super) fn new_meaning(&mut self, mut tidx: TermIdx, meaning: Meaning) -> Result<TermIdx> {
         self.meanings.try_reserve(1)?;
-        match self.meanings.entry(term) {
-            Entry::Occupied(old) => assert_eq!(old.get(), &meaning),
+        match self.meanings.entry(tidx) {
+            Entry::Occupied(old) => {
+                if old.get() != &meaning {
+                    let term = self.app_terms.terms[tidx].clone();
+                    tidx = self.app_terms.new_term(term)?;
+                    self.meanings.insert(tidx, meaning);
+                }
+            }
             Entry::Vacant(empty) => {
                 empty.insert(meaning);
             }
         };
-        Ok(&self.meanings[&term])
+        Ok(tidx)
     }
 
     /// Perform a top-down walk of the AST rooted at `tidx` calling `f` on each

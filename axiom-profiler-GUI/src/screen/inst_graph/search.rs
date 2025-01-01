@@ -133,7 +133,7 @@ impl Graph {
                 search_text: search_text.to_string(),
                 post_text: String::new(),
                 info: html! {<>
-                    <QuantColourBox {hue} />
+                    <QuantColourBox margin_right={true} {hue} />
                     {counter.visible.len().to_string()}{" shown / "}{counter.total().to_string()}
                 </>},
                 select_from: counter.visible.len(),

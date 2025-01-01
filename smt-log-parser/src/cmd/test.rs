@@ -3,7 +3,7 @@ use mem_dbg::{DbgFlags, MemDbg};
 #[cfg(feature = "analysis")]
 use smt_log_parser::analysis;
 use smt_log_parser::parsers::LogParser;
-use smt_log_parser::{display_with::DisplayWithCtxt, parsers::z3::z3parser::Z3Parser};
+use smt_log_parser::{display_with::DisplayWithCtxt, parsers::z3::Z3Parser};
 use std::{path::PathBuf, time::Duration};
 use wasm_timer::Instant;
 

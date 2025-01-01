@@ -9,7 +9,7 @@ use crate::{
     parsers::z3::{
         stm2::EventKind,
         synthetic::{AnyTerm, SynthIdx, SynthTermKind},
-        z3parser::Z3Parser,
+        Z3Parser,
     },
     NonMaxU32, StringTable,
 };

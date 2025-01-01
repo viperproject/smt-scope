@@ -2,13 +2,14 @@ use std::cmp::Reverse;
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
+use nonmax::NonMaxU64;
 
 use crate::{
     analysis::{analysis::run::TopoAnalysis, raw::Node, InstGraph, RawNodeIndex},
     idx,
     items::{Blame, ENodeIdx, EqTransIdx, InstIdx, TermIdx},
     mem_dbg::InternMap,
-    parsers::z3::synthetic::SynthIdx,
+    parsers::z3::{synthetic::SynthIdx, AstSize},
     FxHashMap, FxHashSet, TiVec, Z3Parser,
 };
 
@@ -118,6 +119,7 @@ impl<'a> MlAnalysis<'a> {
         parser: &'a mut Z3Parser,
         signatures: Vec<(MlSignature, FxHashSet<InstIdx>)>,
     ) -> Self {
+        let mut cached = FxHashMap::default();
         let mut node_to_ml = FxHashMap::<InstIdx, MlNodeInfo>::default();
         let data = signatures
             .into_iter()
@@ -127,7 +129,7 @@ impl<'a> MlAnalysis<'a> {
                 node_to_ml.extend(
                     iidxs
                         .into_iter()
-                        .map(|iidx| (iidx, MlNodeInfo::new(parser, iidx, i))),
+                        .map(|iidx| (iidx, MlNodeInfo::new(parser, iidx, i, &mut cached))),
                 );
                 sig
             })
@@ -238,7 +240,7 @@ impl<'a> MlAnalysis<'a> {
 #[derive(Debug)]
 pub struct MlNodeInfo {
     pub ml_sig: MlSigIdx,
-    pub ast_size: u32,
+    pub ast_size: Option<NonMaxU64>,
     pub blames: Box<[CollectedBlame]>,
 
     pub tree_above: Vec<MlLinkInfo>,
@@ -318,7 +320,7 @@ impl MlAnalysisInner<'_> {
                 let enode = self
                     .parser
                     .synth_terms
-                    .generalise_first(&self.parser.terms, smaller.owner, larger.owner)
+                    .generalise_first(&self.parser.terms, smaller.owner, larger.owner, 20)
                     .unwrap()?;
                 // println!("result  : {:?}", enode.debug(self.parser));
                 assert_eq!(smaller.equalities.len(), larger.equalities.len());
@@ -335,7 +337,7 @@ impl MlAnalysisInner<'_> {
                         let from = self
                             .parser
                             .synth_terms
-                            .generalise_first(&self.parser.terms, self_eq.1, other_eq.1)
+                            .generalise_first(&self.parser.terms, self_eq.1, other_eq.1, 20)
                             .unwrap()?;
                         // println!("result   : {:?}", from.debug(self.parser));
                         // println!(
@@ -346,7 +348,7 @@ impl MlAnalysisInner<'_> {
                         let to = self
                             .parser
                             .synth_terms
-                            .generalise_first(&self.parser.terms, self_eq.2, other_eq.2)
+                            .generalise_first(&self.parser.terms, self_eq.2, other_eq.2, 20)
                             .unwrap()?;
                         // println!("result   : {:?}", to.debug(self.parser));
                         Some((from, to))
@@ -412,10 +414,15 @@ impl MlNodeInfo {
         blames.map(|blame| CollectedBlame::new(parser, blame))
     }
 
-    pub fn new(parser: &Z3Parser, iidx: InstIdx, ml_sig: MlSigIdx) -> Self {
+    pub fn new(
+        parser: &Z3Parser,
+        iidx: InstIdx,
+        ml_sig: MlSigIdx,
+        cached: &mut FxHashMap<TermIdx, AstSize>,
+    ) -> Self {
         Self {
             ml_sig,
-            ast_size: parser.inst_ast_size(iidx),
+            ast_size: parser.inst_ast_size(iidx, cached),
             tree_above: Default::default(),
             blames: Self::blames(parser, iidx).collect(),
         }
@@ -492,6 +499,15 @@ impl MlNodeInfo {
             Some(above)
         })
     }
+
+    pub fn ge_ast_size(&self, other: &Self) -> bool {
+        match (self.ast_size, other.ast_size) {
+            (Some(ss), Some(os)) => ss >= os,
+            (Some(_), None) => false,
+            (None, Some(_)) => true,
+            (None, None) => true,
+        }
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -559,7 +575,7 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
 
         curr.filter(|prev_iidx| {
             let prev_info = self.node_to_ml.get_mut(&prev_iidx).unwrap();
-            if prev_info.ml_sig == curr_info.ml_sig && prev_info.ast_size <= curr_info.ast_size {
+            if prev_info.ml_sig == curr_info.ml_sig && curr_info.ge_ast_size(prev_info) {
                 let mut gen = None;
                 let mut max_ungen_depth = 0;
                 let mut max_depth = 0;

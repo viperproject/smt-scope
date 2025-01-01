@@ -426,8 +426,8 @@ impl MlExplainer {
                 self.ancestor_is_recurring = false;
 
                 let all = self.equalities().transitive[eq].all(forward);
-                for next in all {
-                    use TransitiveExplSegmentKind::*;
+                use TransitiveExplSegmentKind::*;
+                for next in all.clone() {
                     match next.kind {
                         Given(eq_use) => self.walk_given(eq_use, next.forward)?,
                         Transitive(eq) => self.walk_trans(eq, next.forward)?,
@@ -435,6 +435,13 @@ impl MlExplainer {
                     }
                     ancestor_is_recurring |= self.ancestor_is_recurring;
                     self.ancestor_is_recurring = false;
+                }
+                if !self.ancestor_is_recurring {
+                    for next in all {
+                        if let Transitive(eq) = next.kind {
+                            self.burned_eqs.insert(eq);
+                        }
+                    }
                 }
                 self.ancestor_is_recurring = ancestor_is_recurring;
                 Ok(())
@@ -483,6 +490,9 @@ impl MlExplainer {
                 eq: EqTransIdx,
                 forward: bool,
             ) -> core::result::Result<(), Never> {
+                if self.burned_eqs.contains(&eq) {
+                    return Ok(());
+                }
                 self.super_walk_trans(eq, forward)?;
                 if self.ancestor_is_recurring && !self.add_mode {
                     self.burned_eqs.insert(eq);

@@ -121,6 +121,7 @@ type BackwardIter<'a> = std::iter::Map<
     std::iter::Rev<std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>>,
     fn(TransitiveExplSegment) -> TransitiveExplSegment,
 >;
+#[derive(Clone)]
 pub enum TransitiveExplIter<'a> {
     Forward(std::iter::Copied<std::slice::Iter<'a, TransitiveExplSegment>>),
     Backward(BackwardIter<'a>),

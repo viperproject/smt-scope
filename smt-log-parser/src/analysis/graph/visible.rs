@@ -88,15 +88,18 @@ impl InstGraph {
                 let from_h = edge.from.hidden;
                 let v_from_v = self_.reverse(from_v).unwrap();
                 if edge.is_direct_visible() {
-                    assert!(
-                        from_h.is_none() && path.is_some_and(|p| p.is_empty()) && !edge.indirect
-                    );
+                    assert!(from_h.is_none() && !edge.indirect);
                     let old_len = edges_to_add.len();
                     for edge in self.raw.graph.edges_connecting(from_v.0, i_idx.0) {
                         let edge = RawEdgeIndex(edge.id());
                         edges_to_add.push((edge, v_from_v, Ok(edge), VisibleEdge::Direct(edge)));
                     }
-                    assert!(edges_to_add.len() > old_len);
+                    // The path is Some if there is only one possible path.
+                    if path.is_some() {
+                        assert!(edges_to_add.len() == old_len + 1);
+                    } else {
+                        assert!(edges_to_add.len() > old_len + 1);
+                    }
                 } else {
                     assert_ne!(from_v, edge.to_h);
                     let from = from_h

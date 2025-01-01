@@ -7,6 +7,8 @@ use yew::prelude::*;
 #[derive(Properties, Clone, PartialEq)]
 pub struct QuantColourBoxProps {
     pub hue: Option<f64>,
+    pub margin_left: Option<bool>,
+    pub margin_right: Option<bool>,
 }
 
 #[function_component]
@@ -14,7 +16,13 @@ pub fn QuantColourBox(props: &QuantColourBoxProps) -> Html {
     let style = props
         .hue
         .map(|hue| format!("background-color: hsl({hue}, 79%, 76%)"));
-    html! { <div class="node-colour" {style}></div> }
+    let class = match (props.margin_left, props.margin_right) {
+        (Some(true), Some(true)) => "node-colour ml mr",
+        (Some(true), _) => "node-colour ml",
+        (_, Some(true)) => "node-colour mr",
+        (_, _) => "node-colour",
+    };
+    html! { <div {class} {style}></div> }
 }
 
 #[derive(Debug, Clone)]

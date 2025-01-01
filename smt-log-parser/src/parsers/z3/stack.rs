@@ -7,8 +7,10 @@ use crate::{
         Assignment, Cdcl, CdclBacklink, CdclIdx, CdclKind, Conflict, ENodeIdx, InstIdx, MatchIdx,
         ProofIdx, StackFrame, StackIdx,
     },
-    Error, Result, TiVec, Z3Parser,
+    Error, Result, TiVec,
 };
+
+use super::Z3Parser;
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]

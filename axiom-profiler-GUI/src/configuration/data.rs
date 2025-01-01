@@ -58,7 +58,7 @@ impl Configuration {
             input: None,
             html: true,
             font_tag: false,
-            ast_depth_limit: NonMaxU32::new(50),
+            ast_depth_limit: NonMaxU32::new(20),
             // Set manually elsewhere
             enode_char_limit: None,
         }

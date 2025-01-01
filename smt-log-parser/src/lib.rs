@@ -22,6 +22,6 @@ pub use mem_dbg::{
     BigRational, BoxSlice, DiGraph, FxHashMap, FxHashSet, Graph, IString, NonMaxU32, NonMaxUsize,
     StringTable, TiVec, UnGraph,
 };
-pub use parsers::z3::z3parser::Z3Parser;
+pub use parsers::z3::Z3Parser;
 pub use parsers::LogParser;
 pub use util::*;

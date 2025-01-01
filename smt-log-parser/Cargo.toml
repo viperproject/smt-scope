@@ -36,7 +36,9 @@ clap = { version = "4.5.4", features = ["derive"] }
 [dev-dependencies]
 memory-stats = "1.1.0"
 cap = "0.1.2"
-smt-log-parser = { path = ".", features = ["mem_dbg"] }
+serde_json = "1.0"
+rand = "0.8"
+smt-log-parser = { path = ".", features = ["mem_dbg", "serde"] }
 
 [features]
 default = ["display", "analysis"]

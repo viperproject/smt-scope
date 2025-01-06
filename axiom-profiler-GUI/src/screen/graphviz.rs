@@ -558,7 +558,7 @@ impl
     }
 
     fn class(&self, _ctx: ()) -> String {
-        format!("{:?}", self.quant)
+        format!("{}", self.quant)
     }
 
     fn ordering(&self, (): ()) -> &'static str {

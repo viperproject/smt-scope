@@ -524,6 +524,28 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for &QuantKind {
     }
 }
 
+impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for QuantPat {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'_>,
+        data: &mut (),
+    ) -> fmt::Result {
+        ctxt.parser[self.quant].kind.fmt_with(f, ctxt, data)?;
+        match self.pat {
+            Some(pat) => {
+                let patterns = ctxt.parser.patterns(self.quant);
+                if patterns.is_some_and(|p| p.len() > 1) {
+                    write!(f, "{pat}")
+                } else {
+                    Ok(())
+                }
+            }
+            None => write!(f, "{{MBQI}}"),
+        }
+    }
+}
+
 ////////////
 // Item defs
 ////////////

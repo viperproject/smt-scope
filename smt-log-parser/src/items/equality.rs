@@ -77,7 +77,7 @@ impl EqualityExpl {
     pub fn walk_any(&self, from: ENodeIdx) -> ENodeIdx {
         let Some(to) = self.walk(from, true).or_else(|| self.walk(from, false)) else {
             panic!(
-                "walking from {from:?} with {:?} <--> {:?}",
+                "walking from {from} with {} <--> {}",
                 self.from(),
                 self.to()
             );

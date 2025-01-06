@@ -92,7 +92,7 @@ impl MatchKind {
         &self,
         enode: impl Fn(ENodeIdx) -> T,
         term: impl Fn(TermIdx) -> T,
-    ) -> Vec<T> {
+    ) -> Box<[T]> {
         match self {
             Self::MBQI { bound_terms, .. } | Self::Quantifier { bound_terms, .. } => {
                 bound_terms.iter().map(|&x| enode(x)).collect()
@@ -134,7 +134,7 @@ impl MatchKind {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "mem_dbg", copy_type)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BlameKind {
     Term { term: ENodeIdx },
     Equality { eq: EqTransIdx },
@@ -157,7 +157,7 @@ impl BlameKind {
 /// Explains how a term in a pattern was matched. It will always start with an
 /// enode and then have some sequence of equalities used to rewrite distinct
 /// subexpressions of the enode.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Blame<'a> {
     slice: &'a [BlameKind],
 }

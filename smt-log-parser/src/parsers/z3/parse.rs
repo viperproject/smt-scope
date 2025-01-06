@@ -371,6 +371,10 @@ impl Z3Parser {
         let bool_lit = lit.parse::<NonMaxU32>().map_err(E::InvalidBoolLiteral)?;
         Ok(Some((Some(bool_lit), value)))
     }
+
+    fn can_blame_match_subpat(&self, blame: ENodeIdx, subpat: TermIdx) -> bool {
+        self[self[blame].owner].kind == self[subpat].kind
+    }
 }
 
 impl Z3LogParser for Z3Parser {
@@ -687,13 +691,40 @@ impl Z3LogParser for Z3Parser {
                 bound_terms,
             }
         };
+        // Z3 BUG: https://github.com/viperproject/axiom-profiler-2/issues/63
+        let pat = kind.quant_pat().unwrap();
+        let pat = self.get_pattern_term(pat).unwrap();
+        // SAFETY: we do not mutate the `terms` field of `self`.
+        let subpats_slice = unsafe { &*(&*pat.child_ids as *const [TermIdx]) };
+        debug_assert!(!subpats_slice.is_empty());
+        let mut subpats = subpats_slice.iter();
+        let mut last = None;
 
         let mut blamed = Vec::new();
         let mut next = l.next();
         while let Some(word) = next.take() {
             let term = self.parse_existing_enode(word)?;
             blamed.try_reserve(1)?;
-            blamed.push(BlameKind::Term { term });
+            // Does `blamed.push(BlameKind::Term { term })`
+            if let Some(next) = subpats.as_slice().first() {
+                // If there are still more subpatterns to match, check if this
+                // blame is valid for the next one.
+                if self.can_blame_match_subpat(term, *next) {
+                    blamed.push(BlameKind::Term { term });
+                    last = Some(*subpats.next().unwrap());
+                } else {
+                    // Ignore this term, only appears due to the above z3 bug.
+                    blamed.push(BlameKind::IgnoredTerm { term });
+                }
+            } else {
+                // We have already matched the last subpattern
+                if let Some(last) = last {
+                    if self.can_blame_match_subpat(term, last) {
+                        return Err(E::SubpatTooManyBlame(self[self[term].owner].id));
+                    }
+                }
+                blamed.push(BlameKind::IgnoredTerm { term });
+            }
             // `append_trans_equality_tuples` would gobble the next term otherwise, so capture it instead.
             let l = l.by_ref().take_while(|s| {
                 let cond = s.as_bytes().first().is_some_and(|f| *f == b'(')
@@ -709,12 +740,35 @@ impl Z3LogParser for Z3Parser {
                 Ok(())
             })?;
         }
+        // Related to the bug. Sometimes z3 lists the last subpat blame first.
+        // In this case rotate it to the end and set it as valid.
+        if let [rem_sp] = subpats.as_slice() {
+            if let Some(BlameKind::IgnoredTerm { term }) = blamed.first().copied() {
+                if self.can_blame_match_subpat(term, *rem_sp) {
+                    let to_move = blamed.iter().position(|b| b.term().is_some());
+                    let to_move = to_move.unwrap_or(blamed.len());
+                    blamed.rotate_left(to_move);
+                    let new_idx = blamed.len() - to_move;
+                    debug_assert_eq!(blamed[new_idx], BlameKind::IgnoredTerm { term });
+                    blamed[new_idx] = BlameKind::Term { term };
+                    subpats.next();
+                }
+            }
+        }
+        if !subpats.as_slice().is_empty() {
+            return Err(E::SubpatTooFewBlame(subpats.as_slice().len()));
+        }
 
         let match_ = Match {
             kind,
             blamed: blamed.into(),
             frame: self.stack.active_frame(),
         };
+        debug_assert_eq!(match_.pattern_matches().count(), subpats_slice.len());
+        debug_assert!(match_
+            .pattern_matches()
+            .zip(subpats_slice)
+            .all(|(m, s)| self.can_blame_match_subpat(m.enode(), *s)));
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
     }

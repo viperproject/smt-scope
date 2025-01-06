@@ -3,7 +3,6 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{BoxSlice, Error, NonMaxU32, Result};
 use std::fmt;
-use std::ops::Index;
 
 use super::{
     ENodeIdx, EqTransIdx, MatchIdx, PatternIdx, ProofIdx, QuantIdx, QuantPat, StackIdx, TermId,
@@ -26,14 +25,14 @@ impl Match {
     /// matched. This returns a sequence of `Blame` where each explains how the
     /// corresponding term in the pattern was matched.
     pub fn pattern_matches(&self) -> impl Iterator<Item = Blame> {
-        let mut last = 0;
-        let terms = self
+        let mut terms = self
             .blamed
             .iter()
             .enumerate()
             .flat_map(|(idx, blame)| matches!(blame, BlameKind::Term { .. }).then(|| idx))
             .chain([self.blamed.len()]);
-        terms.skip(1).map(move |idx| {
+        let mut last = terms.next().unwrap_or_default();
+        terms.map(move |idx| {
             let slice = &self.blamed[last..idx];
             last = idx;
             Blame { slice }
@@ -137,19 +136,23 @@ impl MatchKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BlameKind {
     Term { term: ENodeIdx },
+    // See https://github.com/viperproject/axiom-profiler-2/issues/63
+    // sometimes we need to ignore a blamed term.
+    IgnoredTerm { term: ENodeIdx },
     Equality { eq: EqTransIdx },
 }
 impl BlameKind {
-    fn unwrap_enode(&self) -> &ENodeIdx {
+    pub(crate) fn term(&self) -> Option<&ENodeIdx> {
         match self {
-            Self::Term { term } => term,
-            _ => panic!("expected term"),
+            Self::Term { term } => Some(term),
+            _ => None,
         }
     }
-    fn unwrap_eq(&self) -> &EqTransIdx {
+    pub(crate) fn equality(&self) -> Option<core::result::Result<&EqTransIdx, &ENodeIdx>> {
         match self {
-            Self::Equality { eq } => eq,
-            _ => panic!("expected equality"),
+            Self::Equality { eq } => Some(Ok(eq)),
+            Self::IgnoredTerm { term } => Some(Err(term)),
+            _ => None,
         }
     }
 }
@@ -163,20 +166,18 @@ pub struct Blame<'a> {
 }
 impl<'a> Blame<'a> {
     pub fn enode(self) -> ENodeIdx {
-        *self.slice[0].unwrap_enode()
+        *self.slice[0].term().expect("expected term")
     }
 
     pub fn equalities_len(self) -> usize {
         self.slice.len() - 1
     }
     pub fn equalities(self) -> impl Iterator<Item = EqTransIdx> + 'a {
-        self.slice.iter().skip(1).map(|x| *x.unwrap_eq())
-    }
-}
-impl Index<usize> for Blame<'_> {
-    type Output = EqTransIdx;
-    fn index(&self, idx: usize) -> &Self::Output {
-        self.slice[idx + 1].unwrap_eq()
+        self.slice
+            .iter()
+            .skip(1)
+            .filter_map(|x| x.equality().expect("unexpected term").ok())
+            .copied()
     }
 }
 

@@ -56,6 +56,8 @@ pub enum Error {
     InvalidQVarInteger(ParseIntError),
     NewMatchOnLambda(QuantIdx),
     UnknownPatternIdx(TermIdx),
+    SubpatTooManyBlame(TermId),
+    SubpatTooFewBlame(usize),
 
     // Inst discovered
     /// theory-solving non-rewrite axiom should blame valid enodes

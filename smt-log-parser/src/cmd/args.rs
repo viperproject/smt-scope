@@ -51,4 +51,9 @@ pub enum Commands {
         #[arg(short, long, default_value_t = false)]
         clean: bool,
     },
+    /// Analyse the redundancy in the log file
+    Redundancy {
+        /// The path to the smt log file
+        logfile: std::path::PathBuf,
+    },
 }

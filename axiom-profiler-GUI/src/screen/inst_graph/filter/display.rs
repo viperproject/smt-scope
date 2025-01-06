@@ -51,7 +51,7 @@ impl Filter {
             }
             IgnoreAllButQuantifier(None) => "Hide all quant".to_string(),
             IgnoreAllButQuantifier(Some(qidx)) => {
-                format!("Hide all but quant ${qidx:?}$")
+                format!("Hide all but quant ${qidx}$")
             }
             AllButExpensive(max) => format!("Hide all but |{max}| expensive"),
             MaxBranching(max) => {

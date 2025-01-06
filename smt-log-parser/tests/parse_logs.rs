@@ -101,7 +101,7 @@ fn parse_all_logs() {
             ALLOCATOR.set_limit(mem_limit as usize).unwrap();
 
             let now = Instant::now();
-            let mut inst_graph = analysis::run_all(&parser);
+            let mut inst_graph = analysis::run_all(&parser).inst_graph;
             let elapsed_ig = now.elapsed();
             assert!(
                 elapsed_ig < timeout,

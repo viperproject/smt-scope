@@ -29,7 +29,7 @@ macro_rules! idx {
         }
         impl core::fmt::Display for $struct {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                write!(f, "{}", self.0)
+                write!(f, $prefix, self.0)
             }
         }
         impl $struct {

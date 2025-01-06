@@ -7,6 +7,7 @@ use crate::{
     Error, FxHashMap, Result, TiVec,
 };
 
+#[derive(Debug)]
 pub struct InstData<'a> {
     pub iidx: InstIdx,
     pub inst: &'a Instantiation,

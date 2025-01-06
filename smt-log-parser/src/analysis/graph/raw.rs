@@ -520,18 +520,18 @@ pub enum NodeKind {
 impl fmt::Display for NodeKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NodeKind::ENode(enode) => write!(f, "{enode:?}"),
+            NodeKind::ENode(enode) => write!(f, "{enode}"),
             NodeKind::GivenEquality(eq, use_) => write!(
                 f,
-                "{eq:?}{}",
+                "{eq}{}",
                 use_.filter(|u| *u != NonMaxU32::ZERO)
                     .map(|u| format!("[{u}]"))
                     .unwrap_or_default()
             ),
-            NodeKind::TransEquality(eq) => write!(f, "{eq:?}"),
-            NodeKind::Instantiation(inst) => write!(f, "{inst:?}"),
-            NodeKind::Proof(ps) => write!(f, "{ps:?}"),
-            NodeKind::Cdcl(cdcl) => write!(f, "{cdcl:?}"),
+            NodeKind::TransEquality(eq) => write!(f, "{eq}"),
+            NodeKind::Instantiation(inst) => write!(f, "{inst}"),
+            NodeKind::Proof(ps) => write!(f, "{ps}"),
+            NodeKind::Cdcl(cdcl) => write!(f, "{cdcl}"),
         }
     }
 }

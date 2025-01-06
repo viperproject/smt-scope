@@ -159,8 +159,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             .quant_idx()
             .and_then(|quant| self.ctxt.parser[quant].vars.as_ref());
         Some(
-            bound_terms
-                .into_iter()
+            IntoIterator::into_iter(bound_terms)
                 .enumerate()
                 .map(|(idx, bound)| {
                     let name =

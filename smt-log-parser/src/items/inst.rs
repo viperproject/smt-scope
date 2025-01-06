@@ -25,14 +25,14 @@ impl Match {
     /// matched. This returns a sequence of `Blame` where each explains how the
     /// corresponding term in the pattern was matched.
     pub fn pattern_matches(&self) -> impl Iterator<Item = Blame> {
-        let mut last = 0;
-        let terms = self
+        let mut terms = self
             .blamed
             .iter()
             .enumerate()
             .flat_map(|(idx, blame)| matches!(blame, BlameKind::Term { .. }).then(|| idx))
             .chain([self.blamed.len()]);
-        terms.skip(1).map(move |idx| {
+        let mut last = terms.next().unwrap_or_default();
+        terms.map(move |idx| {
             let slice = &self.blamed[last..idx];
             last = idx;
             Blame { slice }
@@ -142,17 +142,17 @@ pub enum BlameKind {
     Equality { eq: EqTransIdx },
 }
 impl BlameKind {
-    fn unwrap_enode(&self) -> ENodeIdx {
-        match *self {
-            Self::Term { term } => term,
-            _ => panic!("expected term"),
+    pub(crate) fn term(&self) -> Option<&ENodeIdx> {
+        match self {
+            Self::Term { term } => Some(term),
+            _ => None,
         }
     }
-    fn unwrap_eq(&self) -> core::result::Result<&EqTransIdx, &ENodeIdx> {
+    pub(crate) fn equality(&self) -> Option<core::result::Result<&EqTransIdx, &ENodeIdx>> {
         match self {
-            Self::Equality { eq } => Ok(eq),
-            Self::IgnoredTerm { term } => Err(term),
-            _ => panic!("expected equality"),
+            Self::Equality { eq } => Some(Ok(eq)),
+            Self::IgnoredTerm { term } => Some(Err(term)),
+            _ => None,
         }
     }
 }
@@ -166,7 +166,7 @@ pub struct Blame<'a> {
 }
 impl<'a> Blame<'a> {
     pub fn enode(self) -> ENodeIdx {
-        self.slice[0].unwrap_enode()
+        *self.slice[0].term().expect("expected term")
     }
 
     pub fn equalities_len(self) -> usize {
@@ -176,7 +176,7 @@ impl<'a> Blame<'a> {
         self.slice
             .iter()
             .skip(1)
-            .filter_map(|x| x.unwrap_eq().ok())
+            .filter_map(|x| x.equality().expect("unexpected term").ok())
             .copied()
     }
 }

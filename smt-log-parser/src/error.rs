@@ -56,7 +56,6 @@ pub enum Error {
     InvalidQVarInteger(ParseIntError),
     NewMatchOnLambda(QuantIdx),
     UnknownPatternIdx(TermIdx),
-    SubpatFirstMismatch(TermId),
     SubpatTooManyBlame(TermId),
     SubpatTooFewBlame(usize),
 

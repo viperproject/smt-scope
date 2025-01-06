@@ -687,13 +687,43 @@ impl Z3LogParser for Z3Parser {
                 bound_terms,
             }
         };
+        // Z3 BUG: https://github.com/viperproject/axiom-profiler-2/issues/63
+        let pat = kind.quant_pat().unwrap();
+        let pat = self.get_pattern_term(pat).unwrap();
+        let subpat_len = pat.child_ids.len();
+        debug_assert!(subpat_len > 0);
+        // SAFETY: we do not mutate the `terms` field of `self`.
+        let subpats = unsafe { &*(&*pat.child_ids as *const [TermIdx]) };
+        let mut subpats = subpats.iter();
+        let mut last = None;
 
         let mut blamed = Vec::new();
         let mut next = l.next();
         while let Some(word) = next.take() {
             let term = self.parse_existing_enode(word)?;
             blamed.try_reserve(1)?;
-            blamed.push(BlameKind::Term { term });
+            // Does `blamed.push(BlameKind::Term { term })`
+            if let Some(next) = subpats.as_slice().first() {
+                // If there are still more subpatterns to match, check if this
+                // blame is valid for the next one.
+                if self[self[term].owner].kind == self[*next].kind {
+                    blamed.push(BlameKind::Term { term });
+                    last = Some(*subpats.next().unwrap());
+                } else {
+                    if last.is_none() {
+                        // The first blame we find must be valid.
+                        return Err(E::SubpatFirstMismatch(self[self[term].owner].id));
+                    }
+                    // Ignore this term, only appears due to the above z3 bug.
+                    blamed.push(BlameKind::IgnoredTerm { term });
+                }
+            } else {
+                // We have already matched the last subpattern
+                if self[self[term].owner].kind == self[last.unwrap()].kind {
+                    return Err(E::SubpatTooManyBlame(self[self[term].owner].id));
+                }
+                blamed.push(BlameKind::IgnoredTerm { term });
+            }
             // `append_trans_equality_tuples` would gobble the next term otherwise, so capture it instead.
             let l = l.by_ref().take_while(|s| {
                 let cond = s.as_bytes().first().is_some_and(|f| *f == b'(')
@@ -709,23 +739,15 @@ impl Z3LogParser for Z3Parser {
                 Ok(())
             })?;
         }
+        if !subpats.as_slice().is_empty() {
+            return Err(E::SubpatTooFewBlame(subpats.as_slice().len()));
+        }
 
         let match_ = Match {
             kind,
             blamed: blamed.into(),
             frame: self.stack.active_frame(),
         };
-        // Z3 BUG: Sometimes the number of pattern_matches is larger than the
-        // number of subpatterns available.
-        let pat = QuantPat {
-            quant,
-            pat: Some(pattern),
-        };
-        let subpats = self.get_pattern_term(pat).unwrap().child_ids.len();
-        let subpat_matches = match_.pattern_matches().count();
-        if subpats != subpat_matches {
-            return Err(E::MatchPatternMismatch(subpats, subpat_matches));
-        }
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
     }

@@ -56,8 +56,9 @@ pub enum Error {
     InvalidQVarInteger(ParseIntError),
     NewMatchOnLambda(QuantIdx),
     UnknownPatternIdx(TermIdx),
-    SubpatTooManyBlame(TermId),
     SubpatTooFewBlame(usize),
+    // Z3 BUG: https://github.com/viperproject/axiom-profiler-2/issues/63
+    SubpatUnknownBlame(String),
 
     // Inst discovered
     /// theory-solving non-rewrite axiom should blame valid enodes

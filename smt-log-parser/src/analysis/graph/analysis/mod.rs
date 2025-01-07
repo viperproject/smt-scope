@@ -101,15 +101,15 @@ impl Analysis {
 }
 
 impl InstGraph {
-    pub fn initialise_first(&mut self, parser: &Z3Parser) {
+    pub fn initialise_first(&mut self, parser: &Z3Parser, n: usize) {
         self.initialise_collect(ProofInitialiser::<false>, parser);
         self.initialise_collect(ProofInitialiser::<true>, parser);
         self.initialise_cdcl(parser);
 
-        self.initialise_default(parser);
+        self.initialise_default(parser, n);
     }
 
-    pub fn initialise_default(&mut self, parser: &Z3Parser) {
+    pub fn initialise_default(&mut self, parser: &Z3Parser, n: usize) {
         let mut reach = BwdReachableAnalysis::<ReachNonDisabled>::default();
         self.analysis.reach = self.topo_analysis(&mut reach);
 
@@ -121,16 +121,16 @@ impl InstGraph {
         self.initialise_transfer(NextInstsInit::<true>, parser);
         self.initialise_transfer(NextInstsInit::<false>, parser);
 
-        self.analyse();
+        self.analyse(n);
     }
 
-    pub fn analyse(&mut self) {
+    pub fn analyse(&mut self, n: usize) {
         self.analysis.cost.sorted_to = 0;
         self.analysis.children.sorted_to = 0;
         self.analysis.fwd_depth_min.sorted_to = 0;
-        self.analysis.first_n_cost(&self.raw, 10000);
-        self.analysis.first_n_children(&self.raw, 10000);
-        self.analysis.first_n_fwd_depth_min(&self.raw, 10000);
+        self.analysis.first_n_cost(&self.raw, n);
+        self.analysis.first_n_children(&self.raw, n);
+        self.analysis.first_n_fwd_depth_min(&self.raw, n);
     }
 }
 

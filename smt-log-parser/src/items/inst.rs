@@ -32,6 +32,7 @@ impl Match {
             .flat_map(|(idx, blame)| matches!(blame, BlameKind::Term { .. }).then(|| idx))
             .chain([self.blamed.len()]);
         let mut last = terms.next().unwrap_or_default();
+        debug_assert_eq!(last, 0);
         terms.map(move |idx| {
             let slice = &self.blamed[last..idx];
             last = idx;
@@ -136,10 +137,9 @@ impl MatchKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BlameKind {
     Term { term: ENodeIdx },
-    // See https://github.com/viperproject/axiom-profiler-2/issues/63
-    // sometimes we need to ignore a blamed term.
-    IgnoredTerm { term: ENodeIdx },
     Equality { eq: EqTransIdx },
+    // Z3 BUG: https://github.com/viperproject/axiom-profiler-2/issues/63
+    TermBug { term: ENodeIdx },
 }
 impl BlameKind {
     pub(crate) fn term(&self) -> Option<&ENodeIdx> {
@@ -151,7 +151,7 @@ impl BlameKind {
     pub(crate) fn equality(&self) -> Option<core::result::Result<&EqTransIdx, &ENodeIdx>> {
         match self {
             Self::Equality { eq } => Some(Ok(eq)),
-            Self::IgnoredTerm { term } => Some(Err(term)),
+            Self::TermBug { term } => Some(Err(term)),
             _ => None,
         }
     }

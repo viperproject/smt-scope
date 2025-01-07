@@ -190,12 +190,12 @@ impl EGraph {
         to: ENodeIdx,
         stack: &Stack,
         can_mismatch: impl Fn(&EGraph) -> bool,
-    ) -> Result<Option<EqTransIdx>> {
+    ) -> Result<core::result::Result<EqTransIdx, ENodeIdx>> {
         if from == to {
-            Ok(None)
+            Ok(Err(from))
         } else {
             self.construct_trans_equality(from, to, stack, can_mismatch)
-                .map(Some)
+                .map(Ok)
         }
     }
 
@@ -402,7 +402,7 @@ impl EGraph {
                 let mut use_ = Vec::new();
                 use_.try_reserve_exact(arg_eqs.len())?;
                 for (from, to) in args {
-                    let Some(trans) = self.new_trans_equality(from, to, stack, |_| false)? else {
+                    let Ok(trans) = self.new_trans_equality(from, to, stack, |_| false)? else {
                         continue;
                     };
                     use_.push(trans);

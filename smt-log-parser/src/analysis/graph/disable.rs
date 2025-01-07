@@ -16,7 +16,7 @@ impl InstGraph {
     ) {
         let (_, disabled_changed) = self.raw.reset_disabled_to_raw(f);
         if disabled_changed {
-            self.initialise_default(parser);
+            self.initialise_default(parser, super::DEFAULT_N);
         }
     }
 

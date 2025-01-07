@@ -16,6 +16,8 @@ pub mod visible;
 pub use raw::{RawEdgeIndex, RawNodeIndex};
 pub use visible::{VisibleEdgeIndex, VisibleNodeIndex};
 
+const DEFAULT_N: usize = 10000;
+
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
 pub struct InstGraph {
@@ -26,6 +28,13 @@ pub struct InstGraph {
 
 impl InstGraph {
     pub fn new(parser: &Z3Parser) -> Result<Self> {
+        Self::new_with_analysis(parser, DEFAULT_N)
+    }
+    pub fn new_lite(parser: &Z3Parser) -> Result<Self> {
+        Self::new_with_analysis(parser, 0)
+    }
+
+    fn new_with_analysis(parser: &Z3Parser, n: usize) -> Result<Self> {
         let mut raw = RawInstGraph::new(parser)?;
         let subgraphs = raw.partition()?;
         let analysis = Analysis::new(subgraphs.in_subgraphs())?;
@@ -34,7 +43,7 @@ impl InstGraph {
             subgraphs,
             analysis,
         };
-        self_.initialise_first(parser);
+        self_.initialise_first(parser, n);
         Ok(self_)
     }
 

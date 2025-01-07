@@ -10,8 +10,10 @@ use crate::{
         InstProofLink, Instantiation, Meaning, ProofIdx, ProofStep, ProofStepKind, QuantIdx, Term,
         TermId, TermIdToIdxMap, TermIdx, TermKind,
     },
-    Error, FxHashMap, IString, Result, StringTable, TiVec,
+    Error, FxHashMap, Result, StringTable, TiVec,
 };
+
+use super::bugs::TermsBug;
 
 pub trait HasTermId {
     fn term_id(&self) -> TermId;
@@ -150,10 +152,7 @@ pub struct Terms {
     pub(super) proof_terms: TermStorage<ProofIdx, ProofStep>,
 
     meanings: FxHashMap<TermIdx, Meaning>,
-    /// See https://github.com/viperproject/axiom-profiler-2/issues/100. Solve
-    /// this by switching to an artificial namespace after a "string" mk_app.
-    get_model: Option<IString>,
-    get_model_idx: u32,
+    pub(super) bug: TermsBug,
 }
 
 impl Terms {
@@ -257,43 +256,12 @@ impl Terms {
         self.is_true_const(tidx) || self.is_false_const(tidx)
     }
 
-    /// Normally one would use `app_terms.parse_existing_id`, but here we
-    /// implement the workaround for `get_model`.
-    pub fn parse_app_child_id(&self, strings: &mut StringTable, id: &str) -> Result<TermIdx> {
-        let mut term_id = TermId::parse(strings, id)?;
-        if let Some(namespace) = self.get_model {
-            debug_assert!(term_id.namespace.is_none());
-            term_id.namespace = Some(namespace);
-        }
+    /// Used only to give access to the `app_terms` field in `bugs.rs`.
+    pub(super) fn get_app_term_bug(&self, term_id: TermId) -> Result<TermIdx> {
         self.app_terms
             .get_term(term_id)
             .into_result()
             .map_err(Error::UnknownId)
-    }
-
-    pub fn check_get_model(&mut self, id: &mut TermId, name: &str, strings: &mut StringTable) {
-        let get_model = self.get_model.take();
-        if id.namespace.is_some() {
-            return;
-        }
-        // See https://github.com/Z3Prover/z3/blob/z3-4.13.4/src/ast/format.cpp#L45-L52
-        let Some(get_model) = get_model else {
-            // Is a mk_app line with this term the start of a get-model command?
-            if name == "string" {
-                let namespace = format!("get-model-{}", self.get_model_idx);
-                self.get_model_idx += 1;
-                self.get_model = Some(IString(strings.get_or_intern(namespace)));
-                id.namespace = self.get_model;
-            }
-            return;
-        };
-        match name {
-            "string" | "cr" | "compose" | "indent" | "choice" => {
-                self.get_model = Some(get_model);
-                id.namespace = Some(get_model);
-            }
-            _ => (),
-        }
     }
 }
 

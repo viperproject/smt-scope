@@ -1,0 +1,36 @@
+name: Run evaluation
+on:
+  push:
+    branches: [cav-eval]
+  workflow_dispatch:
+
+jobs:
+  eval:
+    strategy:
+      fail-fast: false
+      matrix:
+        verifier: ['carbon', 'dafny', 'fstar', 'silicon', 'smt-comp', 'verus']
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Z3
+        uses: pavpanchekha/setup-z3@1.2.2
+        with:
+          version: '4.8.7'
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shared"
+      - run: ./eval/build.sh
+      - run: ./eval/eval.sh ${{ matrix.verifier }}
+
+      - name: Archive data for upload
+        if: always()
+        run: tar -czf ${{ matrix.verifier }}.tar.bz2 eval/data/${{ matrix.verifier }}
+      - uses: actions/upload-artifact@v4.4.3
+        if: always()
+        with:
+          name: "${{ matrix.verifier }}"
+          path: ${{ matrix.verifier }}.tar.bz2
+          retention-days: 30

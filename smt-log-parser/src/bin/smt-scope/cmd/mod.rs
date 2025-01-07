@@ -1,6 +1,7 @@
 mod args;
 #[cfg(feature = "analysis")]
 mod dependencies;
+mod eval;
 mod reconstruct;
 mod redundancy;
 mod stats;
@@ -25,6 +26,7 @@ pub fn run() -> Result<(), String> {
         } => test::run(logfiles, timeout, memory)?,
         args::Commands::Reconstruct { logfile, clean } => reconstruct::run(logfile, clean)?,
         args::Commands::Redundancy { logfile } => redundancy::run(logfile)?,
+        args::Commands::Eval { logfile } => eval::run(logfile)?,
     }
 
     Ok(())

@@ -499,8 +499,7 @@ impl Z3LogParser for Z3Parser {
             &self.terms[proof_idx],
             &self.terms,
             &self.strings,
-        )?;
-        Ok(())
+        )
     }
 
     fn attach_meaning<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
@@ -537,8 +536,7 @@ impl Z3LogParser for Z3Parser {
         let idx = self.parse_existing_app(id)?;
         let idx = self.terms.new_meaning(idx, meaning)?;
         let meaning = self.terms.meaning(idx).unwrap();
-        self.events.new_meaning(idx, meaning, &self.strings)?;
-        Ok(())
+        self.events.new_meaning(idx, meaning, &self.strings)
     }
 
     fn attach_var_names<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
@@ -936,8 +934,7 @@ impl Z3LogParser for Z3Parser {
         let from_cdcl = matches!(self.comm.prev().last_line_kind, LineKind::DecideAndOr);
         let from_cdcl = from_cdcl || self.stack.is_speculative();
         self.stack.new_frame(scope, from_cdcl)?;
-        self.events.new_push()?;
-        Ok(())
+        self.events.new_push()
     }
 
     fn pop<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
@@ -953,18 +950,16 @@ impl Z3LogParser for Z3Parser {
         let conflict = matches!(self.comm.prev().last_line_kind, LineKind::Conflict);
         debug_assert_eq!(conflict, self.cdcl.has_conflict());
         let from_cdcl = self.stack.pop_frames(num, scope, conflict)?;
-        self.events.new_pop(num, from_cdcl)?;
         if conflict {
             self.cdcl.backtrack(&self.stack)?;
         }
-        Ok(())
+        self.events.new_pop(num, from_cdcl)
     }
 
     fn begin_check<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let scope = l.next().ok_or(E::UnexpectedNewline)?;
         let scope = scope.parse::<usize>().map_err(E::InvalidFrameInteger)?;
         self.stack.ensure_height(scope)?;
-        self.events.new_begin_check()?;
-        Ok(())
+        self.events.new_begin_check()
     }
 }

@@ -73,10 +73,7 @@ impl Z3Parser {
         }
     }
 
-    fn map<'a, T>(
-        l: impl Iterator<Item = &'a str>,
-        f: impl FnMut(&'a str) -> Result<T>,
-    ) -> Result<BoxSlice<T>> {
+    fn map<T, U>(l: impl Iterator<Item = T>, f: impl FnMut(T) -> Result<U>) -> Result<BoxSlice<U>> {
         l.map(f).collect()
     }
     fn gobble_var_names_list<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<VarNames> {
@@ -231,14 +228,6 @@ impl Z3Parser {
         Ok(IString(self.strings.try_get_or_intern(s)?))
     }
 
-    fn expected_null_str(&self) -> &'static str {
-        if self.version_info.is_ge_version(4, 11, 0) {
-            "<null>"
-        } else {
-            "null"
-        }
-    }
-
     fn quant_or_lamda(
         &mut self,
         full_id: TermId,
@@ -389,17 +378,8 @@ impl Z3LogParser for Z3Parser {
 
     fn mk_quant<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let full_id = self.parse_new_full_id(l.next())?;
-        let mut quant_name = std::borrow::Cow::Borrowed(l.next().ok_or(E::UnexpectedNewline)?);
-        let mut num_vars_str = l.next().ok_or(E::UnexpectedNewline)?;
-        let mut num_vars = num_vars_str.parse::<u32>();
-        // The name may contain spaces... TODO: PR to add quotes around name when logging in z3
-        while num_vars.is_err() {
-            quant_name = std::borrow::Cow::Owned(format!("{quant_name} {num_vars_str}"));
-            num_vars_str = l.next().ok_or(E::UnexpectedNewline)?;
-            num_vars = num_vars_str.parse::<u32>();
-        }
+        let (quant_name, num_vars) = self.parse_qid(&mut l)?;
         let quant_name = QuantKind::parse(&mut self.strings, &quant_name);
-        let num_vars = num_vars.unwrap();
         let child_ids = Self::map(l, |id| self.parse_existing_app(id))?;
         assert!(!child_ids.is_empty());
         let child_id_names = || {
@@ -417,10 +397,8 @@ impl Z3LogParser for Z3Parser {
 
     fn mk_lambda<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let full_id = self.parse_new_full_id(l.next())?;
-        let lambda_name = l.next().ok_or(E::UnexpectedNewline)?;
-        if lambda_name != self.expected_null_str() {
-            return Err(E::NonNullLambdaName(lambda_name.to_string()));
-        }
+        let lambda = l.next().ok_or(E::UnexpectedNewline)?;
+        self.check_lambda_name(lambda)?;
         let num_vars = l.next().ok_or(E::UnexpectedNewline)?;
         let num_vars = num_vars.parse::<u32>().map_err(E::InvalidQVarInteger)?;
         let child_ids = Self::map(l, |id| self.parse_existing_proof(id))?;
@@ -446,12 +424,15 @@ impl Z3LogParser for Z3Parser {
     fn mk_app<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
         let id_str = l.next().ok_or(E::UnexpectedNewline)?;
         let mut id = TermId::parse(&mut self.strings, id_str)?;
-        let name = l.next().ok_or(E::UnexpectedNewline)?;
-        debug_assert!(name != "true" || id_str == "#1");
-        debug_assert!(name != "false" || id_str == "#2");
-        self.terms.check_get_model(&mut id, name, &mut self.strings);
-        let name = self.mk_string(name)?;
-        let child_ids = Self::map(l, |id| self.terms.parse_app_child_id(&mut self.strings, id))?;
+        let (name, child) = self.parse_app_name(&mut l)?;
+        debug_assert!(id_str != "#1" || name == "true");
+        debug_assert!(id_str != "#2" || name == "false");
+        self.terms
+            .check_get_model(&mut id, &name, &mut self.strings);
+        let name = self.mk_string(&name)?;
+        let child = child.into_iter().map(Ok);
+        let child_ids = child.chain(l.map(|id| TermId::parse(&mut self.strings, id)));
+        let child_ids = Self::map(child_ids, |id| self.terms.parse_app_child_id(id?))?;
         let term = Term {
             id,
             kind: TermKind::App(name),

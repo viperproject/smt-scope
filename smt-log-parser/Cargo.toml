@@ -32,6 +32,7 @@ duplicate = "1.0"
 strum = { version = "0.26", features = ["derive"] }
 # For the command line interface
 clap = { version = "4.5.4", features = ["derive"] }
+tempfile = "3"
 
 [dev-dependencies]
 memory-stats = "1.1.0"

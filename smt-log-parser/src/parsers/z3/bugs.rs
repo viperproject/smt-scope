@@ -41,71 +41,54 @@ impl Z3Parser {
             .collect();
         debug_assert_eq!(b_roots.len(), root_count);
 
-        let mut valid_rotation = None;
-        let mut skipped = Vec::new();
-        for offset in 0..b_roots.len() {
-            if !self.can_blame_match_subpat(b_roots[offset].1, pattern.child_ids[0]) {
-                continue;
-            }
-            let can_skip = b_roots.len() - pattern.child_ids.len();
-            let idx = |i| b_roots[(offset + i) % b_roots.len()];
-            let mut ok = true;
-            'outer: for (i, &sp) in pattern.child_ids.iter().enumerate().skip(1) {
-                while !self.can_blame_match_subpat(idx(skipped.len() + i).1, sp) {
-                    if skipped.len() == can_skip {
-                        ok = false;
-                        break 'outer;
-                    }
-                    skipped.push(skipped.len() + i);
-                }
-            }
-            if ok {
-                valid_rotation.replace(offset);
-                let mut skip = |i| {
-                    let i = idx(i).0;
-                    let b = &mut blamed[i];
-                    let term = *b.term().unwrap();
-                    *b = BlameKind::TermBug { term };
-                    root_count -= 1;
-                };
-                for &i in &skipped {
-                    skip(i);
-                }
-                for i in 0..(can_skip - skipped.len()) {
-                    skip(skipped.len() + pattern.child_ids.len() + i);
-                }
-                debug_assert_eq!(root_count, pattern.child_ids.len());
-                break;
-                // To error on ambiguous replace the above block with:
-                // let old = valid_rotation.replace(offset);
-                // if let Some(old) = old {
-                //     return Err(E::SubpatAmbiguousBlame(old, offset));
-                // }
-            }
-            skipped.clear();
+        let success = self.try_rotations(blamed, pattern, &b_roots);
+        if success {
+            Ok(())
+        } else {
+            self.permute_blamed(blamed, pattern, b_roots)
+        }
+    }
+
+    // Just rotations didn't work, try some permutations as well
+    fn permute_blamed(
+        &self,
+        blamed: &mut [BlameKind],
+        pattern: &Term,
+        mut b_roots: Vec<(usize, ENodeIdx)>,
+    ) -> Result<()> {
+        // The only permutation we try here is reversing, this might still fail
+        // for subpat lengths >= 4.
+        for i in 0..b_roots.len() {
+            let (from, _) = b_roots[i];
+            let to = b_roots.get(i + 1).map(|(i, _)| *i).unwrap_or(blamed.len());
+            b_roots[i].0 = blamed.len() - to;
+            blamed[from..to].reverse();
+        }
+        blamed.reverse();
+        b_roots.reverse();
+
+        let success = self.try_rotations(blamed, pattern, &b_roots);
+        if success {
+            return Ok(());
         }
 
-        let Some(rotation) = valid_rotation else {
-            let name = |t: TermIdx| &self[self[t].kind.app_name().unwrap()];
-            let blamed = blamed.iter().filter_map(|b| match *b {
-                BlameKind::Term { term } => Some((true, term)),
-                BlameKind::Equality { .. } => None,
-                BlameKind::TermBug { term } => Some((false, term)),
-            });
-            let blamed = blamed.map(|(r, t)| format!("{r} {}", name(self[t].owner)));
-            let pattern = pattern.child_ids.iter().copied();
-            let s = format!(
-                "Blamed: [{}] | Subpats: [{}]",
-                blamed.collect::<Vec<_>>().join(", "),
-                pattern.map(name).collect::<Vec<_>>().join(", "),
-            );
-            return Err(E::SubpatUnknownBlame(s));
-        };
-        let rotation = b_roots[rotation].0;
-        blamed.rotate_left(rotation);
-        debug_assert!(blamed[0].term().is_some());
-        Ok(())
+        let name = |t: TermIdx| &self[self[t].kind.app_name().unwrap()];
+        let blamed = blamed.iter().filter_map(|b| match *b {
+            BlameKind::Term { term } => Some((true, term)),
+            BlameKind::Equality { .. } => None,
+            BlameKind::TermBug { term } => Some((false, term)),
+        });
+        let blamed = blamed.map(|(r, t)| format!("{r} {}", name(self[t].owner)));
+        let pattern = pattern.child_ids.iter().copied();
+        let s = format!(
+            "Blamed: [{}] | Subpats: [{}]",
+            blamed.collect::<Vec<_>>().join(", "),
+            pattern.map(name).collect::<Vec<_>>().join(", "),
+        );
+        Err(E::SubpatUnknownBlame(s))
     }
+
+    // util
 
     fn disable_obvious_blamed_bugs(
         &self,
@@ -131,6 +114,66 @@ impl Z3Parser {
             }
             *b = BlameKind::TermBug { term };
             *root_count -= 1;
+        }
+    }
+
+    fn try_rotations(
+        &self,
+        blamed: &mut [BlameKind],
+        pattern: &Term,
+        b_roots: &[(usize, ENodeIdx)],
+    ) -> bool {
+        let mut valid_rotation = None;
+        let mut skipped = Vec::new();
+        'outer: for offset in 0..b_roots.len() {
+            if !self.can_blame_match_subpat(b_roots[offset].1, pattern.child_ids[0]) {
+                continue;
+            }
+            let can_skip = b_roots.len() - pattern.child_ids.len();
+            let idx = |i| b_roots[(offset + i) % b_roots.len()];
+            for (i, &sp) in pattern.child_ids.iter().enumerate().skip(1) {
+                while !self.can_blame_match_subpat(idx(skipped.len() + i).1, sp) {
+                    if skipped.len() == can_skip {
+                        skipped.clear();
+                        continue 'outer;
+                    }
+                    skipped.push(skipped.len() + i);
+                }
+            }
+
+            // Found a valid rotation
+
+            let mut root_count = b_roots.len();
+            valid_rotation.replace(offset);
+            let mut skip = |i| {
+                let i = idx(i).0;
+                let b = &mut blamed[i];
+                let term = *b.term().unwrap();
+                *b = BlameKind::TermBug { term };
+                root_count -= 1;
+            };
+            for &i in &skipped {
+                skip(i);
+            }
+            for i in 0..(can_skip - skipped.len()) {
+                skip(skipped.len() + pattern.child_ids.len() + i);
+            }
+            debug_assert_eq!(root_count, pattern.child_ids.len());
+            break;
+            // To error on ambiguous replace the above block with:
+            // let old = valid_rotation.replace(offset);
+            // if let Some(old) = old {
+            //     return Err(E::SubpatAmbiguousBlame(old, offset));
+            // }
+        }
+
+        if let Some(rotation) = valid_rotation {
+            let rotation = b_roots[rotation].0;
+            blamed.rotate_left(rotation);
+            debug_assert!(blamed[0].term().is_some());
+            true
+        } else {
+            false
         }
     }
 }

@@ -68,12 +68,12 @@ impl TermId {
     pub fn parse(strings: &mut StringTable, value: &str) -> Result<Self> {
         let hash_idx = value.bytes().position(|b| b == b'#');
         let hash_idx = hash_idx.ok_or_else(|| Error::InvalidIdHash(value.to_string()))?;
-        let namespace = (hash_idx != 0).then(|| IString(strings.get_or_intern(&value[..hash_idx])));
-        let id = &value[hash_idx + 1..];
-        let id = match id {
+        let (namespace, id) = value.split_at(hash_idx);
+        let id = match &id[1..] {
             "" => None,
             id => Some(id.parse::<NonMaxU32>().map_err(Error::InvalidIdNumber)?),
         };
+        let namespace = (!namespace.is_empty()).then(|| IString(strings.get_or_intern(namespace)));
         Ok(Self { namespace, id })
     }
     pub fn order(&self) -> u32 {

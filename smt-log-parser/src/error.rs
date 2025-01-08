@@ -51,6 +51,7 @@ pub enum Error {
     // Quantifier
     VarNamesListInconsistent, // attach var names
     VarNamesNoBar,
+    InvalidVarNum(ParseIntError),
     UnknownQuantifierIdx(TermIdx),
     NonNullLambdaName(String),
     InvalidQVarInteger(ParseIntError),

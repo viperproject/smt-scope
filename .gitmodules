@@ -1,0 +1,4 @@
+[submodule "eval/smt-logs"]
+	path = eval/smt-logs
+	url = https://github.com/viperproject/smt-logs.git
+	branch = smt2

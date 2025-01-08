@@ -14,6 +14,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
       - name: Install Z3
         uses: pavpanchekha/setup-z3@1.2.2
         with:
@@ -22,6 +24,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "shared"
+          save-if: "false"
       - run: ./eval/build.sh
       - run: ./eval/eval.sh ${{ matrix.verifier }}
 

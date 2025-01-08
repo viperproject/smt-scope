@@ -1,13 +1,16 @@
 DIRNAME="$(realpath "$(dirname "$0")")"
 mkdir -p "$DIRNAME/data"
 
-SMT2_DIR="$DIRNAME/smt-logs-smt2/smt2"
+SMT2_DIR="$DIRNAME/smt-logs/smt2"
 
 # If $1 is set search in "$SMT2_DIR/$1" else search in "$SMT2_DIR"
 SEARCH_DIR="$SMT2_DIR"
 [ -n "$1" ] && SEARCH_DIR="$SMT2_DIR/$1"
 [ -d "$SEARCH_DIR" ] || exit 1
 SMT2_FILES="$(find "$SEARCH_DIR" -name "*.smt2")"
+
+# Set the timeout for running z3, limits log size to about 0.25GB
+export TIMEOUT=3
 
 while read -r file; do
     # [ "${file#"$SMT2_DIR/"}" == "fstar/examples/preorders/queries-Ariadne.smt2" ] || continue
@@ -18,11 +21,11 @@ while read -r file; do
     OUTPUT="$DIRNAME/data/${FILE%.*}"
     OUTPUT_DIR="$(dirname "$OUTPUT")"
     LOGFILE="$(find "$OUTPUT_DIR" -name "$(basename "$OUTPUT")-fHash-*.log" -maxdepth 1 -type f)"
-    [ -n "$LOGFILE" ] || exit 1
-    [ -s "$LOGFILE" ] || exit 1
+    [ -n "$LOGFILE" ] || (echo "!!! No logfile found" && exit 1)
+    [ -s "$LOGFILE" ] || (echo "!!! Log file is empty for \"$FILE\"" && exit 1)
     cd "$OUTPUT_DIR"
 
-    echo "\n[LOGFILE] $(basename "$LOGFILE") $(ls -l "$LOGFILE" | awk '{print $5}')b" > "$OUTPUT.data"
+    echo "[LOGFILE] $(basename "$LOGFILE") $(ls -l "$LOGFILE" | awk '{print $5}')b" > "$OUTPUT.data"
     "$DIRNAME/run.sh" "$LOGFILE" >> "$OUTPUT.data"
 
     rm -f "$LOGFILE"

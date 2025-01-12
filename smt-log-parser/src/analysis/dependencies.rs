@@ -78,12 +78,12 @@ impl QuantifierAnalysis {
                 }
                 let direct_dep = &mut qinfo.direct_deps[i];
 
-                let created_by = parser[blame.enode()].blame.inst();
+                let created_by = parser[blame.enode].blame.inst();
                 let created_by =
                     created_by.and_then(|iidx| parser.get_inst(iidx).match_.kind.quant_idx());
                 *direct_dep.enode.entry(created_by).or_default() += 1;
 
-                for eq in blame.equalities() {
+                for &eq in blame.equalities.iter() {
                     let eq_parents = inst_graph.raw[eq].parents.insts.iter().copied();
                     let eq_parents =
                         eq_parents.filter_map(|iidx| parser.get_inst(iidx).match_.kind.quant_idx());

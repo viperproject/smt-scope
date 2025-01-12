@@ -49,8 +49,8 @@ impl MlSignature {
         let parents: Box<[_]> = match_
             .pattern_matches()
             .map(|blame| {
-                let eq_len = blame.equalities().count();
-                let blame = blame.enode();
+                let eq_len = blame.equalities.len();
+                let blame = blame.enode;
                 let eblame = &parser[blame];
                 let Some(created_by) = eblame.blame.inst() else {
                     return (InstParent::Const(blame), eq_len);

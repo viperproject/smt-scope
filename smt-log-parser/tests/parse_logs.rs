@@ -31,6 +31,10 @@ fn parse_all_logs() {
         .collect();
     all_logs.sort_by_key(|dir| dir.metadata().unwrap().len());
     for log in all_logs {
+        // if log.file_name().to_string_lossy() != "insert_log_name" {
+        //     continue;
+        // }
+
         // Put things in a thread to isolate memory usage more than the default.
         let builder = std::thread::Builder::new().stack_size(8 * MB as usize);
         let t = builder.spawn(move || {
@@ -70,12 +74,13 @@ fn parse_all_logs() {
             });
             let elapsed = now.elapsed();
             let mut parser = parser.take_parser();
+            let errors = parser.errors();
 
             let parse_bytes_kb = parse_bytes / 1024;
             let mem_size = parser.mem_size(SizeFlags::default());
             max_parse_ovhd = f64::max(max_parse_ovhd, mem_size as f64 / parse_bytes_ovhd as f64);
             println!(
-                "Finished parsing in {elapsed:?} ({} kB/ms). Memory use {} MB / {} MB (real {} MB):",
+                "Finished parsing in {elapsed:?} ({} kB/ms){errors}. Memory use {} MB / {} MB (real {} MB):",
                 1000 * parse_bytes_kb / elapsed.as_micros() as u64,
                 ALLOCATOR.allocated() / MB as usize,
                 ALLOCATOR.limit() / MB as usize,

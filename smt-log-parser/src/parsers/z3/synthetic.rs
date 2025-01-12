@@ -12,7 +12,6 @@ use crate::{
 use super::{terms::Terms, Z3Parser};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum AnyTerm {
     Parsed(Term),
@@ -46,7 +45,7 @@ impl AnyTerm {
         }
         match self {
             AnyTerm::Parsed(term) => Some(AnyTerm::Synth(SynthTerm {
-                kind: SynthTermKind::Parsed(term.kind),
+                kind: SynthTermKind::Parsed(term.kind()),
                 child_ids,
             })),
             AnyTerm::Synth(synth_term) => Some(AnyTerm::Synth(SynthTerm {
@@ -59,7 +58,6 @@ impl AnyTerm {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct SynthTerm {
     pub kind: SynthTermKind,
@@ -75,7 +73,6 @@ pub struct SynthIdx(TermIdx);
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "mem_dbg", copy_type)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 // Note that we must preserve `size_of::<SynthTermKind>() == size_of::<TermKind>()`!
 pub enum SynthTermKind {
@@ -111,7 +108,7 @@ impl AnyTerm {
     }
     pub fn kind(&self) -> SynthTermKind {
         match self {
-            AnyTerm::Parsed(term) => SynthTermKind::Parsed(term.kind),
+            AnyTerm::Parsed(term) => SynthTermKind::Parsed(term.kind()),
             AnyTerm::Synth(synth_term) => synth_term.kind,
             AnyTerm::Constant(_) => SynthTermKind::Constant,
         }

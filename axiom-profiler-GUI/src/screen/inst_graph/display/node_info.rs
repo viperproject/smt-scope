@@ -136,9 +136,10 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 let pattern = pattern
                     .with_data(self.ctxt, &mut Some(qpat.quant))
                     .to_string();
-                let enode = matched.enode().with(self.ctxt).to_string();
+                let enode = matched.enode.with(self.ctxt).to_string();
                 let equalities = matched
-                    .equalities()
+                    .equalities
+                    .iter()
                     .map(|eq| eq.with(self.ctxt).to_string())
                     .collect();
                 (pattern, enode, equalities)

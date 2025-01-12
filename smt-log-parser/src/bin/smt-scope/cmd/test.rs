@@ -49,8 +49,9 @@ fn run_file(path: PathBuf, timeout: f32, memory: bool) {
         #[cfg(feature = "mem_dbg")]
         result.mem_dbg(DbgFlags::default()).ok();
     }
+    let errors = result.errors();
     println!(
-        "[Parsing] {} after {} seconds (timeout {timeout:?})",
+        "[Parsing] {} after {} seconds (timeout {timeout:?}){errors}",
         if timeout.is_timeout() {
             "Timeout"
         } else {

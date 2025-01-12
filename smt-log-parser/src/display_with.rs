@@ -999,7 +999,7 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, ()> for &'a EventKind {
         match *self {
             EventKind::NewConst(term_idx) => {
                 let term = &ctxt.parser[term_idx];
-                let name = &ctxt.parser[term.kind.app_name().unwrap()];
+                let name = &ctxt.parser[term.app_name().unwrap()];
                 if term.child_ids.is_empty() {
                     write!(f, "(declare-const {name} ?)")
                 } else {

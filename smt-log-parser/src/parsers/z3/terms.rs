@@ -181,7 +181,6 @@ impl Terms {
 
     pub(super) fn quant(&self, quant: TermIdx) -> Result<QuantIdx> {
         self[quant]
-            .kind
             .quant_idx()
             .ok_or_else(|| Error::UnknownQuantifierIdx(quant))
     }
@@ -212,7 +211,7 @@ impl Terms {
         mut f: impl FnMut(TermIdx, &Term) -> core::result::Result<&[TermIdx], T>,
     ) -> core::result::Result<(), T> {
         self.app_terms
-            .ast_walk(tidx, |tidx, term| match term.kind {
+            .ast_walk(tidx, |tidx, term| match term.kind() {
                 TermKind::Var(_) => Ok(&[]),
                 TermKind::App(_) => f(tidx, term),
                 TermKind::Quant(_) => Ok(&[]),
@@ -227,18 +226,15 @@ impl Terms {
             .terms
             .last_key_value()
             .filter(|(_, term)| {
-                term.kind
-                    .app_name()
-                    .is_some_and(|name| &strings[*name] == "or")
+                term.app_name().is_some_and(|name| &strings[*name] == "or")
                     && term.child_ids.len() == 2
                     && {
                         let neg_quant = &self[term.child_ids[0]];
                         neg_quant
-                            .kind
                             .app_name()
                             .is_some_and(|name| &strings[*name] == "not")
                             && neg_quant.child_ids.len() == 1
-                            && self[neg_quant.child_ids[0]].kind.quant_idx().is_some()
+                            && self[neg_quant.child_ids[0]].quant_idx().is_some()
                     }
             })
             .map(|(idx, _)| idx)

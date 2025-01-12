@@ -5,7 +5,7 @@ use lasso::LassoError;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::items::{BlameKind, ENodeIdx, Fingerprint, QuantIdx, TermId, TermIdx};
+use crate::items::{Blame, ENodeIdx, Fingerprint, QuantIdx, TermId, TermIdx};
 
 pub type Result<T> = std::result::Result<T, Error>;
 pub type FResult<T> = std::result::Result<T, FatalError>;
@@ -58,15 +58,15 @@ pub enum Error {
     NewMatchOnLambda(QuantIdx),
     UnknownPatternIdx(TermIdx),
     SubpatTooFewBlame(usize),
-    // Z3 BUG: https://github.com/viperproject/axiom-profiler-2/issues/63
-    SubpatUnknownBlame(String),
+    // Z3 ISSUE: https://github.com/viperproject/axiom-profiler-2/issues/63
+    SubpatNoBlame(Vec<TermIdx>),
 
     // Inst discovered
     /// theory-solving non-rewrite axiom should blame valid enodes
     NonRewriteAxiomInvalidEnode(TermIdx),
     /// theory-solving rewrite axiom should only have one term
     RewriteAxiomMultipleTerms1(TermIdx),
-    RewriteAxiomMultipleTerms2(Vec<BlameKind>),
+    RewriteAxiomMultipleTerms2(Vec<Blame>),
     UnknownInstMethod(String),
 
     // Instance
@@ -89,9 +89,6 @@ pub enum Error {
     PopConflictMismatch,
     InvalidFrameInteger(ParseIntError),
 
-    // Proof
-    ProvedVar(TermIdx),
-
     // CDCL
     NoConflict,
     BoolLiteral,
@@ -99,9 +96,6 @@ pub enum Error {
     InvalidBoolLiteral(nonmax::ParseIntError),
     UnknownJustification(String),
     MissingColonJustification,
-
-    // File IO
-    FileRead(std::io::Error),
 
     Allocation(TryReserveError),
     Lasso(LassoError),

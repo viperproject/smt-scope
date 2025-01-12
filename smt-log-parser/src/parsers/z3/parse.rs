@@ -70,16 +70,7 @@ impl Z3Parser {
         kind: TermKind,
         child_ids: BoxSlice<TermIdx>,
     ) -> Result<TermIdx> {
-        let _ = Term::CHECK_SIZE;
-        let has_var = match &kind {
-            TermKind::App(_) => child_ids.iter().any(|&c| self[c].has_var()),
-            TermKind::Var(_) => {
-                debug_assert_eq!(child_ids.len(), 0);
-                true
-            }
-            TermKind::Quant(_) => !child_ids.is_empty(),
-        };
-        let term = Term::new(id, kind, child_ids, has_var);
+        let term = Term::new(id, kind, child_ids, |tidx| &self[tidx]);
         self.terms.app_terms.new_term(term)
     }
 

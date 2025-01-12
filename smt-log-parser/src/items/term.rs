@@ -1,5 +1,3 @@
-use core::{fmt, hash};
-
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
@@ -8,14 +6,11 @@ use crate::{BoxSlice, Error, FxHashMap, IString, NonMaxU32, Result, StringTable}
 use super::{QuantIdx, TermIdx};
 
 /// A Z3 term and associated data.
-#[derive(Clone)]
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Term {
     pub id: TermId,
-    /// Required such that `size_of::<Term>() == size_of::<AnyTerm>()` (rustc
-    /// cannot use the padding from `TermInfo` to put the discriminant bits from
-    /// `AnyTerm` but it can use the spare bits from this enum).
-    _padding: Option<()>,
-    info: TermInfo,
     kind: TermKindInner,
     /// Takes up `2 * size_of::<usize>()` space and avoids heap allocation for
     /// lens <= 1.
@@ -23,46 +18,36 @@ pub struct Term {
 }
 
 impl Term {
-    #[allow(clippy::no_effect)]
-    pub(crate) const CHECK_SIZE: bool = {
-        let sizeof_eq = core::mem::size_of::<Term>() == core::mem::size_of::<SafeTerm>();
-        [(); 1][!sizeof_eq as usize];
-        true
-    };
-
-    pub fn new(id: TermId, kind: TermKind, child_ids: BoxSlice<TermIdx>, has_var: bool) -> Self {
-        let _ = Self::CHECK_SIZE;
-        let mut info = TermInfo::default();
-        if has_var {
-            info |= TermInfo::HasVar;
-        }
+    pub fn new<'a>(
+        id: TermId,
+        kind: TermKind,
+        child_ids: BoxSlice<TermIdx>,
+        f: impl Fn(TermIdx) -> &'a Term,
+    ) -> Self {
         let kind = match kind {
-            TermKind::Var(var) => {
-                info |= TermInfo::KindVar;
-                TermKindInner { var }
-            }
+            TermKind::Var(var) => TermKindInner::Var(var),
             TermKind::App(app) => {
-                info |= TermInfo::KindApp;
-                TermKindInner { app }
+                if child_ids.iter().any(|&idx| f(idx).has_var()) {
+                    TermKindInner::AppWithVar(app)
+                } else {
+                    TermKindInner::AppNoVar(app)
+                }
             }
-            TermKind::Quant(quant) => TermKindInner { quant },
+            TermKind::Quant(quant) => TermKindInner::Quant(quant),
         };
         Self {
             id,
-            _padding: None,
-            info,
             kind,
             child_ids,
         }
     }
 
     pub fn kind(&self) -> TermKind {
-        if self.info.contains(TermInfo::KindVar) {
-            TermKind::Var(unsafe { self.kind.var })
-        } else if self.info.contains(TermInfo::KindApp) {
-            TermKind::App(unsafe { self.kind.app })
-        } else {
-            TermKind::Quant(unsafe { self.kind.quant })
+        use TermKindInner::*;
+        match self.kind {
+            Var(var) => TermKind::Var(var),
+            AppNoVar(app) | AppWithVar(app) => TermKind::App(app),
+            Quant(quant) => TermKind::Quant(quant),
         }
     }
 
@@ -77,7 +62,12 @@ impl Term {
     }
 
     pub fn has_var(&self) -> bool {
-        self.info.contains(TermInfo::HasVar)
+        match self.kind {
+            TermKindInner::Var(_) => true,
+            TermKindInner::AppWithVar(_) => true,
+            TermKindInner::AppNoVar(_) => false,
+            TermKindInner::Quant(_) => !self.child_ids.is_empty(),
+        }
     }
 
     /// Checks if this term can match another term. That is, if they have the
@@ -93,84 +83,17 @@ impl Term {
             self.child_ids == other.child_ids
         }
     }
-
-    fn as_safe(&self) -> SafeTerm {
-        SafeTerm {
-            id: self.id,
-            kind: self.kind(),
-            child_ids: &self.child_ids,
-        }
-    }
 }
 
-impl fmt::Debug for Term {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.as_safe().fmt(f)
-    }
-}
-impl PartialEq for Term {
-    fn eq(&self, other: &Self) -> bool {
-        self.as_safe().eq(&other.as_safe())
-    }
-}
-impl Eq for Term {}
-impl hash::Hash for Term {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.as_safe().hash(state)
-    }
-}
-
-#[cfg(feature = "mem_dbg")]
-impl MemSize for Term {
-    fn mem_size(&self, flags: mem_dbg::SizeFlags) -> usize {
-        self.as_safe().mem_size(flags)
-    }
-}
-#[cfg(feature = "mem_dbg")]
-impl mem_dbg::CopyType for Term {
-    type Copy = <SafeTerm<'static> as mem_dbg::CopyType>::Copy;
-}
-#[cfg(feature = "mem_dbg")]
-impl mem_dbg::MemDbgImpl for Term {
-    fn _mem_dbg_rec_on(
-        &self,
-        _writer: &mut impl core::fmt::Write,
-        _total_size: usize,
-        _max_depth: usize,
-        _prefix: &mut String,
-        _is_last: bool,
-        _flags: mem_dbg::DbgFlags,
-    ) -> core::fmt::Result {
-        self.as_safe()
-            ._mem_dbg_rec_on(_writer, _total_size, _max_depth, _prefix, _is_last, _flags)
-    }
-}
-
-#[bitmask_enum::bitmask(u8)]
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "mem_dbg", copy_type)]
-#[derive(Default)]
-enum TermInfo {
-    HasVar,
-    KindVar,
-    KindApp,
-}
-
-#[derive(Clone, Copy)]
-union TermKindInner {
-    var: u32,
-    app: IString,
-    quant: QuantIdx,
-}
-
-// Safe interface
-
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct SafeTerm<'a> {
-    id: TermId,
-    kind: TermKind,
-    child_ids: &'a [TermIdx],
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum TermKindInner {
+    Var(u32),
+    AppNoVar(IString),
+    AppWithVar(IString),
+    Quant(QuantIdx),
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]

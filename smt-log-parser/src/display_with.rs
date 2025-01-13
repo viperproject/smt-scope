@@ -304,16 +304,17 @@ mod private {
         pub(super) fn children(&self) -> &'a [SynthIdx] {
             self.children
         }
-        pub(super) fn find_quant(&self, idx: &mut u32) -> Option<&Quantifier> {
+        pub(super) fn find_quant(&self, idx: &mut NonMaxU32) -> Option<&Quantifier> {
             self.quant
                 .iter()
                 .rev()
                 .find(|q| {
-                    let found = q.num_vars > *idx;
-                    if !found {
-                        *idx -= q.num_vars;
+                    if let Some(new) = idx.get().checked_sub(q.num_vars.get()) {
+                        *idx = NonMaxU32::new(new).unwrap();
+                        false
+                    } else {
+                        true
                     }
-                    found
                 })
                 .copied()
         }
@@ -658,11 +659,11 @@ impl VarNames {
     pub fn get_name<'a>(
         strings: &'a StringTable,
         this: Option<&Self>,
-        idx: usize,
+        idx: u32,
         config: DisplayConfiguration,
     ) -> VarName<impl Fn(&mut fmt::Formatter) -> fmt::Result + 'a> {
         let name = match this {
-            Some(Self::NameAndType(names)) => Cow::Borrowed(&strings[*names[idx].0]),
+            Some(Self::NameAndType(names)) => Cow::Borrowed(&strings[*names[idx as usize].0]),
             None | Some(Self::TypeOnly(_)) => Cow::Owned(
                 if matches!(config.replace_symbols, SymbolReplacement::Math) {
                     format!("•{idx}")
@@ -679,7 +680,7 @@ impl VarNames {
                 const COLOURS: [&str; 9] = [
                     "blue", "green", "olive", "maroon", "teal", "purple", "red", "fuchsia", "navy",
                 ];
-                colour = Some(COLOURS[idx % COLOURS.len()]);
+                colour = Some(COLOURS[idx as usize % COLOURS.len()]);
                 use std::borrow::Borrow;
                 let name = ammonia::clean_text(name.borrow());
                 Cow::Owned(name)
@@ -709,8 +710,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind 
         match *self {
             TermKind::Var(mut idx) => {
                 let vars = data.find_quant(&mut idx).and_then(|q| q.vars.as_ref());
-                let name =
-                    VarNames::get_name(&ctxt.parser.strings, vars, idx as usize, ctxt.config);
+                let name = VarNames::get_name(&ctxt.parser.strings, vars, idx.get(), ctxt.config);
                 write!(f, "{name}")
             }
             TermKind::App(name) => {
@@ -928,16 +928,16 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, DisplayData<'a>> for &'a Quantifier {
                 };
                 // Print the variables in reverse since they are logged in
                 // reverse for some reason.
-                let vars = (0..self.num_vars).rev().map(|idx| {
+                let vars = (0..self.num_vars.get()).rev().map(|idx| {
                     let name = VarNames::get_name(
                         &ctxt.parser.strings,
                         self.vars.as_ref(),
-                        idx as usize,
+                        idx,
                         ctxt.config,
                     );
                     let ty =
                         VarNames::get_type(&ctxt.parser.strings, self.vars.as_ref(), idx as usize);
-                    (idx != self.num_vars - 1, name, ty)
+                    (idx + 1 != self.num_vars.get(), name, ty)
                 });
                 if ctxt.config.replace_symbols.is_none() {
                     write!(f, "(forall (")?;

@@ -104,13 +104,17 @@ impl MatchKind {
         }
     }
 
-    pub fn bound_term(&self, to_tidx: impl Fn(ENodeIdx) -> TermIdx, qvar: u32) -> Option<TermIdx> {
+    pub fn bound_term(
+        &self,
+        to_tidx: impl Fn(ENodeIdx) -> TermIdx,
+        qvar: NonMaxU32,
+    ) -> Option<TermIdx> {
         match self {
             Self::MBQI { bound_terms, .. } | Self::Quantifier { bound_terms, .. } => {
-                bound_terms.get(qvar as usize).copied().map(to_tidx)
+                bound_terms.get(qvar.get() as usize).copied().map(to_tidx)
             }
             Self::TheorySolving { bound_terms, .. } | Self::Axiom { bound_terms, .. } => {
-                bound_terms.get(qvar as usize).copied()
+                bound_terms.get(qvar.get() as usize).copied()
             }
         }
     }

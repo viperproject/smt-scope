@@ -18,20 +18,40 @@ pub struct Term {
 }
 
 impl Term {
+    #[allow(clippy::no_effect)]
+    pub(crate) const CHECK_SIZE: bool = {
+        #[allow(dead_code)]
+        struct SmallTerm {
+            id: TermId,
+            kind: TermKind,
+            child_ids: BoxSlice<TermIdx>,
+        }
+        let sizeof_eq = core::mem::size_of::<Term>() == core::mem::size_of::<SmallTerm>();
+        [(); 1][!sizeof_eq as usize];
+        true
+    };
+
     pub fn new<'a>(
         id: TermId,
         kind: TermKind,
         child_ids: BoxSlice<TermIdx>,
-        f: impl Fn(TermIdx) -> &'a Term,
+        t: impl Fn(TermIdx) -> &'a Term,
     ) -> Self {
+        let _ = Self::CHECK_SIZE;
         let kind = match kind {
             TermKind::Var(var) => TermKindInner::Var(var),
             TermKind::App(app) => {
-                if child_ids.iter().any(|&idx| f(idx).has_var()) {
-                    TermKindInner::AppWithVar(app)
-                } else {
-                    TermKindInner::AppNoVar(app)
+                fn get_has_var<'a>(
+                    children: &[TermIdx],
+                    t: impl Fn(TermIdx) -> &'a Term,
+                ) -> Option<bool> {
+                    let mut has_var = false;
+                    for &c in children.iter() {
+                        has_var |= t(c).has_var()?;
+                    }
+                    Some(has_var)
                 }
+                TermKindInner::App(get_has_var(&child_ids, t), app)
             }
             TermKind::Quant(quant) => TermKindInner::Quant(quant),
         };
@@ -45,13 +65,13 @@ impl Term {
     pub fn kind(&self) -> TermKind {
         use TermKindInner::*;
         match self.kind {
-            Var(var) => TermKind::Var(var),
-            AppNoVar(app) | AppWithVar(app) => TermKind::App(app),
-            Quant(quant) => TermKind::Quant(quant),
+            Var(.., var) => TermKind::Var(var),
+            App(.., app) => TermKind::App(app),
+            Quant(.., quant) => TermKind::Quant(quant),
         }
     }
 
-    pub fn var_idx(&self) -> Option<u32> {
+    pub fn var_idx(&self) -> Option<NonMaxU32> {
         self.kind().var()
     }
     pub fn app_name(&self) -> Option<IString> {
@@ -61,12 +81,13 @@ impl Term {
         self.kind().quant()
     }
 
-    pub fn has_var(&self) -> bool {
+    /// Does this term contain a free variable? Returns `None` if the term
+    /// contains a quantifier (which may or may not bind all the free vars).
+    pub fn has_var(&self) -> Option<bool> {
         match self.kind {
-            TermKindInner::Var(_) => true,
-            TermKindInner::AppWithVar(_) => true,
-            TermKindInner::AppNoVar(_) => false,
-            TermKindInner::Quant(_) => !self.child_ids.is_empty(),
+            TermKindInner::Var(_) => Some(true),
+            TermKindInner::App(has_var, _) => has_var,
+            TermKindInner::Quant(_) => None,
         }
     }
 
@@ -77,7 +98,7 @@ impl Term {
         if self.kind() != other.kind() {
             return false;
         }
-        if self.has_var() || other.has_var() {
+        if self.has_var().unwrap_or(true) || other.has_var().unwrap_or(true) {
             self.child_ids.len() == other.child_ids.len()
         } else {
             self.child_ids == other.child_ids
@@ -90,9 +111,8 @@ impl Term {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum TermKindInner {
-    Var(u32),
-    AppNoVar(IString),
-    AppWithVar(IString),
+    Var(NonMaxU32),
+    App(Option<bool>, IString),
     Quant(QuantIdx),
 }
 
@@ -101,7 +121,7 @@ pub enum TermKindInner {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum TermKind {
-    Var(u32),
+    Var(NonMaxU32),
     App(IString),
     Quant(QuantIdx),
 }
@@ -109,11 +129,11 @@ pub enum TermKind {
 impl TermKind {
     pub(crate) fn parse_var(value: &str) -> Result<TermKind> {
         value
-            .parse::<u32>()
+            .parse::<NonMaxU32>()
             .map(TermKind::Var)
             .map_err(Error::InvalidVar)
     }
-    fn var(&self) -> Option<u32> {
+    fn var(&self) -> Option<NonMaxU32> {
         match self {
             Self::Var(var) => Some(*var),
             _ => None,

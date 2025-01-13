@@ -5,7 +5,7 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
     items::{Blame, ENodeIdx, MatchKind, TermId, TermIdx},
-    Error as E, IString, Result, StringTable,
+    Error as E, IString, NonMaxU32, Result, StringTable,
 };
 
 use super::{
@@ -36,7 +36,7 @@ impl Z3Parser {
     pub(super) fn parse_qid<'a>(
         &self,
         l: &mut impl Iterator<Item = &'a str>,
-    ) -> Result<(Cow<'a, str>, u32)> {
+    ) -> Result<(Cow<'a, str>, NonMaxU32)> {
         let mut qid = Cow::Borrowed(l.next().ok_or(E::UnexpectedNewline)?);
         let mut num_vars = l.next().ok_or(E::UnexpectedNewline)?;
         if self.is_z3_6081_fixed() {
@@ -50,11 +50,11 @@ impl Z3Parser {
                 }
                 num_vars = l.next().ok_or(E::UnexpectedNewline)?;
             }
-            let nvs = num_vars.parse::<u32>().map_err(E::InvalidVarNum)?;
+            let nvs = num_vars.parse::<NonMaxU32>().map_err(E::InvalidVarNum)?;
             return Ok((qid, nvs));
         }
 
-        let mut nvs = num_vars.parse::<u32>();
+        let mut nvs = num_vars.parse::<NonMaxU32>();
         if nvs.is_err() {
             qid = Cow::Owned(format!("|{qid}"));
         }
@@ -62,7 +62,7 @@ impl Z3Parser {
             qid += " ";
             qid += num_vars;
             num_vars = l.next().ok_or(E::UnexpectedNewline)?;
-            nvs = num_vars.parse::<u32>();
+            nvs = num_vars.parse::<NonMaxU32>();
         }
         if matches!(qid, Cow::Owned(_)) {
             qid += "|";

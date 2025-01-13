@@ -1,6 +1,6 @@
 use crate::{
     items::{Blame, Coupling, ENodeIdx, MatchKind, Term, TermIdx},
-    FxHashMap, Result,
+    FxHashMap, NonMaxU32, Result,
 };
 
 use super::Z3Parser;
@@ -35,7 +35,7 @@ impl Z3Parser {
         eqs_new.as_deref() == Some(&*eqs)
     }
 
-    fn bound(&self, match_: &MatchKind, qvar: u32) -> Option<TermIdx> {
+    fn bound(&self, match_: &MatchKind, qvar: NonMaxU32) -> Option<TermIdx> {
         match_.bound_term(|e| self[e].owner, qvar)
     }
 }
@@ -294,7 +294,8 @@ impl<'a, 'e, E: EqRewriter + ?Sized> PatternMatcher<'a, 'e, E> {
         subpat: TermIdx,
     ) -> Option<Vec<(ENodeIdx, ENodeIdx)>> {
         let blame = self.parser[blame].owner;
-        debug_assert!(!self.parser[blame].has_var());
+        debug_assert!(self.parser[blame].has_var().is_some_and(|v| !v));
+        debug_assert!(self.parser[subpat].has_var().is_some());
         self.check_match_inner(blame, subpat)
             .then_some(self.rewrites)
     }
@@ -321,11 +322,11 @@ impl<'a, 'e, E: EqRewriter + ?Sized> PatternMatcher<'a, 'e, E> {
         let subpat_term = &self.parser[subpat];
         if let Some(qvar) = subpat_term.var_idx() {
             let subpat = self.parser.bound(self.match_, qvar).unwrap();
-            debug_assert!(!self.parser[subpat].has_var());
+            debug_assert!(self.parser[subpat].has_var().is_some_and(|v| !v));
             return self.check_match_inner(blame, subpat);
         }
         // Base case with no qvars
-        if !subpat_term.has_var() {
+        if !subpat_term.has_var().unwrap_or_default() {
             return self.check_exact(blame, subpat);
         }
         // Recursive case with qvars
@@ -353,7 +354,7 @@ impl<'a, 'e, E: EqRewriter + ?Sized> PatternMatcher<'a, 'e, E> {
     }
 
     fn check_exact(&mut self, blame: TermIdx, subpat: TermIdx) -> bool {
-        debug_assert!(!self.parser[subpat].has_var());
+        debug_assert!(self.parser[subpat].has_var().is_some_and(|v| !v));
         let Some((from, rewrites, eq_ref)) =
             E::possible_rewrite_count(self.data, self.parser, blame, subpat)
         else {

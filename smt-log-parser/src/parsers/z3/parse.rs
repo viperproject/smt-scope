@@ -214,7 +214,7 @@ impl Z3Parser {
         &mut self,
         full_id: TermId,
         child_ids: BoxSlice<TermIdx>,
-        num_vars: u32,
+        num_vars: NonMaxU32,
         kind: QuantKind,
     ) -> Result<()> {
         let qidx = self.quantifiers.next_key();
@@ -377,7 +377,9 @@ impl Z3LogParser for Z3Parser {
         let lambda = l.next().ok_or(E::UnexpectedNewline)?;
         self.check_lambda_name(lambda)?;
         let num_vars = l.next().ok_or(E::UnexpectedNewline)?;
-        let num_vars = num_vars.parse::<u32>().map_err(E::InvalidQVarInteger)?;
+        let num_vars = num_vars
+            .parse::<NonMaxU32>()
+            .map_err(E::InvalidQVarInteger)?;
         let child_ids = Self::map(l, |id| self.parse_existing_proof(id))?;
         let kind = QuantKind::Lambda(child_ids);
         self.quant_or_lamda(full_id, Default::default(), num_vars, kind)
@@ -509,7 +511,6 @@ impl Z3LogParser for Z3Parser {
                 return idx.map(|_| ());
             }
         };
-        debug_assert!(!self[idx].has_var());
         let z3_gen = Self::parse_z3_generation(&mut l)?.ok_or(E::UnexpectedNewline)?;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
@@ -617,7 +618,9 @@ impl Z3LogParser for Z3Parser {
             let bound_terms = bound_terms
                 .map(|id| self.parse_existing_app(id))
                 .collect::<Result<BoxSlice<_>>>()?;
-            debug_assert!(bound_terms.iter().all(|&b| !self[b].has_var()));
+            debug_assert!(bound_terms
+                .iter()
+                .all(|&b| !self[b].has_var().unwrap_or(true)));
             MatchKind::Axiom {
                 axiom: quant,
                 pattern,
@@ -627,7 +630,9 @@ impl Z3LogParser for Z3Parser {
             let bound_terms = bound_terms
                 .map(|id| self.parse_existing_enode(id))
                 .collect::<Result<BoxSlice<_>>>()?;
-            debug_assert!(bound_terms.iter().all(|&b| !self[self[b].owner].has_var()));
+            debug_assert!(bound_terms
+                .iter()
+                .all(|&b| !self[self[b].owner].has_var().unwrap_or(true)));
             MatchKind::Quantifier {
                 quant,
                 pattern,

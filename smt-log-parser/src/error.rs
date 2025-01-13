@@ -1,9 +1,11 @@
 use core::fmt;
-use std::{collections::TryReserveError, num::ParseIntError};
+use std::{collections::TryReserveError, num};
 
+use ::num::bigint;
 use lasso::LassoError;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
+use nonmax::ParseIntError;
 
 use crate::items::{Blame, ENodeIdx, Fingerprint, QuantIdx, TermId, TermIdx};
 
@@ -37,7 +39,7 @@ pub enum Error {
     InvalidVersion(semver::Error),
 
     // Id parsing
-    InvalidIdNumber(nonmax::ParseIntError),
+    InvalidIdNumber(ParseIntError),
     InvalidIdHash(String),
     UnknownId(TermId),
 
@@ -45,7 +47,7 @@ pub enum Error {
     InvalidVar(ParseIntError),
 
     // Meaning parsing
-    ParseBigUintError(num::bigint::ParseBigIntError),
+    ParseBigUintError(bigint::ParseBigIntError),
     ParseError(String),
 
     // Quantifier
@@ -76,24 +78,24 @@ pub enum Error {
     UnequalTupleForms(u8, u8),
 
     // Fingerprint
-    InvalidFingerprint(ParseIntError),
+    InvalidFingerprint(num::ParseIntError),
     UnknownFingerprint(Fingerprint),
 
     // Enode
     UnknownEnode(TermIdx),
-    InvalidGeneration(nonmax::ParseIntError),
+    InvalidGeneration(ParseIntError),
     EnodeRootMismatch(ENodeIdx, ENodeIdx),
 
     // Stack
     StackFrameNotPushed,
     PopConflictMismatch,
-    InvalidFrameInteger(ParseIntError),
+    InvalidFrameInteger(num::ParseIntError),
 
     // CDCL
     NoConflict,
     BoolLiteral,
     BoolLiteralNotP,
-    InvalidBoolLiteral(nonmax::ParseIntError),
+    InvalidBoolLiteral(ParseIntError),
     UnknownJustification(String),
     MissingColonJustification,
 

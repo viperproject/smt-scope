@@ -18,9 +18,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           target: wasm32-unknown-unknown
 
       - uses: jetli/trunk-action@v0.1.0
@@ -33,6 +32,8 @@ jobs:
         run: git -c protocol.version=2 fetch --prune --no-recurse-submodules --depth 1 origin +${{ github.ref }}:${{ github.ref }}
       - run: git describe --always
 
+      - name: Setup `Cargo.lock` for caching
+        run: cargo generate-lockfile
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:

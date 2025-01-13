@@ -22,6 +22,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Setup `Cargo.lock` for caching
+      run: cargo generate-lockfile
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "clippy"
+        save-if: ${{ github.ref == 'refs/heads/main' }}
     - run: cargo clippy -- -D warnings
 
   test:
@@ -40,10 +47,13 @@ jobs:
     - uses: actions/checkout@v4
     - id: configure-z3-id
       run: echo "z3_v_clean=$(echo "${{ matrix.z3version }}" | sed 's/\./_/g')" >> $GITHUB_OUTPUT
+    - name: Setup `Cargo.lock` for caching
+      run: cargo generate-lockfile
     - name: Cache cargo
       uses: Swatinem/rust-cache@v2
       with:
         shared-key: "shared"
+        save-if: ${{ github.ref == 'refs/heads/main' }}
     - uses: actions/cache/restore@v4
       with:
         path: logs

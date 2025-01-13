@@ -136,9 +136,10 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
                 let pattern = pattern
                     .with_data(self.ctxt, &mut Some(qpat.quant))
                     .to_string();
-                let enode = matched.enode().with(self.ctxt).to_string();
+                let enode = matched.enode.with(self.ctxt).to_string();
                 let equalities = matched
-                    .equalities()
+                    .equalities
+                    .iter()
                     .map(|eq| eq.with(self.ctxt).to_string())
                     .collect();
                 (pattern, enode, equalities)
@@ -162,8 +163,8 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             IntoIterator::into_iter(bound_terms)
                 .enumerate()
                 .map(|(idx, bound)| {
-                    let name =
-                        VarNames::get_name(&self.ctxt.parser.strings, vars, idx, self.ctxt.config);
+                    let strings = &self.ctxt.parser.strings;
+                    let name = VarNames::get_name(strings, vars, idx as u32, self.ctxt.config);
                     format!("{name} ↦ {bound}")
                 })
                 .collect(),

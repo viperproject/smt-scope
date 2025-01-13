@@ -38,7 +38,7 @@ impl<'a> RedundancyAnalysis<'a> {
 #[derive(Debug, Default)]
 pub struct QuantRedundancy<'a> {
     pub duplicates: FxHashMap<Box<[Result<ENodeIdx, TermIdx>]>, Vec<InstIdx>>,
-    pub sub_duplicates: FxHashMap<Blame<'a>, u32>,
+    pub sub_duplicates: FxHashMap<&'a Blame, u32>,
 }
 
 impl<'a> QuantRedundancy<'a> {

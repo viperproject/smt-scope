@@ -6,7 +6,7 @@ use std::{
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::{BoxSlice, IString, StringTable, TiVec};
+use crate::{BoxSlice, IString, NonMaxU32, StringTable, TiVec};
 
 use super::{PatternIdx, ProofIdx, QuantIdx, TermIdx};
 
@@ -16,7 +16,7 @@ use super::{PatternIdx, ProofIdx, QuantIdx, TermIdx};
 #[derive(Debug)]
 pub struct Quantifier {
     pub kind: QuantKind,
-    pub num_vars: u32,
+    pub num_vars: NonMaxU32,
     pub term: TermIdx,
     pub vars: Option<VarNames>,
 }

@@ -1,4 +1,4 @@
-use core::ops::Index;
+use core::{fmt, ops::Index};
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
@@ -42,7 +42,65 @@ pub struct Z3Parser {
 
 pub type AstSize = core::result::Result<Option<NonMaxU64>, TermIdx>;
 
+#[derive(Default)]
+pub struct ParseErrors {
+    pub match_error_count: usize,
+    pub match_count: usize,
+
+    pub trans_error_count: usize,
+    pub trans_count: usize,
+}
+
+impl fmt::Display for ParseErrors {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.match_error_count == 0 && self.trans_error_count == 0 {
+            return Ok(());
+        }
+        write!(f, " Errors:")?;
+        if self.match_error_count != 0 {
+            write!(
+                f,
+                " {} match ({:.1}%)",
+                self.match_error_count,
+                100. * self.match_error_count as f64 / self.match_count as f64
+            )?;
+        }
+        if self.trans_error_count != 0 {
+            write!(
+                f,
+                " {} eq ({:.1}%)",
+                self.trans_error_count,
+                100. * self.trans_error_count as f64 / self.trans_count as f64
+            )?;
+        }
+        Ok(())
+    }
+}
+
 impl Z3Parser {
+    pub fn errors(&self) -> ParseErrors {
+        let mut errors = ParseErrors::default();
+        for match_ in self.insts.matches.iter() {
+            if match_.kind.pattern().is_none() {
+                continue;
+            }
+            debug_assert!(!match_.blamed.is_empty());
+            errors.match_count += 1;
+            if match_.blamed.iter().any(|b| !b.is_complete()) {
+                errors.match_error_count += 1;
+            }
+        }
+        errors.trans_count = self.egraph.equalities.transitive.len();
+        errors.trans_error_count = self
+            .egraph
+            .equalities
+            .transitive
+            .iter()
+            .filter(|eq| eq.error_from().is_some())
+            .count();
+        errors
+    }
+
     pub fn meaning(&self, tidx: TermIdx) -> Option<&Meaning> {
         self.terms.meaning(tidx)
     }
@@ -116,11 +174,7 @@ impl Z3Parser {
     /// hypothesis so might not necessarily imply unsat.
     pub fn proves_false(&self, pidx: ProofIdx) -> bool {
         let result = &self[self[pidx].result];
-        result.child_ids.is_empty()
-            && result
-                .kind
-                .app_name()
-                .is_some_and(|name| &self[name] == "false")
+        result.child_ids.is_empty() && result.app_name().is_some_and(|name| &self[name] == "false")
     }
 
     /// Returns the size in AST nodes of the term `tidx`. Note that z3 eagerly
@@ -128,7 +182,7 @@ impl Z3Parser {
     /// constant in this size metric!
     pub fn ast_size(&self, tidx: TermIdx, cached: &mut FxHashMap<TermIdx, AstSize>) -> AstSize {
         fn children(tidx: TermIdx, term: &Term) -> core::result::Result<&[TermIdx], TermIdx> {
-            match term.kind {
+            match term.kind() {
                 TermKind::Var(_) => Err(tidx),
                 TermKind::App(_) => Ok(&*term.child_ids),
                 // TODO: decide if we want to return a size for quantifiers

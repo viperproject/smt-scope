@@ -14,7 +14,7 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct Match {
     pub kind: MatchKind,
-    pub blamed: Box<[BlameKind]>,
+    pub blamed: Box<[Blame]>,
     pub frame: StackIdx,
 }
 
@@ -24,20 +24,8 @@ impl Match {
     /// patterns has a sequence of arbitrarily many terms which must all be
     /// matched. This returns a sequence of `Blame` where each explains how the
     /// corresponding term in the pattern was matched.
-    pub fn pattern_matches(&self) -> impl Iterator<Item = Blame> {
-        let mut terms = self
-            .blamed
-            .iter()
-            .enumerate()
-            .flat_map(|(idx, blame)| matches!(blame, BlameKind::Term { .. }).then(|| idx))
-            .chain([self.blamed.len()]);
-        let mut last = terms.next().unwrap_or_default();
-        debug_assert_eq!(last, 0);
-        terms.map(move |idx| {
-            let slice = &self.blamed[last..idx];
-            last = idx;
-            Blame { slice }
-        })
+    pub fn pattern_matches(&self) -> impl Iterator<Item = &Blame> {
+        self.blamed.iter()
     }
 }
 
@@ -116,43 +104,18 @@ impl MatchKind {
         }
     }
 
-    pub fn bound_term(&self, to_tidx: impl Fn(ENodeIdx) -> TermIdx, qvar: usize) -> TermIdx {
+    pub fn bound_term(
+        &self,
+        to_tidx: impl Fn(ENodeIdx) -> TermIdx,
+        qvar: NonMaxU32,
+    ) -> Option<TermIdx> {
         match self {
             Self::MBQI { bound_terms, .. } | Self::Quantifier { bound_terms, .. } => {
-                to_tidx(bound_terms[qvar])
+                bound_terms.get(qvar.get() as usize).copied().map(to_tidx)
             }
             Self::TheorySolving { bound_terms, .. } | Self::Axiom { bound_terms, .. } => {
-                bound_terms[qvar]
+                bound_terms.get(qvar.get() as usize).copied()
             }
-        }
-    }
-}
-
-/// The kind of dependency between two quantifier instantiations.
-/// - Term: one instantiation produced a term that the other triggered on
-/// - Equality: dependency based on an equality.
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "mem_dbg", copy_type)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BlameKind {
-    Term { term: ENodeIdx },
-    Equality { eq: EqTransIdx },
-    // Z3 BUG: https://github.com/viperproject/axiom-profiler-2/issues/63
-    TermBug { term: ENodeIdx },
-}
-impl BlameKind {
-    pub(crate) fn term(&self) -> Option<&ENodeIdx> {
-        match self {
-            Self::Term { term } => Some(term),
-            _ => None,
-        }
-    }
-    pub(crate) fn equality(&self) -> Option<core::result::Result<&EqTransIdx, &ENodeIdx>> {
-        match self {
-            Self::Equality { eq } => Some(Ok(eq)),
-            Self::TermBug { term } => Some(Err(term)),
-            _ => None,
         }
     }
 }
@@ -160,24 +123,44 @@ impl BlameKind {
 /// Explains how a term in a pattern was matched. It will always start with an
 /// enode and then have some sequence of equalities used to rewrite distinct
 /// subexpressions of the enode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Blame<'a> {
-    slice: &'a [BlameKind],
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Blame {
+    pub coupling: Coupling,
+    pub enode: ENodeIdx,
+    pub equalities: BoxSlice<EqTransIdx>,
 }
-impl<'a> Blame<'a> {
-    pub fn enode(self) -> ENodeIdx {
-        *self.slice[0].term().expect("expected term")
-    }
 
-    pub fn equalities_len(self) -> usize {
-        self.slice.len() - 1
-    }
-    pub fn equalities(self) -> impl Iterator<Item = EqTransIdx> + 'a {
-        self.slice
-            .iter()
-            .skip(1)
-            .filter_map(|x| x.equality().expect("unexpected term").ok())
-            .copied()
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[cfg_attr(feature = "mem_dbg", copy_type)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Coupling {
+    /// The enode and equalities parsed from the logfile could be used exactly
+    /// to obtain the matched sub-pattern.
+    Exact,
+    /// The enode and equalities parsed from the logfile could be used exactly
+    /// to obtain the matched sub-pattern. Some of the equalities needed to be
+    /// flipped, reused or used in a different order.
+    SwappedEqs,
+    /// The enode required some unlogged equalities to be matched. These
+    /// equalities existed in the logfile but were not blamed.
+    MissingEqs,
+    /// The enode required some new equalities to be matched. These equalities
+    /// did not exist in the logfile.
+    AddedEqs,
+    /// The enode could not be rewritten to the matched sub-pattern. This should
+    /// not appear in the final `Blame`.
+    Error,
+}
+
+impl Blame {
+    pub fn is_complete(&self) -> bool {
+        matches!(
+            self.coupling,
+            Coupling::Exact | Coupling::SwappedEqs | Coupling::MissingEqs
+        )
     }
 }
 

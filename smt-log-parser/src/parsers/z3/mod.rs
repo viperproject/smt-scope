@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use super::{LogParser, LogParserHelper};
 use crate::{Error, FResult, Result};
 
+mod blame;
 mod bugs;
 pub mod egraph;
 pub mod inst;

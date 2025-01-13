@@ -5,9 +5,9 @@ use typed_index_collections::TiSlice;
 use crate::{
     items::{
         Assignment, Cdcl, CdclBacklink, CdclIdx, CdclKind, Conflict, ENodeIdx, InstIdx, MatchIdx,
-        ProofIdx, StackFrame, StackIdx,
+        ProofIdx, StackFrame, StackIdx, TermIdx,
     },
-    Error, Result, TiVec,
+    Error, FxHashMap, Result, TiVec,
 };
 
 use super::Z3Parser;
@@ -118,6 +118,7 @@ impl Stack {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
 pub struct CdclTree {
+    pub assignments: FxHashMap<TermIdx, (bool, StackIdx)>,
     cdcl: TiVec<CdclIdx, Cdcl>,
     /// The cut from the last conflict, only set between a `[conflict]` line and
     /// a `[pop]`. The latter will backtrack and insert this into the above vec.
@@ -129,6 +130,7 @@ impl Default for CdclTree {
         let mut cdcl = TiVec::default();
         cdcl.push(Cdcl::root(Stack::ZERO_FRAME));
         Self {
+            assignments: FxHashMap::default(),
             cdcl,
             conflict: None,
         }
@@ -136,8 +138,21 @@ impl Default for CdclTree {
 }
 
 impl CdclTree {
+    fn new_assign(&mut self, assign: Assignment, stack: &Stack) -> Result<()> {
+        self.assignments.try_reserve(1)?;
+        self.assignments
+            .insert(assign.literal, (assign.value, stack.active_frame()));
+        Ok(())
+    }
+
+    pub fn get_assign(&self, term: TermIdx, stack: &Stack) -> Option<bool> {
+        let (value, frame) = *self.assignments.get(&term)?;
+        stack.is_alive(frame).then_some(value)
+    }
+
     pub fn new_decision(&mut self, assign: Assignment, stack: &Stack) -> Result<CdclIdx> {
         debug_assert!(self.conflict.is_none());
+        self.new_assign(assign, stack)?;
         self.check_frame_decision(stack)?;
 
         let cdcl = Cdcl::new_decision(assign, stack.active_frame());
@@ -185,6 +200,7 @@ impl CdclTree {
 
     pub fn new_propagate(&mut self, assign: Assignment, stack: &Stack) -> Result<()> {
         debug_assert!(self.conflict.is_none());
+        self.new_assign(assign, stack)?;
         let mut last = self.cdcl.last_mut().unwrap();
         let frame = stack.active_frame();
         if last.frame != frame {

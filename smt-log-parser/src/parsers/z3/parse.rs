@@ -8,7 +8,7 @@ use crate::{
     BigRational, BoxSlice, Error as E, IString, NonMaxU32, Result, StringTable,
 };
 
-use super::{egraph::EGraph, inter_line::LineKind, stm2::EventLog, terms::Terms, Z3Parser};
+use super::{inter_line::LineKind, stm2::EventLog, terms::Terms, Z3Parser};
 
 impl Default for Z3Parser {
     fn default() -> Self {
@@ -62,6 +62,16 @@ impl Z3Parser {
             return self.egraph.get_enode(idx, &self.stack);
         }
         res
+    }
+
+    fn new_term(
+        &mut self,
+        id: TermId,
+        kind: TermKind,
+        child_ids: BoxSlice<TermIdx>,
+    ) -> Result<TermIdx> {
+        let term = Term::new(id, kind, child_ids, |tidx| &self[tidx]);
+        self.terms.app_terms.new_term(term)
     }
 
     fn parse_z3_generation<'a>(l: &mut impl Iterator<Item = &'a str>) -> Result<Option<NonMaxU32>> {
@@ -169,44 +179,16 @@ impl Z3Parser {
         let inverted_gobble = move |_| gobble().map_or_else(|err| Some(Err(err)), |ok| ok.map(Ok));
         std::iter::repeat(()).map_while(inverted_gobble)
     }
-    fn parse_trans_equality(
-        &mut self,
-        can_mismatch: bool,
-    ) -> impl FnMut(&str, &str) -> Result<core::result::Result<EqTransIdx, ENodeIdx>> + '_ {
-        move |from, to| {
-            let from = self.parse_existing_enode(from)?;
-            let to = self.parse_existing_enode(to)?;
-            if can_mismatch {
-                // See comment in `EGraph::get_equalities`
-                let can_mismatch = |egraph: &EGraph| {
-                    self.version_info.is_ge_version(4, 12, 3)
-                        && self.terms[egraph.get_owner(to)]
-                            .kind
-                            .app_name()
-                            .is_some_and(|app| &self.strings[*app] == "if")
-                };
-                self.egraph
-                    .new_trans_equality(from, to, &self.stack, can_mismatch)
-            } else {
-                fn cannot_mismatch(_: &EGraph) -> bool {
-                    false
-                }
-                self.egraph
-                    .new_trans_equality(from, to, &self.stack, cannot_mismatch)
-            }
-        }
-    }
     fn append_trans_equality_tuples<'a>(
         &mut self,
         l: impl Iterator<Item = &'a str>,
-        can_mismatch: bool,
-        mut f: impl FnMut(core::result::Result<EqTransIdx, ENodeIdx>) -> Result<()>,
+        mut f: impl FnMut((ENodeIdx, ENodeIdx)) -> Result<()>,
     ) -> Result<()> {
-        let mut pte = self.parse_trans_equality(can_mismatch);
         for t in Self::gobble_tuples::<true>(l) {
             let (from, to) = t?;
-            let trans = pte(from, to)?;
-            f(trans)?;
+            let from = self.parse_existing_enode(from)?;
+            let to = self.parse_existing_enode(to)?;
+            f((from, to))?;
         }
         Ok(())
     }
@@ -232,16 +214,11 @@ impl Z3Parser {
         &mut self,
         full_id: TermId,
         child_ids: BoxSlice<TermIdx>,
-        num_vars: u32,
+        num_vars: NonMaxU32,
         kind: QuantKind,
     ) -> Result<()> {
         let qidx = self.quantifiers.next_key();
-        let term = Term {
-            id: full_id,
-            kind: TermKind::Quant(qidx),
-            child_ids,
-        };
-        let tidx = self.terms.app_terms.new_term(term)?;
+        let tidx = self.new_term(full_id, TermKind::Quant(qidx), child_ids)?;
         let q = Quantifier {
             num_vars,
             term: tidx,
@@ -385,7 +362,7 @@ impl Z3LogParser for Z3Parser {
         let child_id_names = || {
             child_ids[..child_ids.len() - 1]
                 .iter()
-                .map(|&id| self[id].kind.app_name().map(|name| &self[name]))
+                .map(|&id| self[id].app_name().map(|name| &self[name]))
         };
         assert!(
             child_id_names().all(|name| name.is_some_and(|name| name == "pattern")),
@@ -400,7 +377,9 @@ impl Z3LogParser for Z3Parser {
         let lambda = l.next().ok_or(E::UnexpectedNewline)?;
         self.check_lambda_name(lambda)?;
         let num_vars = l.next().ok_or(E::UnexpectedNewline)?;
-        let num_vars = num_vars.parse::<u32>().map_err(E::InvalidQVarInteger)?;
+        let num_vars = num_vars
+            .parse::<NonMaxU32>()
+            .map_err(E::InvalidQVarInteger)?;
         let child_ids = Self::map(l, |id| self.parse_existing_proof(id))?;
         let kind = QuantKind::Lambda(child_ids);
         self.quant_or_lamda(full_id, Default::default(), num_vars, kind)
@@ -412,12 +391,7 @@ impl Z3LogParser for Z3Parser {
         let kind = TermKind::parse_var(kind)?;
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
-        let term = Term {
-            id: full_id,
-            kind,
-            child_ids: Default::default(),
-        };
-        self.terms.app_terms.new_term(term)?;
+        self.new_term(full_id, kind, Default::default())?;
         Ok(())
     }
 
@@ -433,14 +407,9 @@ impl Z3LogParser for Z3Parser {
         let child = child.into_iter().map(Ok);
         let child_ids = child.chain(l.map(|id| TermId::parse(&mut self.strings, id)));
         let child_ids = Self::map(child_ids, |id| self.terms.parse_app_child_id(id?))?;
-        let term = Term {
-            id,
-            kind: TermKind::App(name),
-            child_ids,
-        };
-        let term_idx = self.terms.app_terms.new_term(term)?;
+        let tidx = self.new_term(id, TermKind::App(name), child_ids)?;
         self.events
-            .new_term(term_idx, &self.terms[term_idx], &self.strings)?;
+            .new_term(tidx, &self.terms[tidx], &self.strings)?;
         Ok(())
     }
 
@@ -546,7 +515,7 @@ impl Z3LogParser for Z3Parser {
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
 
-        debug_assert!(self[idx].kind.app_name().is_some());
+        debug_assert!(self[idx].app_name().is_some());
         let created_by = self.insts.inst_stack.last_mut();
         let iidx = created_by.as_ref().map(|(i, _)| *i);
         let blame = self.egraph.get_blame(idx, iidx, &self.terms, &self.stack);
@@ -648,7 +617,10 @@ impl Z3LogParser for Z3Parser {
         let kind = if is_axiom {
             let bound_terms = bound_terms
                 .map(|id| self.parse_existing_app(id))
-                .collect::<Result<_>>()?;
+                .collect::<Result<BoxSlice<_>>>()?;
+            debug_assert!(bound_terms
+                .iter()
+                .all(|&b| !self[b].has_var().unwrap_or(true)));
             MatchKind::Axiom {
                 axiom: quant,
                 pattern,
@@ -657,7 +629,10 @@ impl Z3LogParser for Z3Parser {
         } else {
             let bound_terms = bound_terms
                 .map(|id| self.parse_existing_enode(id))
-                .collect::<Result<_>>()?;
+                .collect::<Result<BoxSlice<_>>>()?;
+            debug_assert!(bound_terms
+                .iter()
+                .all(|&b| !self[self[b].owner].has_var().unwrap_or(true)));
             MatchKind::Quantifier {
                 quant,
                 pattern,
@@ -667,9 +642,7 @@ impl Z3LogParser for Z3Parser {
         let mut blamed = Vec::new();
         let mut next = l.next();
         while let Some(word) = next.take() {
-            let term = self.parse_existing_enode(word)?;
-            blamed.try_reserve(1)?;
-            blamed.push(BlameKind::Term { term });
+            let enode = self.parse_existing_enode(word)?;
             // `append_trans_equality_tuples` would gobble the next term otherwise, so capture it instead.
             let l = l.by_ref().take_while(|s| {
                 let cond = s.as_bytes().first().is_some_and(|f| *f == b'(')
@@ -679,29 +652,31 @@ impl Z3LogParser for Z3Parser {
                 }
                 cond
             });
-            self.append_trans_equality_tuples(l, true, |eq| {
-                if let Ok(eq) = eq {
-                    blamed.try_reserve(1)?;
-                    blamed.push(BlameKind::Equality { eq });
-                }
+            let mut equalities = Vec::new();
+            self.append_trans_equality_tuples(l, |eq| {
+                equalities.try_reserve(1)?;
+                equalities.push(eq);
                 Ok(())
             })?;
+
+            blamed.try_reserve(1)?;
+            blamed.push((blamed.len(), enode, equalities));
         }
 
         let pat = kind.quant_pat().unwrap();
-        let pat = self.get_pattern_term(pat).unwrap();
-        self.fix_blamed(&mut blamed, pat)?;
+        let pat = self.get_pattern(pat).unwrap();
+        let (_correct_order, blamed) = self.make_blamed(&kind, blamed, pat)?;
 
         let match_ = Match {
             kind,
-            blamed: blamed.into(),
+            blamed,
             frame: self.stack.active_frame(),
         };
-        debug_assert_eq!(match_.pattern_matches().count(), pat.child_ids.len());
+        debug_assert_eq!(match_.pattern_matches().count(), self[pat].child_ids.len());
         debug_assert!(match_
             .pattern_matches()
-            .zip(pat.child_ids.iter())
-            .all(|(m, s)| self.can_blame_match_subpat(m.enode(), *s)));
+            .zip(self[pat].child_ids.iter())
+            .all(|(m, s)| self.check_match(&match_.kind, m, *s)));
         self.insts.new_match(fingerprint, match_)?;
         Ok(())
     }
@@ -732,7 +707,12 @@ impl Z3LogParser for Z3Parser {
                             return Err(E::NonRewriteAxiomInvalidEnode(rewrite_of));
                         }
                         blamed.try_reserve(1)?;
-                        blamed.push(BlameKind::Term { term: enode });
+                        // TODO: are the enodes in the correct order here?
+                        blamed.push(Blame {
+                            coupling: Coupling::Exact,
+                            enode,
+                            equalities: Default::default(),
+                        });
                     } else {
                         if let Some(rewrite_of) = rewrite_of {
                             return Err(E::RewriteAxiomMultipleTerms1(rewrite_of));

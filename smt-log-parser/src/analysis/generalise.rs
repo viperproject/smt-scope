@@ -27,7 +27,7 @@ impl SynthTerms {
         let larger_meaning = table.meaning(larger);
         if smaller_meaning.is_none()
             && larger_meaning.is_none()
-            && smaller_term.kind == larger_term.kind
+            && smaller_term.kind() == larger_term.kind()
             && smaller_term.child_ids.len() == larger_term.child_ids.len()
         {
             // TODO: remove this depth restriction
@@ -43,7 +43,7 @@ impl SynthTerms {
             else {
                 return Ok(None);
             };
-            self.new_synthetic(smaller_term.kind, child_ids).map(Some)
+            self.new_synthetic(smaller_term.kind(), child_ids).map(Some)
         } else {
             // If the meanings are some and equal, then the TermIdx should've
             // been equal?
@@ -128,7 +128,7 @@ impl SynthTerms {
             })
             .collect::<Result<_>>()?;
         let replaced = if found_smaller {
-            self.new_synthetic(larger_term.kind, child_ids)?
+            self.new_synthetic(larger_term.kind(), child_ids)?
         } else {
             larger.into()
         };
@@ -156,7 +156,7 @@ impl SynthTerms {
                     let larger_meaning = table.meaning(larger);
                     if !(smaller_meaning.is_none()
                         && larger_meaning.is_none()
-                        && threeway_eq(term_kind, &smaller_term.kind, &larger_term.kind)
+                        && threeway_eq(term_kind, &smaller_term.kind(), &larger_term.kind())
                         && threeway_eq(
                             gen_term.child_ids().len(),
                             smaller_term.child_ids.len(),

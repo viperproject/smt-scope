@@ -4,11 +4,15 @@ use std::borrow::Cow;
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    items::{BlameKind, ENodeIdx, Term, TermId, TermIdx},
-    Error as E, FxHashSet, IString, Result, StringTable,
+    items::{Blame, ENodeIdx, MatchKind, TermId, TermIdx},
+    Error as E, IString, NonMaxU32, Result, StringTable,
 };
 
-use super::{terms::Terms, Z3Parser};
+use super::{
+    blame::{BasicEq, BlameFinder, BlamedEqsParse, ComplexEq, CustomEq, ForceEq},
+    terms::Terms,
+    Z3Parser,
+};
 
 // Z3 FIXED (v4.9.0+) https://github.com/Z3Prover/z3/issues/6081
 // This changes `null` to `<null>` and adds `|` around :qid with spaces.
@@ -32,7 +36,7 @@ impl Z3Parser {
     pub(super) fn parse_qid<'a>(
         &self,
         l: &mut impl Iterator<Item = &'a str>,
-    ) -> Result<(Cow<'a, str>, u32)> {
+    ) -> Result<(Cow<'a, str>, NonMaxU32)> {
         let mut qid = Cow::Borrowed(l.next().ok_or(E::UnexpectedNewline)?);
         let mut num_vars = l.next().ok_or(E::UnexpectedNewline)?;
         if self.is_z3_6081_fixed() {
@@ -46,11 +50,11 @@ impl Z3Parser {
                 }
                 num_vars = l.next().ok_or(E::UnexpectedNewline)?;
             }
-            let nvs = num_vars.parse::<u32>().map_err(E::InvalidVarNum)?;
+            let nvs = num_vars.parse::<NonMaxU32>().map_err(E::InvalidVarNum)?;
             return Ok((qid, nvs));
         }
 
-        let mut nvs = num_vars.parse::<u32>();
+        let mut nvs = num_vars.parse::<NonMaxU32>();
         if nvs.is_err() {
             qid = Cow::Owned(format!("|{qid}"));
         }
@@ -58,7 +62,7 @@ impl Z3Parser {
             qid += " ";
             qid += num_vars;
             num_vars = l.next().ok_or(E::UnexpectedNewline)?;
-            nvs = num_vars.parse::<u32>();
+            nvs = num_vars.parse::<NonMaxU32>();
         }
         if matches!(qid, Cow::Owned(_)) {
             qid += "|";
@@ -67,7 +71,7 @@ impl Z3Parser {
     }
 }
 
-// Z3 BUG: https://github.com/viperproject/axiom-profiler-2/issues/106
+// Z3 ISSUE: https://github.com/viperproject/axiom-profiler-2/issues/106
 
 impl Z3Parser {
     pub(super) fn parse_app_name<'a>(
@@ -100,177 +104,70 @@ impl Z3Parser {
     }
 }
 
-// Z3 BUG: https://github.com/viperproject/axiom-profiler-2/issues/63
-
 impl Z3Parser {
-    pub(super) fn can_blame_match_subpat(&self, blame: ENodeIdx, subpat: TermIdx) -> bool {
-        self[self[blame].owner].kind == self[subpat].kind
+    /// Unused.
+    /// TODO: this could help us fix the egraph `can_mismatch` thing
+    pub fn check_eq(&self, from: ENodeIdx, to: ENodeIdx) -> bool {
+        self.egraph.check_eq(from, to, &self.stack)
+            || self.check_eq_if(from, to)
+            || self.check_eq_if(to, from)
     }
 
-    /// Fixes the blame vector which may be incorrect due the Z3 BUG.
-    pub(super) fn fix_blamed(&self, blamed: &mut [BlameKind], pattern: &Term) -> Result<()> {
-        debug_assert!(!pattern.child_ids.is_empty());
-        let mut b_roots = blamed.iter().filter_map(|b| b.term());
-        let mut no_bug = true;
-        for (i, subpat) in pattern.child_ids.iter().enumerate() {
-            let Some(root) = b_roots.next() else {
-                return Err(E::SubpatTooFewBlame(pattern.child_ids.len() - i));
-            };
-            no_bug &= self.can_blame_match_subpat(*root, *subpat);
+    fn check_eq_if(&self, from: ENodeIdx, to: ENodeIdx) -> bool {
+        let term = &self[self[from].owner];
+        if !term.app_name().is_some_and(|n| &self[n] == "if") || term.child_ids.len() != 3 {
+            return false;
         }
-        let too_many = b_roots.next().is_some();
-        if no_bug && !too_many {
-            debug_assert!(blamed[0].term().is_some());
-            return Ok(());
-        }
-        let mut root_count = pattern.child_ids.len() + too_many as usize + b_roots.count();
-        debug_assert!(root_count >= pattern.child_ids.len());
-        self.disable_obvious_blamed_bugs(blamed, pattern, &mut root_count);
-
-        let b = blamed.iter().enumerate();
-        let b_roots: Vec<_> = b
-            .filter_map(|(i, b)| Some(i).zip(b.term().copied()))
-            .collect();
-        debug_assert_eq!(b_roots.len(), root_count);
-
-        let success = self.try_rotations(blamed, pattern, &b_roots);
-        if success {
-            Ok(())
+        let Some(value) = self.cdcl.get_assign(term.child_ids[0], &self.stack) else {
+            return false;
+        };
+        let from = if value {
+            term.child_ids[1]
         } else {
-            self.permute_blamed(blamed, pattern, b_roots)
-        }
-    }
-
-    // Just rotations didn't work, try some permutations as well
-    fn permute_blamed(
-        &self,
-        blamed: &mut [BlameKind],
-        pattern: &Term,
-        mut b_roots: Vec<(usize, ENodeIdx)>,
-    ) -> Result<()> {
-        // The only permutation we try here is reversing, this might still fail
-        // for subpat lengths >= 4.
-        for i in 0..b_roots.len() {
-            let (from, _) = b_roots[i];
-            let to = b_roots.get(i + 1).map(|(i, _)| *i).unwrap_or(blamed.len());
-            b_roots[i].0 = blamed.len() - to;
-            blamed[from..to].reverse();
-        }
-        blamed.reverse();
-        b_roots.reverse();
-
-        let success = self.try_rotations(blamed, pattern, &b_roots);
-        if success {
-            return Ok(());
-        }
-
-        let name = |t: TermIdx| &self[self[t].kind.app_name().unwrap()];
-        let blamed = blamed.iter().filter_map(|b| match *b {
-            BlameKind::Term { term } => Some((true, term)),
-            BlameKind::Equality { .. } => None,
-            BlameKind::TermBug { term } => Some((false, term)),
-        });
-        let blamed = blamed.map(|(r, t)| format!("{r} {}", name(self[t].owner)));
-        let pattern = pattern.child_ids.iter().copied();
-        let s = format!(
-            "Blamed: [{}] | Subpats: [{}]",
-            blamed.collect::<Vec<_>>().join(", "),
-            pattern.map(name).collect::<Vec<_>>().join(", "),
-        );
-        Err(E::SubpatUnknownBlame(s))
-    }
-
-    // util
-
-    fn disable_obvious_blamed_bugs(
-        &self,
-        blamed: &mut [BlameKind],
-        pattern: &Term,
-        root_count: &mut usize,
-    ) {
-        if pattern.child_ids.len() == *root_count {
-            return;
-        }
-        let roots = pattern
-            .child_ids
-            .iter()
-            .map(|&sp| self[sp].kind.app_name().unwrap())
-            .collect::<FxHashSet<_>>();
-        for b in blamed.iter_mut() {
-            let BlameKind::Term { term } = *b else {
-                continue;
-            };
-            let root = self[self[term].owner].kind.app_name().unwrap();
-            if roots.contains(&root) {
-                continue;
-            }
-            *b = BlameKind::TermBug { term };
-            *root_count -= 1;
-        }
-    }
-
-    fn try_rotations(
-        &self,
-        blamed: &mut [BlameKind],
-        pattern: &Term,
-        b_roots: &[(usize, ENodeIdx)],
-    ) -> bool {
-        let mut valid_rotation = None;
-        let mut skipped = Vec::new();
-        'outer: for offset in 0..b_roots.len() {
-            if !self.can_blame_match_subpat(b_roots[offset].1, pattern.child_ids[0]) {
-                continue;
-            }
-            let can_skip = b_roots.len() - pattern.child_ids.len();
-            let idx = |i| b_roots[(offset + i) % b_roots.len()];
-            for (i, &sp) in pattern.child_ids.iter().enumerate().skip(1) {
-                while !self.can_blame_match_subpat(idx(skipped.len() + i).1, sp) {
-                    if skipped.len() == can_skip {
-                        skipped.clear();
-                        continue 'outer;
-                    }
-                    skipped.push(skipped.len() + i);
-                }
-            }
-
-            // Found a valid rotation
-
-            let mut root_count = b_roots.len();
-            valid_rotation.replace(offset);
-            let mut skip = |i| {
-                let i = idx(i).0;
-                let b = &mut blamed[i];
-                let term = *b.term().unwrap();
-                *b = BlameKind::TermBug { term };
-                root_count -= 1;
-            };
-            for &i in &skipped {
-                skip(i);
-            }
-            for i in 0..(can_skip - skipped.len()) {
-                skip(skipped.len() + pattern.child_ids.len() + i);
-            }
-            debug_assert_eq!(root_count, pattern.child_ids.len());
-            break;
-            // To error on ambiguous replace the above block with:
-            // let old = valid_rotation.replace(offset);
-            // if let Some(old) = old {
-            //     return Err(E::SubpatAmbiguousBlame(old, offset));
-            // }
-        }
-
-        if let Some(rotation) = valid_rotation {
-            let rotation = b_roots[rotation].0;
-            blamed.rotate_left(rotation);
-            debug_assert!(blamed[0].term().is_some());
-            true
-        } else {
-            false
-        }
+            term.child_ids[2]
+        };
+        let Some(from) = self.egraph.get_enode_imm(from, &self.stack) else {
+            debug_assert!(false, "if child not in egraph");
+            return false;
+        };
+        self.check_eq(from, to)
     }
 }
 
-// Z3 BUG: https://github.com/viperproject/axiom-profiler-2/issues/100
+// Z3 ISSUE: https://github.com/viperproject/axiom-profiler-2/issues/63
+
+impl Z3Parser {
+    pub(super) fn make_blamed(
+        &mut self,
+        match_: &MatchKind,
+        blamed: Vec<(usize, ENodeIdx, BlamedEqsParse)>,
+        pat: TermIdx,
+    ) -> Result<(bool, Box<[Blame]>)> {
+        let pattern = &self[pat];
+        if blamed.len() < pattern.child_ids.len() {
+            return Err(E::SubpatTooFewBlame(pattern.child_ids.len() - blamed.len()));
+        }
+
+        let mut finder = BlameFinder::new(self, match_, blamed, pat)?;
+        if let Some((correct_order, result)) = finder.find_blamed::<BasicEq>()? {
+            return Ok((correct_order, result));
+        }
+        if let Some((correct_order, result)) = finder.find_blamed::<ComplexEq>()? {
+            return Ok((correct_order, result));
+        }
+        if let Some((correct_order, result)) = finder.find_blamed::<CustomEq>()? {
+            return Ok((correct_order, result));
+        }
+        if let Some((correct_order, result)) = finder.find_blamed::<ForceEq>()? {
+            return Ok((correct_order, result));
+        }
+
+        let not_found = finder.not_found();
+        Err(E::SubpatNoBlame(not_found))
+    }
+}
+
+// Z3 ISSUE: https://github.com/viperproject/axiom-profiler-2/issues/100
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]

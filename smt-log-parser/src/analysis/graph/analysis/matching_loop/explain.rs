@@ -3,7 +3,7 @@ use petgraph::graph::NodeIndex;
 use crate::{
     analysis::analysis::matching_loop::{RecurrenceKind, SimpIdx},
     items::{
-        ENodeIdx, EqGivenUse, EqTransIdx, EqualityExpl, InstIdx, Term, TermIdx, TermKind,
+        ENodeIdx, EqGivenUse, EqTransIdx, EqualityExpl, InstIdx, TermIdx, TermKind,
         TransitiveExplSegmentKind,
     },
     parsers::z3::{
@@ -574,7 +574,7 @@ impl<'a> QVarParentCollector<'a> {
     }
     fn collect_term(&mut self, tidx: TermIdx) -> bool {
         let term = &self.parser[tidx];
-        match term.kind {
+        match term.kind() {
             TermKind::Var(_) => {
                 self.terms_with_qvars.insert(tidx);
                 true
@@ -653,43 +653,37 @@ impl TermSimplifier<'_> {
         }
 
         let must_pop = &mut false;
-        match term {
-            AnyTerm::Parsed(Term {
-                kind: TermKind::App(name),
-                ..
-            }) if {
-                self.stack.push(*name);
+        if let AnyTerm::Parsed(term) = term {
+            if let Some(name) = term.app_name() {
+                self.stack.push(name);
                 *must_pop = true;
                 let is_forbidden = self.forbidden_apps.contains(self.stack.as_slice());
-                !is_forbidden && !has_qvars
-            } =>
-            {
-                self.stack.pop();
-
-                let next = self.simplifications.len();
-                let new = self.parser.synth_terms.new_variable(next as u32)?;
-                let old = self.simplifications.insert(tidx.unwrap(), new);
-                // Should have returned early above if it was already contained.
-                assert!(old.is_none());
-                Ok(new)
-            }
-            _ => {
-                let mut child_ids = Vec::<SynthIdx>::new();
-                child_ids.try_reserve_exact(term.child_ids().len())?;
-                for i in 0..term.child_ids().len() {
-                    let child = self.parser[idx].child_ids()[i];
-                    let new = self.simplify_term(child)?;
-                    child_ids.push(new);
-                }
-                if *must_pop {
+                if !is_forbidden && !has_qvars {
                     self.stack.pop();
+
+                    let next = self.simplifications.len();
+                    let new = self.parser.synth_terms.new_variable(next as u32)?;
+                    let old = self.simplifications.insert(tidx.unwrap(), new);
+                    // Should have returned early above if it was already contained.
+                    assert!(old.is_none());
+                    return Ok(new);
                 }
-                let term = self.parser[idx].replace_child_ids(child_ids.into());
-                let term = term
-                    .map(|term| self.parser.synth_terms.insert(term))
-                    .transpose()?;
-                Ok(term.unwrap_or(idx))
             }
         }
+        let mut child_ids = Vec::<SynthIdx>::new();
+        child_ids.try_reserve_exact(term.child_ids().len())?;
+        for i in 0..term.child_ids().len() {
+            let child = self.parser[idx].child_ids()[i];
+            let new = self.simplify_term(child)?;
+            child_ids.push(new);
+        }
+        if *must_pop {
+            self.stack.pop();
+        }
+        let term = self.parser[idx].replace_child_ids(child_ids.into());
+        let term = term
+            .map(|term| self.parser.synth_terms.insert(term))
+            .transpose()?;
+        Ok(term.unwrap_or(idx))
     }
 }

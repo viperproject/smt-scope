@@ -169,7 +169,7 @@ impl
         use NodeKind::*;
         fn get_name(parser: &Z3Parser, tidx: TermIdx) -> String {
             let owner = &parser[tidx];
-            let name = owner.kind.app_name();
+            let name = owner.app_name();
             let name = name.map(|n| &parser[n]).unwrap_or_default();
             if owner.child_ids.is_empty() {
                 name.to_string()

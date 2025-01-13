@@ -71,6 +71,15 @@ impl<T, const N: usize> From<[T; N]> for BoxSlice<T> {
     }
 }
 
+impl<T> From<BoxSlice<T>> for Vec<T> {
+    fn from(slice: BoxSlice<T>) -> Self {
+        match slice {
+            BoxSlice::Large(slice) => slice.into_vec(),
+            BoxSlice::Small(slice) => vec![slice],
+        }
+    }
+}
+
 impl<T> BoxSlice<T> {
     #[allow(clippy::no_effect)]
     const CHECK_T_SMALL: bool = {

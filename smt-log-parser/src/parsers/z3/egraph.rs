@@ -112,8 +112,8 @@ impl EGraph {
             .ok_or_else(|| Error::UnknownEnode(term))
     }
 
-    pub fn get_owner(&self, enode: ENodeIdx) -> TermIdx {
-        self.enodes[enode].owner
+    pub fn get_enode_imm(&self, term: TermIdx, stack: &Stack) -> Option<ENodeIdx> {
+        self.get_tte_imm(term, stack)
     }
 
     pub(super) fn new_proof(
@@ -150,6 +150,7 @@ impl EGraph {
         expl: EqualityExpl,
         stack: &Stack,
     ) -> Result<()> {
+        debug_assert_eq!(from, expl.from());
         let to = expl.to();
         self.equalities.given.raw.try_reserve(1)?;
         let expl = self.equalities.given.push_and_get_key(expl);
@@ -189,7 +190,7 @@ impl EGraph {
         from: ENodeIdx,
         to: ENodeIdx,
         stack: &Stack,
-        can_mismatch: impl Fn(&EGraph) -> bool,
+        can_mismatch: bool,
     ) -> Result<core::result::Result<EqTransIdx, ENodeIdx>> {
         if from == to {
             Ok(Err(from))
@@ -199,36 +200,64 @@ impl EGraph {
         }
     }
 
-    fn path_to_root(
+    fn to_root<'a>(
+        &'a self,
+        from: ENodeIdx,
+        stack: &'a Stack,
+    ) -> impl Iterator<Item = ENodeIdx> + 'a {
+        core::iter::successors(Some(from), move |&from| {
+            self.enodes[from].get_equality(stack).map(|eq| eq.to)
+        })
+    }
+
+    fn to_root_visited<'a>(
+        &'a self,
+        from: ENodeIdx,
+        stack: &'a Stack,
+        cycle: &'a mut Option<ENodeIdx>,
+        visited: &'a mut FxHashSet<ENodeIdx>,
+    ) -> impl Iterator<Item = ENodeIdx> + 'a {
+        self.to_root(from, stack).take_while(move |&from| {
+            if visited.insert(from) {
+                true
+            } else {
+                // On rare occasions there is a cycle of more than one enode in
+                // the equality graph (EXPLAIN).
+                *cycle = Some(from);
+                false
+            }
+        })
+    }
+
+    pub fn check_eq(&self, from: ENodeIdx, to: ENodeIdx, stack: &Stack) -> bool {
+        let mut visited_from = FxHashSet::default();
+        self.to_root_visited(from, stack, &mut None, &mut visited_from)
+            .for_each(drop);
+        for to in self.to_root_visited(to, stack, &mut None, &mut FxHashSet::default()) {
+            if visited_from.contains(&to) {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn path_to_root(
         &self,
-        mut from: ENodeIdx,
+        from: ENodeIdx,
         root: Option<ENodeIdx>,
         stack: &Stack,
     ) -> Result<(Option<ENodeIdx>, Vec<ENodeIdx>)> {
+        let mut cycle = None;
         let mut visited = FxHashSet::default();
-        visited.try_reserve(1)?;
-        visited.insert(from);
-
         let mut path = Vec::new();
-        path.try_reserve(1)?;
-        path.push(from);
-        while let Some(eq) = &self.enodes[from].get_equality(stack) {
-            if visited.contains(&eq.to) {
-                // On rare occasions there is a cycle in the equality graph
-                // (EXPLAIN). Return the path and the root as just before
-                // cycling (`from`).
-                return Ok((Some(from), path));
-            }
-            from = eq.to;
-            visited.try_reserve(1)?;
-            visited.insert(from);
+        for e in self.to_root_visited(from, stack, &mut cycle, &mut visited) {
             path.try_reserve(1)?;
-            path.push(from);
-            if root.is_some_and(|root| root == from) {
-                return Ok((Some(from), path));
+            path.push(e);
+            if root.is_some_and(|root| root == e) {
+                return Ok((Some(e), path));
             }
         }
-        Ok((None, path))
+        Ok((cycle, path))
     }
 
     fn get_simple_path(
@@ -236,17 +265,17 @@ impl EGraph {
         from: ENodeIdx,
         to: ENodeIdx,
         stack: &Stack,
-        can_mismatch: impl Fn(&EGraph) -> bool,
+        can_mismatch: bool,
     ) -> Result<Option<SimplePath>> {
-        let (root, f_path) = self.path_to_root(from, None, stack)?;
+        let (_, f_path) = self.path_to_root(from, None, stack)?;
         let f_root = f_path.len() - 1;
-        let (_, t_path) = self.path_to_root(to, root, stack)?;
+        let (_, t_path) = self.path_to_root(to, Some(*f_path.last().unwrap()), stack)?;
         let t_root = t_path.len() - 1;
 
         if f_path[f_root] != t_path[t_root] {
             // Root may not always be the same from v4.12.3 onwards if `to` is an `ite` expression. See:
             // https://github.com/Z3Prover/z3/commit/faf14012ba18d21c1fcddbdc321ac127f019fa03#diff-0a9ec50ded668e51578edc67ecfe32380336b9cbf12c5d297e2d3759a7a39847R2417-R2419
-            if can_mismatch(self) {
+            if can_mismatch {
                 // Return no path if the roots are different.
                 return Ok(None);
             } else {
@@ -273,7 +302,7 @@ impl EGraph {
         from: ENodeIdx,
         to: ENodeIdx,
         stack: &Stack,
-        can_mismatch: impl Fn(&EGraph) -> bool,
+        can_mismatch: bool,
     ) -> Result<EqTransIdx> {
         debug_assert_ne!(from, to);
         let Some(simple_path) = self.get_simple_path(from, to, stack, can_mismatch)? else {
@@ -402,7 +431,7 @@ impl EGraph {
                 let mut use_ = Vec::new();
                 use_.try_reserve_exact(arg_eqs.len())?;
                 for (from, to) in args {
-                    let Ok(trans) = self.new_trans_equality(from, to, stack, |_| false)? else {
+                    let Ok(trans) = self.new_trans_equality(from, to, stack, false)? else {
                         continue;
                     };
                     use_.push(trans);
@@ -434,7 +463,7 @@ impl std::ops::Index<ENodeIdx> for EGraph {
 impl ENode {
     pub fn get_equality(&self, _stack: &Stack) -> Option<&Equality> {
         // TODO: why are we allowed to use equalities from popped stack frames?
-        // self.equalities.iter().rev().find(|eq| eq.frame.map(|f| stack.stack_frames[f].active).unwrap_or(true))
+        // self.equalities.iter().rev().find(|eq| stack.is_alive(eq._frame))
         self.equalities.last()
     }
 }
@@ -829,7 +858,7 @@ impl EGraph {
         Ok(())
     }
 
-    pub fn get_tte(&mut self, term: TermIdx, stack: &Stack) -> Option<ENodeIdx> {
+    fn get_tte(&mut self, term: TermIdx, stack: &Stack) -> Option<ENodeIdx> {
         let Entry::Occupied(mut o) = self.term_to_enode.entry(term) else {
             return None;
         };
@@ -857,6 +886,16 @@ impl EGraph {
                     None
                 }
             }
+        }
+    }
+
+    fn get_tte_imm(&self, term: TermIdx, stack: &Stack) -> Option<ENodeIdx> {
+        let enode = self.term_to_enode.get(&term)?;
+        let keep = |e: &ENodeIdx| stack.is_alive(self.enodes[*e].frame);
+        match enode {
+            TermToEnode::Single(e) if keep(e) => Some(*e),
+            TermToEnode::Single(_) => None,
+            TermToEnode::Multiple(es) => es.iter().copied().find(keep),
         }
     }
 }

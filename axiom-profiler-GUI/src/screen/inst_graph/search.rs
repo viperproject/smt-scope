@@ -61,7 +61,7 @@ impl Graph {
             // TODO: display meaning in search?
             if let Some(_meaning) = parser.meaning(tidx) {}
             let term = &parser[tidx];
-            let Some(name) = term.kind.app_name() else {
+            let Some(name) = term.app_name() else {
                 if EXPECT_APP {
                     log::error!("ENode without name: {:?}", term);
                 }
@@ -99,8 +99,8 @@ impl Graph {
                         handle_enode(yt);
                     }
                     for blame in match_.pattern_matches() {
-                        handle_enode(blame.enode());
-                        for eq in blame.equalities() {
+                        handle_enode(blame.enode);
+                        for &eq in blame.equalities.iter() {
                             handle_eq(parser, eq, &mut handle_enode);
                         }
                     }

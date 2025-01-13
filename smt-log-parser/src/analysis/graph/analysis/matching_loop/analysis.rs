@@ -275,12 +275,13 @@ pub struct CollectedBlame {
 }
 
 impl CollectedBlame {
-    pub fn new(parser: &Z3Parser, blame: Blame<'_>) -> Self {
-        let enode = blame.enode();
+    pub fn new(parser: &Z3Parser, blame: &Blame) -> Self {
+        let enode = blame.enode;
         let owner = parser[enode].owner;
         let equalities = blame
-            .equalities()
-            .map(|eidx| {
+            .equalities
+            .iter()
+            .map(|&eidx| {
                 let (from, to) = parser.from_to(eidx);
                 let from = parser[from].owner;
                 let to = parser[to].owner;

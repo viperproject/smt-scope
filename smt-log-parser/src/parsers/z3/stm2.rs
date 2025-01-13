@@ -70,7 +70,7 @@ impl EventLog {
         if term.id.namespace.is_some() {
             return Ok(());
         }
-        let Some(iname) = term.kind.app_name() else {
+        let Some(iname) = term.app_name() else {
             return Ok(());
         };
         let declared = self.declared_functions.entry(iname).or_default();

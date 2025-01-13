@@ -110,10 +110,10 @@ impl RawInstGraph {
                 .enumerate()
             {
                 let pattern_term = i as u16;
-                self_.add_edge(blame.enode(), idx, EdgeKind::Blame { pattern_term });
-                for (i, eq) in blame.equalities().enumerate() {
+                self_.add_edge(blame.enode, idx, EdgeKind::Blame { pattern_term });
+                for (i, eq) in blame.equalities.iter().enumerate() {
                     self_.add_edge(
-                        eq,
+                        *eq,
                         idx,
                         EdgeKind::BlameEq {
                             pattern_term,

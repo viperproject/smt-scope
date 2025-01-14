@@ -12,10 +12,10 @@ jobs:
         verifier:
           - name: 'carbon'
           - name: 'dafny'
-            args: 'lt dafny/Source/IntegrationTests/TestFiles/LitTests/LitTest/dafny2'
+            args: 'lt dafny/Source/IntegrationTests/TestFiles/LitTests/LitTest/contract-wrappers'
             tag:  '-1'
           - name: 'dafny'
-            args: 'gt dafny/Source/IntegrationTests/TestFiles/LitTests/LitTest/dafny2'
+            args: 'gt dafny/Source/IntegrationTests/TestFiles/LitTests/LitTest/contract-wrappers'
             tag:  '-2'
           - name: 'fstar'
           - name: 'silicon'

@@ -233,7 +233,7 @@ impl Z3Parser {
 
     fn parse_arith(meaning: &str) -> Result<BigRational> {
         let (rest, num) = Self::parse_arith_inner(meaning)?;
-        assert!(rest.is_empty());
+        debug_assert!(rest.is_empty());
         Ok(num.into())
     }
     fn parse_arith_inner(meaning: &str) -> Result<(&str, num::BigRational)> {
@@ -358,13 +358,13 @@ impl Z3LogParser for Z3Parser {
         let (quant_name, num_vars) = self.parse_qid(&mut l)?;
         let quant_name = QuantKind::parse(&mut self.strings, &quant_name);
         let child_ids = Self::map(l, |id| self.parse_existing_app(id))?;
-        assert!(!child_ids.is_empty());
+        debug_assert!(!child_ids.is_empty());
         let child_id_names = || {
             child_ids[..child_ids.len() - 1]
                 .iter()
                 .map(|&id| self[id].app_name().map(|name| &self[name]))
         };
-        assert!(
+        debug_assert!(
             child_id_names().all(|name| name.is_some_and(|name| name == "pattern")),
             "Expected all but last child to be \"pattern\" but found {:?}",
             child_id_names().collect::<Vec<_>>()
@@ -494,9 +494,10 @@ impl Z3LogParser for Z3Parser {
         let var_names = self.gobble_var_names_list(l)?;
         let tidx = self.parse_existing_app(id)?;
         let qidx = self.terms.quant(tidx)?;
-        assert!(self.quantifiers[qidx].vars.is_none());
-        assert!(!matches!(self.quantifiers[qidx].kind, QuantKind::Lambda(_)));
-        self.quantifiers[qidx].vars = Some(var_names);
+        let quant = &mut self.quantifiers[qidx];
+        debug_assert_eq!(quant.num_vars.get() as usize, var_names.len());
+        debug_assert!(quant.vars.is_none());
+        quant.vars = Some(var_names);
         Ok(())
     }
 
@@ -767,7 +768,7 @@ impl Z3LogParser for Z3Parser {
                 InstProofLink::HasProof(proof)
             }
         } else {
-            assert!(
+            debug_assert!(
                 !fingerprint.is_zero(),
                 "Axiom instantiations should have an associated term"
             );

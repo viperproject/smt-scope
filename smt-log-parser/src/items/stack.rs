@@ -58,7 +58,7 @@ impl TimeRange {
     }
 
     pub fn end(&mut self, end: u32, leaked: bool) {
-        assert!(self.status().is_active());
+        debug_assert!(self.status().is_active());
         self.end = end;
         self.leaked = leaked;
     }

@@ -135,7 +135,7 @@ impl Z3LogParser for Z3DummyParser {
     }
 
     fn assign<'a>(&mut self, l: impl Iterator<Item = &'a str>) -> Result<()> {
-        self.20 += l.count() as u32;
+        self.20 += l.take(4).count() as u32;
         Ok(())
     }
 

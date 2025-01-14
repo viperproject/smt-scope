@@ -9,8 +9,8 @@ SEARCH_DIR="$SMT2_DIR"
 [ -d "$SEARCH_DIR" ] || exit 1
 SMT2_FILES="$(find "$SEARCH_DIR" -name "*.smt2" | sort)"
 
-# Set the timeout for running z3, limits log size to about 0.25GB
-export TIMEOUT=3
+# Set the timeout for running z3, limits log size to about 0.5GB
+export TIMEOUT=5
 
 while read -r file; do
     FILE="${file#"$SMT2_DIR/"}"

@@ -9,7 +9,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        verifier: ['carbon', 'dafny', 'fstar', 'silicon', 'smt-comp', 'verus']
+        verifier:
+          - name: 'carbon'
+          - name: 'dafny'
+            args: 'lt dafny/Source/IntegrationTests/TestFiles/LitTests/LitTest/dafny2'
+            tag:  '-1'
+          - name: 'dafny'
+            args: 'gt dafny/Source/IntegrationTests/TestFiles/LitTests/LitTest/dafny2'
+            tag:  '-2'
+          - name: 'fstar'
+          - name: 'silicon'
+          - name: 'smt-comp'
+            args: 'lt smt-comp/non-incremental'
+            tag:  '-1'
+          - name: 'smt-comp'
+            args: 'gt smt-comp/non-incremental'
+            tag:  '-2'
+          - name: 'verus'
     runs-on: ubuntu-latest
 
     steps:
@@ -26,14 +42,14 @@ jobs:
           shared-key: "shared"
           save-if: "false"
       - run: ./eval/build.sh
-      - run: ./eval/eval.sh ${{ matrix.verifier }}
+      - run: ./eval/eval.sh ${{ matrix.verifier.name }} ${{ matrix.verifier.args }}
 
       - name: Archive data for upload
         if: always()
-        run: tar -czf ${{ matrix.verifier }}.tar.bz2 eval/data/${{ matrix.verifier }}
+        run: tar -czf ${{ matrix.verifier.name }}${{ matrix.verifier.tag }}.tar.bz2 eval/data/${{ matrix.verifier.name }}
       - uses: actions/upload-artifact@v4.4.3
         if: always()
         with:
-          name: "${{ matrix.verifier }}"
-          path: ${{ matrix.verifier }}.tar.bz2
+          name: "${{ matrix.verifier.name }}${{ matrix.verifier.tag }}"
+          path: ${{ matrix.verifier.name }}${{ matrix.verifier.tag }}.tar.bz2
           retention-days: 30

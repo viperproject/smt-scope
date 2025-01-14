@@ -547,6 +547,15 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for QuantPat {
     }
 }
 
+impl DisplayWithCtxt<(), ()> for Option<PatternIdx> {
+    fn fmt_with(self, f: &mut fmt::Formatter<'_>, _ctxt: &(), _data: &mut ()) -> fmt::Result {
+        match self {
+            Some(pat) => write!(f, "{pat}"),
+            None => write!(f, "{{MBQI}}"),
+        }
+    }
+}
+
 ////////////
 // Item defs
 ////////////

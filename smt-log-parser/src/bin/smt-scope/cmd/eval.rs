@@ -3,7 +3,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use smt_log_parser::analysis::{InstGraph, RedundancyAnalysis};
+use smt_log_parser::{
+    analysis::{InstGraph, RedundancyAnalysis},
+    display_with::DisplayWithCtxt,
+    items::QuantPat,
+    FxHashSet,
+};
 
 pub struct Timer(Instant);
 impl Timer {
@@ -29,8 +34,34 @@ pub fn run(logfile: PathBuf) -> Result<(), String> {
     println!("[Graph] {}us", graph_time.as_micros());
     println!("[Analysis] {}us", analysis_time.as_micros());
     println!("[Loops] {} true, {} false", loops.sure_mls, loops.maybe_mls);
+    let qpat_to_str = |q: QuantPat| {
+        let name = parser[q.quant].kind.name(&parser.strings);
+        let name = name.as_deref().unwrap_or("null").replace(' ', "--");
+        format!("{name}{}[{}{}]", q.pat.with(&()), q.quant, q.pat.with(&()))
+    };
+    for ml in &loops.matching_loops {
+        let (repetitions, leaf) = ml.leaves.0[0];
+        print!("[OneLoop] {repetitions} repetitions, ");
+        if ml.graph.is_some() {
+            print!("true-loop, ");
+        } else {
+            print!("false-loop, ");
+        }
+        let members = [leaf].into_iter().chain(ml.members(loops));
+        let members = members.flat_map(|i| parser.get_inst(i).match_.kind.quant_pat());
+        let mut printed = FxHashSet::default();
+        let mut to_print = Vec::new();
+        for m in members {
+            if printed.insert(m) {
+                to_print.push(qpat_to_str(m));
+            }
+        }
+        println!("{}", to_print.join(" -> "));
+    }
     let rpq = redundancy.per_quant.iter_enumerated();
     let pos_im = rpq.filter(|(_, d)| d.input_multiplicativity() > 1.0);
-    println!("[Branching] {}", pos_im.count());
+    let pos_im = pos_im.map(|(q, d)| format!("{} {}x", qpat_to_str(q), d.input_multiplicativity()));
+    let pos_im = pos_im.collect::<Vec<_>>();
+    println!("[Branching] {} {}", pos_im.len(), pos_im.join(" "));
     Ok(())
 }

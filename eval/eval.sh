@@ -17,8 +17,9 @@ while read -r file; do
     OUTPUT="$DIRNAME/data/${FILE%.*}"
 
     [[ "$2" == "lt" && "$3" < "$FILE" ]] && continue || true
-    [[ "$2" == "gt" && "$3" > "$FILE" ]] && continue || true
-    [[ "$2" == "eq" && "${FILE#"$3/"}" == "${FILE}" ]] && continue || true
+    [[ "$2" == "ge" && "$3" > "$FILE" ]] && continue || true
+    [[ "$2" == "eq" && "${FILE#"$3"}" == "${FILE}" ]] && continue || true
+    [[ "$2" == "in" && ("$3" > "$FILE" || "$4" < "$FILE") ]] && continue || true
     [ -s "$OUTPUT.data" ] && echo "[.log] EXISTS $FILE" && continue || true
 
     # [ "$FILE" == "silicon/silver/src/test/resources/quantifiedpermissions/misc/functions-01.smt2" ] || continue

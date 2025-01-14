@@ -65,5 +65,8 @@ pub enum Commands {
     Eval {
         /// The path to the smt log file
         logfile: std::path::PathBuf,
+        /// Whether to use the dummy parser instead
+        #[arg(long, default_value_t = false)]
+        dummy: bool,
     },
 }

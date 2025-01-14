@@ -32,7 +32,7 @@ pub fn run() -> Result<(), String> {
         args::Commands::Reconstruct { logfile, clean } => reconstruct::run(logfile, clean)?,
         args::Commands::Redundancy { logfile } => redundancy::run(logfile)?,
         args::Commands::Ecore { logfile } => ecore::run(logfile)?,
-        args::Commands::Eval { logfile } => eval::run(logfile)?,
+        args::Commands::Eval { logfile, dummy } => eval::run(logfile, dummy)?,
     }
 
     Ok(())

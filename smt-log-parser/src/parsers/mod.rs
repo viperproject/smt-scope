@@ -11,6 +11,7 @@ use std::path::Path;
 use std::time::Duration;
 use wasm_timer::Instant;
 
+pub mod dummy;
 pub mod z3;
 
 #[cfg(not(feature = "mem_dbg"))]

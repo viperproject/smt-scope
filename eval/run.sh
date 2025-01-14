@@ -1,6 +1,6 @@
 DIRNAME="$(realpath "$(dirname "$0")")"
 
-TOOLS="smt-scope axiom-profiler"
+TOOLS="dummy smt-scope axiom-profiler"
 for tool in $TOOLS; do
     RUN="$DIRNAME/$tool/run.sh"
     echo "[tool] $tool"

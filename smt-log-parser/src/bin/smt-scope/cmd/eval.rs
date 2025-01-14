@@ -7,7 +7,8 @@ use smt_log_parser::{
     analysis::{InstGraph, RedundancyAnalysis},
     display_with::DisplayWithCtxt,
     items::QuantPat,
-    FxHashSet,
+    parsers::dummy::Z3DummyParser,
+    FxHashSet, LogParser,
 };
 
 pub struct Timer(Instant);
@@ -21,7 +22,22 @@ impl Timer {
     }
 }
 
-pub fn run(logfile: PathBuf) -> Result<(), String> {
+pub fn run_dummy(logfile: PathBuf) -> Result<(), String> {
+    let mut timer = Timer::start();
+    let path = std::path::Path::new(&logfile);
+    let (_metadata, parser) = Z3DummyParser::from_file(path).map_err(|e| e.to_string())?;
+    let parser = parser.process_all().map_err(|e| e.to_string())?;
+    let parse_time = timer.lap();
+    let parser = format!("{parser:?}");
+    assert!(parser.len() > 30);
+    println!("[Parse] {}us", parse_time.as_micros());
+    Ok(())
+}
+
+pub fn run(logfile: PathBuf, dummy: bool) -> Result<(), String> {
+    if dummy {
+        return run_dummy(logfile);
+    }
     let mut timer = Timer::start();
     let mut parser = super::run_on_logfile(logfile)?;
     let parse_time = timer.lap();

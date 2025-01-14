@@ -93,9 +93,9 @@ impl Stack {
     ) -> Result<bool> {
         let count = count.get();
         debug_assert!(0 < count && count <= idx);
+        let result = self.ensure_height(idx);
         let from_cdcl = from_cdcl
             || (0..count).any(|idx| self[self.stack[self.stack.len() - 1 - idx]].from_cdcl);
-        let result = self.ensure_height(idx);
         for _ in 0..count {
             self.remove_frame(false, from_cdcl);
         }

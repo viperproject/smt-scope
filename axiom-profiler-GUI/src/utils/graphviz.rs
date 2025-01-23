@@ -8,7 +8,10 @@ use yew::prelude::*;
 #[derive(Properties, Clone, PartialEq)]
 pub struct DotProps {
     pub dot: String,
+    /// The filename of the opened log file.
     pub filename: String,
+    /// The suffix to add to the filename.
+    pub suffix: String,
     pub scale: bool,
 }
 
@@ -48,12 +51,14 @@ pub fn Dot(props: &DotProps) -> Html {
         return html! {<div class="dot"></div>};
     }
 
-    let (filename, svg_ref) = (props.filename.clone(), svg.clone());
+    let name = props.filename.split('.').next().unwrap();
+    let name = format!("{name}{}.svg", props.suffix);
+    let (filename, svg_ref) = (name.clone(), svg.clone());
     let download = Callback::from(move |ev: MouseEvent| {
         ev.prevent_default();
         DotAction::Download.action(&filename, &svg_ref);
     });
-    let (filename, svg_ref) = (props.filename.clone(), svg.clone());
+    let (filename, svg_ref) = (name.clone(), svg.clone());
     let share = Callback::from(move |ev: MouseEvent| {
         ev.prevent_default();
         DotAction::Share.action(&filename, &svg_ref);
@@ -89,8 +94,7 @@ pub enum DotAction {
 
 impl DotAction {
     fn action(&self, filename: &str, svg: &SvgsvgElement) {
-        let filename = format!("{filename}.svg");
-        let svg = svg.inner_html();
+        let svg = svg.outer_html();
         let blob =
             web_sys::Blob::new_with_str_sequence(&vec![svg].into()).expect("Failed to create blob");
         match self {
@@ -104,15 +108,15 @@ impl DotAction {
                     .dyn_into::<web_sys::HtmlAnchorElement>()
                     .expect("Failed to cast element");
                 download.set_href(&url);
-                download.set_download(&filename);
+                download.set_download(filename);
                 download.click();
                 web_sys::Url::revoke_object_url(&url).expect("Failed to revoke object URL");
             }
             Self::Share => {
                 let navigator = web_sys::window().unwrap().navigator();
                 let data = web_sys::ShareData::new();
-                data.set_title(&filename);
-                let file = web_sys::File::new_with_blob_sequence(&vec![blob].into(), &filename)
+                data.set_title(filename);
+                let file = web_sys::File::new_with_blob_sequence(&vec![blob].into(), filename)
                     .expect("Failed to create file");
                 data.set_files(&js_sys::Array::of1(&file));
                 let _share_promise = navigator.share_with_data(&data);

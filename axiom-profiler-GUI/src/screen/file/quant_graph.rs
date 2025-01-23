@@ -47,9 +47,10 @@ pub fn QuantGraph(props: &QuantGraphProps) -> Html {
         config: cfg.config.display,
     };
     let dot = qpg.dot(log_info, &analysis.quants, ctxt, colour_map);
-    let filename = format!("{}-quants", props.file.name);
+    let filename = props.file.name.clone();
+    let suffix = "_quants".to_string();
     html! {
-        <Dot {dot} {filename} scale={true} />
+        <Dot {dot} {filename} {suffix} scale={true} />
     }
 }
 

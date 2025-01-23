@@ -60,14 +60,11 @@ pub fn MlgRenderer(props: &MlgrProps) -> Html {
         html! {}
     };
 
-    let filename = format!(
-        "{}_ml_{}",
-        props.file.name.split('.').next().unwrap(),
-        props.idx + 1
-    );
+    let filename = props.file.name.clone();
+    let suffix = format!("_ml_{}", props.idx + 1);
     html! {<Tab title="Matching Loop">
         {warning}
-        <Dot {dot} {filename} scale={false} />
+        <Dot {dot} {filename} {suffix} scale={false} />
     </Tab>}
 }
 

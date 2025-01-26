@@ -553,7 +553,7 @@ impl EqRewriter for CustomEq {
         //     }
         // }
         if let Some(to) = parser.egraph.get_enode_imm(subpat, &parser.stack) {
-            let from = parser.egraph.get_enode_imm(blame, &parser.stack).unwrap();
+            let from = parser.egraph.get_enode_imm(blame, &parser.stack)?;
             if parser.egraph.check_eq(from, to, &parser.stack) {
                 return Some((from, 1, Some(to)));
             }

@@ -561,6 +561,7 @@ struct QVarParentCollector<'a> {
     stack: Option<Vec<IString>>,
     forbidden_apps: FxHashSet<BoxSlice<IString>>,
     terms_with_qvars: FxHashSet<TermIdx>,
+    bound_qvars: u32,
 }
 
 impl<'a> QVarParentCollector<'a> {
@@ -570,12 +571,16 @@ impl<'a> QVarParentCollector<'a> {
             stack: Some(Default::default()),
             forbidden_apps: Default::default(),
             terms_with_qvars: Default::default(),
+            bound_qvars: 0,
         }
     }
     fn collect_term(&mut self, tidx: TermIdx) -> bool {
         let term = &self.parser[tidx];
         match term.kind() {
-            TermKind::Var(_) => {
+            TermKind::Var(var) => {
+                if var.get() < self.bound_qvars {
+                    return false;
+                }
                 self.terms_with_qvars.insert(tidx);
                 true
             }
@@ -606,7 +611,23 @@ impl<'a> QVarParentCollector<'a> {
                 }
                 has_qvar
             }
-            TermKind::Quant(..) => unreachable!(),
+            TermKind::Quant(qidx) => {
+                if term.child_ids.is_empty() {
+                    return false;
+                }
+                let quant = &self.parser[qidx];
+                let num_vars = quant.num_vars.get();
+                self.bound_qvars += num_vars;
+                let stack = self.stack.take();
+                let has_qvar = self.collect_term(*term.child_ids.last().unwrap());
+                self.stack = stack;
+                self.bound_qvars -= num_vars;
+
+                if has_qvar {
+                    self.terms_with_qvars.insert(tidx);
+                }
+                has_qvar
+            }
         }
     }
 }

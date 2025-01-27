@@ -73,6 +73,13 @@ pub fn run(logfile: PathBuf, dummy: bool) -> Result<(), String> {
             }
         }
         println!("{}", to_print.join(" -> "));
+        if ml.leaves.0.len() > 1 {
+            print!("[ExtraLoop]");
+            for (repetitions, _) in ml.leaves.0.iter().skip(1) {
+                print!(" {repetitions}");
+            }
+            println!();
+        }
     }
     let rpq = redundancy.per_quant.iter_enumerated();
     let pos_im = rpq.filter(|(_, d)| d.input_multiplicativity() > 1.0);

@@ -24,7 +24,9 @@ while read -r file; do
 
     # [ "$FILE" == "silicon/silver/src/test/resources/quantifiedpermissions/misc/functions-01.smt2" ] || continue
     cd "$DIRNAME/data"
-    "$SMT2_DIR/z3.sh" "$file"
+    exec 3>&1 4>&2
+    Z3_TIME=$(TIMEFORMAT="%R"; { time "$SMT2_DIR/z3.sh" "$file" 1>&3 2>&4; } 2>&1)
+    exec 3>&- 4>&-
 
     OUTPUT_DIR="$(dirname "$OUTPUT")"
     LOGFILE="$(find "$OUTPUT_DIR" -name "$(basename "$OUTPUT")-fHash-*.log" -maxdepth 1 -type f)"
@@ -32,7 +34,7 @@ while read -r file; do
     [ ! -s "$LOGFILE" ] && echo "!!! Log file is empty for \"$FILE\"" && continue || true
     cd "$OUTPUT_DIR"
 
-    echo "[LOGFILE] $(basename "$LOGFILE") $(ls -l "$LOGFILE" | awk '{print $5}')b" > "$OUTPUT.data"
+    echo "[LOGFILE] $(basename "$LOGFILE") $(ls -l "$LOGFILE" | awk '{print $5}')b ${Z3_TIME}s" > "$OUTPUT.data"
     "$DIRNAME/run.sh" "$LOGFILE" >> "$OUTPUT.data"
 
     rm -f "$LOGFILE"

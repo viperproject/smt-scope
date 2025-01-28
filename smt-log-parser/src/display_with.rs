@@ -601,7 +601,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTerm
     ) -> fmt::Result {
         match self {
             SynthTermKind::Parsed(kind) => kind.fmt_with(f, ctxt, data),
-            SynthTermKind::Generalised => {
+            SynthTermKind::Generalised(_) => {
                 let synth_idx = data.children()[0];
                 match ctxt.config.input {
                     Some(true) => write!(f, "⭐"),

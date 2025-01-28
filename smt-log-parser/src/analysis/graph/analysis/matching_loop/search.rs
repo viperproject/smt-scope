@@ -4,22 +4,21 @@ use crate::{
     Z3Parser,
 };
 
-use super::{MatchingLoop, MlData, MlSignature, MIN_MATCHING_LOOP_LENGTH};
+use super::{
+    MatchingLoop, MlData, MlSignature, MIN_MATCHING_LOOP_LENGTH, MIN_SUSPICIOUS_CHAIN_LENGTH,
+};
 
 impl InstGraph {
     /// Search for matching loops in the graph.
     pub fn search_matching_loops(&mut self, parser: &mut Z3Parser) -> &MlData {
         let signatures = MlSignature::collect_ml_signatures(parser);
-        // Collect all signatures instantiated at least `MIN_MATCHING_LOOP_LENGTH` times
+        let min = MIN_MATCHING_LOOP_LENGTH.min(MIN_SUSPICIOUS_CHAIN_LENGTH);
+        // Collect all signatures instantiated at least `min` times
         let mut signatures: Vec<_> = signatures
             .into_iter()
             .filter_map(|(sig, insts)| {
-                self.has_n_overlapping_stacks(
-                    parser,
-                    insts.iter().copied(),
-                    MIN_MATCHING_LOOP_LENGTH,
-                )
-                .then_some((sig, insts))
+                self.has_n_overlapping_stacks(parser, insts.iter().copied(), min)
+                    .then_some((sig, insts))
             })
             .collect();
         // eprintln!("Found {} signatures", signatures.len());
@@ -31,7 +30,8 @@ impl InstGraph {
             .into_iter_enumerated()
             .filter_map(|(i, v)| self.raw[i].kind().inst().map(|i| (i, v)))
             .collect();
-        let analysis = analysis.finalise(topo, MIN_MATCHING_LOOP_LENGTH);
+        let analysis =
+            analysis.finalise(topo, MIN_MATCHING_LOOP_LENGTH, MIN_SUSPICIOUS_CHAIN_LENGTH);
         let ml_data = analysis.ml_graphs(parser);
 
         self.analysis.ml_data = Some(ml_data);

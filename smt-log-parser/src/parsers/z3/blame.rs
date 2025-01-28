@@ -14,7 +14,7 @@ impl Z3Parser {
             .iter()
             .map(|&eq| self.from_to(eq))
             .collect::<Box<[_]>>();
-        let mut data = BasicEq::new(self, &eqs, core::iter::empty());
+        let mut data = BasicEq::new(self, &eqs, core::iter::empty(), &[]);
         let eqs_new = BasicEq::check_match(&mut data, self, match_, blame.enode, subpat);
         // if eqs_new.as_deref() != Some(&*eqs) {
         //     let eqs = blame.equalities
@@ -56,6 +56,7 @@ pub(super) struct BlameFinder<'a> {
     match_: &'a MatchKind,
     result: Box<[Blame]>,
     blamed: Vec<(usize, ENodeIdx, BlamedEqsParse)>,
+    impossible: Vec<(usize, ENodeIdx, BlamedEqsParse)>,
     pat: TermIdx,
     correct_order: bool,
     to_find: usize,
@@ -81,20 +82,44 @@ impl<'a> BlameFinder<'a> {
         let result = result.into_boxed_slice();
         let correct_order = true;
         let to_find = result.len();
+        debug_assert!(to_find <= blamed.len());
         Ok(Self {
             parser,
             match_,
             result,
             blamed,
+            impossible: Vec::new(),
             pat,
             correct_order,
             to_find,
         })
     }
 
+    /// Remove blames that are impossible to match a subpat
+    fn remove_impossible(&mut self) {
+        let pat = &self.parser[self.pat];
+        self.blamed.retain_mut(|(j, enode, eqs)| {
+            let blame = &self.parser[self.parser[*enode].owner];
+            for (i, result) in self.result.iter_mut().enumerate() {
+                if !matches!(result.coupling, Coupling::Error) {
+                    continue;
+                }
+                let subpat = &self.parser[pat.child_ids[i]];
+                if blame.can_match(subpat) {
+                    return true;
+                }
+            }
+            self.impossible.push((*j, *enode, core::mem::take(eqs)));
+            false
+        });
+        debug_assert!(self.to_find <= self.blamed.len());
+    }
+
     pub(super) fn find_blamed<E: EqRewriter>(&mut self) -> Result<Option<(bool, Box<[Blame]>)>> {
         debug_assert_ne!(self.to_find, 0);
         debug_assert_eq!(self.result.len(), self.parser[self.pat].child_ids.len());
+
+        self.remove_impossible();
         let mut error = Ok(());
         let mut dup_fixed = false;
         self.blamed.retain(|(j, enode, eqs)| {
@@ -103,7 +128,7 @@ impl<'a> BlameFinder<'a> {
             }
             let finished = self.result.iter().filter_map(Blame::ok);
             let used_eqs = finished.flat_map(|b| b.equalities.iter().copied());
-            let mut data = E::new(self.parser, eqs, used_eqs);
+            let mut data = E::new(self.parser, eqs, used_eqs, &self.impossible);
             let mut fixed = false;
             for (i, result) in self.result.iter_mut().enumerate() {
                 if !matches!(result.coupling, Coupling::Error) {
@@ -155,6 +180,19 @@ impl<'a> BlameFinder<'a> {
         //         eqs.join("\n    ")
         //     )
         // });
+        // let impossible = self.impossible.iter().map(|(i, enode, equalities)| {
+        //     let eqs = equalities
+        //         .iter()
+        //         .map(|&(from, to)| {
+        //             format!("{} <--> {}", from.debug(self.parser), to.debug(self.parser))
+        //         })
+        //         .collect::<Vec<_>>();
+        //     format!(
+        //         "{i} {}\n    [{}]",
+        //         enode.debug(self.parser),
+        //         eqs.join("\n    ")
+        //     )
+        // });
         // let solved = self.result.iter().map(|b| {
         //     let eqs = b
         //         .equalities
@@ -176,10 +214,11 @@ impl<'a> BlameFinder<'a> {
         //     }
         // });
         // eprintln!(
-        //     "Pattern: [\n  {}\n] \n| Bound: [\n  {}\n] \n| Blamed: [\n  {}\n] \n| Solved: [\n  {}\n]",
+        //     "Pattern: [\n  {}\n] \n| Bound: [\n  {}\n] \n| Blamed: [\n  {}\n] \n| Impossible: [\n  {}\n] \n| Solved: [\n  {}\n]",
         //     pattern.child_ids.iter().map(|&sp| sp.debug(self.parser)).collect::<Vec<_>>().join("\n  "),
         //     (0..100).filter_map(NonMaxU32::new).filter_map(|i| self.parser.bound(self.match_, i)).map(|b| b.debug(self.parser)).collect::<Vec<_>>().join("\n  "),
         //     blamed.collect::<Vec<_>>().join("\n  "),
+        //     impossible.collect::<Vec<_>>().join("\n  "),
         //     solved.collect::<Vec<_>>().join("\n  "),
         // );
         let errors = self
@@ -234,6 +273,7 @@ pub trait EqRewriter {
         parser: &Z3Parser,
         eqs: &'a [(ENodeIdx, ENodeIdx)],
         used_eqs: impl Iterator<Item = EqTransIdx> + Clone,
+        impossible: &'a [(usize, ENodeIdx, BlamedEqsParse)],
     ) -> Self::Data<'a>;
     fn reset(parser: &Z3Parser, data: &mut Self::Data<'_>);
     fn coupling() -> Coupling;
@@ -428,6 +468,7 @@ impl EqRewriter for BasicEq<'_> {
         _parser: &Z3Parser,
         equalities: &'a [(ENodeIdx, ENodeIdx)],
         _used_eqs: impl Iterator<Item = EqTransIdx>,
+        _impossible: &[(usize, ENodeIdx, BlamedEqsParse)],
     ) -> Self::Data<'a> {
         Self::Data {
             curr_idx: usize::MAX,
@@ -502,6 +543,7 @@ impl EqRewriter for ComplexEq {
         parser: &Z3Parser,
         eqs: &'a [(ENodeIdx, ENodeIdx)],
         _used_eqs: impl Iterator<Item = EqTransIdx>,
+        _impossible: &[(usize, ENodeIdx, BlamedEqsParse)],
     ) -> Self::Data<'a> {
         let mut self_ = Self(FxHashMap::default());
         self_.add_eqs(parser, eqs.iter().copied());
@@ -555,8 +597,9 @@ impl EqRewriter for CustomEq {
         parser: &Z3Parser,
         eqs: &'a [(ENodeIdx, ENodeIdx)],
         used_eqs: impl Iterator<Item = EqTransIdx> + Clone,
+        impossible: &[(usize, ENodeIdx, BlamedEqsParse)],
     ) -> Self::Data<'a> {
-        let complex = ComplexEq::new(parser, eqs, used_eqs);
+        let complex = ComplexEq::new(parser, eqs, used_eqs, impossible);
         Self(complex)
     }
     fn reset(parser: &Z3Parser, data: &mut Self::Data<'_>) {
@@ -611,20 +654,21 @@ impl EqRewriter for CustomEq {
     }
 }
 
-pub struct ForceEq(ComplexEq);
+pub struct ForceEq<'a>(ComplexEq, &'a [(usize, ENodeIdx, BlamedEqsParse)]);
 
-impl EqRewriter for ForceEq {
-    type Data<'a> = Self;
-    type EqRef = Option<ENodeIdx>;
+impl EqRewriter for ForceEq<'_> {
+    type Data<'a> = ForceEq<'a>;
+    type EqRef = Option<Option<ENodeIdx>>;
     const FORBID_DUPS: bool = true;
     fn new<'a>(
         parser: &Z3Parser,
         eqs: &'a [(ENodeIdx, ENodeIdx)],
         used_eqs: impl Iterator<Item = EqTransIdx> + Clone,
+        impossible: &'a [(usize, ENodeIdx, BlamedEqsParse)],
     ) -> Self::Data<'a> {
-        let mut complex = ComplexEq::new(parser, eqs, used_eqs.clone());
+        let mut complex = ComplexEq::new(parser, eqs, used_eqs.clone(), impossible);
         complex.add_eqs(parser, used_eqs.map(|eq| parser.from_to(eq)));
-        Self(complex)
+        ForceEq(complex, impossible)
     }
     fn reset(parser: &Z3Parser, data: &mut Self::Data<'_>) {
         ComplexEq::reset(parser, &mut data.0);
@@ -641,15 +685,23 @@ impl EqRewriter for ForceEq {
         parser: &Z3Parser,
         blame: TermIdx,
         subpat: TermIdx,
-    ) -> Option<(ENodeIdx, usize, Option<ENodeIdx>)> {
+    ) -> Option<(ENodeIdx, usize, Self::EqRef)> {
+        let mut from = Some(None);
         if let Some(to) = parser.egraph.get_enode_imm(subpat, &parser.stack) {
             // TODO: why is this sometimes None?
-            if let Some(from) = parser.egraph.get_enode_imm(blame, &parser.stack) {
-                return Some((from, 1, Some(to)));
+            let nfrom = parser.egraph.get_enode_imm(blame, &parser.stack);
+            from = nfrom.map(Some);
+            if let Some(from) = nfrom {
+                return Some((from, 1, Some(Some(to))));
             }
         }
-        ComplexEq::possible_rewrite_count(&mut data.0, parser, blame, subpat)
-            .map(|(from, len, _)| (from, len, None))
+        if let Some((from, len, _)) =
+            ComplexEq::possible_rewrite_count(&mut data.0, parser, blame, subpat)
+        {
+            return Some((from, len, None));
+        }
+        let from = from?.or_else(|| parser.egraph.get_enode_imm(blame, &parser.stack))?;
+        Some((from, data.1.len(), Some(None)))
     }
     fn possible_rewrite(
         data: &mut Self::Data<'_>,
@@ -657,11 +709,12 @@ impl EqRewriter for ForceEq {
         blame: TermIdx,
         _subpat: TermIdx,
         idx: usize,
-        eq_ref: &Option<ENodeIdx>,
+        eq_ref: &Self::EqRef,
     ) -> ENodeIdx {
-        if let Some(to) = eq_ref {
-            return *to;
+        match eq_ref {
+            Some(Some(to)) => *to,
+            Some(None) => data.1[idx].1,
+            None => ComplexEq::possible_rewrite(&mut data.0, _parser, blame, _subpat, idx, &()),
         }
-        ComplexEq::possible_rewrite(&mut data.0, _parser, blame, _subpat, idx, &())
     }
 }

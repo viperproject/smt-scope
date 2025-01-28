@@ -13,3 +13,4 @@ for file in $ALL; do
 done
 
 mv eval/data/* .
+rm -rf eval

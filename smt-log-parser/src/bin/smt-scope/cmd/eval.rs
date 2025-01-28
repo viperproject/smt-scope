@@ -4,7 +4,7 @@ use std::{
 };
 
 use smt_log_parser::{
-    analysis::{InstGraph, RedundancyAnalysis},
+    analysis::{InstGraph, InstsInfo, LogInfo, RedundancyAnalysis},
     display_with::DisplayWithCtxt,
     items::QuantPat,
     parsers::dummy::Z3DummyParser,
@@ -45,10 +45,24 @@ pub fn run(logfile: PathBuf, dummy: bool) -> Result<(), String> {
     let graph_time = timer.lap();
     let loops = graph.search_matching_loops(&mut parser);
     let redundancy = RedundancyAnalysis::new(&parser);
+    let log = LogInfo::new(&parser);
+    let insts = InstsInfo::new(&parser);
     let analysis_time = timer.lap();
     println!("[Parse] {}us", parse_time.as_micros());
     println!("[Graph] {}us", graph_time.as_micros());
     println!("[Analysis] {}us", analysis_time.as_micros());
+
+    println!(
+        "[Stats] {} mbqi, {} ts, {} axiom, {} quant, {} proof, {} ntp, {} cdcl,",
+        log.match_.mbqi,
+        log.match_.theory_solving,
+        log.match_.axioms,
+        log.match_.quantifiers,
+        insts.proofs,
+        insts.proofs_nt_nq,
+        insts.cdcls
+    );
+
     println!("[Loops] {} true, {} false", loops.sure_mls, loops.maybe_mls);
     let qpat_to_str = |q: QuantPat| {
         let name = parser[q.quant].kind.name(&parser.strings);

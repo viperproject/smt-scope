@@ -147,7 +147,12 @@ impl<'a> MlAnalysis<'a> {
     /// Per each quantifier, finds the nodes that are part paths of length at
     /// least `MIN_MATCHING_LOOP_LENGTH`. Additionally, returns a list of the
     /// endpoints of these paths.
-    pub fn finalise(self, topo: FxHashMap<InstIdx, MlAnalysisInfo>, min_depth: u32) -> MlOutput {
+    pub fn finalise(
+        self,
+        topo: FxHashMap<InstIdx, MlAnalysisInfo>,
+        min_ml: u32,
+        min_sc: u32,
+    ) -> MlOutput {
         let mut ml_leaves: TiVec<MlSigIdx, MlSigCollection> = self
             .data
             .iter()
@@ -161,7 +166,7 @@ impl<'a> MlAnalysis<'a> {
         let gens = self.inner.generalisations.finish();
 
         for (iidx, data) in self.node_to_ml.iter() {
-            let mut root_above = data.root_above(min_depth);
+            let mut root_above = data.root_above(min_ml, min_sc);
             let Some(above) = root_above.next() else {
                 continue;
             };
@@ -252,6 +257,7 @@ pub struct MlLinkInfo {
     pub max_depth: u32,
     pub max_ungen_depth: u32,
     pub gen: Option<GenIdx>,
+    pub parent: Option<u32>,
     pub is_leaf: MlLinkLeaf,
 }
 
@@ -363,7 +369,85 @@ impl MlAnalysisInner<'_> {
         Some(self.generalisations.intern(gen))
     }
 
-    fn is_generalised_by(
+    fn generalise_second(
+        &mut self,
+        smaller: &[CollectedBlame],
+        larger: &[CollectedBlame],
+        gen: GenIdx,
+    ) -> Option<GenIdx> {
+        assert_eq!(smaller.len(), larger.len());
+        let gen = &self.generalisations[gen];
+        assert_eq!(gen.len(), smaller.len());
+        assert_eq!(gen.len(), larger.len());
+
+        let smaller_larger = smaller.iter().zip(larger.iter());
+        let gen = gen
+            .iter()
+            .zip(smaller_larger)
+            .map(|(gen, (smaller, larger))| {
+                // println!(
+                //     "\nsmaller: {:?}\nlarger : {:?}",
+                //     smaller.owner.debug(self.parser),
+                //     larger.owner.debug(self.parser)
+                // );
+                let enode = self
+                    .parser
+                    .synth_terms
+                    .generalise_second(&self.parser.terms, smaller.owner, larger.owner, gen.enode)
+                    .unwrap()?;
+                // println!("result  : {:?}", enode.debug(self.parser));
+                assert_eq!(smaller.equalities.len(), larger.equalities.len());
+                let smaller_larger = smaller.equalities.iter().zip(larger.equalities.iter());
+                let equalities = gen
+                    .equalities
+                    .iter()
+                    .zip(smaller_larger)
+                    .map(|(gen, (self_eq, other_eq))| {
+                        // println!(
+                        //     "\nsmaller 1: {:?}\nlarger 1 : {:?}",
+                        //     self_eq.1.debug(self.parser),
+                        //     other_eq.1.debug(self.parser)
+                        // );
+                        let from = self
+                            .parser
+                            .synth_terms
+                            .generalise_second(&self.parser.terms, self_eq.1, other_eq.1, gen.0)
+                            .unwrap()?;
+                        // println!("result   : {:?}", from.debug(self.parser));
+                        // println!(
+                        //     "\nsmaller 2: {:?}\nlarger 2 : {:?}",
+                        //     self_eq.2.debug(self.parser),
+                        //     other_eq.2.debug(self.parser)
+                        // );
+                        let to = self
+                            .parser
+                            .synth_terms
+                            .generalise_second(&self.parser.terms, self_eq.2, other_eq.2, gen.1)
+                            .unwrap()?;
+                        // println!("result   : {:?}", to.debug(self.parser));
+                        Some((from, to))
+                    })
+                    .collect::<Option<_>>()?;
+                Some(GeneralisedBlame { enode, equalities })
+            })
+            .collect::<Option<_>>()?;
+        // let is_empty = gen.iter().all(|gen| gen.is_empty(self.parser));
+
+        Some(self.generalisations.intern(gen))
+    }
+
+    pub fn is_generalised_by(
+        &mut self,
+        smaller: &[CollectedBlame],
+        larger: &[CollectedBlame],
+        gen: GenIdx,
+    ) -> bool {
+        self.is_generalised_by_inner::<false>(smaller, larger, gen)
+    }
+
+    /// Should only be run with `SECOND = false`. Use `true` to recheck the
+    /// results from `generalise_second`.
+    fn is_generalised_by_inner<const SECOND: bool>(
         &mut self,
         smaller: &[CollectedBlame],
         larger: &[CollectedBlame],
@@ -377,7 +461,7 @@ impl MlAnalysisInner<'_> {
         for (gen, (smaller, larger)) in gen.iter().zip(smaller_larger) {
             assert_eq!(gen.equalities.len(), smaller.equalities.len());
             assert_eq!(gen.equalities.len(), larger.equalities.len());
-            if !self.parser.synth_terms.is_generalised_by(
+            if !self.parser.synth_terms.is_generalised_by::<SECOND>(
                 &self.parser.terms,
                 smaller.owner,
                 larger.owner,
@@ -387,7 +471,7 @@ impl MlAnalysisInner<'_> {
             }
             let smaller_larger = smaller.equalities.iter().zip(larger.equalities.iter());
             for (gen, (smaller, larger)) in gen.equalities.iter().zip(smaller_larger) {
-                if !self.parser.synth_terms.is_generalised_by(
+                if !self.parser.synth_terms.is_generalised_by::<SECOND>(
                     &self.parser.terms,
                     smaller.1,
                     larger.1,
@@ -395,7 +479,7 @@ impl MlAnalysisInner<'_> {
                 ) {
                     return false;
                 }
-                if !self.parser.synth_terms.is_generalised_by(
+                if !self.parser.synth_terms.is_generalised_by::<SECOND>(
                     &self.parser.terms,
                     smaller.2,
                     larger.2,
@@ -429,14 +513,14 @@ impl MlNodeInfo {
         }
     }
 
-    pub fn root_above(&self, min_depth: u32) -> impl Iterator<Item = &MlLinkInfo> + '_ {
+    pub fn root_above(&self, min_ml: u32, min_sc: u32) -> impl Iterator<Item = &MlLinkInfo> + '_ {
         self.tree_above
             .iter()
             .filter(move |above| match above.is_leaf {
                 MlLinkLeaf::FullLeaf => {
-                    above.max_depth >= min_depth || above.max_ungen_depth >= min_depth
+                    above.max_depth + 1 >= min_ml || above.max_ungen_depth + 1 >= min_sc
                 }
-                MlLinkLeaf::UnGenLeaf => above.max_depth >= min_depth,
+                MlLinkLeaf::UnGenLeaf => above.max_depth + 1 >= min_ml,
                 MlLinkLeaf::NonLeaf => false,
             })
     }
@@ -488,10 +572,9 @@ impl MlNodeInfo {
             .find(|above| above.gen.is_some_and(|ag| ag == gen));
         core::iter::from_fn(move || {
             let above = next?;
-            next = map[&above.prev]
-                .tree_above
-                .iter()
-                .find(|above| above.gen.is_some_and(|ag| ag == gen));
+            next = above
+                .parent
+                .map(|idx| &map[&above.prev].tree_above[idx as usize]);
             debug_assert!(
                 above.max_depth == 0
                     || next.is_some_and(|next| above.max_depth == next.max_depth + 1),
@@ -578,9 +661,10 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
             let prev_info = self.node_to_ml.get_mut(&prev_iidx).unwrap();
             if prev_info.ml_sig == curr_info.ml_sig && curr_info.ge_ast_size(prev_info) {
                 let mut gen = None;
+                let mut parent = None;
                 let mut max_ungen_depth = 0;
                 let mut max_depth = 0;
-                for above in &mut prev_info.tree_above {
+                for (idx, above) in prev_info.tree_above.iter_mut().enumerate() {
                     if above.max_depth == 0 {
                         max_ungen_depth = max_ungen_depth.max(above.max_ungen_depth + 1);
                     }
@@ -591,16 +675,34 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
                     if let Some(above_gen) = above.gen {
                         let new_max_depth = above.max_depth + 1;
                         debug_assert!(new_max_depth > max_depth || gen.is_some());
-                        if new_max_depth > max_depth
-                            && self.inner.is_generalised_by(
+                        if new_max_depth > max_depth {
+                            if above.max_depth == 0 {
+                                if let Some(above_gen) = self.inner.generalise_second(
+                                    &prev_info.blames,
+                                    &curr_info.blames,
+                                    above_gen,
+                                ) {
+                                    max_depth = new_max_depth;
+                                    gen = Some(above_gen);
+                                    parent = Some(idx as u32);
+                                    above.is_leaf = MlLinkLeaf::NonLeaf;
+                                } else {
+                                    debug_assert!(!self.inner.is_generalised_by_inner::<true>(
+                                        &prev_info.blames,
+                                        &curr_info.blames,
+                                        above_gen,
+                                    ));
+                                }
+                            } else if self.inner.is_generalised_by(
                                 &prev_info.blames,
                                 &curr_info.blames,
                                 above_gen,
-                            )
-                        {
-                            max_depth = new_max_depth;
-                            gen = Some(above_gen);
-                            above.is_leaf = MlLinkLeaf::NonLeaf;
+                            ) {
+                                max_depth = new_max_depth;
+                                gen = Some(above_gen);
+                                parent = Some(idx as u32);
+                                above.is_leaf = MlLinkLeaf::NonLeaf;
+                            }
                         }
                     }
                 }
@@ -617,6 +719,7 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
                 let link = MlLinkInfo {
                     prev: prev_iidx,
                     gen,
+                    parent,
                     max_depth,
                     max_ungen_depth,
                     is_leaf: MlLinkLeaf::FullLeaf,

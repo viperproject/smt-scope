@@ -13,7 +13,10 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{idx, items::InstIdx, BoxSlice, FxHashMap, Graph, TiVec};
 
-pub const MIN_MATCHING_LOOP_LENGTH: u32 = 6;
+// Note: the current implementation misses the first inst in the chain and so
+// actually requires one more inst than the number here.
+pub const MIN_MATCHING_LOOP_LENGTH: u32 = 3;
+pub const MIN_SUSPICIOUS_CHAIN_LENGTH: u32 = 6;
 
 idx!(MlSigIdx, "∞{}");
 

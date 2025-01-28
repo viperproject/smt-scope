@@ -29,7 +29,7 @@ impl AnyTerm {
             Parsed(TermKind::Var(_)) | Variable(_) | Input(_) | Constant => {
                 debug_assert_eq!(self.child_ids().len(), 0)
             }
-            Generalised => debug_assert_eq!(self.child_ids().len(), 1),
+            Generalised(_) => debug_assert_eq!(self.child_ids().len(), 1),
             Parsed(TermKind::Quant(_)) => debug_assert!(!self.child_ids().is_empty()),
             Parsed(TermKind::App(_)) => debug_assert!(
                 self.child_ids().iter().any(|&c| !is_tidx(c)),
@@ -80,7 +80,11 @@ pub enum SynthTermKind {
     /// When generalising e.g. `f(x)` and `f(g(x))` we get back a `f(_)` term
     /// where the `_` term is of kind `Generalised` and points to a `SynthIdx`
     /// term of `g($0)` where the `$0` term is of kind `Input`.
-    Generalised,
+    ///
+    /// The `Option<TermIdx>` is the first term that was generalised over. The
+    /// `x` in the example above. Once three or more terms are generalised, this
+    /// is `None`.
+    Generalised(Option<TermIdx>),
     Variable(u32),
     /// When generalising e.g. `f(x)` and `f(g(x))` we get back a `f(_)` term
     /// where the `_` term is of kind `Generalised` and points to a `SynthIdx`
@@ -226,9 +230,13 @@ impl SynthTerms {
         self.insert(AnyTerm::Synth(term))
     }
 
-    pub(crate) fn new_generalised(&mut self, gen: SynthIdx) -> Result<SynthIdx> {
+    pub(crate) fn new_generalised(
+        &mut self,
+        first: Option<TermIdx>,
+        gen: SynthIdx,
+    ) -> Result<SynthIdx> {
         let term = SynthTerm {
-            kind: SynthTermKind::Generalised,
+            kind: SynthTermKind::Generalised(first),
             child_ids: [gen].into_iter().collect(),
         };
         self.insert(AnyTerm::Synth(term))

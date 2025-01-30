@@ -1,85 +1,42 @@
-use std::cmp::{Ordering, Reverse};
-
 use crate::{
-    items::{Assignment, TermIdx},
-    FxHashMap, Z3Parser,
+    items::{CdclIdx, TermIdx},
+    FxHashMap, TiVec, Z3Parser,
 };
 
+#[derive(Default)]
 pub struct CdclAnalysis {
-    /// The number of times an assignment was made and then not used in the cut.
-    pub uncut_assigns: Vec<(Assignment, u32)>,
-    pub cut_assigns: Vec<(Assignment, u32)>,
+    pub assignments: FxHashMap<TermIdx, (AssignData, AssignData)>,
 }
 
-#[derive(Default)]
-struct AssignCount(FxHashMap<TermIdx, (u32, u32)>);
-
-impl AssignCount {
-    fn insert(&mut self, assign: Assignment) {
-        let (true_count, false_count) = self.0.entry(assign.literal).or_default();
-        if assign.value {
-            *true_count += 1;
-        } else {
-            *false_count += 1;
-        }
-    }
-
-    fn into_vec(self) -> Vec<(Assignment, u32)> {
-        let mut v = self
-            .0
-            .into_iter()
-            .filter_map(
-                |(literal, (true_count, false_count))| match true_count.cmp(&false_count) {
-                    Ordering::Greater => Some((
-                        Assignment {
-                            literal,
-                            value: true,
-                        },
-                        true_count - false_count,
-                    )),
-                    Ordering::Less => Some((
-                        Assignment {
-                            literal,
-                            value: false,
-                        },
-                        false_count - true_count,
-                    )),
-                    Ordering::Equal => None,
-                },
-            )
-            .collect::<Vec<_>>();
-        v.sort_by_key(|&(a, c)| (Reverse(c), a.literal));
-        v
-    }
+#[derive(Clone, Copy, Default)]
+pub struct AssignData {
+    pub count: u32,
+    pub cost: u32,
 }
 
 impl CdclAnalysis {
     pub fn new(parser: &Z3Parser) -> Self {
-        let mut uncut_assigns = AssignCount::default();
-        let mut cut_assigns = AssignCount::default();
-        for db in parser.cdcl.dead_branches() {
-            let dead_branch = parser.cdcl.dead_branch(db);
+        let mut self_ = Self::default();
+        let mut cdcl_size: TiVec<CdclIdx, _> = parser.cdcls().iter().map(|_| 1u32).collect();
 
-            let mut cut = FxHashMap::default();
-            for &assign in db.conflict.cut.iter() {
-                cut_assigns.insert(assign);
-                let old = cut.insert(assign.literal, Some(assign.value));
-                debug_assert!(old.is_none());
-            }
-            let assignments = dead_branch.flat_map(|db| parser[db].get_assignments());
-            for assign in assignments {
-                if let Some(value) = cut.get_mut(&assign.literal) {
-                    debug_assert_eq!(value.take(), Some(!assign.value));
-                    continue;
+        for (cidx, data) in parser.cdcls().iter_enumerated().rev() {
+            let Some(parent) = data.backlink(cidx).to_root() else {
+                continue;
+            };
+            let size = cdcl_size[cidx];
+            cdcl_size[parent] += size;
+
+            for a in data.get_assignments() {
+                let (true_data, false_data) = self_.assignments.entry(a.literal).or_default();
+                if a.value {
+                    true_data.count += 1;
+                    true_data.cost += size;
+                } else {
+                    false_data.count += 1;
+                    false_data.cost += size;
                 }
-                uncut_assigns.insert(assign);
             }
         }
-        let uncut_assigns = uncut_assigns.into_vec();
-        let cut_assigns = cut_assigns.into_vec();
-        Self {
-            uncut_assigns,
-            cut_assigns,
-        }
+        self_
     }
 }

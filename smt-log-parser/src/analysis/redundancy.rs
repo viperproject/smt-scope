@@ -3,12 +3,12 @@ use crate::{
     FxHashMap, Z3Parser,
 };
 
-pub struct RedundancyAnalysis<'a> {
-    pub per_quant: QuantPatVec<QuantRedundancy<'a>>,
+pub struct RedundancyAnalysis {
+    pub per_quant: QuantPatVec<QuantRedundancy>,
 }
 
-impl<'a> RedundancyAnalysis<'a> {
-    pub fn new(parser: &'a Z3Parser) -> Self {
+impl RedundancyAnalysis {
+    pub fn new(parser: &Z3Parser) -> Self {
         let mut per_quant = parser.new_quant_pat_vec(|_| QuantRedundancy::default());
         for data in parser.instantiations_data() {
             let Some(qpat) = data.match_.kind.quant_pat() else {
@@ -27,6 +27,7 @@ impl<'a> RedundancyAnalysis<'a> {
                 continue;
             }
             for blame in data.match_.pattern_matches() {
+                let blame = blame.clone();
                 let sd = quant.sub_duplicates.entry(blame).or_default();
                 *sd += 1;
             }
@@ -36,12 +37,12 @@ impl<'a> RedundancyAnalysis<'a> {
 }
 
 #[derive(Debug, Default)]
-pub struct QuantRedundancy<'a> {
+pub struct QuantRedundancy {
     pub duplicates: FxHashMap<Box<[Result<ENodeIdx, TermIdx>]>, Vec<InstIdx>>,
-    pub sub_duplicates: FxHashMap<&'a Blame, u32>,
+    pub sub_duplicates: FxHashMap<Blame, u32>,
 }
 
-impl<'a> QuantRedundancy<'a> {
+impl QuantRedundancy {
     pub fn redundant_count(&self) -> u32 {
         self.duplicates.values().map(|v| v.len() as u32 - 1).sum()
     }

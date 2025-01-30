@@ -570,7 +570,7 @@ impl
     }
 
     // fn penwidth(&self, max_width: f64) -> String {
-    //     let penwidth = (self.percent * max_width / 100.).max(0.2);
+    //     let penwidth = self.width(max_width);
     //     format!("{penwidth}")
     // }
 }
@@ -756,6 +756,12 @@ impl DotEdgeProperties<bool, (), (), (), (), (), (), (), ()> for MLGraphEdge {
     }
 }
 
+impl QuantEdge {
+    fn width(&self, max_width: f64) -> f64 {
+        (self.percent * max_width / 100.).max(0.2)
+    }
+}
+
 impl DotEdgeProperties<(), (), (), (), (), f64, (), f64, (&QuantNode, &QuantNode)> for QuantEdge {
     fn tooltip(&self, (): ()) -> String {
         let percent = PercentDisplay::new(self.percent);
@@ -779,7 +785,7 @@ impl DotEdgeProperties<(), (), (), (), (), f64, (), f64, (&QuantNode, &QuantNode
     }
 
     fn arrowsize(&self, max_width: f64) -> String {
-        let penwidth = (self.percent * max_width / 100.).max(0.2);
+        let penwidth = self.width(max_width);
         let arrowsize: f64 = if penwidth > 10.0 {
             0.1
         } else if penwidth > 7.0 {
@@ -799,7 +805,7 @@ impl DotEdgeProperties<(), (), (), (), (), f64, (), f64, (&QuantNode, &QuantNode
     }
 
     fn penwidth(&self, max_width: f64) -> String {
-        let penwidth = (self.percent * max_width / 100.).max(0.2);
+        let penwidth = self.width(max_width);
         format!("{penwidth}")
     }
 

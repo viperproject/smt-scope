@@ -265,7 +265,7 @@ impl QuantPetGraph {
         const MAX_PERCENT_WEIGHT: f64 = 0.5;
         let a = 1. / MAX_PERCENT_WEIGHT.powi(4) - 1.;
         let max_percent_mul = (100. / (self.max_percent + a)) + (a / (a + 100.));
-        let max_width = 40. * max_width * max_percent_mul;
+        let max_width = 50. * max_width * max_percent_mul;
 
         // If we want to use a different engine other than `dot`, use: overlap="false"
         // nodesep=0.5
@@ -373,6 +373,9 @@ pub struct QuantEdge {
 impl QuantEdge {
     pub fn is_eq(&self) -> bool {
         matches!(self.kind, QuantEdgeKind::YieldEq)
+    }
+    pub fn is_yield(&self) -> bool {
+        matches!(self.kind, QuantEdgeKind::Yield)
     }
 }
 

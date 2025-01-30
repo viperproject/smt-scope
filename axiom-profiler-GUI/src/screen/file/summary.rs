@@ -2,7 +2,7 @@ use std::{borrow::Cow, cmp::Reverse, fmt::Debug, rc::Rc};
 
 use num_format::{Locale, ToFormattedString};
 use smt_log_parser::{
-    analysis::LogInfo,
+    analysis::{CdclAnalysis, LogInfo, RedundancyAnalysis},
     display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
     items::QuantIdx,
@@ -21,16 +21,21 @@ use crate::{
 
 use super::{quant_graph::QuantGraph, RcAnalysis};
 
-const DISPLAY_TOP_N: usize = 8;
+// TODO: make configurable
+const DISPLAY_TOP_N: usize = 250;
 
 pub struct SummaryAnalysis {
     pub log_info: LogInfo,
+    pub cdcl: CdclAnalysis,
+    pub redundancy: RedundancyAnalysis,
 }
 
 impl SummaryAnalysis {
     pub fn new(parser: &Z3Parser) -> Self {
         Self {
             log_info: LogInfo::new(parser),
+            cdcl: CdclAnalysis::new(parser),
+            redundancy: RedundancyAnalysis::new(parser),
         }
     }
 }
@@ -155,7 +160,7 @@ pub fn MostQuants(props: &SummaryPropsInner) -> Html {
         (left, right)
     }).collect::<Vec<_>>();
 
-    html! {<Detail title="Most instantiated quantifiers" hover="The quantifiers which have been instantiated the most.">
+    html! {<Detail title="Instantiation count" hover="The quantifiers which have been instantiated the most.">
         <TreeList elements={quants} />
     </Detail>}
 }
@@ -192,32 +197,40 @@ pub fn CostQuants(props: &SummaryPropsInner) -> Html {
 
 #[function_component]
 pub fn MultQuants(props: &SummaryPropsInner) -> Html {
-    props.analysis.as_ref().map(|analysis| {
-        let log_info = &props.parser.summary.log_info;
-        let parser = props.parser.parser.borrow();
-        let analysis = analysis.borrow();
-        let colours = &props.parser.colour_map;
-        let offset = log_info.match_.quantifiers as f64 * props.avg_weighing / 100.;
+    let log_info = &props.parser.summary.log_info;
+    let redundancy = &props.parser.summary.redundancy;
+    let parser = props.parser.parser.borrow();
+    let colours = &props.parser.colour_map;
+    let offset = log_info.match_.quantifiers as f64 * props.avg_weighing / 100.;
 
-        let mults = analysis.quants.quants_children().map(|(q, c)| {
-            let qis = log_info.quant_insts(q);
-            if qis == 0 {
-                (q, 0.0, F64Ord(0.0))
+    let mults = redundancy.per_quant.iter_enumerated().map(|(q, c)| {
+        let qis = log_info.quant_insts(q.quant);
+        let mult = c.input_multiplicativity();
+        let ord = mult * qis as f64 / (qis as f64 + offset);
+        (q.quant, (mult, q), F64Ord(ord))
+    });
+    let mults = quants_ordered::<_, _, true>(&parser, colours, mults);
+    let mults = mults
+        .iter()
+        .take(DISPLAY_TOP_N)
+        .take_while(|(.., c)| c.0 > 0.0);
+    let mults = mults.map(|(q, hue, (c, qpat), _)| {
+        let left = html!{{ format!("{c:.1}") }};
+        let pat = if let Some(pat) = qpat.pat {
+            if parser.patterns(qpat.quant).is_some_and(|pats| pats.len() > 1) {
+                format!(" {{ {} }}", usize::from(pat) + 1)
             } else {
-                (q, c / qis as f64, F64Ord(c / (qis as f64 + offset)))
+                String::new()
             }
-        });
-        let mults = quants_ordered::<_, _, true>(&parser, colours, mults);
-        let mults = mults.iter().take(DISPLAY_TOP_N).take_while(|(.., c)| c.0 > 0.0);
-        let mults = mults.map(|(q, hue, c, _)| {
-            let left = html!{{ format!("{c:.1}") }};
-            let right = html! { <div class="info-box-row"><QuantColourBox margin_right={true} {hue} />{ format!("{q}") }</div> };
-            (left, right)
-        }).collect::<Vec<_>>();
-        html! {<Detail title="Average multiplicativity" hover="The quantifiers which the highest multiplicative factor, i.e. those that on average directly cause N other instantiations. See average weighing flag.">
-            <TreeList elements={mults} />
-        </Detail>}
-    }).unwrap_or_default()
+        } else {
+            " {{ MBQI }}".to_string()
+        };
+        let right = html! { <div class="info-box-row"><QuantColourBox margin_right={true} {hue} />{ format!("{q}{pat}") }</div> };
+        (left, right)
+    }).collect::<Vec<_>>();
+    html! {<Detail title="Multiplicativity" hover="The quantifiers which the highest multiplicative factor M, i.e. those that take N terms and turn them into N*M instantiations. See average weighing flag.">
+        <TreeList elements={mults} />
+    </Detail>}
 }
 
 #[function_component]
@@ -240,15 +253,21 @@ pub fn CostLemmas(props: &SummaryPropsInner) -> Html {
 #[function_component]
 pub fn CostCdcl(props: &SummaryPropsInner) -> Html {
     let parser = props.parser.parser.borrow();
-    let cdcl = props.parser.cdcl.uncut_assigns.iter().take(DISPLAY_TOP_N);
-    let cdcl = cdcl
-        .map(|&(p, c)| {
-            let left = format_to_html(c);
-            let right = collapsed_expanded(p, props.ctxt(&parser));
-            (left, right)
+    let assignments = props.parser.summary.cdcl.assignments.iter();
+    let mut assignments = assignments
+        .filter(|(_, (t, f))| t.count > 0 && f.count > 0)
+        .collect::<Vec<_>>();
+    assignments.sort_unstable_by_key(|&(term, (t, f))| (Reverse(t.cost + f.cost), term));
+    let assignments = assignments.into_iter().take(DISPLAY_TOP_N);
+    let cdcl = assignments
+        .map(|(&term, &(t, f))| {
+            let tc = format_to_html(t.cost);
+            let fc = format_to_html(f.cost);
+            let right = collapsed_expanded(term, props.ctxt(&parser));
+            (html! { <>{tc}{" | "}{fc}</> }, right)
         })
         .collect::<Vec<_>>();
-    html! {<Detail title="Most common assignments" hover="The CDCL assignments which didn't lead to a conflict." tip="Try assigning the truth value directly.">
+    html! {<Detail title="Most explored assignments" hover="The CDCL assignments which took the most effort to explore. The two numbers indicate effort when assigned `true | false`.">
         <TreeList elements={cdcl} />
     </Detail>}
 }
@@ -306,19 +325,11 @@ pub fn ExpandOnFocus(props: &EofProps) -> Html {
     let f = *focused;
     let focused_ref = focused.clone();
     let onblur = Callback::from(move |_| focused_ref.set(false));
-
-    let moved = use_mut_ref(|| false);
-    let moved_ref = moved.clone();
-    let onmousedown = Callback::from(move |_| *moved_ref.borrow_mut() = false);
-    let moved_ref = moved.clone();
-    let onmousemove = Callback::from(move |_| *moved_ref.borrow_mut() = true);
-    let (focused_ref, moved_ref) = (focused, moved);
-    let onmouseup = Callback::from(move |_| {
-        if !*moved_ref.borrow() {
-            focused_ref.set(!f)
-        }
+    let onmousedown = Callback::from(move |_| {
+        let focused_ref = focused.clone();
+        gloo::timers::callback::Timeout::new(1, move || focused_ref.set(!f)).forget();
     });
-    html! {<div tabindex="0" class="expand-collapse" {onmousedown} {onmousemove} {onmouseup} {onblur}>
+    html! {<div tabindex="0" class="expand-collapse" {onmousedown} {onblur}>
         {if f { props.expanded.clone() } else { props.collapsed.clone() }}
     </div>}
 }

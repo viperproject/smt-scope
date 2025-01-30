@@ -15,17 +15,17 @@ pub use redundancy::*;
 
 use crate::Z3Parser;
 
-pub struct AllAnalyses<'a> {
+pub struct AllAnalyses {
     pub log_info: LogInfo,
     pub cdcl_info: CdclAnalysis,
-    pub redundancy: RedundancyAnalysis<'a>,
+    pub redundancy: RedundancyAnalysis,
     pub inst_graph: InstGraph,
     pub quant_info: QuantifierAnalysis,
     pub proof_info: ProofAnalysis,
 }
 
 /// Run all available analyses. Used for testing.
-pub fn run_all(parser: &Z3Parser) -> AllAnalyses<'_> {
+pub fn run_all(parser: &Z3Parser) -> AllAnalyses {
     let log_info = LogInfo::new(parser);
     let cdcl_info = CdclAnalysis::new(parser);
     let redundancy = RedundancyAnalysis::new(parser);

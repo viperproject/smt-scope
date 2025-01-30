@@ -45,19 +45,15 @@ impl InstGraph {
         n: u32,
     ) -> bool {
         let mut frames: Vec<_> = i
-            .map(|inst| {
-                (
-                    self.raw[inst].subgraph.map(|s| s.0),
-                    parser.get_frame(inst).active,
-                )
+            .flat_map(|inst| {
+                self.raw[inst]
+                    .subgraph
+                    .map(|s| (s.0, parser.get_frame(inst).active))
             })
             .collect();
         frames.sort_unstable();
         let mut frame_stack = Vec::<(GraphIdx, TimeRange)>::new();
         for (subgraph, frame) in frames {
-            let Some(subgraph) = subgraph else {
-                continue;
-            };
             while let Some(last) = frame_stack.last() {
                 if subgraph == last.0 && last.1.sorted_overlap(&frame) {
                     break;

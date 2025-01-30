@@ -324,7 +324,7 @@ impl
             HiddenNode(input) => match input {
                 Some(true) => "input".to_owned(),
                 Some(false) => "output".to_owned(),
-                None => "const".to_owned(),
+                None => "fixed".to_owned(),
             },
             QI(_, quantifier, term) | InstBody(quantifier, term) => term
                 .simp
@@ -751,6 +751,13 @@ impl DotEdgeProperties<bool, (), (), (), (), (), (), (), ()> for MLGraphEdge {
     fn minlen(&self, (): ()) -> &'static str {
         match self {
             MLGraphEdge::HiddenEdge(..) => "0",
+            _ => "",
+        }
+    }
+
+    fn constraint(&self, _ctx: ()) -> &'static str {
+        match self {
+            MLGraphEdge::HiddenEdge(..) => "false",
             _ => "",
         }
     }

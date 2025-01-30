@@ -22,7 +22,7 @@ use crate::{
 use super::{quant_graph::QuantGraph, RcAnalysis};
 
 // TODO: make configurable
-const DISPLAY_TOP_N: usize = 250;
+const DISPLAY_TOP_N: usize = 100;
 
 pub struct SummaryAnalysis {
     pub log_info: LogInfo,
@@ -150,10 +150,7 @@ pub fn MostQuants(props: &SummaryPropsInner) -> Html {
 
     let quants = summary.log_info.quants_iter().map(|(q, c)| (q, (), c));
     let quants = quants_ordered::<(), _, true>(&parser, colours, quants);
-    let quants = quants
-        .iter()
-        .take(DISPLAY_TOP_N)
-        .take_while(|(.., c)| *c > 0);
+    let quants = quants.iter().take_while(|(.., c)| *c > 0);
     let quants = quants.map(|(q, hue, (), c)| {
         let left = format_to_html(*c);
         let right = html! { <div class="info-box-row"><QuantColourBox margin_right={true} {hue} />{ format!("{q}") }</div> };
@@ -183,7 +180,7 @@ pub fn CostQuants(props: &SummaryPropsInner) -> Html {
             }
         });
         let costs = quants_ordered::<_, _, true>(&parser, colours, costs);
-        let costs = costs.iter().take(DISPLAY_TOP_N).take_while(|(.., c)| c.0 > 0.0);
+        let costs = costs.iter().take_while(|(.., c)| c.0 > 0.0);
         let costs = costs.map(|(q, hue, c, _)| {
             let left = html!{{ format!("{c:.1}") }};
             let right = html! { <div class="info-box-row"><QuantColourBox margin_right={true} {hue} />{ format!("{q}") }</div> };
@@ -210,10 +207,7 @@ pub fn MultQuants(props: &SummaryPropsInner) -> Html {
         (q.quant, (mult, q), F64Ord(ord))
     });
     let mults = quants_ordered::<_, _, true>(&parser, colours, mults);
-    let mults = mults
-        .iter()
-        .take(DISPLAY_TOP_N)
-        .take_while(|(.., c)| c.0 > 0.0);
+    let mults = mults.iter().take_while(|(.., c)| c.0 > 0.0);
     let mults = mults.map(|(q, hue, (c, qpat), _)| {
         let left = html!{{ format!("{c:.1}") }};
         let pat = if let Some(pat) = qpat.pat {

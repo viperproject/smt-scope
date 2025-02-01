@@ -6,8 +6,8 @@ use petgraph::{
 };
 use smt_log_parser::{
     analysis::{LogInfo, QuantifierAnalysis},
-    display_with::DisplayCtxt,
-    formatter::TermDisplayContext,
+    display::DisplayCtxt,
+    display::TermDisplayContext,
     items::{PatternIdx, QuantIdx, QuantPat},
     F64Ord, FxHashMap, FxHashSet,
 };

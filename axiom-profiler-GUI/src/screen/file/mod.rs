@@ -4,7 +4,7 @@ mod summary;
 
 use std::rc::Rc;
 
-use smt_log_parser::{analysis::InstGraph, formatter::TermDisplayContext, parsers::ParseState};
+use smt_log_parser::{analysis::InstGraph, display::TermDisplayContext, parsers::ParseState};
 use yew::{html, ContextHandle, ContextProvider, Html};
 
 use crate::{

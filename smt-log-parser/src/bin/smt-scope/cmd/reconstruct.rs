@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
-use smt_log_parser::{
-    display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt, SymbolReplacement},
-    formatter::TermDisplayContext,
+use smt_log_parser::display::{
+    DisplayConfiguration, DisplayCtxt, DisplayWithCtxt, SymbolReplacement, TermDisplayContext,
 };
 
 pub fn run(logfile: PathBuf, clean: bool) -> Result<(), String> {

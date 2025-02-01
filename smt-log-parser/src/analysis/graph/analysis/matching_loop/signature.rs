@@ -2,8 +2,7 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    display_with::{DisplayCtxt, DisplayWithCtxt},
-    formatter::TermDisplayContext,
+    display::{DisplayCtxt, DisplayWithCtxt, TermDisplayContext},
     items::{ENodeIdx, InstIdx, QuantIdx, QuantPat},
     FxHashMap, FxHashSet, Z3Parser,
 };

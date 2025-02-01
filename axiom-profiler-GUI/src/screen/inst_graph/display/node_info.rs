@@ -6,8 +6,8 @@ use smt_log_parser::{
         visible::{VisibleEdge, VisibleEdgeKind},
         InstGraph, RawNodeIndex, VisibleEdgeIndex,
     },
-    display_with::{DisplayCtxt, DisplayWithCtxt},
-    formatter::TermDisplayContext,
+    display::TermDisplayContext,
+    display::{DisplayCtxt, DisplayWithCtxt},
     items::{CdclKind, MatchKind, VarNames},
 };
 use yew::{

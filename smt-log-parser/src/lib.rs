@@ -6,9 +6,7 @@ pub mod parsers;
 
 /// Pretty printing for items.
 #[cfg(feature = "display")]
-pub mod display_with;
-#[cfg(feature = "display")]
-pub mod formatter;
+pub mod display;
 
 #[cfg(feature = "analysis")]
 pub mod analysis;

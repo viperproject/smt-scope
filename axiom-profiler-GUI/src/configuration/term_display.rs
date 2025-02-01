@@ -2,9 +2,9 @@ use core::fmt;
 use std::{borrow::Cow, rc::Rc};
 
 use smt_log_parser::{
-    formatter::{
-        ConversionError, DeParseTrait, FallbackFormatter, FallbackParseError, Formatter,
-        FormatterParseError, Matcher, TdcError, TermDisplay, TermDisplayContext,
+    display::{
+        ConversionError, Formatter, FormatterParseError, Matcher, MatcherParseError, ParseErr,
+        ParseError, TdcError, TermDisplay, TermDisplayContext,
     },
     NonMaxUsize,
 };
@@ -98,7 +98,7 @@ fn term_display_file_to_html(
 struct TermDisplayComponent {
     fallback: String,
     fallback_ref: NodeRef,
-    fallback_parsed: Result<FallbackFormatter, FallbackParseError>,
+    fallback_parsed: Result<Option<TermDisplay>, ParseErr>,
     tds: Vec<TermDisplayRow>,
     parsed: Option<Result<TermDisplayContext, TdcError>>,
     modified: bool,
@@ -125,22 +125,11 @@ struct TermDisplayComponentProps {
 struct TermDisplayRow {
     matcher: String,
     matcher_ref: NodeRef,
-    matcher_err: Option<ConversionError>,
+    matcher_err: Option<MatcherParseError>,
     formatter: String,
     formatter_ref: NodeRef,
     formatter_err: Option<FormatterParseError>,
     parsed: Option<Result<TermDisplay, ConversionError>>,
-}
-
-impl TermDisplayRow {
-    pub fn cmp_key(&self) -> impl Ord + '_ {
-        match self.matcher.as_bytes() {
-            [b'/', ..] => Err(1),
-            [b'(', b'/', ..] => Err(0),
-            [b'(', ..] => Ok((0, &self.matcher)),
-            _ => Ok((1, &self.matcher)),
-        }
-    }
 }
 
 impl Component for TermDisplayComponent {
@@ -148,7 +137,7 @@ impl Component for TermDisplayComponent {
     type Properties = TermDisplayComponentProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let mut tds: Vec<_> = ctx
+        let tds: Vec<_> = ctx
             .props()
             .td_ctx
             .all()
@@ -165,12 +154,11 @@ impl Component for TermDisplayComponent {
                 }
             })
             .collect();
-        tds.sort_by(|a, b| a.cmp_key().cmp(&b.cmp_key()));
         let fallback = ctx.props().td_ctx.fallback();
         let mut self_ = Self {
-            fallback: fallback.formatter().deparse_string(),
+            fallback: fallback.map(|f| f.deparse_string().1).unwrap_or_default(),
             fallback_ref: NodeRef::default(),
-            fallback_parsed: Ok(fallback.clone()),
+            fallback_parsed: Ok(fallback.cloned()),
             tds,
             parsed: Some(Ok(ctx.props().td_ctx.clone())),
             modified: false,
@@ -204,7 +192,13 @@ impl Component for TermDisplayComponent {
             TdcMsg::ChangedFallback(_e) => {
                 let fallback = self.fallback_ref.cast::<HtmlInputElement>().unwrap();
                 self.fallback = fallback.value();
-                self.fallback_parsed = self.fallback.parse::<FallbackFormatter>();
+                self.fallback_parsed = if self.fallback.is_empty() {
+                    Ok(None)
+                } else {
+                    TermDisplay::parse("_", &self.fallback)
+                        .map(Some)
+                        .map_err(ParseError::from)
+                };
                 self.try_parse();
                 self.modified = !self
                     .parsed
@@ -398,18 +392,21 @@ impl TermDisplayRow {
         let formatter = self.formatter_ref.cast::<HtmlInputElement>()?;
         self.formatter = formatter.value();
 
-        let matcher = self.matcher.parse::<Matcher>();
-        let formatter = self.formatter.parse::<Formatter>();
-
         self.matcher_err = None;
         self.formatter_err = None;
         self.parsed = None;
 
+        if self.is_empty() {
+            self.parsed = None;
+            return Some(());
+        }
+
+        let matcher = self.matcher.parse::<Matcher>();
+        let formatter = self.formatter.parse::<Formatter>();
+
         match (matcher, formatter) {
             (Ok(matcher), Ok(formatter)) => {
-                if !self.is_empty() {
-                    self.parsed = Some(TermDisplay::new(matcher, formatter));
-                }
+                self.parsed = Some(TermDisplay::new(matcher, formatter));
             }
             (Err(matcher), Err(formatter)) => {
                 self.matcher_err = Some(matcher);
@@ -432,10 +429,10 @@ impl TermDisplayRow {
 
 #[derive(Debug)]
 pub enum AnyError<'a> {
-    Matcher(&'a ConversionError),
+    Matcher(&'a MatcherParseError),
     Formatter(&'a FormatterParseError),
     TermDisplay(&'a ConversionError),
-    Fallback(&'a FallbackParseError),
+    Fallback(&'a ParseErr),
 }
 
 impl fmt::Display for AnyError<'_> {

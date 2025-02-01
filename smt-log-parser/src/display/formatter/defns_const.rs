@@ -1,50 +1,37 @@
 use crate::NonMaxU32;
 
-use super::{defns::*, ConversionError, FormatterParseError};
+use super::{defns::*, FormatterParseError};
 
-#[derive(Debug)]
-pub struct TermDisplayConst<'a> {
-    pub matcher: MatcherConst<'a>,
-    pub formatter: FormatterConst<'a>,
-}
+// impl TryFrom<TermDisplayConst<'_>> for TermDisplay {
+//     type Error = ConversionError;
+//     fn try_from(t: TermDisplayConst) -> Result<Self, Self::Error> {
+//         let matcher = Matcher::try_from(t.matcher)?;
+//         let formatter = Formatter::try_from(t.formatter)?;
+//         Self::new(matcher, formatter)
+//     }
+// }
 
-impl TryFrom<TermDisplayConst<'_>> for TermDisplay {
-    type Error = ConversionError;
-    fn try_from(t: TermDisplayConst) -> Result<Self, Self::Error> {
-        let matcher = Matcher::try_from(t.matcher)?;
-        let formatter = Formatter::try_from(t.formatter)?;
-        Self::new(matcher, formatter)
-    }
-}
+// #[derive(Debug)]
+// pub enum MatcherKindConst {
+//     Exact,
+//     Regex,
+// }
 
-#[derive(Debug)]
-pub struct MatcherConst<'a> {
-    pub data: &'a str,
-    pub children: Option<NonMaxU32>,
-    pub kind: MatcherKindConst,
-}
-
-#[derive(Debug)]
-pub enum MatcherKindConst {
-    Exact,
-    Regex,
-}
-
-impl TryFrom<MatcherConst<'_>> for Matcher {
-    type Error = regex::Error;
-    fn try_from(m: MatcherConst<'_>) -> Result<Self, Self::Error> {
-        let kind = match m.kind {
-            MatcherKindConst::Exact => MatcherKind::Exact(m.data.to_string()),
-            MatcherKindConst::Regex => {
-                MatcherKind::Regex(RegexMatcher::new(format!("^(?:{})$", m.data))?)
-            }
-        };
-        Ok(Matcher {
-            children: m.children,
-            kind,
-        })
-    }
-}
+// impl TryFrom<MatcherConst<'_>> for Matcher {
+//     type Error = regex::Error;
+//     fn try_from(m: MatcherConst<'_>) -> Result<Self, Self::Error> {
+//         let kind = match m.kind {
+//             MatcherKindConst::Exact => MatcherKind::Exact(m.data.to_string()),
+//             MatcherKindConst::Regex => {
+//                 MatcherKind::Regex(RegexMatcher::new(format!("^(?:{})$", m.data))?)
+//             }
+//         };
+//         Ok(Matcher {
+//             children: m.children,
+//             kind,
+//         })
+//     }
+// }
 
 #[derive(Debug)]
 pub struct FormatterConst<'a> {
@@ -110,20 +97,20 @@ pub enum SubFormatterConst<'a> {
 impl TryFrom<SubFormatterConst<'_>> for SubFormatter {
     type Error = FormatterParseError;
     fn try_from(sub: SubFormatterConst<'_>) -> Result<Self, Self::Error> {
-        let sf = match sub {
+        let kind = match sub {
             SubFormatterConst::String(s) => {
                 let c = s.control_deduplicate.then_some(CONTROL_CHARACTER);
                 let data = deduplicate_character(s.data, c);
-                SubFormatter::String(data)
+                SubFormatterKind::String(data)
             }
-            SubFormatterConst::Single(s) => SubFormatter::Single {
+            SubFormatterConst::Single(s) => SubFormatterKind::Single {
                 index: s.index,
                 bind_power: s.bind_power,
             },
-            SubFormatterConst::Repeat(s) => SubFormatter::Repeat(s.try_into()?),
-            SubFormatterConst::Capture(idx) => SubFormatter::Capture(idx),
+            SubFormatterConst::Repeat(s) => SubFormatterKind::Repeat(s.try_into()?),
+            SubFormatterConst::Capture(idx) => SubFormatterKind::Capture(idx),
         };
-        Ok(sf)
+        Ok(SubFormatter::no_path(kind))
     }
 }
 
@@ -152,7 +139,7 @@ pub struct SubFormatterRepeatConst<'a> {
     pub right: BindPower,
 }
 
-impl TryFrom<SubFormatterRepeatConst<'_>> for SubFormatterRepeat {
+impl TryFrom<SubFormatterRepeatConst<'_>> for RepeatFormatter {
     type Error = FormatterParseError;
     fn try_from(sub: SubFormatterRepeatConst<'_>) -> Result<Self, Self::Error> {
         let left_sep = String::from(sub.left_sep);

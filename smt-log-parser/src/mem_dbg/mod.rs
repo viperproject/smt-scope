@@ -9,8 +9,8 @@ use core::ops::{Deref, DerefMut};
 use std::collections::hash_map::IntoValues;
 
 macro_rules! derive_wrapper {
-    ($head:ident $(:: $tail:ident)+ $(<$($rest1:tt)*)? $(: $($rest2:tt)*)?) => {
-        derive_wrapper!( $head :: ; $($tail,)* $(<$($rest1)*)? $(: $($rest2)*)? );
+    ($head:ident $(:: $tail:ident)+ $(<$($t:ident$(= $default:ty)?),*>)? $(: $trait:ident $(+ $other:ident)*)?) => {
+        derive_wrapper!( $head :: ; $($tail,)* $(<$($t$(= $default)?),*>)? $(: $trait $(+ $other)*)? );
     };
     ($($module:ident ::)+ ; $head:ident , $($tail:ident,)+ $($rest:tt)*) => {
         derive_wrapper!( $($module ::)* $head :: ; $($tail,)* $($rest)* );
@@ -20,6 +20,40 @@ macro_rules! derive_wrapper {
             $(#[derive($trait$(,$other)*)])?
             struct $struct$(<$($t$(= $default)?),*>)?($($module::)+$struct$(<$($t),*>)?);
         );
+    };
+    (
+        #[derive(All$(,$d:ident)*)]
+        struct $struct:ident$(<$($t:ident$(= $default:ty)?),*>)?($p:vis $inner:ty);
+    ) => {
+        derive_wrapper!(
+            #[derive($($d),*)]
+            struct $struct$(<$($t$(= $default)?),*>)?($p $inner);
+        );
+        impl$(<$($t),*>)? Default for $struct$(<$($t),*>)?
+        where $inner: Default {
+            fn default() -> Self {
+                Self(Default::default())
+            }
+        }
+        #[allow(clippy::non_canonical_partial_ord_impl)]
+        impl$(<$($t),*>)? PartialOrd for $struct$(<$($t),*>)?
+        where $inner: PartialOrd {
+            fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+                self.0.partial_cmp(&other.0)
+            }
+        }
+        impl$(<$($t),*>)? Ord for $struct$(<$($t),*>)?
+        where $inner: Ord {
+            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+                self.0.cmp(&other.0)
+            }
+        }
+        impl$(<$($t),*>)? core::hash::Hash for $struct$(<$($t),*>)?
+        where $inner: core::hash::Hash {
+            fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+                self.0.hash(state)
+            }
+        }
     };
     (
         $(#[derive($($d:ident),*)])?
@@ -51,6 +85,13 @@ macro_rules! derive_wrapper {
                 self.0.fmt(f)
             }
         }
+        impl$(<$($t),*>)? PartialEq for $struct$(<$($t),*>)?
+        where $inner: PartialEq {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+        impl$(<$($t),*>)? Eq for $struct$(<$($t),*>)? where $inner: Eq {}
         #[cfg(feature = "serde")]
         impl$(<$($t),*>)? serde::Serialize for $struct$(<$($t),*>)?
         where $inner: serde::Serialize {
@@ -81,7 +122,7 @@ macro_rules! derive_wrapper {
 
 macro_rules! derive_non_max {
     ($name:ident, $prim:ident) => {
-        derive_wrapper!(nonmax::$name: Copy + Eq + PartialEq + PartialOrd + Ord + Hash + Default);
+        derive_wrapper!(nonmax::$name: All + Copy);
         impl $name {
             pub const ZERO: Self = Self(nonmax::$name::ZERO);
             pub const ONE: Self = Self(nonmax::$name::ONE);
@@ -124,7 +165,7 @@ derive_non_max!(NonMaxUsize, usize);
 
 // BigRational
 
-derive_wrapper!(num::BigRational: PartialEq + Eq + PartialOrd + Ord + Hash);
+derive_wrapper!(num::BigRational: All);
 
 impl fmt::Display for BigRational {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -144,12 +185,7 @@ impl fmt::Display for BigUint {
 
 // TiVec
 
-derive_wrapper!(typed_index_collections::TiVec<K, V>);
-impl<K, V> Default for TiVec<K, V> {
-    fn default() -> Self {
-        Self(typed_index_collections::TiVec::default())
-    }
-}
+derive_wrapper!(typed_index_collections::TiVec<K, V>: All);
 impl<K, V> FromIterator<V> for TiVec<K, V> {
     fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
         Self(typed_index_collections::TiVec::from_iter(iter))
@@ -170,12 +206,7 @@ impl<K: From<usize>, V> TiVec<K, V> {
 
 // FxHashMap
 
-derive_wrapper!(fxhash::FxHashMap<K, V>);
-impl<K, V> Default for FxHashMap<K, V> {
-    fn default() -> Self {
-        Self(fxhash::FxHashMap::default())
-    }
-}
+derive_wrapper!(fxhash::FxHashMap<K, V>: All);
 impl<K: Eq + std::hash::Hash, V> FromIterator<(K, V)> for FxHashMap<K, V> {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         Self(fxhash::FxHashMap::from_iter(iter))
@@ -196,12 +227,7 @@ impl<K, V> FxHashMap<K, V> {
 
 // FxHashSet
 
-derive_wrapper!(fxhash::FxHashSet<K>);
-impl<K> Default for FxHashSet<K> {
-    fn default() -> Self {
-        Self(fxhash::FxHashSet::default())
-    }
-}
+derive_wrapper!(fxhash::FxHashSet<K>: All);
 impl<K: Eq + std::hash::Hash> FromIterator<K> for FxHashSet<K> {
     fn from_iter<T: IntoIterator<Item = K>>(iter: T) -> Self {
         Self(fxhash::FxHashSet::from_iter(iter))
@@ -218,7 +244,6 @@ impl<K> std::iter::IntoIterator for FxHashSet<K> {
 // StringTable
 
 derive_wrapper!(
-    // #[derive(Default)]
     struct StringTable(lasso::Rodeo<lasso::Spur, fxhash::FxBuildHasher>);
 );
 impl StringTable {
@@ -230,13 +255,13 @@ impl StringTable {
 // IString
 
 derive_wrapper!(
-    #[derive(Copy, Default, PartialEq, Eq, Hash)]
+    #[derive(All, Copy)]
     struct IString(pub lasso::Spur);
 );
 
 // Graph
 
-derive_wrapper!(petgraph::graph::Graph<N, E, Ty = petgraph::Directed, Ix = petgraph::graph::DefaultIx>);
+derive_wrapper!(petgraph::graph::Graph<N, E, Ty = petgraph::Directed, Ix = petgraph::graph::DefaultIx>: All);
 pub type DiGraph<N, E, Ix = petgraph::graph::DefaultIx> = Graph<N, E, petgraph::Directed, Ix>;
 pub type UnGraph<N, E, Ix = petgraph::graph::DefaultIx> = Graph<N, E, petgraph::Undirected, Ix>;
 impl<N, E, Ty: petgraph::EdgeType, Ix: petgraph::graph::IndexType> Graph<N, E, Ty, Ix> {

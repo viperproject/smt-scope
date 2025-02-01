@@ -4,7 +4,7 @@ use super::{ConstSplit, Formatter, Matcher};
 
 #[derive(Debug, Clone)]
 pub enum TdcError {
-    DuplicateExactMatcher(String, Option<NonMaxU32>),
+    DuplicateMatcher(Matcher),
 }
 
 #[derive(Debug, Clone)]
@@ -15,33 +15,13 @@ pub enum FallbackParseError {
 
 #[derive(Debug)]
 pub enum ConversionError {
-    Regex(regex::Error),
     FormatterExpectsRegex(Matcher, Formatter),
     RegexNotEnoughCaptures(Matcher, Formatter),
-    MatcherError(MatcherParseError),
-    FormatterParseError(FormatterParseError),
-}
-
-impl From<regex::Error> for ConversionError {
-    fn from(err: regex::Error) -> Self {
-        Self::Regex(err)
-    }
-}
-
-impl From<MatcherParseError> for ConversionError {
-    fn from(err: MatcherParseError) -> Self {
-        Self::MatcherError(err)
-    }
-}
-
-impl From<FormatterParseError> for ConversionError {
-    fn from(err: FormatterParseError) -> Self {
-        Self::FormatterParseError(err)
-    }
 }
 
 pub type FormatterParseError = ParseError<FormatterError>;
 pub type MatcherParseError = ParseError<MatcherError>;
+pub type ParseErr = ParseError<EitherError>;
 
 #[derive(Debug, Clone)]
 pub struct ParseError<T> {
@@ -153,50 +133,38 @@ impl<'a> ParseErrorConst<'a, FormatterError> {
 
 #[derive(Debug, Clone)]
 pub enum MatcherError {
-    InvalidChildrenSpec,
-}
-
-impl MatcherError {
-    #[allow(clippy::no_effect)]
-    pub const fn const_error<T>(&self, error: bool) -> T {
-        use MatcherError::*;
-        match self {
-            InvalidChildrenSpec => [()][error as usize],
-        };
-        loop {
-            [()][!error as usize];
-        }
-    }
+    MissingName,
+    InvalidEnd,
+    RegexError(regex::Error),
 }
 
 impl<'a> ParseErrorConst<'a, MatcherError> {
-    pub(super) const fn invalid_children_spec(s: &'a str) -> Self {
+    pub(super) const fn missing_name(s: &'a str) -> Self {
         Self {
             s,
-            kind: MatcherError::InvalidChildrenSpec,
+            kind: MatcherError::MissingName,
+        }
+    }
+    pub(super) const fn invalid_end(s: &'a str) -> Self {
+        Self {
+            s,
+            kind: MatcherError::InvalidEnd,
+        }
+    }
+    pub(super) const fn regex(s: &'a str, e: regex::Error) -> Self {
+        Self {
+            s,
+            kind: MatcherError::RegexError(e),
         }
     }
 }
 
+#[derive(Debug)]
 pub enum EitherError {
     Formatter(FormatterError),
     Matcher(MatcherError),
     InvalidCapture,
-}
-
-impl EitherError {
-    #[allow(clippy::no_effect)]
-    pub const fn const_error<T>(&self, error: bool) -> T {
-        use EitherError::*;
-        match self {
-            Formatter(err) => err.const_error(error),
-            Matcher(err) => err.const_error(error),
-            InvalidCapture => [()][error as usize],
-        };
-        loop {
-            [()][!error as usize];
-        }
-    }
+    ConversionError(ConversionError),
 }
 
 impl<'a> ParseErrorConst<'a, EitherError> {
@@ -206,7 +174,7 @@ impl<'a> ParseErrorConst<'a, EitherError> {
             kind: EitherError::Formatter(err.kind),
         }
     }
-    pub(super) const fn matcher(err: ParseErrorConst<'a, MatcherError>) -> Self {
+    pub(super) fn matcher(err: ParseErrorConst<'a, MatcherError>) -> Self {
         Self {
             s: err.s,
             kind: EitherError::Matcher(err.kind),
@@ -217,6 +185,18 @@ impl<'a> ParseErrorConst<'a, EitherError> {
         Self {
             s,
             kind: EitherError::InvalidCapture,
+        }
+    }
+    pub(super) fn formatter_nc(s: &'a str, err: ParseError<FormatterError>) -> Self {
+        Self {
+            s,
+            kind: EitherError::Formatter(err.kind),
+        }
+    }
+    pub(super) const fn conversion(s: &'a str, err: ConversionError) -> Self {
+        Self {
+            s,
+            kind: EitherError::ConversionError(err),
         }
     }
 }

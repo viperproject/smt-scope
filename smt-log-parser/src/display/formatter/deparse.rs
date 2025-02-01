@@ -24,8 +24,9 @@ impl DeParseTrait for &'_ Matcher {
         }
         self.kind.deparse(f)?;
         if let Some(children) = &self.children {
-            for _ in 0..children.get() {
-                write!(f, " _")?;
+            for child in children {
+                write!(f, " ")?;
+                child.deparse(f)?;
             }
             write!(f, ")")?;
         }
@@ -45,6 +46,7 @@ impl DeParseTrait for &'_ MatcherKind {
                 write!(f, "{no_suffix}")?;
                 write!(f, "/")
             }
+            MatcherKind::Wildcard => write!(f, "_"),
         }
     }
 }
@@ -74,20 +76,22 @@ impl DeParseTrait for &'_ Formatter {
 
 impl DeParseTrait for &'_ SubFormatter {
     fn deparse(self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            SubFormatter::String(s) => write!(f, "{}", duplicate_character(s, CONTROL_CHARACTER)),
-            SubFormatter::Single { index, bind_power } => write!(
+        use SubFormatterKind::*;
+        todo!();
+        match &self.kind {
+            String(s) => write!(f, "{}", duplicate_character(s, CONTROL_CHARACTER)),
+            Single { index, bind_power } => write!(
                 f,
                 "{CONTROL_CHARACTER}[#{}{SEPARATOR_CHARACTER}{}]{CONTROL_CHARACTER}",
                 index.0,
                 DeParse(bind_power)
             ),
-            SubFormatter::Repeat(r) => {
+            Repeat(r) => {
                 write!(f, "{CONTROL_CHARACTER}(")?;
                 r.deparse(f)?;
                 write!(f, "){CONTROL_CHARACTER}")
             }
-            SubFormatter::Capture(c) => write!(f, "{CONTROL_CHARACTER}{{{c}}}{CONTROL_CHARACTER}"),
+            Capture(c) => write!(f, "{CONTROL_CHARACTER}{{{c}}}{CONTROL_CHARACTER}"),
         }
     }
 }
@@ -106,7 +110,7 @@ impl DeParseTrait for &'_ BindPowerPair {
     }
 }
 
-impl DeParseTrait for &'_ SubFormatterRepeat {
+impl DeParseTrait for &'_ RepeatFormatter {
     fn deparse(self, f: &mut fmt::Formatter) -> fmt::Result {
         let from = self.from.0;
         let to = self.to.0;

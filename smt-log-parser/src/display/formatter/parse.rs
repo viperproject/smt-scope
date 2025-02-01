@@ -135,9 +135,8 @@ impl<'a> SubFormatterRepeatConst<'a> {
                 middle_sep.separator_deduplicate = separator_deduplicate;
                 middle_sep.separator = separator;
                 let (separator_deduplicate, separator, sep) = sep.next::<true>();
-                #[allow(unreachable_code, clippy::diverging_sub_expression)]
-                {
-                    map_opt!(sep => return Err(ParseErrorConst::too_many_control(sep)));
+                if let Some(sep) = sep {
+                    return Err(ParseErrorConst::too_many_control(sep));
                 }
                 right_sep.separator_deduplicate = separator_deduplicate;
                 right_sep.separator = separator;
@@ -170,9 +169,8 @@ impl<'a> SubFormatterRepeatConst<'a> {
             let split =
                 map_opt!(split => split, return Ok((DEFAULT_BIND_POWER, fst, DEFAULT_BIND_POWER)));
             let (_, second, split) = split.next::<false>();
-            #[allow(unreachable_code, clippy::diverging_sub_expression)]
-            {
-                map_opt!(split => return Err(ParseErrorConst::too_many_control(split)));
+            if let Some(split) = split {
+                return Err(ParseErrorConst::too_many_control(split));
             }
             let (pair, snd) = map_res!(BindPowerPair::parse(second));
             return if pair {
@@ -198,9 +196,8 @@ impl<'a> SubFormatterRepeatConst<'a> {
         }));
         // `n|n|n` or `n|n,n|n`
         let (_, third, split) = split.next::<false>();
-        #[allow(unreachable_code, clippy::diverging_sub_expression)]
-        {
-            map_opt!(split => return Err(ParseErrorConst::too_many_control(split)));
+        if let Some(split) = split {
+            return Err(ParseErrorConst::too_many_control(split));
         }
         let (pair, thrd) = map_res!(BindPowerPair::parse(third));
         if pair {
@@ -312,53 +309,73 @@ impl<'a> FormatterConst<'a> {
     }
 }
 
-impl<'a> MatcherConst<'a> {
-    pub const fn parse(s: &'a str) -> ResultMatcherConst<'a, Self> {
-        let (s, children) = map_res!(Self::parse_children(s));
-        let regex = map_opt!(ConstOperations::strip_prefix(s, '/'), s => ConstOperations::strip_suffix(s, '/'), None);
-        let (data, kind) = if let Some(regex) = regex {
-            (regex, MatcherKindConst::Regex)
+impl Matcher {
+    pub fn parse(s: &str) -> ResultMatcherConst<'_, Self> {
+        let (self_, sb, s) = Self::parse_inner(s)?;
+        if sb == 0 && s.is_empty() {
+            Ok(self_)
         } else {
-            (s, MatcherKindConst::Exact)
-        };
-        Ok(Self {
-            data,
-            children,
-            kind,
-        })
-    }
-    pub const fn parse_children(
-        s: &'a str,
-    ) -> ResultMatcherConst<'a, (&'a str, Option<NonMaxU32>)> {
-        let mut has_bracket = true;
-        let s = map_opt!(ConstOperations::strip_prefix(s, '('), s => s, { has_bracket = false; s });
-        let mut s = match ConstOperations::strip_suffix(s, ')') {
-            Some(s) if has_bracket => s,
-            None if !has_bracket => return Ok((s, None)),
-            Some(s) => return Err(ParseErrorConst::invalid_children_spec(s)),
-            None => return Err(ParseErrorConst::invalid_children_spec(s)),
-        };
-        let mut children = NonMaxU32::ZERO;
-        while let Some(rest) = ConstOperations::strip_suffix(s, '_') {
-            let Some(rest) = ConstOperations::strip_suffix(rest, ' ') else {
-                break;
-            };
-            let new = NonMaxU32::new(children.get() + 1);
-            children = map_opt!(new, Err(ParseErrorConst::invalid_children_spec(s)));
-            s = rest;
+            Err(ParseErrorConst::invalid_end(s))
         }
-        Ok((s, Some(children)))
+    }
+
+    pub fn parse_inner(is: &str) -> ResultMatcherConst<'_, (Self, usize, &str)> {
+        if is.is_empty() {
+            return Err(ParseErrorConst::invalid_end(""));
+        }
+        let s = ConstOperations::strip_prefix(is, '(');
+        let has_bracket = s.is_some();
+        let s = map_opt!(s => s, is);
+        let split = ConstOperations::split(s, ' ');
+        let (_, mut s, split) = split.next::<false>();
+        let mut stripped_brackets = 0;
+        while let Some(ns) = ConstOperations::strip_suffix(s, ')') {
+            s = ns;
+            stripped_brackets += 1;
+        }
+        let kind = if s.is_empty() {
+            return Err(ParseErrorConst::missing_name(is));
+        } else if s == "_" {
+            MatcherKind::Wildcard
+        } else if let Some(s) = map_opt!(ConstOperations::strip_prefix(s, '/'), s => ConstOperations::strip_suffix(s, '/'), None)
+        {
+            let regex = RegexMatcher::new(format!("^(?:{s})$"));
+            let regex = map_res!(regex, e => ParseErrorConst::regex(s, e));
+            MatcherKind::Regex(regex)
+        } else {
+            MatcherKind::Exact(s.to_string())
+        };
+        let mut remainder = map_opt!(split => split.remainder(), "");
+        let children = if has_bracket {
+            let mut children = Vec::new();
+            while stripped_brackets == 0 {
+                let (child, sb, rest) = map_res!(Self::parse_inner(remainder));
+                children.push(child);
+                stripped_brackets = sb;
+                remainder = rest;
+            }
+            stripped_brackets -= 1;
+            Some(children)
+        } else {
+            None
+        };
+        Ok((Self { kind, children }, stripped_brackets, remainder))
     }
 }
 
-impl<'a> TermDisplayConst<'a> {
-    pub const fn parse(m: &'a str, f: &'a str) -> ResultConst<'a, Self> {
-        let matcher = map_res!(MatcherConst::parse(m), err => ParseErrorConst::matcher(err));
+impl TermDisplay {
+    pub fn parse<'a>(m: &'a str, f: &'a str) -> ResultConst<'a, Self> {
+        let matcher = map_res!(Matcher::parse(m), err => ParseErrorConst::matcher(err));
         let formatter = map_res!(FormatterConst::parse(f), err => ParseErrorConst::formatter(err));
-        if matches!(matcher.kind, MatcherKindConst::Exact) && formatter.max_capture().is_some() {
-            return Err(ParseErrorConst::invalid_capture(m));
-        }
-        Ok(Self { matcher, formatter })
+        let formatter =
+            map_res!(Formatter::try_from(formatter), err => ParseErrorConst::formatter_nc(f, err));
+        // TODO:
+        // if matches!(matcher.kind, MatcherKindConst::Exact) && formatter.max_capture().is_some() {
+        //     return Err(ParseErrorConst::invalid_capture(m));
+        // }
+        let self_ =
+            map_res!(Self::new(matcher, formatter), err => ParseErrorConst::conversion(f, err));
+        Ok(self_)
     }
 }
 
@@ -385,7 +402,7 @@ impl FromStr for SubFormatterSingle {
     }
 }
 
-impl FromStr for SubFormatterRepeat {
+impl FromStr for RepeatFormatter {
     type Err = FormatterParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let self_ = SubFormatterRepeatConst::parse(s)?;
@@ -400,19 +417,10 @@ impl FromStr for Formatter {
     }
 }
 
-impl FromStr for FallbackFormatter {
-    type Err = FallbackParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        FallbackFormatter::new(s.parse().map_err(FallbackParseError::FormatterParseError)?)
-    }
-}
-
 impl FromStr for Matcher {
-    type Err = ConversionError;
+    type Err = ParseError<MatcherError>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(MatcherConst::parse(s)
-            .map_err(ParseError::from)?
-            .try_into()?)
+        Matcher::parse(s).map_err(ParseError::from)
     }
 }
 

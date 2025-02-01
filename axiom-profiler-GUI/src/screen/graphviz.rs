@@ -6,7 +6,7 @@ use smt_log_parser::{
         raw::{CdclEdge, EdgeKind, NodeKind, ProofReach},
         visible::VisibleEdge,
     },
-    display_with::{DisplayCtxt, DisplayWithCtxt},
+    display::{DisplayCtxt, DisplayWithCtxt},
     items::{CdclKind, MatchKind, QuantPat, TermIdx},
     Z3Parser,
 };

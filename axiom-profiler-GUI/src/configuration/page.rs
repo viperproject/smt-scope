@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use smt_log_parser::{display_with::SymbolReplacement, F64Ord, NonMaxU32};
+use smt_log_parser::{display::SymbolReplacement, F64Ord, NonMaxU32};
 use wasm_bindgen::JsCast;
 use yew::{
     function_component, use_context, use_effect_with_deps, Callback, Event, Html, Properties,

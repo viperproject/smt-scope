@@ -1,8 +1,7 @@
 use std::rc::Rc;
 
 use smt_log_parser::{
-    analysis::analysis::matching_loop::MlGraph, display_with::DisplayCtxt,
-    formatter::TermDisplayContext,
+    analysis::analysis::matching_loop::MlGraph, display::DisplayCtxt, display::TermDisplayContext,
 };
 use yew::{function_component, html, use_context, Html, Properties};
 

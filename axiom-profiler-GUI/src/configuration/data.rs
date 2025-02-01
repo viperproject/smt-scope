@@ -1,7 +1,7 @@
 use fxhash::FxHashMap;
 use smt_log_parser::{
-    display_with::{DisplayConfiguration, SymbolReplacement},
-    formatter::TermDisplayContext,
+    display::TermDisplayContext,
+    display::{DisplayConfiguration, SymbolReplacement},
     F64Ord, NonMaxU32,
 };
 

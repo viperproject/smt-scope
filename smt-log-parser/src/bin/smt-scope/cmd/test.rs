@@ -3,7 +3,7 @@ use mem_dbg::{DbgFlags, MemDbg};
 #[cfg(feature = "analysis")]
 use smt_log_parser::analysis;
 use smt_log_parser::{
-    display_with::DisplayWithCtxt,
+    display::DisplayWithCtxt,
     items::QuantPat,
     parsers::{z3::Z3Parser, LogParser},
 };

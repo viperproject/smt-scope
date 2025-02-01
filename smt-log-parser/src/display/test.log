@@ -1,0 +1,7 @@
+[tool-version] Z3 4.8.7
+[mk-app] #1 true
+[mk-app] #2 false
+[mk-app] #3 t3
+[mk-app] #4 t4
+[mk-app] #5 = #3 #4
+[mk-app] #6 not #5

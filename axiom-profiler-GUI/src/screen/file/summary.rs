@@ -3,8 +3,8 @@ use std::{borrow::Cow, cmp::Reverse, fmt::Debug, rc::Rc};
 use num_format::{Locale, ToFormattedString};
 use smt_log_parser::{
     analysis::{CdclAnalysis, LogInfo, RedundancyAnalysis},
-    display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt},
-    formatter::TermDisplayContext,
+    display::TermDisplayContext,
+    display::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt},
     items::QuantIdx,
     F64Ord, NonMaxU32, Z3Parser,
 };

@@ -175,7 +175,7 @@ impl fmt::Display for BigRational {
 
 // BigUint
 
-derive_wrapper!(num::BigUint: PartialEq + Eq + PartialOrd + Ord + Hash);
+derive_wrapper!(num::BigUint: All);
 
 impl fmt::Display for BigUint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

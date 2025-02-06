@@ -95,7 +95,7 @@ impl<'a> QuantKindParse<'a> {
         split
             .next()
             .and_then(|id| id.parse::<usize>().ok())
-            .map_or(Self::Named(name), |id| Self::Unnamed { name, id })
+            .map_or(Self::Named(value), |id| Self::Unnamed { name, id })
     }
 }
 

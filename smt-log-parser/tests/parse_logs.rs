@@ -1,152 +1,124 @@
-use cap::Cap;
-use std::time::{Duration, Instant};
-
-use mem_dbg::*;
-use smt_log_parser::analysis;
-use smt_log_parser::{LogParser, Z3Parser};
-
-#[global_allocator]
-static ALLOCATOR: Cap<std::alloc::System> = Cap::new(std::alloc::System, usize::MAX);
+use std::{fs::DirEntry, io::BufRead, path::Path};
 
 const MB: u64 = 1024_u64 * 1024_u64;
 
+fn z3_version() -> String {
+    let z3_version = std::process::Command::new("z3")
+        .arg("--version")
+        .output()
+        .expect("Failed to run `z3 --version`");
+    assert!(z3_version.status.success(), "Failed to run `z3 --version`");
+
+    let z3_version = String::from_utf8(z3_version.stdout).unwrap();
+    let Some(z3_version) = z3_version.strip_prefix("Z3 version ") else {
+        panic!("Failed to parse `z3 --version` output: {z3_version}");
+    };
+    let Some(z3_version) = z3_version.split_ascii_whitespace().next() else {
+        panic!("Failed to parse `z3 --version` output: {z3_version}");
+    };
+    assert!(
+        z3_version.split('.').count() == 3,
+        "Failed to parse `z3 --version` output: {z3_version}"
+    );
+    assert!(
+        z3_version
+            .split('.')
+            .all(|s| s.chars().all(|c| c.is_ascii_digit())),
+        "Failed to parse `z3 --version` output: {z3_version}"
+    );
+    z3_version.to_string()
+}
+
+fn visit_dirs<P: AsRef<Path>>(dir: P, cb: &mut impl FnMut(DirEntry)) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            visit_dirs(path, cb)?;
+        } else {
+            cb(entry);
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn parse_all_logs() {
+    let z3_version = z3_version();
     let mem = std::env::var("SLP_MEMORY_LIMIT_GB")
         .ok()
         .and_then(|mem| mem.parse().ok());
     // Default to limit of 32GiB.
-    let mem = mem.unwrap_or(32) as u64 * 1024 * 1024 * 1024;
-    // Parse files only up to 1/5 of the memory limit, since the parser
+    let mem = mem.unwrap_or(32) as u64 * 1024;
+    // Parse files only up to 1/6 of the memory limit, since the parser
     // data-structure is 2-3x larger than the file size, and we need to leave
     // space for analysis and some left-over allocated memory from a prior loop.
     const PARSER_OVERHEAD: u64 = 3;
-    const ANALYSIS_OVERHEAD: u64 = 10;
-    let parse_limit = mem / (PARSER_OVERHEAD + ANALYSIS_OVERHEAD + 1);
+    const ANALYSIS_OVERHEAD: u64 = 6;
+    let parse_limit = mem * MB / (PARSER_OVERHEAD + ANALYSIS_OVERHEAD + 1);
+    let parse_limit = parse_limit.to_string();
+    let args = [format!("-memory:{mem}"), "-T:15".to_string()];
+
     let (mut max_parse_ovhd, mut max_analysis_ovhd) = (0.0, 0.0);
 
-    let mut all_logs: Vec<_> = std::fs::read_dir("../logs")
-        .unwrap()
-        .map(|r| r.unwrap())
-        .collect();
-    all_logs.sort_by_key(|dir| dir.metadata().unwrap().len());
-    for log in all_logs {
+    let mut all_smt2 = Vec::new();
+    visit_dirs("../smt-problems", &mut |e| {
+        if e.path()
+            .extension()
+            .is_some_and(|e| e.to_string_lossy() == "smt2")
+        {
+            all_smt2.push(e);
+        }
+    })
+    .unwrap();
+    all_smt2.sort_by_key(|e| e.metadata().unwrap().len());
+
+    std::fs::create_dir_all("../logs").unwrap();
+
+    for smt2 in all_smt2 {
         // if log.file_name().to_string_lossy() != "insert_log_name" {
         //     continue;
         // }
 
-        // Put things in a thread to isolate memory usage more than the default.
-        let builder = std::thread::Builder::new().stack_size(8 * MB as usize);
-        let t = builder.spawn(move || {
-            // Some memory usage is still left over from previous loop iterations, so we'll need to subtract that.
-            let start_alloc = ALLOCATOR.allocated() as u64;
+        let path = smt2.path();
+        println!("___ {} ___", path.display());
 
-            let filename = log.path();
-            let (metadata, mut parser) = Z3Parser::from_file(&filename).unwrap();
-            let file_size = metadata.len();
-            let parse_bytes = file_size.min(parse_limit);
-            let file_info = (file_size != parse_bytes)
-                .then(|| format!(" / {} MB", file_size / MB))
-                .unwrap_or_default();
-            let parse_bytes_ovhd = parse_bytes + 8 * MB;
+        // Check if to skip
+        let mut first_line = String::new();
+        let mut file = std::io::BufReader::new(std::fs::File::open(&path).unwrap());
+        file.read_line(&mut first_line).unwrap();
+        if first_line.starts_with(';') && first_line.contains(&z3_version) {
+            println!("Skipping as z3 v{z3_version} matched in first line comment");
+            continue;
+        }
 
-            // Gives 100 millis per MB (or 100 secs per GB)
-            let timeout = Duration::from_millis(parse_bytes / (10 * 1024) + 500);
-            // Limit memory usage to `PARSER_OVERHEAD`x the parse amount + 64MiB. Reduce this if
-            // we optimise memory usage more.
-            let fixed_overhead = 64 * MB;
-            let mem_limit = start_alloc + parse_bytes * PARSER_OVERHEAD + fixed_overhead;
-            assert!(mem_limit <= mem, "{start_alloc} + {parse_bytes}/{parse_limit} * {PARSER_OVERHEAD} + {fixed_overhead} > {mem}");
-            ALLOCATOR.set_limit(mem_limit as usize).unwrap();
-            println!(
-                "Parsing {} ({} MB{file_info}). MemC {} MB, MemL {} MB ({} MB), TimeL {timeout:?}.",
-                filename.display(),
-                parse_bytes / MB,
-                start_alloc / MB,
-                (mem_limit - start_alloc) / MB,
-                mem_limit / MB,
-            );
-            let now = Instant::now();
+        // Setup command
+        let mut cmd = assert_cmd::Command::cargo_bin("z3-scope").unwrap();
+        cmd.args(&args);
+        cmd.arg(std::fs::canonicalize(&path).unwrap());
+        cmd.env("SCOPE_SIZE_LIMIT", &parse_limit);
+        let file_stem = path.file_stem().unwrap().to_string_lossy();
+        cmd.env("SCOPE_TRACE_FILE", format!("../logs/{file_stem}.log"));
 
-            parser.process_check_every(Duration::from_millis(100), |_, s| {
-                assert!(now.elapsed() < timeout, "Parsing took longer than timeout");
-                (parse_limit <= s.bytes_read as u64).then_some(())
-            });
-            let elapsed = now.elapsed();
-            let mut parser = parser.take_parser();
-            let errors = parser.errors();
+        // Execute
+        let out = cmd.output().unwrap();
+        println!("{}", String::from_utf8(out.stderr).unwrap());
+        let stdout = String::from_utf8(out.stdout).unwrap();
+        assert!(out.status.success(), "z3-scope failed! stdout:\n{stdout}");
 
-            let parse_bytes_kb = parse_bytes / 1024;
-            let mem_size = parser.mem_size(SizeFlags::default());
-            max_parse_ovhd = f64::max(max_parse_ovhd, mem_size as f64 / parse_bytes_ovhd as f64);
-            println!(
-                "Finished parsing in {elapsed:?} ({} kB/ms){errors}. Memory use {} MB / {} MB (real {} MB):",
-                1000 * parse_bytes_kb / elapsed.as_micros() as u64,
-                ALLOCATOR.allocated() / MB as usize,
-                ALLOCATOR.limit() / MB as usize,
-                mem_size / MB as usize,
-            );
-            parser.mem_dbg(DbgFlags::default()).ok();
-            // TODO: decrease this
-            assert!(
-                mem_size as u64 <= parse_bytes_ovhd * 2,
-                "Parser takes up more memory than 2 * file size!"
-            );
+        // Collect overhead data
+        let stdout: Vec<_> = stdout.lines().collect();
+        let last = stdout.last().unwrap();
+        let last = last.split_ascii_whitespace().collect::<Vec<_>>();
+        assert_eq!(last.len(), 4, "{stdout:?}");
+        assert_eq!(last[0], "POVHD", "{stdout:?}");
+        assert_eq!(last[2], "AOVHD", "{stdout:?}");
+        let parse_ovhd = last[1].parse::<f64>().unwrap();
+        let analysis_ovhd = last[3].parse::<f64>().unwrap();
+        max_parse_ovhd = f64::max(max_parse_ovhd, parse_ovhd);
+        max_analysis_ovhd = f64::max(max_analysis_ovhd, analysis_ovhd);
 
-            let middle_alloc = ALLOCATOR.allocated() as u64;
-            // Limit memory usage to `ANALYSIS_OVERHEAD`x the parse amount + 64MiB. Reduce this if
-            // we optimise memory usage more.
-            let mem_limit = middle_alloc + parse_bytes * ANALYSIS_OVERHEAD + fixed_overhead;
-            println!(
-                "Running analysis. MemC {} MB, MemL {} MB ({} MB)",
-                middle_alloc / MB,
-                (mem_limit - middle_alloc) / MB,
-                mem_limit / MB,
-            );
-            ALLOCATOR.set_limit(mem_limit as usize).unwrap();
-
-            let now = Instant::now();
-            let mut inst_graph = analysis::run_all(&parser).inst_graph;
-            let elapsed_ig = now.elapsed();
-            assert!(
-                elapsed_ig < timeout,
-                "Constructing inst graph took longer than timeout"
-            );
-
-            let now = Instant::now();
-            inst_graph.search_matching_loops(&mut parser);
-            let elapsed_ml = now.elapsed();
-            let elapsed = elapsed_ig + elapsed_ml;
-
-            let mem_size = inst_graph.mem_size(SizeFlags::default());
-            max_analysis_ovhd = f64::max(max_analysis_ovhd, mem_size as f64 / parse_bytes_ovhd as f64);
-            let (sure_mls, maybe_mls) = inst_graph.found_matching_loops().unwrap();
-            println!(
-                "Finished analysis in {elapsed:?} ({} kB/ms). {} nodes, {sure_mls}+{maybe_mls} mls. Memory use {} MB / {} MB (real {} MB):",
-                (parse_bytes_kb as u128 * 1000) / elapsed.as_micros(),
-                inst_graph.raw.graph.node_count(),
-                ALLOCATOR.allocated() / MB as usize,
-                ALLOCATOR.limit() / MB as usize,
-                mem_size / MB as usize,
-            );
-            inst_graph.mem_dbg(DbgFlags::default()).ok();
-            println!();
-            println!("===");
-
-            // TODO: decrease this
-            assert!(elapsed_ml < timeout, "ML search took longer than timeout");
-            assert!(
-                mem_size as u64 <= parse_bytes_ovhd * 3,
-                "Analysis takes up more memory than 3 * file size!"
-            );
-
-            drop(inst_graph);
-            drop(parser);
-            (max_parse_ovhd, max_analysis_ovhd)
-        }).unwrap();
-        let (p, a) = t.join().unwrap();
-        max_parse_ovhd = p;
-        max_analysis_ovhd = a;
+        println!();
     }
     println!(
         "Max parse overhead: {max_parse_ovhd:.2}x, max analysis overhead: {max_analysis_ovhd:.2}x"

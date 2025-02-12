@@ -33,12 +33,14 @@ strum = { version = "0.26", features = ["derive"] }
 # For the command line interface
 clap = { version = "4.5.4", features = ["derive"] }
 tempfile = "3"
+# For `debug_assertions` builds which are used for testing
+cap = "0.1.2"
 
 [dev-dependencies]
 memory-stats = "1.1.0"
-cap = "0.1.2"
 serde_json = "1.0"
 rand = "0.8"
+assert_cmd = "2.0.16"
 smt-log-parser = { path = ".", features = ["mem_dbg", "serde"] }
 
 [features]

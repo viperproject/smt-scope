@@ -59,10 +59,21 @@ pub trait LogParser: LogParserHelper {
     fn from_str(s: &str) -> StreamParser<'_, Self> {
         s.as_bytes().into_parser()
     }
+
+    /// See [`from_str`](LogParser::from_str) and [`process_all`](StreamParser::process_all).
+    fn from_str_all(s: &str) -> Result<Self, FatalError> {
+        Self::from_str(s).process_all()
+    }
+
     /// Creates a new parser from the contents of a log file. The parser takes
     /// ownership over the string.
     fn from_string(s: String) -> StreamParser<'static, Self> {
         s.into_cursor().into_parser()
+    }
+
+    /// See [`from_string`](LogParser::from_string) and [`process_all`](StreamParser::process_all).
+    fn from_string_all(s: String) -> Result<Self, FatalError> {
+        Self::from_string(s).process_all()
     }
 
     /// Creates a new streaming parser from a file. Additionally returns the
@@ -75,6 +86,12 @@ pub trait LogParser: LogParserHelper {
     fn from_file<P: AsRef<Path>>(p: P) -> std::io::Result<(Metadata, StreamParser<'static, Self>)> {
         let (meta, reader) = p.read_open()?;
         Ok((meta, reader.into_parser()))
+    }
+
+    /// See [`from_file`](LogParser::from_file) and [`process_all`](StreamParser::process_all).
+    fn from_file_all<P: AsRef<Path>>(p: P) -> Result<Self, FatalError> {
+        let (_, parser) = Self::from_file(p)?;
+        parser.process_all()
     }
 }
 
@@ -163,6 +180,20 @@ impl<T> ParseState<T> {
     pub fn is_timeout(&self) -> bool {
         matches!(self, Self::Paused(..))
     }
+    pub fn error(&self) -> Option<&FatalError> {
+        match self {
+            Self::Error(err) => Some(err),
+            _ => None,
+        }
+    }
+
+    fn map<U>(self, f: impl FnOnce(T) -> U) -> ParseState<U> {
+        match self {
+            Self::Paused(t, rs) => ParseState::Paused(f(t), rs),
+            Self::Completed { end_of_stream } => ParseState::Completed { end_of_stream },
+            Self::Error(err) => ParseState::Error(err),
+        }
+    }
 }
 
 /// Progress information for a parser.
@@ -181,6 +212,7 @@ pub struct ReaderState {
 )]
 mod wrapper {
     use super::*;
+    enum Never {}
 
     /// Struct which contains both a parser state as well as the stream of lines
     /// which are being parsed. Always use this instead of the raw underlying
@@ -246,14 +278,19 @@ mod wrapper {
                     break;
                 }
             }
+            if bytes_read == 0 {
+                return Ok(Some(true));
+            }
             // Remove newline from end
             if buf.ends_with('\n') {
                 buf.pop();
                 if buf.ends_with('\r') {
                     buf.pop();
                 }
-            }
-            if bytes_read == 0 {
+            } else {
+                // Ignore the last line in a file if it doesn't end with a
+                // newline, this happens if the process writing to it was
+                // killed.
                 return Ok(Some(true));
             }
 
@@ -402,7 +439,6 @@ mod wrapper {
         /// instead is recommended as this method will cause the process to hang
         /// if given a very large file.
         pub async fn process_all(mut self) -> FResult<Parser> {
-            enum Never {}
             match add_await([self.process_until(|_, _| None::<Never>)]) {
                 ParseState::Paused(n, _) => match n {},
                 ParseState::Completed { .. } => Ok(self.take_parser()),
@@ -421,16 +457,35 @@ mod wrapper {
             let result = add_await([self.process_check_every(timeout, |_, _| Some(()))]);
             (result, self.take_parser())
         }
-        /// Try to parse everything, but stop after parsing `limit` bytes. The
-        /// result tuple contains `ParseState::Paused(read_info)` if the limit
-        /// was reached, and the parser state at the end (i.e. the state is
-        /// complete only if `ParseState::Completed` was returned).
+        /// Try to parse everything, but stop after parsing `bytes` bytes or
+        /// `lines` lines (whichever comes first). The limit is ignored when set
+        /// to `None` (i.e. if both are `None` this is identical to
+        /// `process_all`). The result tuple contains
+        /// `ParseState::Paused(read_info)` if the limit  was reached, and the
+        /// parser state at the end (i.e. the state is complete only if
+        /// `ParseState::Completed` was returned).
         ///
         /// Parsing cannot be resumed if the limit is reached. If you need
         /// support for resuming, use [`process_until`] instead.
-        pub async fn process_all_byte_limit(mut self, limit: usize) -> (ParseState<()>, Parser) {
-            let result =
-                add_await([self.process_until(|_, s| (s.bytes_read < limit).then_some(()))]);
+        pub async fn process_all_limit(
+            mut self,
+            bytes: Option<usize>,
+            lines: Option<usize>,
+        ) -> (ParseState<()>, Parser) {
+            let result = match (bytes, lines) {
+                (Some(bytes), Some(lines)) => add_await([self.process_until(|_, s| {
+                    (s.bytes_read >= bytes || s.lines_read >= lines).then_some(())
+                })]),
+                (Some(bytes), None) => {
+                    add_await([self.process_until(|_, s| (s.bytes_read >= bytes).then_some(()))])
+                }
+                (None, Some(lines)) => {
+                    add_await([self.process_until(|_, s| (s.lines_read >= lines).then_some(()))])
+                }
+                (None, None) => {
+                    add_await([self.process_until(|_, _| None::<Never>)]).map(|n| match n {})
+                }
+            };
             (result, self.take_parser())
         }
     }

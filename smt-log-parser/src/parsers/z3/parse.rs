@@ -348,7 +348,7 @@ impl Z3LogParser for Z3Parser {
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
         let version = semver::Version::parse(version)?;
-        println!("{solver} {version}");
+        eprintln!("{solver} {version}");
         self.version_info = VersionInfo::Present { solver, version };
         Ok(())
     }

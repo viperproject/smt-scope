@@ -5,9 +5,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-  # Run once a month to regenerate the cached log files for PRs to use
-  schedule:
-    - cron: "0 0 1 * *"
 
 jobs:
   format:
@@ -32,51 +29,6 @@ jobs:
     - run: cargo clippy -- -D warnings
 
   test:
-    # will wait for new cache on push to main branch, otherwise will run straight away with existing cache
-    needs: generate_log
-    if: ${{ always() && !failure() && !cancelled() }}
-    strategy:
-      fail-fast: false
-      matrix:
-        z3version: ['4.8.7', '4.8.17', '4.11.2', '4.12.2', '4.12.4', '4.13.3']
-    # Linux, Processor (CPU): 4, Memory (RAM): 16 GB, Storage (SSD): 14 GB
-    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    - id: configure-z3-id
-      run: echo "z3_v_clean=$(echo "${{ matrix.z3version }}" | sed 's/\./_/g')" >> $GITHUB_OUTPUT
-    - name: Setup `Cargo.lock` for caching
-      run: cargo generate-lockfile
-    - name: Cache cargo
-      uses: Swatinem/rust-cache@v2
-      with:
-        shared-key: "shared"
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - uses: actions/cache/restore@v4
-      with:
-        path: logs
-        key: use-restore-key-instead
-        restore-keys: logs-${{ steps.configure-z3-id.outputs.z3_v_clean }}-
-    - id: check-logs-cached
-      run: ls -la logs
-    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test --workspace -- --nocapture
-
-    # Failure
-    - run: tar -czf failing_logs.tar.bz2 logs/
-      if: failure()
-    - uses: actions/upload-artifact@v4.4.3
-      if: failure()
-      with:
-        name: "logs_z3_v${{ matrix.z3version }}"
-        path: failing_logs.tar.bz2
-        retention-days: 1
-
-
-  generate_log:
-    # only run this job on push to main branch
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -89,92 +41,41 @@ jobs:
           - version: '4.12.4'
           - version: '4.13.3'
             distribution: 'glibc-2.35'
-
-    # for versions of Z3 at least 4.9.0 we need v1.3 of the GitHub action, for older versions of Z3, 1.2.2
+    # Linux, Processor (CPU): 4, Memory (RAM): 16 GB, Storage (SSD): 14 GB
+    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Install Z3 for older version
-        uses: pavpanchekha/setup-z3@1.2.2 # see GitHub Action "Install Z3"
-        if: ${{ matrix.z3version.old == true }}
-        with:
-          version: ${{ matrix.z3version.version }}
+    - name: Install Z3 for older version
+      uses: pavpanchekha/setup-z3@1.2.2 # see GitHub Action "Install Z3"
+      if: ${{ matrix.z3version.old == true }}
+      with:
+        version: ${{ matrix.z3version.version }}
 
-      - name: Install Z3 for newer version
-        uses: pavpanchekha/setup-z3@v1.3 # see GitHub Action "Install Z3"
-        if: ${{ !(matrix.z3version.old == true) }}
-        with:
-          version: ${{ matrix.z3version.version }}
-          distribution: ${{ matrix.z3version.distribution == '' && 'glibc-2.31' || matrix.z3version.distribution }}
+    - name: Install Z3 for newer version
+      uses: pavpanchekha/setup-z3@v1.3 # see GitHub Action "Install Z3"
+      if: ${{ !(matrix.z3version.old == true) }}
+      with:
+        version: ${{ matrix.z3version.version }}
+        distribution: ${{ matrix.z3version.distribution == '' && 'glibc-2.31' || matrix.z3version.distribution }}
 
-      - name: Configure Z3 version environment variable
-        id: configure-z3-id
-        run: |
-          # Generate filename comaptible version: 4.8.7 -> 4_8_7
-          echo "z3_v_clean=$(echo "${{ matrix.z3version.version }}" | sed 's/\./_/g')" >> $GITHUB_OUTPUT
-          # Generate regex compatible version: 4.8.7 -> 4\.8\.7
-          echo "z3_v_regex=$(echo "${{ matrix.z3version.version }}" | sed 's/\./\\./g')" >> $GITHUB_OUTPUT
+    - name: Setup `Cargo.lock` for caching
+      run: cargo generate-lockfile
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "shared"
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test --workspace -- --nocapture
 
-      - name: Cache log files
-        id: cache-log
-        uses: actions/cache@v4
-        with:
-          path: logs
-          key: logs-${{ steps.configure-z3-id.outputs.z3_v_clean }}-${{ hashFiles('smt-problems/**/*.smt2') }}
-          restore-keys: logs-${{ steps.configure-z3-id.outputs.z3_v_clean }}-
-
-      - name: Create logs directory if it doesn't exist
-        id: make_logs_dir
-        run: |
-          # Create the 'logs' directory
-          test -d "logs" || mkdir "logs"
-
-      - name: Run Z3 solver on changed smt2 files and compress
-        id: run_z3_and_upload
-        run: |
-          # Loop through all files and check that log exists
-          for file in `find ./smt-problems -name "*.smt2" -type f`; do
-              test -f "$file"
-              # Skip if the file if the first line is a comment with 
-              [ "$(sed -n '/^;[^\n]*${{ steps.configure-z3-id.outputs.z3_v_regex }}/p;q' $file)" ] && echo "Skipping $file since the first line contains \"${{ matrix.z3version.version }}\"" && continue || true
-              # Get the file hash
-              file_hash=$(shasum -a 256 "$file" | cut -d' ' -f1)
-              # Get the filename without extension
-              base_name=$(basename "${file%.*}")
-              # Log file name
-              log_file_name="logs/${base_name}_fHash_${file_hash}.log"
-              # Skip if log file exists and is not empty
-              test -s "${log_file_name}" && echo "Skipping \"$file\" as \"$log_file_name\" exists" && continue || true
-
-              rm -f "logs/${base_name}_fHash_*.log"
-              echo "Processing \"$file\" to \"$log_file_name\""
-
-              # Run Z3 solver for the file and save the log in the 'logs' directory.
-              # The memory limit is set to 15.5GB and the timeout is set to 30 seconds
-              # (this limits the log file size to roughly <=4GB). We redirect
-              # the output so that it doesn't get printed and listen for a
-              # timeout message in which case we remove the last line of the log
-              # file since it may be incomplete (and cause parsing errors).
-              z3 trace=true proof=true -memory:15872 -T:10 trace-file-name=${log_file_name} ./$file \
-                 > >(grep -q "timeout" && echo "[Timeout] Removing last line of logfile" && tail -n 1 "${log_file_name}" | wc -c | xargs -I {} truncate -s -{} "${log_file_name}") \
-                  || echo "!!! Error processing \"$file\""
-              test -s "${log_file_name}" || echo "!!! Log file not created for \"$file\""
-          done
-
-      # TODO: not enough permission for this.
-      # - name: Delete old cache
-      #   run: |
-      #     echo "Fetching list of cache key"
-      #     cacheKeys=$(gh cache list -R $REPO | cut -f 1)
-
-      #     ## Setting this to not fail the workflow while deleting cache keys.
-      #     set +e
-      #     for cacheKey in $cacheKeys; do
-      #         echo "Deleting $cacheKey"
-      #         gh cache delete $cacheKey -R $REPO
-      #     done
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     REPO: ${{ github.repository }}
+    # Failure
+    - run: tar -czf failing_logs.tar.bz2 logs/
+      if: failure()
+    - uses: actions/upload-artifact@v4.4.3
+      if: failure()
+      with:
+        name: "logs_z3_v${{ matrix.z3version.version }}"
+        path: failing_logs.tar.bz2
+        retention-days: 1

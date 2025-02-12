@@ -67,7 +67,7 @@ impl<T: Z3LogParser + LogParserHelper> LogParser for T {
             Err(err) => {
                 eprintln!("Error parsing line {line_no} ({err:?}): {line:?}");
                 // Fail in debug mode, we should never get here
-                debug_assert!(false);
+                debug_assert!(false, "Failed to parse a line!");
                 match err.as_fatal() {
                     Some(err) => Err(err),
                     None => Ok(true),

@@ -60,7 +60,7 @@ pub enum Error {
     NewMatchOnLambda(QuantIdx),
     UnknownPatternIdx(TermIdx),
     SubpatTooFewBlame(usize),
-    // Z3 ISSUE: https://github.com/viperproject/axiom-profiler-2/issues/63
+    // Z3 ISSUE: https://github.com/viperproject/smt-scope/issues/63
     SubpatNoBlame(Vec<TermIdx>),
 
     // Inst discovered

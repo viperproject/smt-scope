@@ -71,7 +71,7 @@ impl Z3Parser {
     }
 }
 
-// Z3 ISSUE: https://github.com/viperproject/axiom-profiler-2/issues/106
+// Z3 ISSUE: https://github.com/viperproject/smt-scope/issues/106
 
 impl Z3Parser {
     pub(super) fn parse_app_name<'a>(
@@ -134,7 +134,7 @@ impl Z3Parser {
     }
 }
 
-// Z3 ISSUE: https://github.com/viperproject/axiom-profiler-2/issues/63
+// Z3 ISSUE: https://github.com/viperproject/smt-scope/issues/63
 
 impl Z3Parser {
     pub(super) fn make_blamed(
@@ -167,7 +167,7 @@ impl Z3Parser {
     }
 }
 
-// Z3 ISSUE: https://github.com/viperproject/axiom-profiler-2/issues/100
+// Z3 ISSUE: https://github.com/viperproject/smt-scope/issues/100
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]

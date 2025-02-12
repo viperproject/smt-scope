@@ -465,8 +465,7 @@ impl Homepage {
                     disabled: false,
                     click: Action::Href(
                         true,
-                        "https://github.com/viperproject/axiom-profiler-2/blob/main/README.md"
-                            .to_string(),
+                        "https://github.com/viperproject/smt-scope/blob/main/README.md".to_string(),
                     ),
                 }),
                 ElementKind::Simple(SimpleButton {
@@ -483,7 +482,7 @@ impl Homepage {
                     disabled: false,
                     click: Action::Href(
                         true,
-                        "https://github.com/viperproject/axiom-profiler-2/issues/new".to_string(),
+                        "https://github.com/viperproject/smt-scope/issues/new".to_string(),
                     ),
                 }),
             ],

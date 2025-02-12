@@ -5,7 +5,7 @@ use crate::{
 
 use super::Z3Parser;
 
-// Z3 ISSUE: https://github.com/viperproject/axiom-profiler-2/issues/63
+// Z3 ISSUE: https://github.com/viperproject/smt-scope/issues/63
 
 impl Z3Parser {
     pub(super) fn check_match(&self, match_: &MatchKind, blame: &Blame, subpat: TermIdx) -> bool {

@@ -101,7 +101,7 @@ pub struct ReconnectFrom {
     /// A visible node to reconnect from.
     pub visible: RawNodeIndex,
     /// A non-visible child of `from_v`, set only if
-    /// `from_v.reconnect_children()`.
+    /// `from_v.reconnect_child()`.
     pub hidden: Option<RawNodeIndex>,
 }
 

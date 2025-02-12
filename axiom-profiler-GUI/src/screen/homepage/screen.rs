@@ -62,7 +62,7 @@ pub fn HomepageScreen() -> Html {
         let versions_state = versions.clone();
         wasm_bindgen_futures::spawn_local(async move {
             let Ok(response) = gloo::net::http::Request::get(
-                "https://api.github.com/repos/viperproject/axiom-profiler-2/git/refs/tags/v",
+                "https://api.github.com/repos/viperproject/smt-scope/git/refs/tags/v",
             )
             .send()
             .await
@@ -87,7 +87,7 @@ pub fn HomepageScreen() -> Html {
         if is_canary {
             gloo::utils::window()
                 .location()
-                .set_href("/axiom-profiler-2/")
+                .set_href("/smt-scope/")
                 .unwrap();
         }
     });
@@ -95,7 +95,7 @@ pub fn HomepageScreen() -> Html {
         if !is_canary {
             gloo::utils::window()
                 .location()
-                .set_href("/axiom-profiler-2/canary/")
+                .set_href("/smt-scope/canary/")
                 .unwrap();
         }
     });
@@ -128,9 +128,9 @@ pub fn HomepageScreen() -> Html {
             let onclick = Callback::from(move |_| {
                 if is_canary || this_version_index != i {
                     let href = if i == last_idx {
-                        String::from("/axiom-profiler-2/")
+                        String::from("/smt-scope/")
                     } else {
-                        format!("/axiom-profiler-2/{version_text}")
+                        format!("/smt-scope/{version_text}")
                     };
                     gloo::utils::window().location().set_href(&href).ok();
                 }
@@ -166,7 +166,7 @@ pub fn HomepageScreen() -> Html {
     html! {
         <div class="home-page"><div class="home-page-center">
             <div class="home-page-title">
-                <img src="html/logo_small.png" class="logo" />{"Axiom Profiler"}</div>
+                <img src="html/logo_square.png" class="logo" /></div>
             <HomepageHints />
             <div class="channel-select">
                 <div>{switch_text}</div>
@@ -220,21 +220,21 @@ fn test_versions() -> Vec<VersionEntry> {
     let v0_1_0 = VersionEntry {
         r#ref: "refs/tags/v0.1.0".to_string(),
         node_id: "REF_kwDOKNVs07ByZWZzL3RhZ3MvdjAuMS4w".to_string(),
-        url: "https://api.github.com/repos/viperproject/axiom-profiler-2/git/refs/tags/v0.1.0".to_string(),
+        url: "https://api.github.com/repos/viperproject/smt-scope/git/refs/tags/v0.1.0".to_string(),
         object: VersionObject {
             sha: "cf6cf11427abd96a26037f6c47422b7506f890ef".to_string(),
             r#type: "tag".to_string(),
-            url: "https://api.github.com/repos/viperproject/axiom-profiler-2/git/tags/cf6cf11427abd96a26037f6c47422b7506f890ef".to_string(),
+            url: "https://api.github.com/repos/viperproject/smt-scope/git/tags/cf6cf11427abd96a26037f6c47422b7506f890ef".to_string(),
         },
     };
     let v0_1_3 = VersionEntry {
         r#ref: "refs/tags/v0.1.3".to_string(),
         node_id: "REF_kwDOKNVs07ByZWZzL3RhZ3MvdjAuMS4z".to_string(),
-        url: "https://api.github.com/repos/viperproject/axiom-profiler-2/git/refs/tags/v0.1.3".to_string(),
+        url: "https://api.github.com/repos/viperproject/smt-scope/git/refs/tags/v0.1.3".to_string(),
         object: VersionObject {
             sha: "68babe1a367cbafb71d92b798784c87d3131a57f".to_string(),
             r#type: "tag".to_string(),
-            url: "https://api.github.com/repos/viperproject/axiom-profiler-2/git/tags/68babe1a367cbafb71d92b798784c87d3131a57f".to_string(),
+            url: "https://api.github.com/repos/viperproject/smt-scope/git/tags/68babe1a367cbafb71d92b798784c87d3131a57f".to_string(),
         },
     };
     vec![v0_1_0, v0_1_3]

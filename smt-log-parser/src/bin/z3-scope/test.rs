@@ -11,7 +11,7 @@ const MB: u64 = 1024_u64 * 1024_u64;
 const FIXED_OVERHEAD: u64 = 64 * MB;
 
 const PARSER_OVERHEAD: u64 = 3;
-const ANALYSIS_OVERHEAD: u64 = 6;
+const ANALYSIS_OVERHEAD: u64 = 8;
 
 type ParseData = (u64, Instant);
 type AnalysisData = (u64, Duration, f64);

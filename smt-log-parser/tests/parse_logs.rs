@@ -1,4 +1,8 @@
-use std::{fs::DirEntry, io::BufRead, path::Path};
+use std::{
+    fs::DirEntry,
+    io::{BufRead, Write},
+    path::Path,
+};
 
 const MB: u64 = 1024_u64 * 1024_u64;
 
@@ -54,10 +58,14 @@ fn parse_all_logs() {
     // data-structure is 2-3x larger than the file size, and we need to leave
     // space for analysis and some left-over allocated memory from a prior loop.
     const PARSER_OVERHEAD: u64 = 3;
-    const ANALYSIS_OVERHEAD: u64 = 6;
+    const ANALYSIS_OVERHEAD: u64 = 8;
     let parse_limit = mem * MB / (PARSER_OVERHEAD + ANALYSIS_OVERHEAD + 1);
     let parse_limit = parse_limit.to_string();
-    let args = [format!("-memory:{mem}"), "-T:15".to_string()];
+    let args = [
+        format!("-memory:{mem}"),
+        "-T:15".to_string(),
+        "smt.random-seed=1".to_string(),
+    ];
 
     let (mut max_parse_ovhd, mut max_analysis_ovhd) = (0.0, 0.0);
 
@@ -103,6 +111,7 @@ fn parse_all_logs() {
         // Execute
         let out = cmd.output().unwrap();
         println!("{}", String::from_utf8(out.stderr).unwrap());
+        std::io::stdout().flush().unwrap();
         let stdout = String::from_utf8(out.stdout).unwrap();
         assert!(out.status.success(), "z3-scope failed! stdout:\n{stdout}");
 

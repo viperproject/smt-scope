@@ -6,8 +6,8 @@ If these restrictions are not satisfied these workarounds might fail and lines i
 
 The following restrictions apply to choosing names for `declare-fun` and `declare-const`:
 
-- The names `string`, `indent`, `compose`, `choice` and `cr` are forbidden. Issue [#100](https://github.com/viperproject/axiom-profiler-2/issues/100).
-- Any names with spaces of which a non-first word ends with `#[0-9]*` (e.g. `(declare-const |x foo#1 #| Int)`). Examples which are fine are e.g. `|#3 x|` or `|(x #3)|`. Issue [#106](https://github.com/viperproject/axiom-profiler-2/issues/106).
+- The names `string`, `indent`, `compose`, `choice` and `cr` are forbidden. Issue [#100](https://github.com/viperproject/smt-scope/issues/100).
+- Any names with spaces of which a non-first word ends with `#[0-9]*` (e.g. `(declare-const |x foo#1 #| Int)`). Examples which are fine are e.g. `|#3 x|` or `|(x #3)|`. Issue [#106](https://github.com/viperproject/smt-scope/issues/106).
 
 The following restrictions apply to choosing names for quantifiers (specified with `:qid`):
 

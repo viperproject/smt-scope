@@ -241,7 +241,7 @@ impl Component for Window {
             timestamp.format("%H:%M %-d %b %y")
         );
         let version_link = format!(
-            "https://github.com/viperproject/axiom-profiler-2/tree/{}",
+            "https://github.com/viperproject/smt-scope/tree/{}",
             env!("VERGEN_GIT_SHA")
         );
         let is_canary = version().is_none();

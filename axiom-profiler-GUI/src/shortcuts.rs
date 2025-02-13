@@ -15,7 +15,7 @@ pub struct ShortcutsProps {
 pub fn Shortcuts(props: &ShortcutsProps) -> Html {
     html! {
     <section class="modal-dialog" tabindex="0">
-        <MatDialog heading={"Axiom Profiler Help"} dialog_link={props.noderef.clone()} onopened={props.onopened.clone()} onclosed={props.onclosed.clone()}>
+        <MatDialog heading={"SMT Scope Help"} dialog_link={props.noderef.clone()} onopened={props.onopened.clone()} onclosed={props.onclosed.clone()}>
             <main><div class="help">
                 <h2>{"Navigation"}</h2>
                 <table>

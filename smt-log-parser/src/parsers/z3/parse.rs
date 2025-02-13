@@ -348,7 +348,7 @@ impl Z3LogParser for Z3Parser {
         // Return if there is unexpectedly more data
         Self::expect_completed(l)?;
         let version = semver::Version::parse(version)?;
-        println!("{solver} {version}");
+        eprintln!("{solver} {version}");
         self.version_info = VersionInfo::Present { solver, version };
         Ok(())
     }
@@ -800,8 +800,8 @@ impl Z3LogParser for Z3Parser {
             frame: self.stack.active_frame(),
         };
         // I have very rarely seen duplicate `[instance]` lines with the same
-        // fingerprint in v4.12.4. Allow these there and debug panic otherwise.
-        let can_duplicate = self.version_info.is_version(4, 12, 4);
+        // fingerprint in >= v4.12.2. Allow these there and debug panic otherwise.
+        let can_duplicate = self.version_info.is_ge_version(4, 12, 0);
         self.insts
             .new_inst(fingerprint, inst, &self.stack, can_duplicate)?;
         self.events.new_inst();

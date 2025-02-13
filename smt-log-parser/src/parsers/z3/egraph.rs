@@ -17,7 +17,7 @@ use crate::{
     BoxSlice, Error, FxHashMap, NonMaxU32, Result, TiVec,
 };
 
-use super::{stack::Stack, terms::Terms};
+use super::{bugs::TransEqAllowed, stack::Stack, terms::Terms};
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
@@ -190,12 +190,12 @@ impl EGraph {
         from: ENodeIdx,
         to: ENodeIdx,
         stack: &Stack,
-        can_mismatch: bool,
+        mismatch: TransEqAllowed,
     ) -> Result<core::result::Result<EqTransIdx, ENodeIdx>> {
         if from == to {
             Ok(Err(from))
         } else {
-            self.construct_trans_equality(from, to, stack, can_mismatch)
+            self.construct_trans_equality(from, to, stack, mismatch)
                 .map(Ok)
         }
     }
@@ -302,9 +302,10 @@ impl EGraph {
         from: ENodeIdx,
         to: ENodeIdx,
         stack: &Stack,
-        can_mismatch: bool,
+        mismatch: TransEqAllowed,
     ) -> Result<EqTransIdx> {
         debug_assert_ne!(from, to);
+        let can_mismatch = mismatch.can_mismatch_initial;
         let Some(simple_path) = self.get_simple_path(from, to, stack, can_mismatch)? else {
             // There was a root mismatch (and `can_mismatch` was true), so we
             // can't construct a simple path.
@@ -404,7 +405,7 @@ impl EGraph {
                 to,
             )?
         };
-        let trans = self.insert_trans_equality(trans, stack)?;
+        let trans = self.insert_trans_equality(trans, stack, mismatch.can_mismatch_congr)?;
         debug_assert_eq!(self.equalities.walk_to(from, trans), to);
         self.enodes[from].transitive.try_reserve(1)?;
         let old = self.enodes[from].transitive.insert(to, trans);
@@ -416,7 +417,12 @@ impl EGraph {
         &mut self,
         mut trans: TransitiveExpl,
         stack: &Stack,
+        can_mismatch_congr: bool,
     ) -> Result<EqTransIdx> {
+        let mismatch = TransEqAllowed {
+            can_mismatch_initial: can_mismatch_congr,
+            can_mismatch_congr: false,
+        };
         // Find the current congruence uses
         for seg in trans.path.iter_mut() {
             if let TransitiveExplSegmentKind::Given((cg, idx)) = &mut seg.kind {
@@ -431,7 +437,7 @@ impl EGraph {
                 let mut use_ = Vec::new();
                 use_.try_reserve_exact(arg_eqs.len())?;
                 for (from, to) in args {
-                    let Ok(trans) = self.new_trans_equality(from, to, stack, false)? else {
+                    let Ok(trans) = self.new_trans_equality(from, to, stack, mismatch)? else {
                         continue;
                     };
                     use_.push(trans);

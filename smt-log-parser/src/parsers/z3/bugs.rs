@@ -136,6 +136,12 @@ impl Z3Parser {
 
 // Z3 ISSUE: https://github.com/viperproject/smt-scope/issues/63
 
+#[derive(Debug, Clone, Copy)]
+pub struct TransEqAllowed {
+    pub can_mismatch_initial: bool,
+    pub can_mismatch_congr: bool,
+}
+
 impl Z3Parser {
     pub(super) fn make_blamed(
         &mut self,

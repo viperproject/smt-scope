@@ -3,7 +3,7 @@ use crate::{
     FxHashMap, NonMaxU32, Result,
 };
 
-use super::Z3Parser;
+use super::{bugs::TransEqAllowed, Z3Parser};
 
 // Z3 ISSUE: https://github.com/viperproject/smt-scope/issues/63
 
@@ -247,14 +247,19 @@ pub trait EqRewriter {
         subpat: TermIdx,
     ) -> Option<Result<Blame>> {
         let eqs = Self::check_match(data, parser, match_, blame, subpat)?;
+        let can_mismatch_congr = parser.version_info.is_le_version(4, 8, 17);
 
         let equalities = match eqs
             .into_iter()
             .map(|(from, to)| {
-                let can_mismatch = Self::can_mismatch(parser, from, to);
+                let can_mismatch_initial = Self::can_mismatch_initial(parser, from, to);
+                let mismatch = TransEqAllowed {
+                    can_mismatch_initial,
+                    can_mismatch_congr,
+                };
                 let eq = parser
                     .egraph
-                    .new_trans_equality(from, to, &parser.stack, can_mismatch);
+                    .new_trans_equality(from, to, &parser.stack, mismatch);
                 eq.map(core::result::Result::unwrap)
             })
             .collect::<Result<_>>()
@@ -277,7 +282,7 @@ pub trait EqRewriter {
     ) -> Self::Data<'a>;
     fn reset(parser: &Z3Parser, data: &mut Self::Data<'_>);
     fn coupling() -> Coupling;
-    fn can_mismatch(parser: &Z3Parser, _from: ENodeIdx, to: ENodeIdx) -> bool {
+    fn can_mismatch_initial(parser: &Z3Parser, _from: ENodeIdx, to: ENodeIdx) -> bool {
         // TODO: resolve this by adding the missing equality for the if?
         // See comment in `EGraph::get_equalities`
         let can_mismatch = parser.version_info.is_ge_version(4, 12, 3);
@@ -676,7 +681,7 @@ impl EqRewriter for ForceEq<'_> {
     fn coupling() -> Coupling {
         Coupling::AddedEqs
     }
-    fn can_mismatch(_parser: &Z3Parser, _from: ENodeIdx, _to: ENodeIdx) -> bool {
+    fn can_mismatch_initial(_parser: &Z3Parser, _from: ENodeIdx, _to: ENodeIdx) -> bool {
         true
     }
 

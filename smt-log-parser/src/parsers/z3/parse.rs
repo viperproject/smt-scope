@@ -800,8 +800,8 @@ impl Z3LogParser for Z3Parser {
             frame: self.stack.active_frame(),
         };
         // I have very rarely seen duplicate `[instance]` lines with the same
-        // fingerprint in v4.12.4. Allow these there and debug panic otherwise.
-        let can_duplicate = self.version_info.is_version(4, 12, 4);
+        // fingerprint in >= v4.12.2. Allow these there and debug panic otherwise.
+        let can_duplicate = self.version_info.is_ge_version(4, 12, 0);
         self.insts
             .new_inst(fingerprint, inst, &self.stack, can_duplicate)?;
         self.events.new_inst();

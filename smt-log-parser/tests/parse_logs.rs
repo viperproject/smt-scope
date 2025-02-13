@@ -7,7 +7,8 @@ use std::{
 const MB: u64 = 1024_u64 * 1024_u64;
 
 fn z3_version() -> String {
-    let z3_version = std::process::Command::new("z3")
+    let z3_exe = std::env::var("SCOPE_Z3_EXE").unwrap_or_else(|_| "z3".to_string());
+    let z3_version = std::process::Command::new(z3_exe)
         .arg("--version")
         .output()
         .expect("Failed to run `z3 --version`");

@@ -254,7 +254,13 @@ mwc-dialog {
     width: 0.5lh;
     height: 0.5lh;
     border: 1px solid #000;
-    margin: 0 0.25lh;
+    flex-shrink: 0;
+}
+.node-colour.ml {
+    margin-left: 0.25lh;
+}
+.node-colour.mr {
+    margin-right: 0.25lh;
 }
 .omnibox-dropdown .omnibox-options-container li .tag {
     border-radius: 10px;
@@ -437,6 +443,7 @@ ul.selected-info {
 .dot {
     display: inline-block;
     position: relative;
+    overflow-x: auto;
 }
 .dot.scaled {
     width: 100%;

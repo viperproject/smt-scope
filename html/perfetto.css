@@ -112,7 +112,7 @@ h1, h2, h3 {
 .topbar .omnibox input {
 	grid-area: input;
 	border: 0;
-	padding: 0 10px;
+	padding: 0 8px;
 	font-size: 18px;
 	font-family: "Roboto Condensed", sans-serif;
 	font-weight: 300;
@@ -345,7 +345,7 @@ table {
 }
 
 .home-page .home-page-center .logo {
-	height: 2em;
+	height: 6em;
 	margin-top: -0.4em;
 	margin-right: 0.1rem;
 }
@@ -504,7 +504,7 @@ table {
 	height: var(--topbar-height);
 	line-height: var(--topbar-height);
 	vertical-align: middle;
-	padding: 0 12px;
+	padding: 0 10px;
 	color: #000;
 	overflow: visible;
     display: flex;
@@ -527,6 +527,7 @@ table {
 
 .sidebar > header .brand {
 	height: 36px;
+	padding: 2px 0;
 	margin-top: calc((var(--topbar-height) - 36px) / 2);
 }
 
@@ -923,6 +924,8 @@ input[type="file"] {
 .pf-section {
     border-radius: 2px;
     border: 1px solid rgba(0, 0, 0, 0.2);
+    max-height: 16.1em;
+    overflow-y: scroll;
 }
 .pf-section header {
     padding: 6px;
@@ -938,6 +941,7 @@ input[type="file"] {
     display: grid;
     grid-template-columns: [left] auto [right] 1fr;
     row-gap: 5px;
+	overflow-x: scroll;
 }
 .pf-tree .pf-tree-node {
     display: contents;

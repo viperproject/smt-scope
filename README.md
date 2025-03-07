@@ -77,3 +77,11 @@ To dump the whole chain of `.dfy -> .bpl -> .smt2 -> .log` files, try using the 
 ### FStar
 
 See these instructions in FStar's wiki: [Profiling Z3 queries](https://github.com/FStarLang/FStar/wiki/Profiling-Z3-queries).
+
+### VerCors
+
+Use the `--backend-option` flag to pass instructions to the silicon backend:
+
+```
+vercors file.pvl --backend-option --numberOfParallelVerifiers=1 --backend-option --z3Args="trace=true proof=true"
+```

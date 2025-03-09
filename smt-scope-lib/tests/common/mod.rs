@@ -55,7 +55,12 @@ pub struct ParseConfig<'a> {
     pub save_logs: bool,
 }
 
-pub fn parse_one_log<P: AsRef<Path>>(path: P, config: ParseConfig<'_>, max_parse_ovhd: &mut f64, max_analysis_ovhd: &mut f64) {
+pub fn parse_one_log<P: AsRef<Path>>(
+    path: P,
+    config: ParseConfig<'_>,
+    max_parse_ovhd: &mut f64,
+    max_analysis_ovhd: &mut f64,
+) {
     let path = path.as_ref();
     println!("___ {} ___", path.display());
 
@@ -64,7 +69,10 @@ pub fn parse_one_log<P: AsRef<Path>>(path: P, config: ParseConfig<'_>, max_parse
     let mut file = std::io::BufReader::new(std::fs::File::open(&path).unwrap());
     file.read_line(&mut first_line).unwrap();
     if first_line.starts_with(';') && first_line.contains(&config.z3_version) {
-        println!("Skipping as z3 v{} matched in first line comment", config.z3_version);
+        println!(
+            "Skipping as z3 v{} matched in first line comment",
+            config.z3_version
+        );
         return;
     }
 
@@ -147,7 +155,12 @@ pub fn parse_logs_in<P: AsRef<Path>>(dir: P, save_logs: bool) {
         // if smt2.file_name().to_string_lossy() != "insert_log_name" {
         //     continue;
         // }
-        parse_one_log(smt2.path(), config, &mut max_parse_ovhd, &mut max_analysis_ovhd);
+        parse_one_log(
+            smt2.path(),
+            config,
+            &mut max_parse_ovhd,
+            &mut max_analysis_ovhd,
+        );
     }
     println!(
         "Max parse overhead: {max_parse_ovhd:.2}x, max analysis overhead: {max_analysis_ovhd:.2}x"

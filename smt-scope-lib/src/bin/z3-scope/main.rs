@@ -118,8 +118,8 @@ fn run() -> Result<i32, String> {
     let code = output.code().unwrap_or(128);
     if tracefile.is_file() {
         analyse(tracefile, dumpfile)?;
-    } else if cfg!(debug_assertions) {
-        return Err("no trace file found".to_string());
+    } else {
+        eprintln!("z3-scope: no trace file found");
     }
     Ok(code)
 }

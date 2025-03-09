@@ -6,7 +6,7 @@ use std::{
 
 const MB: u64 = 1024_u64 * 1024_u64;
 
-fn z3_version() -> String {
+pub fn z3_version() -> String {
     let z3_exe = std::env::var("SCOPE_Z3_EXE").unwrap_or_else(|_| "z3".to_string());
     let z3_version = std::process::Command::new(z3_exe)
         .arg("--version")
@@ -47,8 +47,60 @@ fn visit_dirs<P: AsRef<Path>>(dir: P, cb: &mut impl FnMut(DirEntry)) -> std::io:
     Ok(())
 }
 
-#[test]
-fn parse_all_logs() {
+#[derive(Debug, Clone, Copy)]
+pub struct ParseConfig<'a> {
+    pub z3_version: &'a str,
+    pub args: &'a [String],
+    pub parse_limit: u64,
+    pub save_logs: bool,
+}
+
+pub fn parse_one_log<P: AsRef<Path>>(path: P, config: ParseConfig<'_>, max_parse_ovhd: &mut f64, max_analysis_ovhd: &mut f64) {
+    let path = path.as_ref();
+    println!("___ {} ___", path.display());
+
+    // Check if to skip
+    let mut first_line = String::new();
+    let mut file = std::io::BufReader::new(std::fs::File::open(&path).unwrap());
+    file.read_line(&mut first_line).unwrap();
+    if first_line.starts_with(';') && first_line.contains(&config.z3_version) {
+        println!("Skipping as z3 v{} matched in first line comment", config.z3_version);
+        return;
+    }
+
+    // Setup command
+    let mut cmd = assert_cmd::Command::cargo_bin("z3-scope").unwrap();
+    cmd.args(config.args);
+    cmd.arg(std::fs::canonicalize(&path).unwrap());
+    cmd.env("SCOPE_SIZE_LIMIT", config.parse_limit.to_string());
+    if config.save_logs {
+        let file_stem = path.file_stem().unwrap().to_string_lossy();
+        cmd.env("SCOPE_TRACE_FILE", format!("../logs/{file_stem}.log"));
+    }
+
+    // Execute
+    let out = cmd.output().unwrap();
+    println!("{}", String::from_utf8(out.stderr).unwrap());
+    std::io::stdout().flush().unwrap();
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(out.status.success(), "z3-scope failed! stdout:\n{stdout}");
+
+    // Collect overhead data
+    let stdout: Vec<_> = stdout.lines().collect();
+    let last = stdout.last().unwrap();
+    let last = last.split_ascii_whitespace().collect::<Vec<_>>();
+    assert_eq!(last.len(), 4, "{stdout:?}");
+    assert_eq!(last[0], "POVHD", "{stdout:?}");
+    assert_eq!(last[2], "AOVHD", "{stdout:?}");
+    let parse_ovhd = last[1].parse::<f64>().unwrap();
+    let analysis_ovhd = last[3].parse::<f64>().unwrap();
+    *max_parse_ovhd = f64::max(*max_parse_ovhd, parse_ovhd);
+    *max_analysis_ovhd = f64::max(*max_analysis_ovhd, analysis_ovhd);
+
+    println!();
+}
+
+pub fn parse_logs_in<P: AsRef<Path>>(dir: P, save_logs: bool) {
     let z3_version = z3_version();
     let mem = std::env::var("SLP_MEMORY_LIMIT_GB")
         .ok()
@@ -61,7 +113,6 @@ fn parse_all_logs() {
     const PARSER_OVERHEAD: u64 = 3;
     const ANALYSIS_OVERHEAD: u64 = 8;
     let parse_limit = mem * MB / (PARSER_OVERHEAD + ANALYSIS_OVERHEAD + 1);
-    let parse_limit = parse_limit.to_string();
     let args = [
         format!("-memory:{mem}"),
         "-T:15".to_string(),
@@ -71,7 +122,7 @@ fn parse_all_logs() {
     let (mut max_parse_ovhd, mut max_analysis_ovhd) = (0.0, 0.0);
 
     let mut all_smt2 = Vec::new();
-    visit_dirs("../test-smtlib", &mut |e| {
+    visit_dirs(dir, &mut |e| {
         if e.path()
             .extension()
             .is_some_and(|e| e.to_string_lossy() == "smt2")
@@ -82,53 +133,21 @@ fn parse_all_logs() {
     .unwrap();
     all_smt2.sort_by_key(|e| e.metadata().unwrap().len());
 
-    std::fs::create_dir_all("../logs").unwrap();
+    if save_logs {
+        std::fs::create_dir_all("../logs").unwrap();
+    }
 
+    let config = ParseConfig {
+        z3_version: &z3_version,
+        args: &args,
+        parse_limit,
+        save_logs,
+    };
     for smt2 in all_smt2 {
-        // if log.file_name().to_string_lossy() != "insert_log_name" {
+        // if smt2.file_name().to_string_lossy() != "insert_log_name" {
         //     continue;
         // }
-
-        let path = smt2.path();
-        println!("___ {} ___", path.display());
-
-        // Check if to skip
-        let mut first_line = String::new();
-        let mut file = std::io::BufReader::new(std::fs::File::open(&path).unwrap());
-        file.read_line(&mut first_line).unwrap();
-        if first_line.starts_with(';') && first_line.contains(&z3_version) {
-            println!("Skipping as z3 v{z3_version} matched in first line comment");
-            continue;
-        }
-
-        // Setup command
-        let mut cmd = assert_cmd::Command::cargo_bin("z3-scope").unwrap();
-        cmd.args(&args);
-        cmd.arg(std::fs::canonicalize(&path).unwrap());
-        cmd.env("SCOPE_SIZE_LIMIT", &parse_limit);
-        let file_stem = path.file_stem().unwrap().to_string_lossy();
-        cmd.env("SCOPE_TRACE_FILE", format!("../logs/{file_stem}.log"));
-
-        // Execute
-        let out = cmd.output().unwrap();
-        println!("{}", String::from_utf8(out.stderr).unwrap());
-        std::io::stdout().flush().unwrap();
-        let stdout = String::from_utf8(out.stdout).unwrap();
-        assert!(out.status.success(), "z3-scope failed! stdout:\n{stdout}");
-
-        // Collect overhead data
-        let stdout: Vec<_> = stdout.lines().collect();
-        let last = stdout.last().unwrap();
-        let last = last.split_ascii_whitespace().collect::<Vec<_>>();
-        assert_eq!(last.len(), 4, "{stdout:?}");
-        assert_eq!(last[0], "POVHD", "{stdout:?}");
-        assert_eq!(last[2], "AOVHD", "{stdout:?}");
-        let parse_ovhd = last[1].parse::<f64>().unwrap();
-        let analysis_ovhd = last[3].parse::<f64>().unwrap();
-        max_parse_ovhd = f64::max(max_parse_ovhd, parse_ovhd);
-        max_analysis_ovhd = f64::max(max_analysis_ovhd, analysis_ovhd);
-
-        println!();
+        parse_one_log(smt2.path(), config, &mut max_parse_ovhd, &mut max_analysis_ovhd);
     }
     println!(
         "Max parse overhead: {max_parse_ovhd:.2}x, max analysis overhead: {max_analysis_ovhd:.2}x"

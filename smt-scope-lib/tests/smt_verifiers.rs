@@ -16,7 +16,7 @@ mod common;
 #[test]
 fn parse_smt_logs() {
     if std::path::Path::new("../smt-logs/smt2").exists() {
-        common::parse_logs_in("../smt-logs/smt2", false)
+        common::parse_logs_in("../smt-logs/smt2", false, false).expect("failed for n logs")
     } else {
         eprintln!("smt-logs not found, skipping test");
     }

@@ -53,14 +53,16 @@ pub struct ParseConfig<'a> {
     pub args: &'a [String],
     pub parse_limit: u64,
     pub save_logs: bool,
+    pub expect_simple_smt2: bool,
 }
 
+#[deny(unused_must_use)]
 pub fn parse_one_log<P: AsRef<Path>>(
     path: P,
     config: ParseConfig<'_>,
     max_parse_ovhd: &mut f64,
     max_analysis_ovhd: &mut f64,
-) {
+) -> Result<(), ()> {
     let path = path.as_ref();
     println!("___ {} ___", path.display());
 
@@ -73,7 +75,7 @@ pub fn parse_one_log<P: AsRef<Path>>(
             "Skipping as z3 v{} matched in first line comment",
             config.z3_version
         );
-        return;
+        return Ok(());
     }
 
     // Setup command
@@ -81,34 +83,59 @@ pub fn parse_one_log<P: AsRef<Path>>(
     cmd.args(config.args);
     cmd.arg(std::fs::canonicalize(&path).unwrap());
     cmd.env("SCOPE_SIZE_LIMIT", config.parse_limit.to_string());
-    if config.save_logs {
-        let file_stem = path.file_stem().unwrap().to_string_lossy();
-        cmd.env("SCOPE_TRACE_FILE", format!("../logs/{file_stem}.log"));
-    }
+
+    let file_stem = path.file_stem().unwrap().to_string_lossy();
+    let logfile = format!("../logs/{file_stem}.log");
+    cmd.env("SCOPE_TRACE_FILE", &logfile);
 
     // Execute
     let out = cmd.output().unwrap();
-    println!("{}", String::from_utf8(out.stderr).unwrap());
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    println!("{stderr}");
     std::io::stdout().flush().unwrap();
     let stdout = String::from_utf8(out.stdout).unwrap();
-    assert!(out.status.success(), "z3-scope failed! stdout:\n{stdout}");
+    // assert!(out.status.success(), "z3-scope failed! stdout:\n{stdout}");
+    if !out.status.success() {
+        eprintln!("z3-scope failed! stdout:\n{stdout}");
+        return Err(());
+    }
 
     // Collect overhead data
     let stdout: Vec<_> = stdout.lines().collect();
     let last = stdout.last().unwrap();
     let last = last.split_ascii_whitespace().collect::<Vec<_>>();
-    assert_eq!(last.len(), 4, "{stdout:?}");
-    assert_eq!(last[0], "POVHD", "{stdout:?}");
-    assert_eq!(last[2], "AOVHD", "{stdout:?}");
-    let parse_ovhd = last[1].parse::<f64>().unwrap();
-    let analysis_ovhd = last[3].parse::<f64>().unwrap();
-    *max_parse_ovhd = f64::max(*max_parse_ovhd, parse_ovhd);
-    *max_analysis_ovhd = f64::max(*max_analysis_ovhd, analysis_ovhd);
+    match last.as_slice() {
+        [other @ .., "POVHD", parse_ovhd, "AOVHD", analysis_ovhd] => {
+            if config.expect_simple_smt2 {
+                assert_eq!(other.len(), 0, "{stdout:?}");
+            }
+            let parse_ovhd = parse_ovhd.parse::<f64>().unwrap();
+            let analysis_ovhd = analysis_ovhd.parse::<f64>().unwrap();
+            *max_parse_ovhd = f64::max(*max_parse_ovhd, parse_ovhd);
+            *max_analysis_ovhd = f64::max(*max_analysis_ovhd, analysis_ovhd);
+            if !config.save_logs {
+                std::fs::remove_file(logfile).unwrap();
+            }
+        }
+        _ if !config.expect_simple_smt2 && stderr.ends_with("z3-scope: no trace file found\n") => {
+            assert!(
+                !Path::new(&logfile).is_file(),
+                "Log file was created!\n{stdout:?}\n{stderr:?}"
+            );
+        }
+        _ => panic!("Unexpected output: {stdout:?}\nstderr: {stderr:?}"),
+    }
 
     println!();
+    Ok(())
 }
 
-pub fn parse_logs_in<P: AsRef<Path>>(dir: P, save_logs: bool) {
+#[deny(unused_must_use)]
+pub fn parse_logs_in<P: AsRef<Path>>(
+    dir: P,
+    save_logs: bool,
+    expect_simple_smt2: bool,
+) -> Result<(), usize> {
     let z3_version = z3_version();
     let mem = std::env::var("SLP_MEMORY_LIMIT_GB")
         .ok()
@@ -141,28 +168,30 @@ pub fn parse_logs_in<P: AsRef<Path>>(dir: P, save_logs: bool) {
     .unwrap();
     all_smt2.sort_by_key(|e| e.metadata().unwrap().len());
 
-    if save_logs {
-        std::fs::create_dir_all("../logs").unwrap();
-    }
+    std::fs::create_dir_all("../logs").unwrap();
 
     let config = ParseConfig {
         z3_version: &z3_version,
         args: &args,
         parse_limit,
         save_logs,
+        expect_simple_smt2,
     };
+    let mut errors = 0;
     for smt2 in all_smt2 {
         // if smt2.file_name().to_string_lossy() != "insert_log_name" {
         //     continue;
         // }
-        parse_one_log(
+        let err = parse_one_log(
             smt2.path(),
             config,
             &mut max_parse_ovhd,
             &mut max_analysis_ovhd,
         );
+        errors += err.is_err() as usize;
     }
     println!(
         "Max parse overhead: {max_parse_ovhd:.2}x, max analysis overhead: {max_analysis_ovhd:.2}x"
     );
+    (errors == 0).then_some(()).ok_or(errors)
 }

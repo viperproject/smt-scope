@@ -5,8 +5,8 @@ use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
     items::{
-        Blame, BoundVars, ENodeIdx, EqGivenIdx, MatchIdx, MatchKind, ProofIdx, ProofStepKind,
-        TermId, TermIdx, TermKind,
+        Blame, BoundVars, ENodeIdx, EqTransIdx, InstIdx, MatchIdx, MatchKind, ProofIdx,
+        ProofStepKind, TermId, TermIdx, TermKind,
     },
     Error as E, FxHashMap, FxHashSet, IString, NonMaxU32, Result, StringTable,
 };
@@ -230,7 +230,7 @@ impl Terms {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default)]
 pub(super) struct InstanceBody {
-    pub req_eqs: FxHashMap<TermIdx, FxHashSet<EqGivenIdx>>,
+    pub req_eqs: FxHashMap<TermIdx, FxHashSet<(ENodeIdx, ENodeIdx)>>,
 }
 
 impl Z3Parser {
@@ -288,72 +288,133 @@ impl Z3Parser {
             return None;
         };
         let mut ib = InstanceBody::default();
-        self.mk_instance_body(bound, qbody, body, &mut ib);
+        self.mk_instance_body(bound, 0, qbody, body, &mut ib);
         Some(ib)
     }
 
     fn mk_instance_body(
         &self,
         bound: BoundVars<ENodeIdx>,
+        // The number of quantified variables we have walked through from the
+        // top-level instantiated expr (which might have nested quants) to here?
+        mut inner_binds: u32,
         qbody: TermIdx,
         body: TermIdx,
         ib: &mut InstanceBody,
-    ) {
+    ) -> bool {
         let Entry::Vacant(v) = ib.req_eqs.entry(body) else {
-            return;
+            return false;
         };
 
         let qb = &self[qbody];
         if qb.has_var().is_some_and(|v| !v) {
             debug_assert_eq!(qbody, body, "unexpected unequal no var body");
-            return;
+            return qbody != body;
         }
 
-        match qb.kind() {
+        let b = match qb.kind() {
             TermKind::Var(qvar) => {
-                let qb = bound.get(qvar).unwrap();
-                let qbody = self[qb].owner;
-                if qbody != body {
-                    let Some(b) = self.egraph.get_enode_imm(body, &self.stack) else {
-                        debug_assert!(false, "body not in egraph");
-                        return;
+                if let Some(qvar) = qvar.get().checked_sub(inner_binds) {
+                    let Some(qb) = bound.get(NonMaxU32::new(qvar).unwrap()) else {
+                        debug_assert!(false, "error: {qvar:?} / {bound:?} ({inner_binds})");
+                        return true;
                     };
-                    let Some(eq) = self.egraph.get_given(qb, b) else {
-                        debug_assert!(false, "no eq found");
-                        return;
+                    let qbody = self[qb].owner;
+                    if qbody != body {
+                        let Some(b) = self.egraph.get_enode_imm(body, &self.stack) else {
+                            debug_assert!(false, "body not in egraph");
+                            return true;
+                        };
+                        v.insert(Default::default()).insert((qb, b));
+                    }
+                    return false;
+                } else {
+                    let b = &self[body];
+                    let TermKind::Var(var) = b.kind() else {
+                        debug_assert!(false, "unexpected kind {b:?}");
+                        return true;
                     };
-                    v.insert(Default::default()).insert(eq);
+                    debug_assert_eq!(qvar, var, "unexpected var {qvar} / {var} / {bound:?}");
+                    return qvar != var;
                 }
             }
-            TermKind::Quant(..) => {
-                debug_assert_eq!(qbody, body, "unexpected unequal quant body");
+            TermKind::Quant(qinner) => {
+                let b = &self[body];
+                let TermKind::Quant(inner) = b.kind() else {
+                    debug_assert!(false, "unexpected kind {b:?}");
+                    return true;
+                };
+                let qinner = &self[qinner];
+                let inner = &self[inner];
+                if qinner.num_vars != inner.num_vars
+                    || qinner.kind != inner.kind
+                    || qb.child_ids.len() != b.child_ids.len()
+                {
+                    debug_assert!(
+                        false,
+                        "unexpected quant {qinner:?} / {inner:?} / {qb:?} / {b:?}"
+                    );
+                    return true;
+                }
+                let vars = qinner.num_vars.get();
+                inner_binds += vars;
+                b
             }
             TermKind::App(qname) => {
                 let b = &self[body];
-                debug_assert!(!b.has_var().is_some_and(|v| v));
+                debug_assert!(inner_binds > 0 || !b.has_var().is_some_and(|v| v));
                 let TermKind::App(name) = b.kind() else {
                     debug_assert!(false, "unexpected kind {b:?}");
-                    return;
+                    return true;
                 };
-                if qname == name && qb.child_ids.len() == b.child_ids.len() {
-                    for (q, b) in qb.child_ids.iter().zip(b.child_ids.iter()) {
-                        self.mk_instance_body(bound, *q, *b, ib);
-                    }
-                    let eqs = b.child_ids.iter();
-                    let eqs: FxHashSet<_> = eqs
-                        .flat_map(|b| {
-                            let eqs = ib.req_eqs.get(b);
-                            eqs.into_iter().flat_map(|e| e.iter().copied())
-                        })
-                        .collect();
-                    if !eqs.is_empty() {
-                        let old = ib.req_eqs.insert(body, eqs);
-                        debug_assert!(old.is_none(), "unexpected old eqs {old:?}");
-                    }
-                } else {
-                    debug_assert!(false, "unexpected app body {b:?}");
+                if qname != name || qb.child_ids.len() != b.child_ids.len() {
+                    debug_assert!(false, "unexpected app body {qb:?} / {b:?}");
+                    return true;
                 }
+                b
             }
+        };
+        let mut error = false;
+        for (q, b) in qb.child_ids.iter().zip(b.child_ids.iter()) {
+            error |= self.mk_instance_body(bound, inner_binds, *q, *b, ib);
         }
+        let eqs = b.child_ids.iter();
+        let eqs: FxHashSet<_> = eqs
+            .flat_map(|b| {
+                let eqs = ib.req_eqs.get(b);
+                eqs.into_iter().flat_map(|e| e.iter().copied())
+            })
+            .collect();
+        if !eqs.is_empty() {
+            let old = ib.req_eqs.insert(body, eqs);
+            debug_assert!(old.is_none(), "unexpected old eqs {old:?}");
+            error |= old.is_some();
+        }
+        error
+    }
+
+    pub(super) fn active_inst(
+        &mut self,
+        idx: TermIdx,
+    ) -> Result<Option<(InstIdx, FxHashSet<EqTransIdx>)>> {
+        let created_by = self.insts.active_inst();
+        created_by
+            .as_ref()
+            .map(|a| {
+                let req_eqs = a.req_eqs(idx);
+                let mismatch = TransEqAllowed {
+                    can_mismatch_initial: true,
+                    can_mismatch_congr: false,
+                };
+                let req_eqs = req_eqs
+                    .map(|(from, to)| {
+                        self.egraph
+                            .new_trans_equality(from, to, &self.stack, mismatch)
+                            .map(|r| r.unwrap())
+                    })
+                    .collect::<Result<_>>()?;
+                Ok((a.idx, req_eqs))
+            })
+            .transpose()
     }
 }

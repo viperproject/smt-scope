@@ -60,7 +60,7 @@ impl EGraph {
     pub fn get_blame(
         &self,
         tidx: TermIdx,
-        inst: Option<(InstIdx, FxHashSet<EqGivenIdx>)>,
+        inst: Option<(InstIdx, FxHashSet<EqTransIdx>)>,
         terms: &Terms,
         stack: &Stack,
     ) -> ENodeBlame {

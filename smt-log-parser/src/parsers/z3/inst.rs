@@ -2,9 +2,9 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    items::{ENodeIdx, EqGivenIdx, Fingerprint, InstIdx, Instantiation, Match, MatchIdx, TermIdx},
+    items::{ENodeIdx, Fingerprint, InstIdx, Instantiation, Match, MatchIdx, TermIdx},
     parsers::z3::stack::Stack,
-    Error, FxHashMap, FxHashSet, Result, TiVec,
+    Error, FxHashMap, Result, TiVec,
 };
 
 use super::bugs::InstanceBody;
@@ -133,12 +133,16 @@ impl ActiveInst {
         }
     }
 
-    pub(super) fn req_eqs(&self, term: TermIdx) -> FxHashSet<EqGivenIdx> {
+    pub(super) fn req_eqs(&self, term: TermIdx) -> impl Iterator<Item = (ENodeIdx, ENodeIdx)> + '_ {
         self.body
-            .as_ref()
-            .and_then(|body| body.req_eqs.get(&term))
-            .cloned()
-            .unwrap_or_default()
+            .iter()
+            .flat_map(move |body| {
+                body.req_eqs
+                    .get(&term)
+                    .into_iter()
+                    .flat_map(|eqs| eqs.iter())
+            })
+            .copied()
     }
 }
 

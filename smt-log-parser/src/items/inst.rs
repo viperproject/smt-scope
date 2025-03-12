@@ -57,6 +57,9 @@ pub enum MatchKind {
 #[derive(Debug, Clone, Copy)]
 pub struct BoundVars<'a, T: Copy>(&'a [T]);
 impl<'a, T: Copy> BoundVars<'a, T> {
+    pub fn len(&self) -> u32 {
+        self.0.len() as u32
+    }
     pub fn get(&self, idx: NonMaxU32) -> Option<T> {
         self.0.get(idx.get() as usize).copied()
     }

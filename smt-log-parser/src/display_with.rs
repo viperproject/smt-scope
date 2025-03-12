@@ -1026,11 +1026,13 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, ()> for &'a EventKind {
                 let display = proof.result.with(ctxt);
                 write!(f, "(assert {display})")
             }
-            EventKind::Push => write!(f, "(push)"),
-            EventKind::Pop(num) => match num {
+            EventKind::Push(false) => write!(f, "(push)"),
+            EventKind::Push(true, ..) => Ok(()),
+            EventKind::Pop(false, num) => match num {
                 Some(num) => write!(f, "(pop {})", num.get()),
                 None => write!(f, "(pop)"),
             },
+            EventKind::Pop(true, ..) => Ok(()),
             EventKind::BeginCheck => write!(f, "(check-sat)"),
         }
     }

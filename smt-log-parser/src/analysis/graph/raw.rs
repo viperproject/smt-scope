@@ -148,11 +148,7 @@ impl RawInstGraph {
                 ENodeBlame::Inst((iidx, eqs)) => {
                     self_.add_edge(*iidx, idx, EdgeKind::Yield);
                     for &eq in eqs.iter() {
-                        // TODO:
-                        if let EqualityExpl::Congruence { .. } = &parser[eq] {
-                            continue;
-                        }
-                        self_.add_edge((eq, None), idx, EdgeKind::YieldEq);
+                        self_.add_edge(eq, idx, EdgeKind::YieldEq);
                     }
                 }
                 ENodeBlame::Proof(pidx) => self_.add_edge(*pidx, idx, EdgeKind::Asserted),

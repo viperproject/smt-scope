@@ -318,7 +318,6 @@ impl Z3Parser {
         let Some(lit) = l.next() else {
             return Ok(None);
         };
-        eprintln!("1: {lit:?}");
         match lit {
             "" => {
                 debug_assert_eq!(l.next().filter(|n| !n.is_empty()), None);
@@ -336,7 +335,6 @@ impl Z3Parser {
         } else {
             let (lit, value) = if lit == "(not" {
                 let lit = l.next().ok_or(E::UnexpectedNewline)?;
-                eprintln!("2: {lit:?}");
                 let lit = lit.strip_suffix(')').ok_or(E::TupleMissingParens)?;
                 (lit, false)
             } else {
@@ -529,12 +527,11 @@ impl Z3LogParser for Z3Parser {
         Self::expect_completed(l)?;
 
         debug_assert!(self[idx].app_name().is_some());
-        let created_by = self.insts.active_inst();
-        let iidx = created_by.as_ref().map(|a| (a.idx, a.req_eqs(idx)));
+        let iidx = self.active_inst(idx)?;
         let blame = self.egraph.get_blame(idx, iidx, &self.terms, &self.stack);
         let enode = self.egraph.new_enode(blame, idx, z3_gen, &self.stack)?;
         self.events.new_enode();
-        if let Some(a) = created_by {
+        if let Some(a) = self.insts.active_inst() {
             // If `None` then this is a ground term not created by an instantiation.
             a.yields.try_reserve(1)?;
             a.yields.push(enode);
@@ -838,8 +835,10 @@ impl Z3LogParser for Z3Parser {
         let mut justification = l.next().ok_or(E::UnexpectedNewline)?;
         let decision = justification == "decision";
         if decision {
-            debug_assert_eq!(self.comm.prev().last_line_kind, LineKind::Push);
-            if self.stack.new_decision() {
+            let llk = self.comm.prev().last_line_kind;
+            // TODO: the bitvector-only solver in z3 doesn't use push/pop
+            // debug_assert_eq!(llk, LineKind::Push);
+            if matches!(llk, LineKind::Push) && self.stack.new_decision() {
                 self.push_count -= 1;
                 self.events.undo_push();
             }
@@ -962,8 +961,8 @@ impl Z3LogParser for Z3Parser {
         self.stack.new_frame(scope, from_cdcl)?;
         if !from_cdcl {
             self.push_count += 1;
-            self.events.new_push()?;
         }
+        self.events.new_push(from_cdcl)?;
         Ok(())
     }
 

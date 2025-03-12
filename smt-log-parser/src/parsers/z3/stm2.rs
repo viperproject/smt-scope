@@ -118,64 +118,70 @@ impl EventLog {
         Ok(())
     }
 
-    pub(super) fn new_push(&mut self) -> Result<()> {
-        self.push(EventKind::Push)
+    pub(super) fn new_push(&mut self, cdcl: bool) -> Result<()> {
+        self.push(EventKind::Push(cdcl))
     }
     pub(super) fn undo_push(&mut self) {
-        if !self
-            .events
-            .last()
-            .is_some_and(|last| matches!(last.kind, EventKind::Push))
-        {
+        let Some(Event {
+            kind: EventKind::Push(cdcl @ false),
+            ..
+        }) = self.events.last_mut()
+        else {
             debug_assert!(false, "Undo push without a push event");
             return;
-        }
-        self.pop();
+        };
+        *cdcl = true;
     }
 
     pub(super) fn new_pop(&mut self, num: core::num::NonZeroUsize, from_cdcl: bool) -> Result<()> {
-        if from_cdcl {
-            let mut consts_to_return = Vec::new();
-            let mut to_pop = num.get();
-            while to_pop > 0 {
-                match self.events.last() {
-                    Some(Event {
-                        kind: EventKind::Push,
-                        ..
-                    }) => (),
-                    Some(Event {
-                        // TODO: Figure out how an `BeginCheck` or even `Assert`
-                        // can end up within a hypothetical CDCL stack.
-                        kind: EventKind::NewConst(_) | EventKind::BeginCheck | EventKind::Assert(_),
-                        ..
-                    }) => {
-                        consts_to_return.push(self.events.pop().unwrap());
-                        continue;
-                    }
-                    _ => return Err(Error::PopConflictMismatch),
-                }
-                to_pop -= 1;
-                self.pop();
+        let mut to_pop = num.get();
+        let mut to_ignore = 0;
+        for ev in self.events.iter_mut().rev() {
+            if to_pop == 0 {
+                break;
             }
-            self.events.extend(consts_to_return.into_iter().rev());
-            Ok(())
-        } else {
-            self.push(EventKind::Pop((num.get() != 1).then_some(num)))
+            match &mut ev.kind {
+                // TODO: Figure out how an `BeginCheck` or even `Assert`
+                // can end up within a hypothetical CDCL stack.
+                EventKind::NewConst(_) | EventKind::BeginCheck | EventKind::Assert(_) => continue,
+                EventKind::Push(_) if to_ignore > 0 => {
+                    to_ignore -= 1;
+                }
+                EventKind::Push(cdcl) => {
+                    if !from_cdcl && *cdcl {
+                        return Err(Error::PopConflictMismatch);
+                    }
+                    *cdcl = from_cdcl;
+                    to_pop -= 1;
+                }
+                EventKind::Pop(_, num) => {
+                    to_ignore += num.map_or(1, |num| num.get());
+                }
+            }
         }
+        debug_assert_eq!(to_pop, 0, "Failed to pop all frames");
+        self.push(EventKind::Pop(from_cdcl, (num.get() != 1).then_some(num)))
     }
 
     pub(super) fn new_begin_check(&mut self) -> Result<()> {
         self.push(EventKind::BeginCheck)
     }
 
+    fn last_line(&mut self) -> Option<&mut Event> {
+        self.events
+            .iter_mut()
+            .rev()
+            .find(|event| event.kind.is_from_source())
+    }
+
     pub(super) fn new_enode(&mut self) {
-        if let Some(last) = self.events.last_mut() {
+        if let Some(last) = self.last_line() {
             last.enodes += 1;
         }
     }
 
     pub(super) fn new_inst(&mut self) {
-        if let Some(last) = self.events.last_mut() {
+        if let Some(last) = self.last_line() {
             last.insts += 1;
         }
     }
@@ -209,9 +215,15 @@ pub struct Event {
 pub enum EventKind {
     NewConst(TermIdx),
     Assert(ProofIdx),
-    Push,
-    Pop(Option<core::num::NonZeroUsize>),
+    Push(bool),
+    Pop(bool, Option<core::num::NonZeroUsize>),
     BeginCheck,
+}
+
+impl EventKind {
+    fn is_from_source(&self) -> bool {
+        !matches!(self, EventKind::Push(true, ..) | EventKind::Pop(true, ..))
+    }
 }
 
 fn is_k_bang_number(name: &str) -> bool {

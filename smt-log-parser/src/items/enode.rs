@@ -24,7 +24,7 @@ pub struct ENode {
 #[derive(Debug, Clone)]
 pub enum ENodeBlame {
     /// The `ENode` was created by an instantiation.
-    Inst((InstIdx, FxHashSet<EqGivenIdx>)),
+    Inst((InstIdx, FxHashSet<EqTransIdx>)),
     /// The `ENode` was created by a proof step.
     Proof(ProofIdx),
     /// The `ENode` represents either `#1` or `#2`.

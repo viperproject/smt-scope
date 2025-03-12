@@ -48,6 +48,7 @@ idx!(EqGivenIdx, "≡{}");
 idx!(EqTransIdx, "={}");
 idx!(GraphIdx, "g{}");
 idx!(ProofIdx, "p{}");
+idx!(LitIdx, "l{}");
 idx!(CdclIdx, "c{}");
 
 // Not used for TiVec, but just as a typed wrapper

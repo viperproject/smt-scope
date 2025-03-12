@@ -8,13 +8,15 @@ use typed_index_collections::TiSlice;
 use crate::{items::*, parsers::z3::VersionInfo, FxHashMap, IString, StringTable, TiVec};
 
 use super::{
+    cdcl::Literals,
     egraph::EGraph,
     inst::{InstData, Insts},
     inter_line::InterLine,
-    stack::{CdclTree, HasFrame, Stack},
+    stack::{HasFrame, Stack},
     stm2::EventLog,
     synthetic::{AnyTerm, SynthIdx, SynthTerms},
     terms::Terms,
+    // theory::TheorySolving,
 };
 
 /// A parser for Z3 log files. Use one of the various `Z3Parser::from_*` methods
@@ -23,6 +25,8 @@ use super::{
 #[derive(Debug)]
 pub struct Z3Parser {
     pub(crate) version_info: VersionInfo,
+    /// How many times have we seen a `(push)`, determines if we are in incremental mode.
+    pub(crate) push_count: u32,
     pub(crate) terms: Terms,
     pub(crate) synth_terms: SynthTerms,
 
@@ -30,10 +34,11 @@ pub struct Z3Parser {
 
     pub(crate) insts: Insts,
 
+    // pub(crate) ts: TheorySolving,
     pub(crate) egraph: EGraph,
     pub(crate) stack: Stack,
 
-    pub cdcl: CdclTree,
+    pub lits: Literals,
 
     pub strings: StringTable,
     pub events: EventLog,
@@ -129,7 +134,7 @@ impl Z3Parser {
         self.terms.proof_terms.terms()
     }
     pub fn cdcls(&self) -> &TiSlice<CdclIdx, Cdcl> {
-        self.cdcl.cdcls()
+        self.lits.cdcl.cdcls()
     }
 
     pub fn quantifier_body(&self, qidx: QuantIdx) -> Option<TermIdx> {
@@ -151,7 +156,7 @@ impl Z3Parser {
     }
 
     pub fn get_instantiation_body(&self, iidx: InstIdx) -> Option<TermIdx> {
-        self.terms.get_instantiation_body(&self[iidx])
+        self.terms.get_instantiation_body(self[iidx].kind)
     }
 
     pub fn as_tidx(&self, sidx: SynthIdx) -> Option<TermIdx> {
@@ -313,10 +318,16 @@ impl Index<StackIdx> for Z3Parser {
         &self.stack[idx]
     }
 }
+impl Index<LitIdx> for Z3Parser {
+    type Output = Literal;
+    fn index(&self, idx: LitIdx) -> &Self::Output {
+        &self.lits[idx]
+    }
+}
 impl Index<CdclIdx> for Z3Parser {
     type Output = Cdcl;
     fn index(&self, idx: CdclIdx) -> &Self::Output {
-        &self.cdcl[idx]
+        &self.lits.cdcl[idx]
     }
 }
 impl Index<IString> for Z3Parser {

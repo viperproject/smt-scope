@@ -119,6 +119,7 @@ impl Graph {
                 }
                 NodeKind::Cdcl(cdcl) => {
                     for assign in parser[cdcl].get_assignments() {
+                        let assign = parser[assign].term;
                         handle_term::<false>(parser, &mut terms, assign.literal, idx, visible);
                     }
                 }

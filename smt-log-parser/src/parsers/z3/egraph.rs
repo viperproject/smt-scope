@@ -1,6 +1,5 @@
 use std::{collections::hash_map::Entry, num::NonZeroUsize};
 
-use fxhash::FxHashSet;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 use petgraph::{
@@ -14,7 +13,7 @@ use crate::{
         InstIdx, ProofIdx, TermIdx, TransitiveExpl, TransitiveExplSegment,
         TransitiveExplSegmentKind,
     },
-    BoxSlice, Error, FxHashMap, NonMaxU32, Result, TiVec,
+    BoxSlice, Error, FxHashMap, FxHashSet, NonMaxU32, Result, TiVec,
 };
 
 use super::{bugs::TransEqAllowed, stack::Stack, terms::Terms};
@@ -61,7 +60,7 @@ impl EGraph {
     pub fn get_blame(
         &self,
         tidx: TermIdx,
-        inst: Option<InstIdx>,
+        inst: Option<(InstIdx, FxHashSet<EqGivenIdx>)>,
         terms: &Terms,
         stack: &Stack,
     ) -> ENodeBlame {
@@ -142,6 +141,14 @@ impl EGraph {
             }
             Ok(&app.child_ids)
         })
+    }
+
+    pub fn get_given(&self, from: ENodeIdx, to: ENodeIdx) -> Option<EqGivenIdx> {
+        self.enodes[from]
+            .equalities
+            .iter()
+            .find(|eq| eq.to == to)
+            .map(|eq| eq.expl)
     }
 
     pub fn new_given_equality(

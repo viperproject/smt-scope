@@ -1,13 +1,9 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
-use typed_index_collections::TiSlice;
 
 use crate::{
-    items::{
-        Assignment, Cdcl, CdclBacklink, CdclIdx, CdclKind, Conflict, ENodeIdx, InstIdx, MatchIdx,
-        ProofIdx, StackFrame, StackIdx, TermIdx,
-    },
-    Error, FxHashMap, Result, TiVec,
+    items::{CdclIdx, ENodeIdx, InstIdx, MatchIdx, ProofIdx, StackFrame, StackIdx},
+    Error, Result, TiVec,
 };
 
 use super::Z3Parser;
@@ -89,21 +85,40 @@ impl Stack {
         &mut self,
         count: core::num::NonZeroUsize,
         idx: usize,
-        from_cdcl: bool,
+        after_conflict: bool,
     ) -> Result<bool> {
         let count = count.get();
         debug_assert!(0 < count && count <= idx);
         let result = self.ensure_height(idx);
-        let from_cdcl = from_cdcl
+        let from_cdcl = after_conflict
             || (0..count).any(|idx| self[self.stack[self.stack.len() - 1 - idx]].from_cdcl);
+        debug_assert!(
+            !from_cdcl
+                || (0..count)
+                    .all(|idx| self[self.stack[self.stack.len() - 1 - idx]].from_cdcl == from_cdcl)
+        );
         for _ in 0..count {
             self.remove_frame(false, from_cdcl);
         }
         result.map(|()| from_cdcl)
     }
 
+    /// Called during a decision assign, immediately following a push. This
+    /// marks the push as `from_cdcl` and returns true if it wasn't already.
+    pub(super) fn new_decision(&mut self) -> bool {
+        debug_assert!(self.stack.len() > 1);
+        let frame = self.active_frame();
+        let frame = &mut self.stack_frames[frame];
+        !core::mem::replace(&mut frame.from_cdcl, true)
+    }
+
     pub(super) fn active_frame(&self) -> StackIdx {
         *self.stack.last().unwrap()
+    }
+
+    /// For use in CDCL only.
+    pub(super) fn pre_active_frame(&self) -> StackIdx {
+        self.stack[self.stack.len() - 2]
     }
 
     pub(super) fn is_speculative(&self) -> bool {
@@ -113,182 +128,17 @@ impl Stack {
     pub(super) fn is_alive(&self, frame: StackIdx) -> bool {
         self[frame].active.status().is_alive()
     }
-}
 
-#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[derive(Debug)]
-pub struct CdclTree {
-    pub assignments: FxHashMap<TermIdx, (bool, StackIdx)>,
-    cdcl: TiVec<CdclIdx, Cdcl>,
-    /// The cut from the last conflict, only set between a `[conflict]` line and
-    /// a `[pop]`. The latter will backtrack and insert this into the above vec.
-    conflict: Option<Box<[Assignment]>>,
-}
-
-impl Default for CdclTree {
-    fn default() -> Self {
-        let mut cdcl = TiVec::default();
-        cdcl.push(Cdcl::root(Stack::ZERO_FRAME));
-        Self {
-            assignments: FxHashMap::default(),
-            cdcl,
-            conflict: None,
-        }
+    #[cfg(any())]
+    pub(super) fn is_global(&self, frame: StackIdx) -> bool {
+        frame == Self::ZERO_FRAME
     }
-}
-
-impl CdclTree {
-    fn new_assign(&mut self, assign: Assignment, stack: &Stack) -> Result<()> {
-        self.assignments.try_reserve(1)?;
-        self.assignments
-            .insert(assign.literal, (assign.value, stack.active_frame()));
-        Ok(())
-    }
-
-    pub fn get_assign(&self, term: TermIdx, stack: &Stack) -> Option<bool> {
-        let (value, frame) = *self.assignments.get(&term)?;
-        stack.is_alive(frame).then_some(value)
-    }
-
-    pub fn new_decision(&mut self, assign: Assignment, stack: &Stack) -> Result<CdclIdx> {
-        debug_assert!(self.conflict.is_none());
-        self.new_assign(assign, stack)?;
-        self.check_frame_decision(stack)?;
-
-        let cdcl = Cdcl::new_decision(assign, stack.active_frame());
-        self.cdcl.raw.try_reserve(1)?;
-        Ok(self.cdcl.push_and_get_key(cdcl))
-    }
-
-    fn check_frame_decision(&mut self, stack: &Stack) -> Result<()> {
-        if stack.is_alive(self.cdcl.last().unwrap().frame) {
-            return Ok(());
-        }
-        // Just before making a decision z3 will always push a new frame.
-        // Take the one just before the push here. Note that this may create an
-        // empty with `ZERO_FRAME`.
-        let prev = stack.stack[stack.stack.len() - 2];
-        self.insert_empty_frame(stack, prev)?;
-        Ok(())
-    }
-
-    pub fn new_conflict(&mut self, cut: Box<[Assignment]>, frame: StackIdx) {
-        debug_assert!(self.conflict.is_none());
-        debug_assert!(self.cdcl.last().is_some_and(|cdcl| cdcl.frame == frame));
-        debug_assert!({
-            let mut assigns = crate::FxHashSet::default();
-            self.curr_to_root()
-                .flat_map(|c| self[c].get_assignments())
-                .all(|assign| assigns.insert(assign.literal))
-        });
-        self.cdcl.last_mut().unwrap().conflicts = true;
-        self.conflict = Some(cut);
-    }
-
-    pub fn backtrack(&mut self, stack: &Stack) -> Result<CdclIdx> {
-        let backtrack = self.last_active(stack);
-        debug_assert_ne!(backtrack, self.cdcl.last_key().unwrap());
-        // Not always true:
-        // debug_assert_eq!(self[backtrack].frame, stack.active_frame());
-
-        let cut = self.conflict.take().ok_or(Error::NoConflict)?;
-        let conflict = Conflict { cut, backtrack };
-        let cdcl = Cdcl::new_conflict(conflict, stack.active_frame());
-        self.cdcl.raw.try_reserve(1)?;
-        Ok(self.cdcl.push_and_get_key(cdcl))
-    }
-
-    pub fn new_propagate(&mut self, assign: Assignment, stack: &Stack) -> Result<()> {
-        debug_assert!(self.conflict.is_none());
-        self.new_assign(assign, stack)?;
-        let mut last = self.cdcl.last_mut().unwrap();
-        let frame = stack.active_frame();
-        if last.frame != frame {
-            last = self.insert_empty_frame(stack, frame)?;
-        }
-        last.propagates.try_reserve(1)?;
-        last.propagates.push(assign);
-        Ok(())
-    }
-
-    fn insert_empty_frame(&mut self, stack: &Stack, at: StackIdx) -> Result<&mut Cdcl> {
-        let parent = self.last_active(stack);
-        let empty = Cdcl::new_empty(parent, at);
-        self.cdcl.raw.try_reserve(1)?;
-        let new = self.cdcl.push_and_get_key(empty);
-        Ok(&mut self.cdcl[new])
-    }
-
-    pub fn has_conflict(&self) -> bool {
-        self.conflict.is_some()
-    }
-
-    pub fn cdcls(&self) -> &TiSlice<CdclIdx, Cdcl> {
-        &self.cdcl
-    }
-
-    pub fn backlink(&self, cidx: CdclIdx) -> CdclBacklink {
-        self[cidx].backlink(cidx)
-    }
-
-    fn last_active(&self, stack: &Stack) -> CdclIdx {
-        let active = |i: &CdclIdx| stack.is_alive(self[*i].frame);
-        self.curr_to_root().find(active).unwrap()
-    }
-
-    fn curr_to_root(&self) -> impl Iterator<Item = CdclIdx> + '_ {
-        self.to_root(self.cdcl.last_key().unwrap())
-    }
-
-    fn to_root(&self, from: CdclIdx) -> impl Iterator<Item = CdclIdx> + '_ {
-        let mut curr = Some(from);
-        core::iter::from_fn(move || {
-            let cdcl = curr?;
-            let backlink = self.backlink(cdcl);
-            curr = backlink.to_root();
-            Some(cdcl)
-        })
-    }
-
-    /// Returns an iterator over all of the dead branches explored by the solver.
-    pub fn dead_branches(&self) -> impl Iterator<Item = DeadBranch> + '_ {
-        self.cdcl
-            .iter_enumerated()
-            .filter_map(|(cidx, cdcl)| match &cdcl.kind {
-                CdclKind::Conflict(conflict) => Some(DeadBranch { cidx, conflict }),
-                _ => None,
-            })
-    }
-
-    /// Returns an iterator over the nodes in a dead branch.
-    pub fn dead_branch(&self, db: DeadBranch) -> impl Iterator<Item = CdclIdx> + '_ {
-        let conflict_leaf = usize::from(db.cidx).checked_sub(1).unwrap();
-        let conflict_leaf = CdclIdx::from(conflict_leaf);
-        let common_ancestor = db.conflict.backtrack;
-        debug_assert!(self.to_root(conflict_leaf).any(|c| c == common_ancestor));
-        self.to_root(conflict_leaf)
-            .take_while(move |&c| c != common_ancestor)
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct DeadBranch<'a> {
-    /// The index of the cut node.
-    pub cidx: CdclIdx,
-    pub conflict: &'a Conflict,
 }
 
 impl std::ops::Index<StackIdx> for Stack {
     type Output = StackFrame;
     fn index(&self, idx: StackIdx) -> &Self::Output {
         &self.stack_frames[idx]
-    }
-}
-
-impl std::ops::Index<CdclIdx> for CdclTree {
-    type Output = Cdcl;
-    fn index(&self, idx: CdclIdx) -> &Self::Output {
-        &self.cdcl[idx]
     }
 }
 

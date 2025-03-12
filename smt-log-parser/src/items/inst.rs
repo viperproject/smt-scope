@@ -5,8 +5,8 @@ use crate::{BoxSlice, Error, NonMaxU32, Result};
 use std::fmt;
 
 use super::{
-    ENodeIdx, EqTransIdx, MatchIdx, PatternIdx, ProofIdx, QuantIdx, QuantPat, StackIdx, TermId,
-    TermIdx,
+    ENode, ENodeIdx, EqTransIdx, MatchIdx, PatternIdx, ProofIdx, QuantIdx, QuantPat, StackIdx,
+    TermId, TermIdx,
 };
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -53,6 +53,15 @@ pub enum MatchKind {
         bound_terms: BoxSlice<ENodeIdx>,
     },
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct BoundVars<'a, T: Copy>(&'a [T]);
+impl<'a, T: Copy> BoundVars<'a, T> {
+    pub fn get(&self, idx: NonMaxU32) -> Option<T> {
+        self.0.get(idx.get() as usize).copied()
+    }
+}
+
 impl MatchKind {
     pub fn quant_pat(&self) -> Option<QuantPat> {
         self.quant_idx().map(|quant| QuantPat {
@@ -104,18 +113,31 @@ impl MatchKind {
         }
     }
 
-    pub fn bound_term(
+    pub fn bound_term<'a>(
         &self,
-        to_tidx: impl Fn(ENodeIdx) -> TermIdx,
+        to_tidx: impl Fn(ENodeIdx) -> &'a ENode,
         qvar: NonMaxU32,
     ) -> Option<TermIdx> {
         match self {
             Self::MBQI { bound_terms, .. } | Self::Quantifier { bound_terms, .. } => {
-                bound_terms.get(qvar.get() as usize).copied().map(to_tidx)
+                BoundVars(bound_terms)
+                    .get(qvar)
+                    .map(to_tidx)
+                    .map(|e| e.owner)
             }
             Self::TheorySolving { bound_terms, .. } | Self::Axiom { bound_terms, .. } => {
-                bound_terms.get(qvar.get() as usize).copied()
+                BoundVars(bound_terms).get(qvar)
             }
+        }
+    }
+
+    pub fn quant_and_enodes(&self) -> Option<(QuantIdx, BoundVars<ENodeIdx>)> {
+        match self {
+            Self::MBQI { quant, bound_terms }
+            | Self::Quantifier {
+                quant, bound_terms, ..
+            } => Some((*quant, BoundVars(bound_terms))),
+            Self::TheorySolving { .. } | Self::Axiom { .. } => None,
         }
     }
 }
@@ -200,7 +222,6 @@ impl fmt::Display for Fingerprint {
 pub struct Instantiation {
     pub match_: MatchIdx,
     pub kind: InstantiationKind,
-    pub proof_id: InstProofLink,
     /// The enodes that were yielded by the instantiation along with the
     /// generalised terms for them (`MaybeSynthIdx::Parsed` if the yielded term
     /// doesn't contain any quantified variables)
@@ -213,10 +234,14 @@ pub struct Instantiation {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy)]
 pub enum InstantiationKind {
-    Axiom,
+    /// Axiom instantiations (i.e. those with `.fingerprint.is_zero()`) point to
+    /// a term regardless of whether proofs are enabled. These terms seem to
+    /// generally be an equality.
+    Axiom { body: TermIdx },
     NonAxiom {
         fingerprint: Fingerprint,
         z3_generation: NonMaxU32,
+        proof: InstProofLink,
     },
 }
 
@@ -234,6 +259,16 @@ impl InstantiationKind {
             _ => None,
         }
     }
+
+    pub fn proof(&self) -> Option<ProofIdx> {
+        match self {
+            Self::NonAxiom {
+                proof: InstProofLink::HasProof(proof),
+                ..
+            } => Some(*proof),
+            _ => None,
+        }
+    }
 }
 
 /// A Z3 instantiation.
@@ -242,10 +277,6 @@ impl InstantiationKind {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy)]
 pub enum InstProofLink {
-    /// Axiom instantiations (i.e. those with `.fingerprint.is_zero()`) point to
-    /// a term regardless of whether proofs are enabled. These terms seem to
-    /// generally be an equality.
-    IsAxiom(TermIdx),
     /// When proofs are enabled (i.e. if z3 was run with `proof=true`) non-axiom
     /// instantiations will include a pointer to the instantiation proof step.
     HasProof(ProofIdx),
@@ -255,13 +286,4 @@ pub enum InstProofLink {
     /// preceding the `[instantiation]` line is generally the term we just
     /// proved.
     ProofsDisabled(Option<TermIdx>),
-}
-
-impl InstProofLink {
-    pub fn proof(&self) -> Option<ProofIdx> {
-        match self {
-            Self::HasProof(proof) => Some(*proof),
-            _ => None,
-        }
-    }
 }

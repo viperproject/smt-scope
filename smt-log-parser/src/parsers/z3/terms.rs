@@ -7,8 +7,8 @@ use typed_index_collections::TiSlice;
 use crate::{
     error::Either,
     items::{
-        InstProofLink, Instantiation, Meaning, ProofIdx, ProofStep, ProofStepKind, QuantIdx, Term,
-        TermId, TermIdToIdxMap, TermIdx, TermKind,
+        InstProofLink, InstantiationKind, Meaning, ProofIdx, ProofStep, ProofStepKind, QuantIdx,
+        Term, TermId, TermIdToIdxMap, TermIdx, TermKind,
     },
     Error, FxHashMap, Result, StringTable, TiVec,
 };
@@ -160,18 +160,20 @@ impl Terms {
         self.meanings.get(&tidx)
     }
 
-    pub(super) fn get_instantiation_body(&self, inst: &Instantiation) -> Option<TermIdx> {
-        let proved_term = match inst.proof_id {
-            InstProofLink::IsAxiom(term_idx) => return Some(term_idx),
-            InstProofLink::HasProof(proof_idx) => {
-                let proof = &self[proof_idx];
-                if matches!(proof.kind, ProofStepKind::PR_QUANT_INST) {
-                    self[proof_idx].result
-                } else {
-                    return Some(proof.result);
+    pub(super) fn get_instantiation_body(&self, inst: InstantiationKind) -> Option<TermIdx> {
+        let proved_term = match inst {
+            InstantiationKind::Axiom { body } => return Some(body),
+            InstantiationKind::NonAxiom { proof, .. } => match proof {
+                InstProofLink::HasProof(proof_idx) => {
+                    let proof = &self[proof_idx];
+                    if matches!(proof.kind, ProofStepKind::PR_QUANT_INST) {
+                        proof.result
+                    } else {
+                        return Some(proof.result);
+                    }
                 }
-            }
-            InstProofLink::ProofsDisabled(term_idx) => term_idx?,
+                InstProofLink::ProofsDisabled(term_idx) => term_idx?,
+            },
         };
         // The proved term is of the form `quant-inst(¬(quant) ∨ (inst))`.
         let proved_term = &self[proved_term];
@@ -222,22 +224,30 @@ impl Terms {
     /// Heuristic to get body of instantiated quantifier. See documentation of
     /// [`InstProofLink::ProofsDisabled`].
     pub(super) fn last_term_from_instance(&self, strings: &StringTable) -> Option<TermIdx> {
-        self.app_terms
+        let last_non_eq = self
+            .app_terms
             .terms
-            .last_key_value()
-            .filter(|(_, term)| {
-                term.app_name().is_some_and(|name| &strings[*name] == "or")
-                    && term.child_ids.len() == 2
-                    && {
-                        let neg_quant = &self[term.child_ids[0]];
-                        neg_quant
-                            .app_name()
-                            .is_some_and(|name| &strings[*name] == "not")
-                            && neg_quant.child_ids.len() == 1
-                            && self[neg_quant.child_ids[0]].quant_idx().is_some()
-                    }
-            })
-            .map(|(idx, _)| idx)
+            .iter_enumerated()
+            .rev()
+            .find(|(_, term)| !term.app_name().is_some_and(|name| &strings[*name] == "="));
+        let last_term = last_non_eq.filter(|(_, term)| {
+            term.app_name().is_some_and(|name| &strings[*name] == "or")
+                && term.child_ids.len() == 2
+                && {
+                    let neg_quant = &self[term.child_ids[0]];
+                    neg_quant
+                        .app_name()
+                        .is_some_and(|name| &strings[*name] == "not")
+                        && neg_quant.child_ids.len() == 1
+                        && self[neg_quant.child_ids[0]].quant_idx().is_some()
+                }
+        });
+        debug_assert!(
+            last_term.is_some(),
+            "{:?}",
+            last_non_eq.map(|(_, t)| t.app_name().map(|n| &strings[*n]))
+        );
+        last_term.map(|(idx, _)| idx)
     }
 
     pub fn is_true_const(&self, tidx: TermIdx) -> bool {

@@ -349,9 +349,10 @@ impl Filter {
             IgnoreAllButQuantifier(_) => IgnoreAllButQuantifier(Some(QuantIdx::from(new_data[0]))),
             AllButExpensive(_) => AllButExpensive(new_data[0]),
             MaxBranching(_) => MaxBranching(new_data[0]),
-            ShowNeighbours(old, dir) => ShowNeighbours(*old, *dir),
-            VisitSourceTree(old, retain) => VisitSourceTree(*old, *retain),
-            VisitSubTreeWithRoot(old, retain) => VisitSubTreeWithRoot(*old, *retain),
+            HideSelf(old) => HideSelf(old.clone()),
+            ShowNeighbours(old, dir) => ShowNeighbours(old.clone(), *dir),
+            VisitSourceTree(old, retain) => VisitSourceTree(old.clone(), *retain),
+            VisitSubTreeWithRoot(old, retain) => VisitSubTreeWithRoot(old.clone(), *retain),
             MaxDepth(_) => MaxDepth(new_data[0]),
             ShowLongestPath(old) => ShowLongestPath(*old),
             ShowNamedQuantifier(_) => ShowNamedQuantifier(new_strings[0].clone()),
@@ -428,7 +429,7 @@ impl Component for ExistingFilterText {
                 if self.focus == Some(idx) {
                     self.focus = None;
                     let link = ctx.link().clone();
-                    Timeout::new(100, move || {
+                    Timeout::new(10, move || {
                         link.send_message(FilterTextMsg::UpdateCheck);
                     })
                     .forget();

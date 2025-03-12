@@ -3,6 +3,7 @@ mod loaded;
 mod render;
 
 use gloo::timers::callback::Timeout;
+use smt_log_parser::analysis::ProblemBehaviours;
 use yew::{html, Html};
 
 use crate::screen::{inst_graph::Graph, Manager};
@@ -66,7 +67,9 @@ impl Screen for MatchingLoop {
             MatchingLoopM::Search => {
                 let mut parser = props.parser.parser.borrow_mut();
                 let mut analysis = props.analysis.borrow_mut();
+                let analysis = &mut *analysis;
                 let data = analysis.graph.search_matching_loops(&mut parser);
+                analysis.pb = ProblemBehaviours::find(data, &props.parser.summary.redundancy);
                 *self = Self::Loaded(MatchingLoopLoaded::new(link, props, data));
                 true
             }

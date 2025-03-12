@@ -105,6 +105,7 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
             }
             NodeKind::Cdcl(cdcl) => match &self.ctxt.parser[cdcl].kind {
                 CdclKind::Root => ("Root", "(no assignment)".to_string()),
+                CdclKind::BeginCheck(..) => ("check-sat", "(no assignment)".to_string()),
                 CdclKind::Empty(..) => ("Empty", "(no assignment)".to_string()),
                 CdclKind::Decision(assign) => ("Decision", assign.with(self.ctxt).to_string()),
                 CdclKind::Conflict(conflict) => {
@@ -215,15 +216,14 @@ impl<'a, 'b> NodeInfo<'a, 'b> {
     }
 
     // CDCL specific
-    pub fn propagates(&self) -> Option<Vec<String>> {
+    pub fn propagates(&self, max: usize) -> Option<(Vec<String>, Option<usize>)> {
         let cdcl = self.node.kind().cdcl()?;
         let propagates = &self.ctxt.parser[cdcl].propagates;
-        Some(
-            propagates
-                .iter()
-                .map(|assign| assign.with(self.ctxt).to_string())
-                .collect(),
-        )
+        let cut = propagates.len().checked_sub(max);
+        let propagates = propagates
+            .iter()
+            .map(|assign| assign.with(self.ctxt).to_string());
+        Some((propagates.take(max).collect(), cut))
     }
 
     pub fn extra_info(&self) -> Option<Vec<(&'static str, String)>> {
@@ -342,10 +342,16 @@ pub fn SelectedNodesInfo(
                 }
             });
             let proof_hr = proof_step_name.is_some().then(|| html! { <hr/> });
-            let propagates = info.propagates().filter(|p| !p.is_empty()).map(|propagates| {
-                let propagates: Html = propagates.into_iter().map(|propagate| html! {
+            let propagates = info.propagates(500).filter(|(p, _)| !p.is_empty()).map(|(propagates, cut)| {
+                let propagates = propagates.into_iter().map(|propagate| html! {
                     <InfoLine header="Propagate" text={propagate} code=true />
-                }).collect();
+                });
+                let propagates: Html = if let Some(cut) = cut {
+                    let text = format!("{cut} more");
+                    propagates.chain([html! { <InfoLine header="Propagate" {text} code=false /> }]).collect()
+                } else {
+                    propagates.collect()
+                };
                 html! { <>{propagates}<hr/></> }
             });
             let extra_info = info.extra_info().map(|extra_info| {
@@ -405,6 +411,7 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
         use VisibleEdgeKind::*;
         match self.kind {
             Direct(_, EdgeKind::Yield) => "Yield".to_string(),
+            Direct(_, EdgeKind::YieldEq) => "Yield Equality".to_string(),
             Direct(_, EdgeKind::Asserted) => "Asserted".to_string(),
             Direct(_, EdgeKind::Blame { pattern_term }) => {
                 format!("Blame pattern #{pattern_term}")

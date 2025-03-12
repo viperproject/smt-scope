@@ -16,6 +16,7 @@ impl Filter {
             IgnoreAllButQuantifier(_) => "disabled_visible",
             AllButExpensive(_) => "attach_money",
             MaxBranching(_) => "panorama_horizontal",
+            HideSelf(_) => "visibility_off",
             ShowNeighbours(_, _) => "supervisor_account",
             VisitSourceTree(_, _) => "arrow_upward",
             VisitSubTreeWithRoot(_, _) => "arrow_downward",
@@ -41,6 +42,12 @@ impl Filter {
                 .unwrap_or_else(|| "?".to_string())
         };
         use Filter::*;
+        let render_seq = |nidxs: &Vec<RawNodeIndex>| match nidxs.as_slice() {
+            [] => "none".to_string(),
+            [nidx] => format!("${}$", d(*nidx)),
+            [first, second] => format!("${}$ and ${}$", d(*first), d(*second)),
+            [first, second, ..] => format!("${}$, ${}$, ...", d(*first), d(*second)),
+        };
         match self {
             MaxNodeIdx(node_idx) => format!("Hide all ≥ |{node_idx}|"),
             MinNodeIdx(node_idx) => format!("Hide all < |{node_idx}|"),
@@ -57,17 +64,20 @@ impl Filter {
             MaxBranching(max) => {
                 format!("Hide all but |{max}| high degree")
             }
-            &VisitSubTreeWithRoot(nidx, retain) => match retain {
-                true => format!("Show descendants of ${}$", d(nidx)),
-                false => format!("Hide descendants of ${}$", d(nidx)),
+            HideSelf(nidxs) => {
+                format!("Hide {}", render_seq(nidxs))
+            }
+            VisitSubTreeWithRoot(nidxs, retain) => match retain {
+                true => format!("Show descendants of {}", render_seq(nidxs)),
+                false => format!("Hide descendants of {}", render_seq(nidxs)),
             },
-            &VisitSourceTree(nidx, retain) => match retain {
-                true => format!("Show ancestors of ${}$", d(nidx)),
-                false => format!("Hide ancestors of ${}$", d(nidx)),
+            VisitSourceTree(nidxs, retain) => match retain {
+                true => format!("Show ancestors of {}", render_seq(nidxs)),
+                false => format!("Hide ancestors of {}", render_seq(nidxs)),
             },
-            &ShowNeighbours(nidx, direction) => match direction {
-                Direction::Incoming => format!("Show parents of ${}$", d(nidx)),
-                Direction::Outgoing => format!("Show children of ${}$", d(nidx)),
+            ShowNeighbours(nidxs, direction) => match direction {
+                Direction::Incoming => format!("Show parents of {}", render_seq(nidxs)),
+                Direction::Outgoing => format!("Show children of {}", render_seq(nidxs)),
             },
             MaxDepth(depth) => format!("Hide all > depth |{depth}|"),
             &ShowLongestPath(node) => {
@@ -144,34 +154,53 @@ impl Filter {
                     display(max, applied)
                 )
             }
-            &VisitSubTreeWithRoot(nidx, retain) => match retain {
-                true => format!(
-                    "{show} node {} and its descendants",
-                    display(d(nidx), applied)
-                ),
-                false => format!(
-                    "{hide} node {} and its descendants",
-                    display(d(nidx), applied)
-                ),
-            },
-            &VisitSourceTree(nidx, retain) => match retain {
-                true => format!(
-                    "{show} node {} and its ancestors",
-                    display(d(nidx), applied)
-                ),
-                false => format!(
-                    "{hide} node {} and its ancestors",
-                    display(d(nidx), applied)
-                ),
-            },
-            &ShowNeighbours(nidx, direction) => match direction {
-                Direction::Incoming => {
-                    format!("{show} the parents of node {}", display(d(nidx), applied))
+            HideSelf(nidx) => {
+                let nidx: Vec<_> = nidx.iter().map(|&n| d(n)).collect();
+                format!("{hide} node(s) {}", display(nidx.join(", "), applied))
+            }
+            VisitSubTreeWithRoot(nidx, retain) => {
+                let nidx: Vec<_> = nidx.iter().map(|&n| d(n)).collect();
+                match retain {
+                    true => format!(
+                        "{show} node(s) {} and its descendants",
+                        display(nidx.join(", "), applied)
+                    ),
+                    false => format!(
+                        "{hide} node(s) {} and its descendants",
+                        display(nidx.join(", "), applied)
+                    ),
                 }
-                Direction::Outgoing => {
-                    format!("{show} the children of node {}", display(d(nidx), applied))
+            }
+            VisitSourceTree(nidx, retain) => {
+                let nidx: Vec<_> = nidx.iter().map(|&n| d(n)).collect();
+                match retain {
+                    true => format!(
+                        "{show} node(s) {} and its ancestors",
+                        display(nidx.join(", "), applied)
+                    ),
+                    false => format!(
+                        "{hide} node(s) {} and its ancestors",
+                        display(nidx.join(", "), applied)
+                    ),
                 }
-            },
+            }
+            ShowNeighbours(nidx, direction) => {
+                let nidx: Vec<_> = nidx.iter().map(|&n| d(n)).collect();
+                match direction {
+                    Direction::Incoming => {
+                        format!(
+                            "{show} the parents of node(s) {}",
+                            display(nidx.join(", "), applied)
+                        )
+                    }
+                    Direction::Outgoing => {
+                        format!(
+                            "{show} the children of node(s) {}",
+                            display(nidx.join(", "), applied)
+                        )
+                    }
+                }
+            }
             MaxDepth(depth) => {
                 format!("{hide} all nodes above depth {}", display(depth, applied))
             }

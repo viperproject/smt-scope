@@ -41,6 +41,8 @@ impl<const FORWARD: bool> TransferInitialiser<FORWARD, 2> for NextInstsInit<FORW
         _idx: usize,
         _incoming: &[Self::Observed],
     ) -> Self::Value {
+        // Issue 4: storing inst children in all nodes huge memory overhead
+        #[cfg(any())]
         let insts = if let Some(iidx) = from.kind().inst() {
             std::iter::once(iidx).collect()
         } else if FORWARD {
@@ -49,7 +51,7 @@ impl<const FORWARD: bool> TransferInitialiser<FORWARD, 2> for NextInstsInit<FORW
             from.children.insts.clone()
         };
         let count = if from.disabled() { 0 } else { 1 };
-        NextNodes { insts, count }
+        NextNodes { count }
     }
     fn add(&mut self, node: &mut Node, value: Self::Value) {
         let node = if FORWARD {
@@ -57,6 +59,8 @@ impl<const FORWARD: bool> TransferInitialiser<FORWARD, 2> for NextInstsInit<FORW
         } else {
             &mut node.children
         };
+        // Issue 4: storing inst children in all nodes huge memory overhead
+        #[cfg(any())]
         node.insts.extend(value.insts);
         node.count += value.count;
     }

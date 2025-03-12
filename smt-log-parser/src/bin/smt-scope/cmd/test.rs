@@ -70,11 +70,13 @@ fn run_file(path: PathBuf, timeout: f32, memory: bool) {
 
         if memory {
             #[cfg(feature = "mem_dbg")]
-            inst_graph.mem_dbg(DbgFlags::default()).ok();
+            (*inst_graph).mem_dbg(DbgFlags::default()).ok();
         }
         println!(
-            "[Analysis] Finished after {} seconds.",
+            "[Analysis] Finished after {} seconds. {} nodes, {} edges",
             (process_time - elapsed_time).as_secs_f32(),
+            inst_graph.raw.graph.node_count(),
+            inst_graph.raw.graph.edge_count(),
         );
 
         let (sure_mls, maybe_mls) = inst_graph.found_matching_loops().unwrap();

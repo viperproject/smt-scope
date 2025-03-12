@@ -27,6 +27,7 @@ impl CdclAnalysis {
             cdcl_size[parent] += size;
 
             for a in data.get_assignments() {
+                let a = parser.lits[a].term;
                 let (true_data, false_data) = self_.assignments.entry(a.literal).or_default();
                 if a.value {
                     true_data.count += 1;

@@ -1,4 +1,4 @@
-use core::num::NonZeroUsize;
+use core::num::{NonZeroU32, NonZeroUsize};
 
 use num::Num;
 
@@ -15,13 +15,15 @@ impl Default for Z3Parser {
         let mut strings = StringTable::with_hasher(fxhash::FxBuildHasher::default());
         Self {
             version_info: VersionInfo::default(),
+            push_count: 0,
             terms: Terms::default(),
             synth_terms: Default::default(),
             quantifiers: Default::default(),
             insts: Default::default(),
+            // ts: Default::default(),
             egraph: Default::default(),
             stack: Default::default(),
-            cdcl: Default::default(),
+            lits: Default::default(),
             events: EventLog::new(&mut strings),
             comm: Default::default(),
             strings,
@@ -30,6 +32,10 @@ impl Default for Z3Parser {
 }
 
 impl Z3Parser {
+    pub(super) fn incremental_mode(&self) -> bool {
+        self.push_count > 0
+    }
+
     fn parse_new_full_id(&mut self, id: Option<&str>) -> Result<TermId> {
         let full_id = id.ok_or(E::UnexpectedNewline)?;
         TermId::parse(&mut self.strings, full_id)
@@ -306,25 +312,31 @@ impl Z3Parser {
     /// `m_bool_var2expr` map so can't translate these back to a `TermIdx`. The
     /// literal is rarely also `true` or `false` (for which this returns `None`)
     fn parse_bool_literal<'a>(
-        &mut self,
+        version_info: &VersionInfo,
         l: &mut impl Iterator<Item = &'a str>,
-    ) -> Result<Option<(Option<NonMaxU32>, bool)>> {
+    ) -> Result<Option<(Option<NonZeroU32>, bool)>> {
         let Some(lit) = l.next() else {
             return Ok(None);
         };
+        eprintln!("1: {lit:?}");
         match lit {
+            "" => {
+                debug_assert_eq!(l.next().filter(|n| !n.is_empty()), None);
+                return Ok(None);
+            }
             "true" => return Ok(Some((None, true))),
             "false" => return Ok(Some((None, false))),
             _ => (),
         };
 
-        let new_mode = self.version_info.is_ge_version(4, 8, 10);
+        let new_mode = version_info.is_ge_version(4, 8, 10);
         let (lit, value) = if new_mode {
             let noneg = lit.strip_prefix('-');
             (noneg.unwrap_or(lit), noneg.is_none())
         } else {
             let (lit, value) = if lit == "(not" {
                 let lit = l.next().ok_or(E::UnexpectedNewline)?;
+                eprintln!("2: {lit:?}");
                 let lit = lit.strip_suffix(')').ok_or(E::TupleMissingParens)?;
                 (lit, false)
             } else {
@@ -332,7 +344,7 @@ impl Z3Parser {
             };
             (lit.strip_prefix('p').ok_or(E::BoolLiteralNotP)?, value)
         };
-        let bool_lit = lit.parse::<NonMaxU32>().map_err(E::InvalidBoolLiteral)?;
+        let bool_lit = lit.parse::<NonZeroU32>().map_err(E::InvalidBoolLiteral)?;
         Ok(Some((Some(bool_lit), value)))
     }
 }
@@ -517,19 +529,20 @@ impl Z3LogParser for Z3Parser {
         Self::expect_completed(l)?;
 
         debug_assert!(self[idx].app_name().is_some());
-        let created_by = self.insts.inst_stack.last_mut();
-        let iidx = created_by.as_ref().map(|(i, _)| *i);
+        let created_by = self.insts.active_inst();
+        let iidx = created_by.as_ref().map(|a| (a.idx, a.req_eqs(idx)));
         let blame = self.egraph.get_blame(idx, iidx, &self.terms, &self.stack);
         let enode = self.egraph.new_enode(blame, idx, z3_gen, &self.stack)?;
         self.events.new_enode();
-        if let Some((i, yields_terms)) = created_by {
-            debug_assert!(!self.insts.insts[*i]
+        if let Some(a) = created_by {
+            // If `None` then this is a ground term not created by an instantiation.
+            a.yields.try_reserve(1)?;
+            a.yields.push(enode);
+            let idx = a.idx;
+            debug_assert!(!self.insts.insts[idx]
                 .kind
                 .z3_generation()
                 .is_some_and(|g| g != z3_gen));
-            // If `None` then this is a ground term not created by an instantiation.
-            yields_terms.try_reserve(1)?;
-            yields_terms.push(enode);
         }
         Ok(())
     }
@@ -547,7 +560,8 @@ impl Z3LogParser for Z3Parser {
                     Self::expect_completed(kind_dependent_info)?;
                     let to = self.parse_existing_enode(l.next().ok_or(E::UnexpectedNewline)?)?;
 
-                    // self.equalities.push(eq_expl.clone());
+                    let eq = self.lits.get_assign(self[eq].owner, &self.stack);
+                    let eq = eq.ok_or(E::UnknownEqLit)?;
                     EqualityExpl::Literal { from, eq, to }
                 }
                 "cg" => {
@@ -568,7 +582,7 @@ impl Z3LogParser for Z3Parser {
                 }
                 "th" => {
                     let theory = kind_dependent_info.next().ok_or(E::UnexpectedEnd)?;
-                    let theory = self.mk_string(theory)?;
+                    let theory = TheoryKind::from_name(theory, &mut self.strings);
                     Self::expect_completed(kind_dependent_info)?;
                     let to = self.parse_existing_enode(l.next().ok_or(E::UnexpectedNewline)?)?;
                     EqualityExpl::Theory { from, theory, to }
@@ -756,38 +770,32 @@ impl Z3LogParser for Z3Parser {
         let fingerprint = l.next().ok_or(E::UnexpectedNewline)?;
         let fingerprint = Fingerprint::parse(fingerprint)?;
         let mut proof = Self::iter_until_eq(&mut l, ";");
-        let proof_id = if let Some(proof) = proof.next() {
-            // It seems that for `0x0` fingerprints the proof term points to an
-            // app term (usually an equality), while for "real" fingerprints it
-            // points to a proof term.
-            if fingerprint.is_zero() {
-                let axiom_body = self.parse_existing_app(proof)?;
-                InstProofLink::IsAxiom(axiom_body)
-            } else {
-                let proof = self.parse_existing_proof(proof)?;
-                InstProofLink::HasProof(proof)
-            }
-        } else {
-            debug_assert!(
-                !fingerprint.is_zero(),
-                "Axiom instantiations should have an associated term"
-            );
-            let last_term = self.terms.last_term_from_instance(&self.strings);
-            InstProofLink::ProofsDisabled(last_term)
-        };
+        let proof_str = proof.next();
         Self::expect_completed(proof)?;
         let z3_generation = Self::parse_z3_generation(&mut l)?;
         let kind = if let Some(z3_generation) = z3_generation {
             debug_assert!(!fingerprint.is_zero());
+            let proof = if let Some(proof) = proof_str {
+                let proof = self.parse_existing_proof(proof)?;
+                InstProofLink::HasProof(proof)
+            } else {
+                let last_term = self.terms.last_term_from_instance(&self.strings);
+                InstProofLink::ProofsDisabled(last_term)
+            };
             InstantiationKind::NonAxiom {
                 fingerprint,
                 z3_generation,
+                proof,
             }
         } else {
             debug_assert!(fingerprint.is_zero());
-            InstantiationKind::Axiom
+            // It seems that for `0x0` fingerprints the proof term points to an
+            // app term (usually an equality), while for "real" fingerprints it
+            // points to a proof term.
+            let proof = proof_str.expect("Axiom instantiations should have an associated term");
+            let body = self.parse_existing_app(proof)?;
+            InstantiationKind::Axiom { body }
         };
-
         let match_ = self
             .insts
             .get_match(fingerprint)
@@ -795,15 +803,18 @@ impl Z3LogParser for Z3Parser {
         let inst = Instantiation {
             match_,
             kind,
-            proof_id,
             yields_terms: Default::default(),
             frame: self.stack.active_frame(),
         };
+        let body = self.instance_body(kind.proof(), match_);
+        if z3_generation.is_some() {
+            body.as_ref().ok_or(E::BoolLiteral)?;
+        }
         // I have very rarely seen duplicate `[instance]` lines with the same
         // fingerprint in >= v4.12.2. Allow these there and debug panic otherwise.
         let can_duplicate = self.version_info.is_ge_version(4, 12, 0);
         self.insts
-            .new_inst(fingerprint, inst, &self.stack, can_duplicate)?;
+            .new_inst(fingerprint, inst, body, &self.stack, can_duplicate)?;
         self.events.new_inst();
         Ok(())
     }
@@ -819,26 +830,53 @@ impl Z3LogParser for Z3Parser {
     }
 
     fn assign<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
+        let created_by = self.insts.active_inst();
+        let iidx = created_by.as_ref().map(|a| a.idx);
+
         let assign = self.parse_literal(&mut l)?.ok_or(E::UnexpectedNewline)?;
+        let lit = self.lits.new_literal(assign, iidx, &self.stack)?;
         let mut justification = l.next().ok_or(E::UnexpectedNewline)?;
-        if justification == "decision" {
-            self.cdcl.new_decision(assign, &self.stack)?;
+        let decision = justification == "decision";
+        if decision {
+            debug_assert_eq!(self.comm.prev().last_line_kind, LineKind::Push);
+            if self.stack.new_decision() {
+                self.push_count -= 1;
+                self.events.undo_push();
+            }
+            self.lits.cdcl.new_decision(lit, &self.stack)?;
             justification = l.next().ok_or(E::UnexpectedNewline)?;
             debug_assert_eq!(justification, "axiom");
         }
         // Now `l` contains
         match justification {
             // Either a "decision" or a non-interesting assignment by e.g.
-            // internal z3 axioms. NOT USED in the non-decision case.
-            "axiom" => Self::expect_completed(l),
-            // Not sure about this case, it contains one more single literal,
-            // but printed as a `BoolTermIdx` and not a `TermIdx` and z3 doesn't
-            // log `BoolTermIdx` so we cannot really understand it anyway.
+            // internal z3 axioms.
+            "axiom" => {
+                Self::expect_completed(l)?;
+                let kind = if decision {
+                    JustificationKind::Decision
+                } else {
+                    JustificationKind::Axiom
+                };
+                self.lits.justification(lit, kind, core::iter::empty())?;
+                Ok(())
+            }
+            // Same as clause, but binary?
             "bin" => {
-                // NOT USED
-                self.parse_bool_literal(&mut l)?
+                let other = Self::parse_bool_literal(&self.version_info, &mut l)?
                     .ok_or(E::UnexpectedNewline)?;
-                Self::expect_completed(l)
+                Self::expect_completed(l)?;
+
+                let _j = self.lits.justification(
+                    lit,
+                    JustificationKind::Propagate,
+                    [Ok(other)].into_iter(),
+                )?;
+                // Issue 3: No way to convert LitId -> TermIdx
+                #[cfg(any())]
+                debug_assert_ne!(lit, j.blamed[0]);
+                self.lits.cdcl.new_propagate(lit, &self.stack)?;
+                Ok(())
             }
             // A propagated assignment: a clause only has one unassigned literal
             // left. The offending clause is also printed but since it's in
@@ -846,21 +884,44 @@ impl Z3LogParser for Z3Parser {
             // name of each clause on subsequent newlines, we'll ignore those.
             // Later versions of z3 use `display_compact_j`.
             "clause" => {
-                let (_lit, value) = self
-                    .parse_bool_literal(&mut l)?
+                let _first = Self::parse_bool_literal(&self.version_info, &mut l)?
                     .ok_or(E::UnexpectedNewline)?;
-                debug_assert_eq!(assign.value, value);
+                // All the other literals in the clause (which have already been assigned)
+                let lits = core::iter::from_fn(|| {
+                    Self::parse_bool_literal(&self.version_info, &mut l).transpose()
+                });
+                self.lits
+                    .justification(lit, JustificationKind::Propagate, lits)?;
 
-                self.cdcl.new_propagate(assign, &self.stack)?;
+                // Issue 3: No way to convert LitId -> TermIdx
+                #[cfg(any())]
+                let c0 = self.lits.literal_to_term(first, false)?;
+                #[cfg(any())]
+                if lit != c0 {
+                    eprintln!(
+                        "Unexpected clause literal: {lit} != {c0} ({first:?}) / {:?}",
+                        self.lits.lit_stack
+                    );
+                    return Err(E::UnexpectedEnd);
+                }
+                #[cfg(any())]
+                debug_assert_eq!(lit, c0, "{first:?}");
+                self.lits.cdcl.new_propagate(lit, &self.stack)?;
                 Ok(())
             }
             "justification" => {
-                // NOT USED
                 let theory_id = l.next().ok_or(E::UnexpectedNewline)?;
-                let _theory_id = theory_id
+                let theory_id = theory_id
                     .strip_suffix(':')
                     .ok_or(E::MissingColonJustification)?;
-                while let Some((_lit, _value)) = self.parse_bool_literal(&mut l)? {}
+                let theory_id = theory_id.parse::<i32>().map_err(E::InvalidTheoryId)?;
+                let theory = TheoryKind::from_id(theory_id);
+
+                let lits = core::iter::from_fn(|| {
+                    Self::parse_bool_literal(&self.version_info, &mut l).transpose()
+                });
+                self.lits
+                    .justification(lit, JustificationKind::Theory(theory), lits)?;
                 Ok(())
             }
             _ => Err(E::UnknownJustification(justification.to_string())),
@@ -881,13 +942,16 @@ impl Z3LogParser for Z3Parser {
             cut.push(assignment);
         }
         let frame = self.stack.active_frame();
-        self.cdcl.new_conflict(cut.into_boxed_slice(), frame);
+        debug_assert!(self.lits.curr_to_root_unique());
+        self.lits.cdcl.new_conflict(cut.into_boxed_slice(), frame);
         // Backtracking will happen with the pop in the next line. We'll push
         // the new (opposite) decision there.
         Ok(())
     }
 
     fn push<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
+        self.comm.curr().last_line_kind = LineKind::Push;
+
         let scope = l.next().ok_or(E::UnexpectedNewline)?;
         let scope = scope.parse::<usize>().map_err(E::InvalidFrameInteger)?;
         // Return if there is unexpectedly more data
@@ -896,7 +960,11 @@ impl Z3LogParser for Z3Parser {
         let from_cdcl = matches!(self.comm.prev().last_line_kind, LineKind::DecideAndOr);
         let from_cdcl = from_cdcl || self.stack.is_speculative();
         self.stack.new_frame(scope, from_cdcl)?;
-        self.events.new_push()
+        if !from_cdcl {
+            self.push_count += 1;
+            self.events.new_push()?;
+        }
+        Ok(())
     }
 
     fn pop<'a>(&mut self, mut l: impl Iterator<Item = &'a str>) -> Result<()> {
@@ -910,10 +978,11 @@ impl Z3LogParser for Z3Parser {
         Self::expect_completed(l)?;
 
         let conflict = matches!(self.comm.prev().last_line_kind, LineKind::Conflict);
-        debug_assert_eq!(conflict, self.cdcl.has_conflict());
+        debug_assert_eq!(conflict, self.lits.cdcl.has_conflict());
         let from_cdcl = self.stack.pop_frames(num, scope, conflict)?;
+        // I think `from_cdcl && !conflict` => end of a check-sat
         if conflict {
-            self.cdcl.backtrack(&self.stack)?;
+            self.lits.cdcl.backtrack(&self.stack)?;
         }
         self.events.new_pop(num, from_cdcl)
     }
@@ -922,6 +991,9 @@ impl Z3LogParser for Z3Parser {
         let scope = l.next().ok_or(E::UnexpectedNewline)?;
         let scope = scope.parse::<usize>().map_err(E::InvalidFrameInteger)?;
         self.stack.ensure_height(scope)?;
+        self.lits
+            .cdcl
+            .begin_check(self.incremental_mode(), &self.stack)?;
         self.events.new_begin_check()
     }
 }

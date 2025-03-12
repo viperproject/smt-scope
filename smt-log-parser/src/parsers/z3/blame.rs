@@ -36,7 +36,7 @@ impl Z3Parser {
     }
 
     fn bound(&self, match_: &MatchKind, qvar: NonMaxU32) -> Option<TermIdx> {
-        match_.bound_term(|e| self[e].owner, qvar)
+        match_.bound_term(|e| &self[e], qvar)
     }
 }
 

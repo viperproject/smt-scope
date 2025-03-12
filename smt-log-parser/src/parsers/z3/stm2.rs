@@ -121,6 +121,17 @@ impl EventLog {
     pub(super) fn new_push(&mut self) -> Result<()> {
         self.push(EventKind::Push)
     }
+    pub(super) fn undo_push(&mut self) {
+        if !self
+            .events
+            .last()
+            .is_some_and(|last| matches!(last.kind, EventKind::Push))
+        {
+            debug_assert!(false, "Undo push without a push event");
+            return;
+        }
+        self.pop();
+    }
 
     pub(super) fn new_pop(&mut self, num: core::num::NonZeroUsize, from_cdcl: bool) -> Result<()> {
         if from_cdcl {

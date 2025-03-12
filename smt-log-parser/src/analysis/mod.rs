@@ -3,6 +3,7 @@ mod dependencies;
 mod generalise;
 mod graph;
 mod misc;
+mod problem_behaviour;
 mod proofs;
 mod redundancy;
 
@@ -10,6 +11,7 @@ pub use cdcl::*;
 pub use dependencies::*;
 pub use graph::*;
 pub use misc::*;
+pub use problem_behaviour::*;
 pub use proofs::*;
 pub use redundancy::*;
 

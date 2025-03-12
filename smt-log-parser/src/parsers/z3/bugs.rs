@@ -1,11 +1,14 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::hash_map::Entry};
 
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    items::{Blame, ENodeIdx, MatchKind, TermId, TermIdx},
-    Error as E, IString, NonMaxU32, Result, StringTable,
+    items::{
+        Blame, BoundVars, ENodeIdx, EqGivenIdx, MatchIdx, MatchKind, ProofIdx, ProofStepKind,
+        TermId, TermIdx, TermKind,
+    },
+    Error as E, FxHashMap, FxHashSet, IString, NonMaxU32, Result, StringTable,
 };
 
 use super::{
@@ -118,10 +121,10 @@ impl Z3Parser {
         if !term.app_name().is_some_and(|n| &self[n] == "if") || term.child_ids.len() != 3 {
             return false;
         }
-        let Some(value) = self.cdcl.get_assign(term.child_ids[0], &self.stack) else {
+        let Some(lit) = self.lits.get_assign(term.child_ids[0], &self.stack) else {
             return false;
         };
-        let from = if value {
+        let from = if self[lit].term.value {
             term.child_ids[1]
         } else {
             term.child_ids[2]
@@ -217,6 +220,140 @@ impl Terms {
                 id.namespace = Some(get_model);
             }
             _ => (),
+        }
+    }
+}
+
+// TODO (file issue): the produced body of an instantiation can be different than the
+// expected one with normal substitutions.
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug, Default)]
+pub(super) struct InstanceBody {
+    pub req_eqs: FxHashMap<TermIdx, FxHashSet<EqGivenIdx>>,
+}
+
+impl Z3Parser {
+    pub(super) fn instance_body(
+        &self,
+        proof: Option<ProofIdx>,
+        midx: MatchIdx,
+    ) -> Option<InstanceBody> {
+        let proof = &self[proof?];
+        // Can be Quantifier or MBQI kind here
+        let match_ = &self[midx];
+        let Some((qidx, bound)) = match_.kind.quant_and_enodes() else {
+            debug_assert!(false, "unexpected kind {match_:?}");
+            return None;
+        };
+        let body = match proof.kind {
+            ProofStepKind::PR_QUANT_INST => {
+                // Proved `¬quant ∨ body`
+                let result = &self[proof.result];
+                debug_assert_eq!(result.child_ids.len(), 2);
+                debug_assert!(result.app_name().is_some_and(|n| &self[n] == "or"));
+                debug_assert!({
+                    let not = &self[result.child_ids[0]];
+                    not.child_ids.len() == 1
+                        && not.app_name().is_some_and(|n| &self[n] == "not")
+                        && self[not.child_ids[0]]
+                            .quant_idx()
+                            .is_some_and(|q| q == qidx)
+                });
+                result.child_ids[1]
+            }
+            ProofStepKind::PR_TRANS => {
+                // Proved `body = true`, regardless of quant truth
+                let result = &self[proof.result];
+                debug_assert_eq!(result.child_ids.len(), 2);
+                debug_assert!(result.app_name().is_some_and(|n| &self[n] == "="));
+                debug_assert!({
+                    let true_ = &self[result.child_ids[1]];
+                    true_.child_ids.is_empty()
+                        && true_.app_name().is_some_and(|n| &self[n] == "true")
+                });
+                result.child_ids[0]
+            }
+            _ => {
+                debug_assert!(
+                    false,
+                    "unexpected kind {proof:?} / {:?}",
+                    self[proof.result].id
+                );
+                return None;
+            }
+        };
+        let Some(qbody) = self.quantifier_body(qidx) else {
+            debug_assert!(false, "quantifier {:?} has no body", self[qidx]);
+            return None;
+        };
+        let mut ib = InstanceBody::default();
+        self.mk_instance_body(bound, qbody, body, &mut ib);
+        Some(ib)
+    }
+
+    fn mk_instance_body(
+        &self,
+        bound: BoundVars<ENodeIdx>,
+        qbody: TermIdx,
+        body: TermIdx,
+        ib: &mut InstanceBody,
+    ) {
+        let Entry::Vacant(v) = ib.req_eqs.entry(body) else {
+            return;
+        };
+
+        let qb = &self[qbody];
+        if qb.has_var().is_some_and(|v| !v) {
+            debug_assert_eq!(qbody, body, "unexpected unequal no var body");
+            return;
+        }
+
+        match qb.kind() {
+            TermKind::Var(qvar) => {
+                let qb = bound.get(qvar).unwrap();
+                let qbody = self[qb].owner;
+                if qbody != body {
+                    let Some(b) = self.egraph.get_enode_imm(body, &self.stack) else {
+                        debug_assert!(false, "body not in egraph");
+                        return;
+                    };
+                    let Some(eq) = self.egraph.get_given(qb, b) else {
+                        debug_assert!(false, "no eq found");
+                        return;
+                    };
+                    v.insert(Default::default()).insert(eq);
+                }
+            }
+            TermKind::Quant(..) => {
+                debug_assert_eq!(qbody, body, "unexpected unequal quant body");
+            }
+            TermKind::App(qname) => {
+                let b = &self[body];
+                debug_assert!(!b.has_var().is_some_and(|v| v));
+                let TermKind::App(name) = b.kind() else {
+                    debug_assert!(false, "unexpected kind {b:?}");
+                    return;
+                };
+                if qname == name && qb.child_ids.len() == b.child_ids.len() {
+                    for (q, b) in qb.child_ids.iter().zip(b.child_ids.iter()) {
+                        self.mk_instance_body(bound, *q, *b, ib);
+                    }
+                    let eqs = b.child_ids.iter();
+                    let eqs: FxHashSet<_> = eqs
+                        .flat_map(|b| {
+                            let eqs = ib.req_eqs.get(b);
+                            eqs.into_iter().flat_map(|e| e.iter().copied())
+                        })
+                        .collect();
+                    if !eqs.is_empty() {
+                        let old = ib.req_eqs.insert(body, eqs);
+                        debug_assert!(old.is_none(), "unexpected old eqs {old:?}");
+                    }
+                } else {
+                    debug_assert!(false, "unexpected app body {b:?}");
+                }
+            }
         }
     }
 }

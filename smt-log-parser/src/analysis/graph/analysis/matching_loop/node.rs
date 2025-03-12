@@ -20,7 +20,8 @@ pub enum MLGraphNode {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum MLGraphEdge {
-    HiddenEdge(bool, u32),
+    HiddenEdge(Option<(bool, u32)>),
+    HiddenEdgeRev(Option<(bool, u32)>),
     Blame(usize),
     BlameEq(usize),
     Instantiation,

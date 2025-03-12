@@ -215,6 +215,7 @@ impl
             Proof(proof) => get_name(parser, parser[proof].result),
             Cdcl(cdcl) => match &parser[cdcl].kind {
                 CdclKind::Root => "root",
+                CdclKind::BeginCheck(..) => "check-sat",
                 CdclKind::Empty(..) => "empty",
                 CdclKind::Decision(..) => "decision",
                 CdclKind::Conflict(..) => "cut",
@@ -734,7 +735,7 @@ impl DotEdgeProperties<bool, (), (), (), (), (), (), (), ()> for MLGraphEdge {
 
     fn style(&self, (): ()) -> &'static str {
         match self {
-            MLGraphEdge::HiddenEdge(..) => "invis",
+            MLGraphEdge::HiddenEdge(..) | MLGraphEdge::HiddenEdgeRev(..) => "invis",
             _ => "solid",
         }
     }
@@ -742,7 +743,7 @@ impl DotEdgeProperties<bool, (), (), (), (), (), (), (), ()> for MLGraphEdge {
     fn arrowhead(&self, (): ()) -> &'static str {
         use MLGraphEdge::*;
         match self {
-            HiddenEdge(..) => "none",
+            HiddenEdge(..) | HiddenEdgeRev(..) => "none",
             Instantiation | Blame(..) | Yield => "normal",
             BlameEq(..) | YieldEq | CombineEq => "empty",
         }
@@ -750,14 +751,15 @@ impl DotEdgeProperties<bool, (), (), (), (), (), (), (), ()> for MLGraphEdge {
 
     fn minlen(&self, (): ()) -> &'static str {
         match self {
-            MLGraphEdge::HiddenEdge(..) => "0",
+            MLGraphEdge::HiddenEdge(..) | MLGraphEdge::HiddenEdgeRev(..) => "0",
             _ => "",
         }
     }
 
     fn constraint(&self, _ctx: ()) -> &'static str {
         match self {
-            MLGraphEdge::HiddenEdge(..) => "false",
+            MLGraphEdge::HiddenEdge(Some((false, _))) => "false",
+            MLGraphEdge::HiddenEdgeRev(None | Some((true, _))) => "false",
             _ => "",
         }
     }

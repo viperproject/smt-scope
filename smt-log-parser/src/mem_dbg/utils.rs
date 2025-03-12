@@ -138,6 +138,89 @@ where
     }
 }
 
+// Issue 3
+// // SortedVec
+
+// #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+// #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+// #[derive(Debug, Clone)]
+// pub struct SortedVec<T> {
+//     pub raw: Vec<T>,
+// }
+
+// impl<T> Default for SortedVec<T> {
+//     fn default() -> Self {
+//         Self {
+//             raw: Default::default(),
+//         }
+//     }
+// }
+
+// impl<T> SortedVec<T> {
+//     pub fn new() -> Self {
+//         Self::default()
+//     }
+
+//     pub fn push(&mut self, value: T) -> Result<(), std::collections::TryReserveError>
+//     where
+//         T: Ord,
+//     {
+//         self.push_by(value, |a, b| a.cmp(b))
+//     }
+
+//     pub fn push_by(
+//         &mut self,
+//         value: T,
+//         mut f: impl FnMut(&T, &T) -> core::cmp::Ordering,
+//     ) -> Result<(), std::collections::TryReserveError> {
+//         if !self
+//             .raw
+//             .last()
+//             .is_some_and(|last| f(&value, last) == core::cmp::Ordering::Less)
+//         {
+//             self.raw.try_reserve(1)?;
+//             self.raw.push(value);
+//             Ok(())
+//         } else {
+//             self.insert_by(value, f)
+//         }
+//     }
+
+//     pub fn insert(&mut self, value: T) -> Result<(), std::collections::TryReserveError>
+//     where
+//         T: Ord,
+//     {
+//         self.insert_by(value, |a, b| a.cmp(b))
+//     }
+
+//     pub fn insert_by(
+//         &mut self,
+//         value: T,
+//         mut f: impl FnMut(&T, &T) -> core::cmp::Ordering,
+//     ) -> Result<(), std::collections::TryReserveError> {
+//         self.raw.try_reserve(1)?;
+//         let idx = self
+//             .raw
+//             .binary_search_by(|v| f(v, &value))
+//             .unwrap_or_else(|idx| idx);
+//         self.raw.insert(idx, value);
+//         Ok(())
+//     }
+// }
+
+// impl<T> core::ops::Index<usize> for SortedVec<T> {
+//     type Output = T;
+//     fn index(&self, index: usize) -> &Self::Output {
+//         &self.raw[index]
+//     }
+// }
+
+// impl<T> core::ops::IndexMut<usize> for SortedVec<T> {
+//     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+//         &mut self.raw[index]
+//     }
+// }
+
 // InternMap
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

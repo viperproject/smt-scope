@@ -385,12 +385,9 @@ impl Z3Parser {
                 eqs.into_iter().flat_map(|e| e.iter().copied())
             })
             .collect();
-        if !eqs.is_empty() {
-            let old = ib.req_eqs.insert(body, eqs);
-            debug_assert!(old.is_none(), "unexpected old eqs {old:?}");
-            error |= old.is_some();
-        }
-        error
+        let old = ib.req_eqs.insert(body, eqs);
+        debug_assert!(old.is_none(), "unexpected old eqs {old:?}");
+        error || old.is_some()
     }
 
     pub(super) fn active_inst(

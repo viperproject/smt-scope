@@ -103,41 +103,41 @@ impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
 
     /// Perform a bottom-up dfs walk of the AST rooted at `idx` calling `d` on
     /// each node while walking down and `u` on each node while walking up.
-    pub fn ast_walk_cached<'a, D>(
+    pub fn ast_walk_cached<'a, D, I>(
         &self,
         idx: K,
+        state: I,
         cache: &'a mut FxHashMap<K, D>,
-        mut d: impl FnMut(K, &V) -> &[K],
-        mut u: impl FnMut(K, &V, &FxHashMap<K, D>) -> D,
+        mut d: impl for<'c> FnMut(K, &'c V, &I) -> (&'c [K], I),
+        mut u: impl FnMut(K, &V, &FxHashMap<K, D>, &I) -> D,
     ) -> &'a D
     where
         usize: From<K>,
         K: Eq + core::hash::Hash,
     {
-        fn trim<T: Eq + core::hash::Hash, V>(
-            node: &mut core::slice::Iter<T>,
-            cache: &FxHashMap<T, V>,
-        ) {
+        fn trim<T: Eq + core::hash::Hash, V>(node: &mut core::slice::Iter<T>, cache: &FxHashMap<T, V>) {
             let slice = node.as_slice();
             let nk = slice.iter().position(|idx| !cache.contains_key(idx));
             *node = slice[nk.unwrap_or(slice.len())..].iter()
         }
 
-        let mut todo = vec![core::slice::from_ref(&idx).iter()];
-        while let Some(mut node) = todo.pop() {
+        let mut todo = vec![(state, core::slice::from_ref(&idx).iter())];
+        while let Some((mut state, mut node)) = todo.pop() {
             trim(&mut node, cache);
             while let Some(idx) = node.as_slice().first().copied() {
-                todo.push(node);
-                node = d(idx, &self.terms[idx]).iter();
+                let (new_node, new_state) = d(idx, &self.terms[idx], &state);
+                todo.push((state, node));
+                state = new_state;
+                node = new_node.iter();
                 trim(&mut node, cache);
             }
 
-            let Some(node) = todo.last_mut() else {
+            let Some((state, node)) = todo.last_mut() else {
                 break;
             };
             let idx = node.next().copied().unwrap();
             let next = &self.terms[idx];
-            let data = u(idx, next, &*cache);
+            let data = u(idx, next, &*cache, &*state);
             let old = cache.insert(idx, data);
             assert!(old.is_none());
         }

@@ -325,6 +325,10 @@ impl Z3Parser {
                             debug_assert!(false, "body not in egraph");
                             return true;
                         };
+                        if !self.egraph.check_eq(qb, b, &self.stack) {
+                            // TODO: handle this case
+                            return true;
+                        }
                         v.insert(Default::default()).insert((qb, b));
                     }
                     return false;
@@ -400,7 +404,7 @@ impl Z3Parser {
             .map(|a| {
                 let req_eqs = a.req_eqs(idx);
                 let mismatch = TransEqAllowed {
-                    can_mismatch_initial: true,
+                    can_mismatch_initial: false,
                     can_mismatch_congr: false,
                 };
                 let req_eqs = req_eqs

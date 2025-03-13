@@ -5,7 +5,9 @@ use mem_dbg::{MemDbg, MemSize};
 use nonmax::NonMaxU64;
 use typed_index_collections::TiSlice;
 
-use crate::{items::*, parsers::z3::VersionInfo, FxHashMap, IString, StringTable, TiVec};
+use crate::{
+    items::*, parsers::z3::VersionInfo, FxHashMap, IString, NonMaxU32, StringTable, TiVec,
+};
 
 use super::{
     cdcl::Literals,
@@ -199,9 +201,10 @@ impl Z3Parser {
         }
         *self.terms.app_terms.ast_walk_cached(
             tidx,
+            (),
             cached,
-            |tidx, term| children(tidx, term).ok().unwrap_or_default(),
-            |tidx, term, cached| {
+            |tidx, term, ()| (children(tidx, term).ok().unwrap_or_default(), ()),
+            |tidx, term, cached, ()| {
                 let children = children(tidx, term)?;
                 let mut size = NonMaxU64::ONE;
                 for child in children {
@@ -255,6 +258,10 @@ impl Z3Parser {
                 })
                 .collect(),
         )
+    }
+
+    pub(super) fn bound(&self, match_: &MatchKind, qvar: NonMaxU32) -> Option<TermIdx> {
+        match_.bound_term(|e| &self[e], qvar)
     }
 }
 

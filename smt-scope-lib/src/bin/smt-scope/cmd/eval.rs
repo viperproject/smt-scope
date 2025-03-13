@@ -100,5 +100,8 @@ pub fn run(logfile: PathBuf, dummy: bool) -> Result<(), String> {
     let pos_im = pos_im.map(|(q, d)| format!("{} {}x", qpat_to_str(q), d.input_multiplicativity()));
     let pos_im = pos_im.collect::<Vec<_>>();
     println!("[Branching] {} {}", pos_im.len(), pos_im.join(" "));
+    for (q, d) in log.quants.0.iter_enumerated() {
+        println!("[QuantInstCount] {} {d}", qpat_to_str(q));
+    }
     Ok(())
 }

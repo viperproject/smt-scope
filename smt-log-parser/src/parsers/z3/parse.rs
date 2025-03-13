@@ -8,7 +8,7 @@ use crate::{
     BigRational, BoxSlice, Error as E, IString, NonMaxU32, Result, StringTable,
 };
 
-use super::{inter_line::LineKind, stm2::EventLog, terms::Terms, Z3Parser};
+use super::{inter_line::LineKind, smt2::EventLog, terms::Terms, Z3Parser};
 
 impl Default for Z3Parser {
     fn default() -> Self {

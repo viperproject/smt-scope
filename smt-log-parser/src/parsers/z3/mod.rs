@@ -13,8 +13,8 @@ pub mod inter_line;
 /// as long as the log format is the same for the important line cases.
 /// Compare with the log files in the `logs/` folder to see if this is the case.
 pub mod parse;
+pub mod smt2;
 pub mod stack;
-pub mod stm2;
 pub mod synthetic;
 pub mod terms;
 // pub mod theory;

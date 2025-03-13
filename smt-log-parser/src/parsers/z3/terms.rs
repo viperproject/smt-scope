@@ -115,7 +115,10 @@ impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
         usize: From<K>,
         K: Eq + core::hash::Hash,
     {
-        fn trim<T: Eq + core::hash::Hash, V>(node: &mut core::slice::Iter<T>, cache: &FxHashMap<T, V>) {
+        fn trim<T: Eq + core::hash::Hash, V>(
+            node: &mut core::slice::Iter<T>,
+            cache: &FxHashMap<T, V>,
+        ) {
             let slice = node.as_slice();
             let nk = slice.iter().position(|idx| !cache.contains_key(idx));
             *node = slice[nk.unwrap_or(slice.len())..].iter()

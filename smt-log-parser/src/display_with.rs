@@ -7,7 +7,7 @@ use crate::{
     },
     items::*,
     parsers::z3::{
-        stm2::EventKind,
+        smt2::EventKind,
         synthetic::{AnyTerm, SynthIdx, SynthTermKind},
         Z3Parser,
     },

@@ -92,6 +92,13 @@ impl Stack {
         let result = self.ensure_height(idx);
         let from_cdcl = after_conflict
             || (0..count).any(|idx| self[self.stack[self.stack.len() - 1 - idx]].from_cdcl);
+        if from_cdcl {
+            // TODO: actually mark the frames as from CDCL (e.g. also in `smt2.rs`).
+            for idx in 0..count {
+                let frame = self.stack[self.stack.len() - 1 - idx];
+                self.stack_frames[frame].from_cdcl = true;
+            }
+        }
         debug_assert!(
             !from_cdcl
                 || (0..count)

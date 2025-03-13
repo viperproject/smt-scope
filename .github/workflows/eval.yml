@@ -71,3 +71,4 @@ jobs:
           name: "${{ matrix.verifier.name }}${{ matrix.verifier.tag }}"
           path: ${{ matrix.verifier.name }}${{ matrix.verifier.tag }}.tar.bz2
           retention-days: 30
+

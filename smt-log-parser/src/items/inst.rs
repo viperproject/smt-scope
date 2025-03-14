@@ -96,6 +96,9 @@ impl MatchKind {
     pub fn is_mbqi(&self) -> bool {
         matches!(self, Self::MBQI { .. })
     }
+    pub fn is_axiom(&self) -> bool {
+        matches!(self, Self::Axiom { .. })
+    }
     // TODO: this is currently unused
     pub fn rewrite_of(&self) -> Option<TermIdx> {
         match self {

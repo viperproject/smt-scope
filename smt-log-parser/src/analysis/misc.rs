@@ -71,15 +71,28 @@ impl InstsInfo {
 }
 
 /// How many times each quantifier was instantiated
-pub struct QuantsInfo(pub QuantPatVec<usize>);
+pub struct QuantsInfo(pub QuantPatVec<QuantInfo>);
+
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub struct QuantInfo {
+    /// The number of times the quantifier was instantiated using e-matching (or
+    /// MBQI if the pattern is None).
+    pub normal: usize,
+    /// The number of times the quantifier was instantiated as an axiom.
+    pub axiom: usize,
+}
 
 impl LogInfo {
     pub fn new(parser: &Z3Parser) -> Self {
-        let mut quants = QuantsInfo(parser.new_quant_pat_vec(|_| 0));
+        let mut quants = QuantsInfo(parser.new_quant_pat_vec(|_| QuantInfo::default()));
         let mut match_ = MatchesInfo::default();
         for data in parser.instantiations_data() {
             if let Some(qpat) = data.match_.kind.quant_pat() {
-                quants.0[qpat] += 1;
+                if data.match_.kind.is_axiom() {
+                    quants.0[qpat].axiom += 1;
+                } else {
+                    quants.0[qpat].normal += 1;
+                }
             }
             use crate::items::MatchKind::*;
             match &data.match_.kind {
@@ -103,13 +116,13 @@ impl LogInfo {
             .0
              .0
             .iter_enumerated()
-            .map(|(i, count)| (i, count.iter_enumerated().map(|(_, c)| c).sum()))
+            .map(|(i, count)| (i, count.iter_enumerated().map(|(_, c)| c.normal).sum()))
     }
 
     pub fn quant_insts(&self, qidx: QuantIdx) -> usize {
         self.quants.0 .0[qidx]
             .iter_enumerated()
-            .map(|(_, c)| *c)
+            .map(|(_, c)| c.normal)
             .sum()
     }
 }

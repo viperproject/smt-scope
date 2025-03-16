@@ -41,6 +41,9 @@ html {
     -ms-user-select: none;
     user-select: none;
 }
+.flex {
+    display: flex;
+}
 
 div.page .full-page {
     position: absolute;

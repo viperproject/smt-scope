@@ -23,36 +23,36 @@ macro_rules! derive_wrapper {
     };
     (
         $(#[derive($($d:ident),*)])?
-        struct $struct:ident$(<$($t:ident$(= $default:ty)?),*>)?($p:vis $inner:ty);
+        struct $struct:ident$(<$($t:ident$(= $default:ty)?$(: $bound:tt)?),*>)?($p:vis $inner:ty);
     ) => {
         $(#[derive($($d),*)])?
-        pub struct $struct$(<$($t$(= $default)?),*>)?($p $inner);
-        impl$(<$($t),*>)? Deref for $struct$(<$($t),*>)? {
+        pub struct $struct$(<$($t$(= $default)?$(: $bound)?),*>)?($p $inner);
+        impl$(<$($t$(: $bound)?),*>)? Deref for $struct$(<$($t),*>)? {
             type Target = $inner;
             fn deref(&self) -> &Self::Target {
                 &self.0
             }
         }
-        impl$(<$($t),*>)? DerefMut for $struct$(<$($t),*>)? {
+        impl$(<$($t$(: $bound)?),*>)? DerefMut for $struct$(<$($t),*>)? {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut self.0
             }
         }
         #[allow(clippy::non_canonical_clone_impl)]
-        impl$(<$($t),*>)? Clone for $struct$(<$($t),*>)?
+        impl$(<$($t$(: $bound)?),*>)? Clone for $struct$(<$($t),*>)?
         where $inner: Clone {
             fn clone(&self) -> Self {
                 Self(self.0.clone())
             }
         }
-        impl$(<$($t),*>)? fmt::Debug for $struct$(<$($t),*>)?
+        impl$(<$($t$(: $bound)?),*>)? fmt::Debug for $struct$(<$($t),*>)?
         where $inner: fmt::Debug {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 self.0.fmt(f)
             }
         }
         #[cfg(feature = "serde")]
-        impl$(<$($t),*>)? serde::Serialize for $struct$(<$($t),*>)?
+        impl$(<$($t$(: $bound)?),*>)? serde::Serialize for $struct$(<$($t),*>)?
         where $inner: serde::Serialize {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
@@ -62,7 +62,7 @@ macro_rules! derive_wrapper {
             }
         }
         #[cfg(feature = "serde")]
-        impl<'de, $($($t),*)?> serde::Deserialize<'de> for $struct$(<$($t),*>)?
+        impl<'de, $($($t$(: $bound)?),*)?> serde::Deserialize<'de> for $struct$(<$($t),*>)?
         where $inner: serde::Deserialize<'de> {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
@@ -71,7 +71,7 @@ macro_rules! derive_wrapper {
                 <$inner as serde::Deserialize<'de>>::deserialize(deserializer).map(Self)
             }
         }
-        impl$(<$($t),*>)? From<$inner> for $struct$(<$($t),*>)? {
+        impl$(<$($t$(: $bound)?),*>)? From<$inner> for $struct$(<$($t),*>)? {
             fn from(inner: $inner) -> Self {
                 Self(inner)
             }

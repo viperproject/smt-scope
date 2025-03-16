@@ -31,10 +31,11 @@ pub(super) struct Data {
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[cfg_attr(feature = "mem_dbg", copy_type)]
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(super) enum LineKind {
     DecideAndOr,
     Conflict,
+    Push,
     #[default]
     Other,
 }

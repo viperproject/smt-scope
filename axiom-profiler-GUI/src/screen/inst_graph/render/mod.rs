@@ -61,7 +61,7 @@ impl Graph {
         // visible also (regardless of filters).
         if mode.is_proof() {
             for (idx, inst) in parser.instantiations().iter_enumerated() {
-                let Some(proof) = inst.proof_id.proof() else {
+                let Some(proof) = inst.kind.proof() else {
                     continue;
                 };
                 if !graph.raw[proof].visible() {

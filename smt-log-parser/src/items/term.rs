@@ -225,7 +225,7 @@ impl<K: Copy> TermIdToIdxMap<K> {
             Ok(&mut self.empty_namespace)
         }
     }
-    pub fn register_term(&mut self, id: TermId, idx: K) -> Result<()> {
+    pub fn register_term(&mut self, id: TermId, idx: K) -> Result<Option<K>> {
         let id_idx = id.order() as usize;
         let vec = self.get_vec_mut(id.namespace)?;
         if id_idx >= vec.len() {
@@ -236,8 +236,8 @@ impl<K: Copy> TermIdToIdxMap<K> {
         // The `id` of two different terms may clash and so we may remove
         // a `TermIdx` from the map. This is fine since we want future uses of
         // `id` to refer to the new term and not the old one.
-        vec[id_idx].replace(idx);
-        Ok(())
+        let old = vec[id_idx].replace(idx);
+        Ok(old)
     }
     fn get_vec(&self, namespace: Option<IString>) -> Option<&Vec<Option<K>>> {
         if let Some(namespace) = namespace {

@@ -39,15 +39,33 @@ pub struct RawInstGraph {
     pub(crate) stats: GraphStats,
 }
 
+struct GraphTryReserve;
+impl GraphTryReserve {
+    fn try_reserve_exact(nodes: usize, edges: usize) -> Result<()> {
+        type Nodes = Vec<petgraph::graph::Node<Node>>;
+        type Edges = Vec<petgraph::graph::Edge<EdgeKind>>;
+        let mut n = Nodes::new();
+        n.try_reserve_exact(nodes)?;
+        let mut e = Edges::new();
+        e.try_reserve_exact(edges)?;
+        Ok(())
+    }
+}
+
 impl RawInstGraph {
     pub fn new(parser: &Z3Parser) -> Result<Self> {
         let total_nodes = parser.insts.insts.len()
             + parser.egraph.enodes.len()
             + parser.egraph.equalities.given.len()
-            + parser.egraph.equalities.transitive.len();
-        let edges_lower_bound =
-            parser.insts.insts.len() + parser.egraph.equalities.transitive.len();
-        let mut graph = DiGraph::with_capacity(total_nodes, edges_lower_bound);
+            + parser.egraph.equalities.transitive.len()
+            + parser.proofs().len()
+            + parser.cdcls().len();
+        let edges_estimate = parser.insts.insts.len()
+            + parser.egraph.equalities.transitive.len()
+            + parser.proofs().len();
+        GraphTryReserve::try_reserve_exact(total_nodes, edges_estimate)?;
+
+        let mut graph = DiGraph::with_capacity(total_nodes, edges_estimate);
         let inst_idx = RawNodeIndex(NodeIndex::new(graph.node_count()));
         for inst in parser.insts.insts.keys() {
             graph.add_node(Node::new(NodeKind::Instantiation(inst)));
@@ -126,9 +144,14 @@ impl RawInstGraph {
 
         // Add enode blamed edges
         for (idx, enode) in parser.egraph.enodes.iter_enumerated() {
-            match enode.blame {
-                ENodeBlame::Inst(iidx) => self_.add_edge(iidx, idx, EdgeKind::Asserted),
-                ENodeBlame::Proof(pidx) => self_.add_edge(pidx, idx, EdgeKind::Yield),
+            match &enode.blame {
+                ENodeBlame::Inst((iidx, eqs)) => {
+                    self_.add_edge(*iidx, idx, EdgeKind::Yield);
+                    for &eq in eqs.iter() {
+                        self_.add_edge(eq, idx, EdgeKind::YieldEq);
+                    }
+                }
+                ENodeBlame::Proof(pidx) => self_.add_edge(*pidx, idx, EdgeKind::Asserted),
                 ENodeBlame::BoolConst | ENodeBlame::Unknown => (),
             }
         }
@@ -138,7 +161,9 @@ impl RawInstGraph {
             match eq {
                 EqualityExpl::Root { .. } => (),
                 EqualityExpl::Literal { eq, .. } => {
-                    self_.add_edge(*eq, (idx, None), EdgeKind::EqualityFact)
+                    if let Some(iidx) = parser[*eq].iblame {
+                        self_.add_edge(iidx, (idx, None), EdgeKind::EqualityFact)
+                    }
                 }
                 EqualityExpl::Congruence { uses, .. } => {
                     for (use_, arg_eqs) in uses.iter().enumerate() {
@@ -187,7 +212,7 @@ impl RawInstGraph {
         }
 
         for (iidx, inst) in parser.insts.insts.iter_enumerated() {
-            let Some(proof) = inst.proof_id.proof() else {
+            let Some(proof) = inst.kind.proof() else {
                 continue;
             };
             self_.add_edge(iidx, proof, EdgeKind::YieldProof);
@@ -195,7 +220,7 @@ impl RawInstGraph {
 
         // Add cdcl edges
         for cidx in parser.cdcls().keys() {
-            let backlink = parser.cdcl.backlink(cidx);
+            let backlink = parser.lits.cdcl.backlink(cidx);
             match (backlink.previous, backlink.backtrack) {
                 (Some(previous), Some(backtrack)) => {
                     self_.add_edge(backtrack, cidx, EdgeKind::Cdcl(CdclEdge::RetryFrom));
@@ -378,6 +403,8 @@ pub struct Depth {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, Default)]
 pub struct NextNodes {
+    // Issue 4: storing inst children in all nodes huge memory overhead
+    #[cfg(any())]
     /// What are the immediate next instantiation nodes
     pub insts: FxHashSet<InstIdx>,
     /// How many parents/children does this node have (not-necessarily
@@ -576,14 +603,17 @@ impl NodeKind {
 
     /// Same as `reconnect_parents` but for children. Do we reconnect hidden
     /// children of this visible node or just this node itself?
-    pub fn reconnect_child(&self, child: &Self) -> bool {
+    pub fn reconnect_child(&self, _child: &Self) -> bool {
+        // TODO: what behavior do we want here?
+        #[cfg(any())]
         !matches!(
             (self, child),
             (
                 Self::ENode(..) | Self::TransEquality(..),
                 Self::Instantiation(..)
             ) | (Self::Proof(..), Self::Proof(..))
-        )
+        );
+        false
     }
 }
 
@@ -593,6 +623,8 @@ impl NodeKind {
 pub enum EdgeKind {
     /// Instantiation -> ENode
     Yield,
+    /// GivenEquality -> ENode
+    YieldEq,
     /// Proof (asserted) -> ENode
     Asserted,
     /// ENode -> Instantiation

@@ -142,6 +142,17 @@ pub fn Flags(props: &FlagsProps) -> Html {
     );
     use_effect_with_deps(move |deps| effect(deps), deps);
 
+    let (full_analysis_on_open, effect, deps) = flag_widget!(
+        cfg,
+        default,
+        full_analysis_on_open,
+        "Analyse on open",
+        "Run the full suite of analyses (e.g. matching loop detection) after opening a file. This leads to a richer summary screen but can slow down opening files. When disabled analyses are performed on demand as corresponding views are opened.", |
+        if true => "Enabled",
+        if false => "Disabled",
+    );
+    use_effect_with_deps(move |deps| effect(deps), deps);
+
     yew::html! {
         <div class="flags-page"><div class="flags-content">
             <h1>{"Configuration flags"}</h1>
@@ -150,6 +161,7 @@ pub fn Flags(props: &FlagsProps) -> Html {
             {replace_symbols}
             {ast_depth_limit}
             {summary_weighing}
+            {full_analysis_on_open}
             <TermDisplayFlag cfg={cfg.clone()} file={props.file.clone()} />
         </div></div>
     }

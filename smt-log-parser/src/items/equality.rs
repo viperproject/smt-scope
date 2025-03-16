@@ -6,13 +6,12 @@ use mem_dbg::{MemDbg, MemSize};
 use crate::{BoxSlice, IString, NonMaxU32};
 use crate::{Result, StringTable};
 
-use super::{ENodeIdx, EqGivenIdx, EqTransIdx};
+use super::{ENodeIdx, EqGivenIdx, EqTransIdx, LitIdx, TheoryKind};
 
 /// A Z3 equality explanation.
 /// Root represents a term that is a root of its equivalence class.
 /// All other variants represent an equality between two terms and where it came from.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub enum EqualityExpl {
     Root {
@@ -21,7 +20,7 @@ pub enum EqualityExpl {
     Literal {
         from: ENodeIdx,
         /// The equality term this is from
-        eq: ENodeIdx,
+        eq: LitIdx,
         to: ENodeIdx,
     },
     Congruence {
@@ -33,7 +32,7 @@ pub enum EqualityExpl {
     },
     Theory {
         from: ENodeIdx,
-        theory: IString,
+        theory: TheoryKind,
         to: ENodeIdx,
     },
     Axiom {

@@ -5,7 +5,7 @@ use smt_log_parser::{
     analysis::{CdclAnalysis, LogInfo, RedundancyAnalysis},
     display_with::{DisplayConfiguration, DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
-    items::QuantIdx,
+    items::{QuantIdx, QuantPat},
     F64Ord, NonMaxU32, Z3Parser,
 };
 use yew::prelude::*;
@@ -71,6 +71,7 @@ pub fn Summary(props: &SummaryProps) -> Html {
 
     html! {<div class="summary">
         <article class="pf-content"><DetailContainer>
+            <ProblemBehaviours ..inner.clone() />
             <Metrics ..inner.clone() />
             <MostQuants ..inner.clone() />
             <CostQuants ..inner.clone() />
@@ -102,6 +103,35 @@ impl SummaryPropsInner {
             config: self.config,
         }
     }
+}
+
+#[function_component]
+pub fn ProblemBehaviours(props: &SummaryPropsInner) -> Html {
+    props.analysis.as_ref().map(|analysis| {
+        let analysis = analysis.borrow();
+        let pb = &analysis.pb;
+        if pb.errors.is_empty() {
+            return Default::default();
+        }
+
+        let parser = props.parser.parser.borrow();
+        let pb: Vec<(yew::virtual_dom::VNode, yew::virtual_dom::VNode)> = pb.errors.iter().map(|pb| {
+            let kind = pb.kind_str();
+            let quants = pb.quant_pats(&parser, &analysis.graph);
+            let quants = quants.iter().map(|qpat| html! { <QPat parser={props.parser.clone()} qpat={*qpat} /> });
+            let quants = quants.enumerate().map(|(i, q)| {
+                if i == 0 {
+                    q
+                } else {
+                    html! {<>{", "}{q}</>}
+                }
+            });
+            (html! {{ kind }}, html! {<div class="flex">{for quants}</div>})
+        }).collect::<Vec<_>>();
+        html! {<Detail title="⚠️ Problem behaviour(s) ⚠️" hover="Warnings and errors found in the log.">
+            <TreeList elements={pb} />
+        </Detail>}
+    }).unwrap_or_default()
 }
 
 #[function_component]
@@ -208,20 +238,13 @@ pub fn MultQuants(props: &SummaryPropsInner) -> Html {
     });
     let mults = quants_ordered::<_, _, true>(&parser, colours, mults);
     let mults = mults.iter().take_while(|(.., c)| c.0 > 0.0);
-    let mults = mults.map(|(q, hue, (c, qpat), _)| {
-        let left = html!{{ format!("{c:.1}") }};
-        let pat = if let Some(pat) = qpat.pat {
-            if parser.patterns(qpat.quant).is_some_and(|pats| pats.len() > 1) {
-                format!(" {{ {} }}", usize::from(pat) + 1)
-            } else {
-                String::new()
-            }
-        } else {
-            " {{ MBQI }}".to_string()
-        };
-        let right = html! { <div class="info-box-row"><QuantColourBox margin_right={true} {hue} />{ format!("{q}{pat}") }</div> };
-        (left, right)
-    }).collect::<Vec<_>>();
+    let mults = mults
+        .map(|(_, _, (c, qpat), _)| {
+            let left = html! {{ format!("{c:.1}") }};
+            let right = html! { <QPat parser={props.parser.clone()} qpat={*qpat} /> };
+            (left, right)
+        })
+        .collect::<Vec<_>>();
     html! {<Detail title="Multiplicativity" hover="The quantifiers which the highest multiplicative factor M, i.e. those that take N terms and turn them into N*M instantiations. See average weighing flag.">
         <TreeList elements={mults} />
     </Detail>}
@@ -264,6 +287,38 @@ pub fn CostCdcl(props: &SummaryPropsInner) -> Html {
     html! {<Detail title="Most explored assignments" hover="The CDCL assignments which took the most effort to explore. The two numbers indicate effort when assigned `true | false`.">
         <TreeList elements={cdcl} />
     </Detail>}
+}
+
+// Utility
+
+#[derive(Properties, Clone, PartialEq)]
+struct QPatProps {
+    parser: RcParser,
+    qpat: QuantPat,
+}
+
+#[function_component]
+fn QPat(props: &QPatProps) -> Html {
+    let parser = props.parser.parser.borrow();
+    let qpat = props.qpat;
+    let hue = props.parser.colour_map.get_rbg_hue(Some(qpat.quant));
+    let name = parser[qpat.quant]
+        .kind
+        .name(&parser.strings)
+        .unwrap_or_default();
+    let pat = if let Some(pat) = qpat.pat {
+        if parser
+            .patterns(qpat.quant)
+            .is_some_and(|pats| pats.len() > 1)
+        {
+            format!(" {{ {} }}", usize::from(pat) + 1)
+        } else {
+            String::new()
+        }
+    } else {
+        " {{ MBQI }}".to_string()
+    };
+    html! {<div class="info-box-row"><QuantColourBox margin_right={true} {hue} />{ name }{ pat }</div>}
 }
 
 fn format_to_html<F: ToFormattedString>(f: F) -> Html {

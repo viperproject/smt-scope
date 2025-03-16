@@ -5,6 +5,7 @@ use crate::{Error, FResult, Result};
 
 mod blame;
 mod bugs;
+pub mod cdcl;
 pub mod egraph;
 pub mod inst;
 pub mod inter_line;
@@ -12,13 +13,21 @@ pub mod inter_line;
 /// as long as the log format is the same for the important line cases.
 /// Compare with the log files in the `logs/` folder to see if this is the case.
 pub mod parse;
+pub mod smt2;
 pub mod stack;
-pub mod stm2;
 pub mod synthetic;
 pub mod terms;
+// pub mod theory;
 mod z3parser;
 
 pub use z3parser::*;
+
+fn split_ascii_space(line: &str) -> impl Iterator<Item = &str> {
+    fn to_str(s: &[u8]) -> &str {
+        unsafe { core::str::from_utf8_unchecked(s) }
+    }
+    line.as_bytes().split(u8::is_ascii_whitespace).map(to_str)
+}
 
 impl<T: Z3LogParser + LogParserHelper> LogParser for T {
     fn is_line_start(&mut self, first_byte: u8) -> bool {
@@ -28,7 +37,7 @@ impl<T: Z3LogParser + LogParserHelper> LogParser for T {
     fn process_line(&mut self, line: &str, line_no: usize) -> FResult<bool> {
         // Much faster than `split_whitespace` or `split(' ')` since it works on
         // [u8] instead of [char] and so doesn't need to convert to UTF-8.
-        let mut split = line.split_ascii_whitespace();
+        let mut split = split_ascii_space(line);
         let Some(first) = split.next() else {
             return Ok(true);
         };

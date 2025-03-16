@@ -11,7 +11,11 @@ pub use signature::*;
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::{idx, items::InstIdx, BoxSlice, FxHashMap, Graph, TiVec};
+use crate::{
+    idx,
+    items::{InstIdx, QuantPat},
+    BoxSlice, FxHashMap, FxHashSet, Graph, TiVec, Z3Parser,
+};
 
 // Note: the current implementation misses the first inst in the chain and so
 // actually requires one more inst than the number here.
@@ -73,6 +77,20 @@ pub struct MlSigCollection {
 pub struct MlLeaves(pub Vec<(u32, InstIdx)>);
 
 impl MatchingLoop {
+    pub fn quants(&self, parser: &Z3Parser, data: &MlData) -> Vec<QuantPat> {
+        let mut seen = FxHashSet::default();
+        let mut quants = Vec::new();
+        for member in self.members(data) {
+            let Some(qpat) = parser.get_inst(member).match_.kind.quant_pat() else {
+                continue;
+            };
+            if seen.insert(qpat) {
+                quants.push(qpat);
+            }
+        }
+        quants
+    }
+
     pub fn members<'a>(&'a self, data: &'a MlData) -> impl Iterator<Item = InstIdx> + 'a {
         let mut members = self.members.iter().copied();
         let mut last_saved = members.next();

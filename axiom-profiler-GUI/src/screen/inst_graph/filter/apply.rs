@@ -50,28 +50,45 @@ impl Filter {
                 }
             }
             MaxBranching(n) => graph.keep_first_n_children(n),
-            ShowNeighbours(nidx, direction) => {
-                let nodes: Vec<_> = graph
-                    .raw
-                    .neighbors_directed(nidx, direction, &graph.analysis.reach)
-                    .collect();
-                let modified = graph.raw.set_visibility_many(false, nodes.iter().copied());
+            HideSelf(ref nidx) => graph.raw.set_visibility_many(true, nidx.iter().copied()),
+            ShowNeighbours(ref nidx, direction) => {
+                let mut modified = false;
+                let mut nodes = Vec::new();
+                for &nidx in nidx {
+                    let new_nodes: Vec<_> = graph
+                        .raw
+                        .neighbors_directed(nidx, direction, &graph.analysis.reach)
+                        .collect();
+                    let new_modified = graph
+                        .raw
+                        .set_visibility_many(false, new_nodes.iter().copied());
+                    modified |= new_modified;
+                    nodes.extend(new_nodes);
+                }
                 select = Some(nodes);
                 modified
             }
-            VisitSubTreeWithRoot(nidx, retain) => {
-                let nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nidx.0)
-                    .iter(&*graph.raw.graph)
-                    .map(RawNodeIndex)
-                    .collect();
-                graph.raw.set_visibility_many(!retain, nodes.into_iter())
+            VisitSubTreeWithRoot(ref nidx, retain) => {
+                let mut modified = false;
+                for &nidx in nidx {
+                    let nodes: Vec<_> = Dfs::new(&*graph.raw.graph, nidx.0)
+                        .iter(&*graph.raw.graph)
+                        .map(RawNodeIndex)
+                        .collect();
+                    modified |= graph.raw.set_visibility_many(!retain, nodes.into_iter());
+                }
+                modified
             }
-            VisitSourceTree(nidx, retain) => {
-                let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0)
-                    .iter(graph.raw.rev())
-                    .map(RawNodeIndex)
-                    .collect();
-                graph.raw.set_visibility_many(!retain, nodes.into_iter())
+            VisitSourceTree(ref nidx, retain) => {
+                let mut modified = false;
+                for &nidx in nidx {
+                    let nodes: Vec<_> = Dfs::new(graph.raw.rev(), nidx.0)
+                        .iter(graph.raw.rev())
+                        .map(RawNodeIndex)
+                        .collect();
+                    modified |= graph.raw.set_visibility_many(!retain, nodes.into_iter());
+                }
+                modified
             }
             MaxDepth(depth) => graph.raw.set_visibility_when(true, |_, _, node: &Node| {
                 node.fwd_depth.min as usize > depth
@@ -215,11 +232,15 @@ impl Filter {
             // matching loop is generally left out by the analysis and this will
             // keep it in the displayed view:
             // .filter(|nx| graph.raw.graph[*nx].kind().inst().is_none())
-            .filter(|nx| {
+            .filter(|_nx| {
+                // Issue 4: storing inst children in all nodes huge memory overhead
+                #[cfg(any())]
                 let node = &graph.raw.graph[*nx];
+                #[cfg(any())]
                 nodes_of_nth_matching_loop
                     .iter()
-                    .any(|n| node.children.insts.contains(n))
+                    .any(|n| node.children.insts.contains(n));
+                true
                 // && nodes_of_nth_matching_loop.iter().any(|n| {
                 //     node.inst_parents.nodes.contains(&n)
                 // })

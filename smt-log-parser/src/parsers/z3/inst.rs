@@ -2,10 +2,12 @@
 use mem_dbg::{MemDbg, MemSize};
 
 use crate::{
-    items::{ENodeIdx, Fingerprint, InstIdx, Instantiation, Match, MatchIdx},
+    items::{ENodeIdx, Fingerprint, InstIdx, Instantiation, Match, MatchIdx, TermIdx},
     parsers::z3::stack::Stack,
     Error, FxHashMap, Result, TiVec,
 };
+
+use super::bugs::InstanceBody;
 
 #[derive(Debug)]
 pub struct InstData<'a> {
@@ -23,13 +25,17 @@ pub struct Insts {
     pub(crate) matches: TiVec<MatchIdx, Match>,
     pub(crate) insts: TiVec<InstIdx, Instantiation>,
 
-    pub(crate) inst_stack: Vec<(InstIdx, Vec<ENodeIdx>)>,
+    inst_stack: Vec<ActiveInst>,
 
     has_theory_solving_inst: bool,
 }
 
 impl Insts {
-    pub fn new_match(&mut self, fingerprint: Fingerprint, match_: Match) -> Result<MatchIdx> {
+    pub(super) fn new_match(
+        &mut self,
+        fingerprint: Fingerprint,
+        match_: Match,
+    ) -> Result<MatchIdx> {
         self.has_theory_solving_inst |= match_.kind.quant_idx().is_none();
 
         self.matches.raw.try_reserve(1)?;
@@ -45,10 +51,11 @@ impl Insts {
             .get(&fingerprint)
             .map(|(idx, _)| *idx)
     }
-    pub fn new_inst(
+    pub(super) fn new_inst(
         &mut self,
         fingerprint: Fingerprint,
         inst: Instantiation,
+        body: Option<InstanceBody>,
         stack: &Stack,
         can_duplicate: bool,
     ) -> Result<InstIdx> {
@@ -56,25 +63,31 @@ impl Insts {
             .fingerprint_to_match
             .get_mut(&fingerprint)
             .unwrap_or_else(|| panic!("{:x}", fingerprint.0));
+        let midx = *match_idx;
         self.insts.raw.try_reserve(1)?;
-        let idx = self.insts.push_and_get_key(inst);
+        let iidx = self.insts.push_and_get_key(inst);
         // I have on very rare occasions seen an `[instance]` repeated twice
         // with the same fingerprint (without an intermediate `[new-match]`).
         debug_assert!(
-            stack.is_alive(self.matches[*match_idx].frame)
+            stack.is_alive(self.matches[midx].frame)
                 && (can_duplicate
                     || !inst_idx.is_some_and(|i| stack.is_alive(self.insts[i].frame))),
             "duplicate instantiation of fingerprint {fingerprint}",
         );
-        *inst_idx = Some(idx);
+        *inst_idx = Some(iidx);
+
         self.inst_stack.try_reserve(1)?;
-        self.inst_stack.push((idx, Vec::new()));
-        Ok(idx)
+        self.inst_stack.push(ActiveInst::new(iidx, body));
+        Ok(iidx)
     }
     pub fn end_inst(&mut self) -> Result<()> {
-        let (iidx, yield_terms) = self.inst_stack.pop().ok_or(Error::UnmatchedEndOfInstance)?;
-        self[iidx].yields_terms = yield_terms.into();
+        let active = self.inst_stack.pop().ok_or(Error::UnmatchedEndOfInstance)?;
+        self[active.idx].yields_terms = active.yields.into();
         Ok(())
+    }
+
+    pub(super) fn active_inst(&mut self) -> Option<&mut ActiveInst> {
+        self.inst_stack.last_mut()
     }
 
     pub fn has_theory_solving_inst(&self) -> bool {
@@ -100,6 +113,36 @@ impl Insts {
             midx: inst.match_,
             match_,
         }
+    }
+}
+
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug)]
+pub(super) struct ActiveInst {
+    pub(super) idx: InstIdx,
+    pub(super) body: Option<InstanceBody>,
+    pub(super) yields: Vec<ENodeIdx>,
+}
+
+impl ActiveInst {
+    fn new(idx: InstIdx, body: Option<InstanceBody>) -> Self {
+        Self {
+            idx,
+            body,
+            yields: Vec::new(),
+        }
+    }
+
+    pub(super) fn req_eqs(&self, term: TermIdx) -> impl Iterator<Item = (ENodeIdx, ENodeIdx)> + '_ {
+        self.body
+            .iter()
+            .flat_map(move |body| {
+                body.req_eqs
+                    .get(&term)
+                    .into_iter()
+                    .flat_map(|eqs| eqs.iter())
+            })
+            .copied()
     }
 }
 

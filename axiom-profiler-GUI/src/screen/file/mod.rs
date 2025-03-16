@@ -8,7 +8,7 @@ use smt_log_parser::{analysis::InstGraph, formatter::TermDisplayContext, parsers
 use yew::{html, ContextHandle, ContextProvider, Html};
 
 use crate::{
-    configuration::ConfigurationProvider,
+    configuration::{ConfigurationContext, ConfigurationProvider},
     infobars::{OmniboxMessage, OmniboxMessageKind},
     screen::{inst_graph::Graph, ml::MatchingLoop},
     utils::display_byte::byte_size_display,
@@ -155,10 +155,16 @@ impl Screen for File {
                     core::mem::replace(&mut self.analysis, Ok(AnalysisState::ConstructingGraph));
                 drop(old);
 
-                let parser = props.parser.parser.borrow();
+                let mut parser = props.parser.parser.borrow_mut();
                 match InstGraph::new(&parser) {
                     Ok(graph) => {
-                        let data = AnalysisData::new(&parser, graph);
+                        let full = link
+                            .get_configuration()
+                            .unwrap()
+                            .config
+                            .full_analysis_on_open;
+                        let data =
+                            AnalysisData::new(&mut parser, &props.parser.summary, graph, full);
                         self.analysis = Err(RcAnalysis::new(data));
                     }
                     Err(err) => {

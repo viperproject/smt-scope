@@ -8,6 +8,7 @@ mod proof;
 mod quant;
 mod stack;
 mod term;
+mod theory;
 
 pub use cdcl::*;
 pub use enode::*;
@@ -19,3 +20,4 @@ pub use proof::*;
 pub use quant::*;
 pub use stack::*;
 pub use term::*;
+pub use theory::*;

@@ -177,13 +177,11 @@ impl MlExplainer {
         for (blame_idx, (blame, gen)) in prev_info.blames.iter().zip(gen.iter()).enumerate() {
             // If it wasn't generalised it means that it's fixed
             let fixed_enode = parser.as_tidx(gen.enode);
-            if fixed_enode.is_some() {
-                self.fixed_node
-                    .get_or_insert_with(|| self.graph.add_node(MLGraphNode::HiddenNode(None)));
-            }
 
             let mut next_rec = None;
+            let mut inserted = false;
             let enode = *self.enodes.entry(blame.enode).or_insert_with(|| {
+                inserted = true;
                 let data = fixed_enode
                     .map(SimpIdx::from)
                     .map(MLGraphNode::FixedENode)
@@ -193,16 +191,15 @@ impl MlExplainer {
                     });
                 self.graph.add_node(data)
             });
+            if inserted && fixed_enode.is_some() {
+                self.add_hidden_edge(enode, None);
+            }
             self.graph
                 .add_edge(enode, prev_inst, MLGraphEdge::Blame(blame_idx));
             if let Some(next_rec) = next_rec {
                 let ancestor_is_recurring = self.add_enode(parser, blame.enode, enode);
                 if !ancestor_is_recurring {
-                    self.graph.add_edge(
-                        self.in_node,
-                        enode,
-                        MLGraphEdge::HiddenEdge(true, next_rec),
-                    );
+                    self.add_hidden_edge(enode, Some((true, next_rec)));
                     let MLGraphNode::RecurringENode(.., rec) = &mut self.graph[enode] else {
                         unreachable!();
                     };
@@ -218,14 +215,14 @@ impl MlExplainer {
             for (eq_idx, ((eqidx, _, _), (from, to))) in blame_eqs.zip(gen_eqs).enumerate() {
                 let from_to = parser.as_tidx(from).zip(parser.as_tidx(to));
                 let equalities = if from_to.is_some() {
-                    self.fixed_node
-                        .get_or_insert_with(|| self.graph.add_node(MLGraphNode::HiddenNode(None)));
                     &mut self.fixed_equalities
                 } else {
                     &mut self.recurring_equalities
                 };
                 let mut next_rec = None;
+                let mut inserted = false;
                 let eq = *equalities.entry(eqidx).or_insert_with(|| {
+                    inserted = true;
                     let data = from_to
                         .map(|(from, to)| MLGraphNode::FixedEquality(from.into(), to.into()))
                         .unwrap_or_else(|| {
@@ -238,6 +235,9 @@ impl MlExplainer {
                         });
                     self.graph.add_node(data)
                 });
+                if inserted && from_to.is_some() {
+                    self.add_hidden_edge(eq, None);
+                }
                 self.graph
                     .add_edge(eq, prev_inst, MLGraphEdge::BlameEq(blame_idx));
                 if let Some(next_rec) = next_rec {
@@ -246,11 +246,7 @@ impl MlExplainer {
                     // added.
                     let ancestor_is_recurring = self.add_equalities(parser, eqidx, eq);
                     if !ancestor_is_recurring {
-                        self.graph.add_edge(
-                            self.in_node,
-                            eq,
-                            MLGraphEdge::HiddenEdge(true, next_rec),
-                        );
+                        self.add_hidden_edge(eq, Some((true, next_rec)));
                         let MLGraphNode::RecurringEquality(.., rec) = &mut self.graph[eq] else {
                             unreachable!();
                         };
@@ -291,8 +287,7 @@ impl MlExplainer {
                     let data = MLGraphNode::RecurringEquality(from.into(), to.into(), rec_kind);
                     self.graph.add_node(data)
                 });
-                self.graph
-                    .add_edge(eq, self.out_node, MLGraphEdge::HiddenEdge(false, rec_idx));
+                self.add_hidden_edge(eq, Some((false, rec_idx)));
                 if added {
                     let ancestor_is_recurring = self.add_equalities(parser, eqidx, eq);
                     // TODO: Currently ML#6 in `problem.log` has a recurring
@@ -318,11 +313,7 @@ impl MlExplainer {
                     let data = MLGraphNode::RecurringENode(gen.enode.into(), rec_kind);
                     self.graph.add_node(data)
                 });
-                self.graph.add_edge(
-                    enode,
-                    self.out_node,
-                    MLGraphEdge::HiddenEdge(false, rec_idx),
-                );
+                self.add_hidden_edge(enode, Some((false, rec_idx)));
                 if added {
                     let ancestor_is_recurring = self.add_enode(parser, blame.enode, enode);
                     self.error |= !ancestor_is_recurring;
@@ -338,6 +329,28 @@ impl MlExplainer {
                     debug_assert_eq!(*rec, RecurrenceKind::Intermediate);
                     *rec = rec_kind;
                 }
+            }
+        }
+    }
+
+    fn add_hidden_edge(&mut self, node: NodeIndex, io_rec_idx: Option<(bool, u32)>) {
+        let edge = MLGraphEdge::HiddenEdge(io_rec_idx);
+        let rev_edge = MLGraphEdge::HiddenEdgeRev(io_rec_idx);
+        match io_rec_idx {
+            Some((true, _)) => {
+                self.graph.add_edge(self.in_node, node, edge);
+                self.graph.add_edge(node, self.in_node, rev_edge);
+            }
+            Some((false, _)) => {
+                self.graph.add_edge(node, self.out_node, edge);
+                self.graph.add_edge(self.out_node, node, rev_edge);
+            }
+            None => {
+                let fixed_node = *self
+                    .fixed_node
+                    .get_or_insert_with(|| self.graph.add_node(MLGraphNode::HiddenNode(None)));
+                self.graph.add_edge(fixed_node, node, edge);
+                self.graph.add_edge(node, fixed_node, rev_edge);
             }
         }
     }
@@ -385,7 +398,7 @@ impl MlExplainer {
                 let eq_expl = &self.equalities().given[eq];
                 match eq_expl {
                     &EqualityExpl::Literal { eq, .. } => {
-                        let created_by = self.parser[eq].blame.inst();
+                        let created_by = self.parser[eq].iblame;
                         let created_by =
                             created_by.and_then(|iidx| self.explainer.instantiations.get(&iidx));
                         if let Some(created_by) = created_by {

@@ -1,7 +1,7 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use crate::{FxHashMap, NonMaxU32};
+use crate::{FxHashMap, FxHashSet, NonMaxU32};
 
 use super::{ENodeIdx, EqGivenIdx, EqTransIdx, InstIdx, ProofIdx, StackIdx, TermIdx};
 
@@ -21,11 +21,10 @@ pub struct ENode {
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
-#[cfg_attr(feature = "mem_dbg", copy_type)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum ENodeBlame {
     /// The `ENode` was created by an instantiation.
-    Inst(InstIdx),
+    Inst((InstIdx, FxHashSet<EqTransIdx>)),
     /// The `ENode` was created by a proof step.
     Proof(ProofIdx),
     /// The `ENode` represents either `#1` or `#2`.
@@ -35,9 +34,9 @@ pub enum ENodeBlame {
 }
 
 impl ENodeBlame {
-    pub fn inst(self) -> Option<InstIdx> {
+    pub fn inst(&self) -> Option<InstIdx> {
         match self {
-            Self::Inst(inst) => Some(inst),
+            Self::Inst((inst, _)) => Some(*inst),
             _ => None,
         }
     }

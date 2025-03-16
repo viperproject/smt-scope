@@ -1,9 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
 use smt_log_parser::{
-    analysis::{InstGraph, ProofAnalysis, QuantifierAnalysis},
+    analysis::{InstGraph, ProblemBehaviours, ProofAnalysis, QuantifierAnalysis},
     Z3Parser,
 };
+
+use super::SummaryAnalysis;
 
 #[derive(Clone)]
 pub struct RcAnalysis(Rc<RefCell<AnalysisData>>);
@@ -32,13 +34,26 @@ pub struct AnalysisData {
     pub graph: InstGraph,
     pub quants: QuantifierAnalysis,
     pub proofs: ProofAnalysis,
+    pub pb: ProblemBehaviours,
 }
 
 impl AnalysisData {
-    pub fn new(parser: &Z3Parser, graph: InstGraph) -> Self {
+    pub fn new(
+        parser: &mut Z3Parser,
+        summary: &SummaryAnalysis,
+        mut graph: InstGraph,
+        full: bool,
+    ) -> Self {
+        let pb = if full {
+            let ml = graph.search_matching_loops(parser);
+            ProblemBehaviours::find(ml, &summary.redundancy)
+        } else {
+            ProblemBehaviours::default()
+        };
         Self {
             quants: QuantifierAnalysis::new(parser, &graph),
             proofs: ProofAnalysis::new(parser, &graph),
+            pb,
             graph,
         }
     }

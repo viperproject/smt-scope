@@ -48,6 +48,7 @@ pub struct Configuration {
     pub display: DisplayConfiguration,
     pub term_display: TermDisplayContextFiles,
     pub avg_weighing: F64Ord,
+    pub full_analysis_on_open: bool,
 }
 impl Configuration {
     pub const fn default_display() -> DisplayConfiguration {
@@ -71,6 +72,7 @@ impl Default for Configuration {
             display: Self::default_display(),
             term_display: TermDisplayContextFiles::default(),
             avg_weighing: F64Ord(1.0),
+            full_analysis_on_open: true,
         }
     }
 }

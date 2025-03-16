@@ -1,6 +1,6 @@
 use crate::{
     items::{Blame, Coupling, ENodeIdx, EqTransIdx, MatchKind, Term, TermIdx},
-    FxHashMap, NonMaxU32, Result,
+    FxHashMap, Result,
 };
 
 use super::{bugs::TransEqAllowed, Z3Parser};
@@ -33,10 +33,6 @@ impl Z3Parser {
         //     );
         // }
         eqs_new.as_deref() == Some(&*eqs)
-    }
-
-    fn bound(&self, match_: &MatchKind, qvar: NonMaxU32) -> Option<TermIdx> {
-        match_.bound_term(|e| self[e].owner, qvar)
     }
 }
 

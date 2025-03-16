@@ -86,6 +86,9 @@ pub enum Error {
     InvalidGeneration(ParseIntError),
     EnodeRootMismatch(ENodeIdx, ENodeIdx),
 
+    // Equality
+    UnknownEqLit,
+
     // Stack
     StackFrameNotPushed,
     PopConflictMismatch,
@@ -95,9 +98,10 @@ pub enum Error {
     NoConflict,
     BoolLiteral,
     BoolLiteralNotP,
-    InvalidBoolLiteral(ParseIntError),
+    InvalidBoolLiteral(num::ParseIntError),
     UnknownJustification(String),
     MissingColonJustification,
+    InvalidTheoryId(num::ParseIntError),
 
     Allocation(TryReserveError),
     Lasso(LassoError),

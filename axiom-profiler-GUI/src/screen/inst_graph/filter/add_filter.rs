@@ -1,7 +1,4 @@
-use petgraph::{
-    visit::{Dfs, Walker},
-    Direction,
-};
+use petgraph::Direction;
 use smt_log_parser::{
     analysis::{raw::NodeKind, InstGraph, RawNodeIndex},
     Z3Parser,
@@ -111,61 +108,41 @@ impl AddFilter<'_> {
             let first = first.unwrap_or_else(|| f(T::default()));
             (enable, first, filters.collect())
         }
-        let raw = &self.graph.raw;
         let filters = [
-            mk_filter(
-                &nodes,
-                |&(n, _, _)| {
-                    raw.neighbors_directed(n, Direction::Outgoing, &self.graph.analysis.reach)
-                        .count_hidden()
-                        > 0
-                },
-                |(n, _, _)| Filter::ShowNeighbours(n, Direction::Outgoing),
+            (
+                !selected.is_empty(),
+                Filter::HideSelf(selected.to_vec()),
+                Vec::new(),
             ),
-            mk_filter(
-                &nodes,
-                |&(n, _, _)| {
-                    raw.neighbors_directed(n, Direction::Incoming, &self.graph.analysis.reach)
-                        .count_hidden()
-                        > 0
-                },
-                |(n, _, _)| Filter::ShowNeighbours(n, Direction::Incoming),
+            (
+                !selected.is_empty(),
+                Filter::ShowNeighbours(selected.to_vec(), Direction::Outgoing),
+                Vec::new(),
             ),
-            mk_filter(
-                &nodes,
-                |&(n, _, _)| {
-                    Dfs::new(raw.rev(), n.0)
-                        .iter(raw.rev())
-                        .any(|n| raw.graph[n].hidden())
-                },
-                |(n, _, _)| Filter::VisitSourceTree(n, true),
+            (
+                !selected.is_empty(),
+                Filter::ShowNeighbours(selected.to_vec(), Direction::Incoming),
+                Vec::new(),
             ),
-            mk_filter(
-                &nodes,
-                |&(n, _, _)| {
-                    Dfs::new(raw.rev(), n.0)
-                        .iter(raw.rev())
-                        .any(|n| raw.graph[n].visible())
-                },
-                |(n, _, _)| Filter::VisitSourceTree(n, false),
+            (
+                !selected.is_empty(),
+                Filter::VisitSourceTree(selected.to_vec(), true),
+                Vec::new(),
             ),
-            mk_filter(
-                &nodes,
-                |&(n, _, _)| {
-                    Dfs::new(&*raw.graph, n.0)
-                        .iter(&*raw.graph)
-                        .any(|n| raw.graph[n].hidden())
-                },
-                |(n, _, _)| Filter::VisitSubTreeWithRoot(n, true),
+            (
+                !selected.is_empty(),
+                Filter::VisitSourceTree(selected.to_vec(), false),
+                Vec::new(),
             ),
-            mk_filter(
-                &nodes,
-                |&(n, _, _)| {
-                    Dfs::new(&*raw.graph, n.0)
-                        .iter(&*raw.graph)
-                        .any(|n| raw.graph[n].visible())
-                },
-                |(n, _, _)| Filter::VisitSubTreeWithRoot(n, false),
+            (
+                !selected.is_empty(),
+                Filter::VisitSubTreeWithRoot(selected.to_vec(), true),
+                Vec::new(),
+            ),
+            (
+                !selected.is_empty(),
+                Filter::VisitSubTreeWithRoot(selected.to_vec(), false),
+                Vec::new(),
             ),
             mk_filter(
                 &nodes,

@@ -7,7 +7,7 @@ use crate::{
     },
     items::*,
     parsers::z3::{
-        stm2::EventKind,
+        smt2::EventKind,
         synthetic::{AnyTerm, SynthIdx, SynthTermKind},
         Z3Parser,
     },
@@ -458,6 +458,17 @@ impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for EqTransIdx {
             write!(f, "] ")?;
         }
         path.last().unwrap().fmt_with(f, ctxt, data)
+    }
+}
+
+impl DisplayWithCtxt<DisplayCtxt<'_>, ()> for LitIdx {
+    fn fmt_with(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        ctxt: &DisplayCtxt<'_>,
+        data: &mut (),
+    ) -> fmt::Result {
+        ctxt.parser[self].term.fmt_with(f, ctxt, data)
     }
 }
 
@@ -1015,11 +1026,13 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, ()> for &'a EventKind {
                 let display = proof.result.with(ctxt);
                 write!(f, "(assert {display})")
             }
-            EventKind::Push => write!(f, "(push)"),
-            EventKind::Pop(num) => match num {
+            EventKind::Push(false) => write!(f, "(push)"),
+            EventKind::Push(true, ..) => Ok(()),
+            EventKind::Pop(false, num) => match num {
                 Some(num) => write!(f, "(pop {})", num.get()),
                 None => write!(f, "(pop)"),
             },
+            EventKind::Pop(true, ..) => Ok(()),
             EventKind::BeginCheck => write!(f, "(check-sat)"),
         }
     }

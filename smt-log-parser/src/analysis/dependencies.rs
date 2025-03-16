@@ -12,11 +12,13 @@ use super::InstGraph;
 #[derive(Clone)]
 pub struct QuantifierAnalysis(QuantPatVec<QuantPatInfo>);
 
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct QuantPatInfo {
     /// How much total cost did this quantifier + pattern accrue from individual
     /// instantiations.
     pub costs: f64,
+    // Issue 4: storing inst children in all nodes huge memory overhead
+    #[cfg(any())]
     /// How many other instantiations of other quantifiers is this quantifier
     /// _directly_ responsible for.
     pub children: f64,
@@ -25,7 +27,7 @@ pub struct QuantPatInfo {
     pub direct_deps: Vec<DirectDep>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct DirectDep {
     pub enode: FxHashMap<Option<QuantIdx>, u32>,
     pub eqs: FxHashMap<BoxSlice<QuantIdx>, u32>,
@@ -52,6 +54,8 @@ impl QuantifierAnalysis {
             let ginst = &inst_graph.raw[data.iidx];
             qinfo.costs += ginst.cost;
 
+            // Issue 4: storing inst children in all nodes huge memory overhead
+            #[cfg(any())]
             for &child in ginst.children.insts.iter() {
                 let cq = parser.get_inst(child).match_.kind.quant_idx();
                 if cq.is_some_and(|q| q == qpat.quant) {
@@ -83,6 +87,8 @@ impl QuantifierAnalysis {
                     created_by.and_then(|iidx| parser.get_inst(iidx).match_.kind.quant_idx());
                 *direct_dep.enode.entry(created_by).or_default() += 1;
 
+                // Issue 4: storing inst children in all nodes huge memory overhead
+                #[cfg(any())]
                 for &eq in blame.equalities.iter() {
                     let eq_parents = inst_graph.raw[eq].parents.insts.iter().copied();
                     let eq_parents =
@@ -110,6 +116,8 @@ impl QuantifierAnalysis {
             .map(|(quant, data)| (quant, data.iter_enumerated().map(|(_, d)| d.costs).sum()))
     }
 
+    // Issue 4: storing inst children in all nodes huge memory overhead
+    #[cfg(any())]
     pub fn quants_children(&self) -> impl Iterator<Item = (QuantIdx, f64)> + '_ {
         self.0
              .0

@@ -1,4 +1,4 @@
-; https://github.com/viperproject/axiom-profiler-2/issues/100
+; https://github.com/viperproject/smt-scope/issues/100
 
 (push)(pop)
 (declare-fun f (Int) Int)

@@ -131,6 +131,7 @@ fn analyse(tracefile: std::path::PathBuf) -> Result<(), String> {
     let data = test::post_parse(&parser, data);
 
     // Analysis
+    #[cfg(debug_assertions)]
     if cfg!(debug_assertions) {
         return test::analysis(parser, data);
     }

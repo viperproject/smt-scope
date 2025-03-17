@@ -13,6 +13,14 @@ categories = ["parser-implementations", "development-tools", "development-tools:
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "smt-scope"
+required-features = ["analysis", "display", "mem_dbg"]
+
+[[bin]]
+name = "z3-scope"
+required-features = ["analysis", "display"]
+
 [dependencies]
 # Collections and useful types
 typed-index-collections = "3.1"

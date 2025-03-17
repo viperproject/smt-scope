@@ -26,6 +26,7 @@ pub struct Literals {
     pub cdcl: CdclTree,
 }
 
+#[cfg(any())]
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug)]
 pub struct LitStack {

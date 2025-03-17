@@ -1,9 +1,12 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
+#[cfg(feature = "display")]
 use crate::{
     display_with::{DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
+};
+use crate::{
     items::{ENodeIdx, InstIdx, QuantIdx, QuantPat},
     FxHashMap, FxHashSet, Z3Parser,
 };
@@ -64,6 +67,7 @@ impl MlSignature {
         Some(Self { qpat, parents })
     }
 
+    #[cfg(feature = "display")]
     pub fn to_string(&self, parser: &Z3Parser) -> String {
         let ctxt = DisplayCtxt {
             parser,

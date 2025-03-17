@@ -1,4 +1,4 @@
-name: Continuous integration
+name: Check features matrix compiles
 on:
   push:
     branches: [main]
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  format:
+  all-features:
     runs-on: ubuntu-latest
 
     steps:

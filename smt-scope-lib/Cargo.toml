@@ -49,7 +49,7 @@ strum = { version = "0.26", features = ["derive"] }
 clap = { version = "4.5.4", features = ["derive"] }
 tempfile = "3"
 # For `debug_assertions` builds which are used for testing
-cap = "0.1.2"
+cap = { version = "0.1.2", optional = true }
 
 [dev-dependencies]
 memory-stats = "1.1.0"
@@ -66,5 +66,5 @@ analysis = []
 # Tries to catch memory allocation errors, in some cases spends some extra time with test allocations
 # when a crate doesn't support `try_reserve`. Currently some panics may still happen.
 never_panic = []
-mem_dbg = ["dep:mem_dbg"]
+mem_dbg = ["dep:mem_dbg", "dep:cap"]
 serde = ["dep:serde", "lasso/serialize", "nonmax/serde", "typed-index-collections/serde-std", "num/serde", "petgraph/serde-1"]

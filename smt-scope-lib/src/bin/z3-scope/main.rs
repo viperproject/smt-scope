@@ -1,4 +1,4 @@
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions, feature = "mem_dbg"))]
 mod test;
 
 use smt_scope::{
@@ -121,17 +121,17 @@ fn analyse(tracefile: std::path::PathBuf) -> Result<(), String> {
     let (_metadata, parser) = Z3Parser::from_file(tracefile).map_err(|e| e.to_string())?;
 
     // Parsing
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, feature = "mem_dbg"))]
     let data = test::pre_parse(_metadata, byte_limit);
     let (state, mut parser) = parser.process_all_limit(byte_limit, line_limit);
     if let Some(e) = state.error() {
         return Err(e.to_string());
     }
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, feature = "mem_dbg"))]
     let data = test::post_parse(&parser, data);
 
     // Analysis
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, feature = "mem_dbg"))]
     if cfg!(debug_assertions) {
         return test::analysis(parser, data);
     }

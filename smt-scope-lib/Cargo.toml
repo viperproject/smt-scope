@@ -3,6 +3,13 @@ name = "smt-scope"
 version = "0.1.0"
 edition = "2021"
 resolver = "2"
+# authors = ["Viper Team <smtscope_developers@sympa.ethz.ch>"]
+license = "Apache-2.0"
+description = "A library for parsing and analysing SMT traces."
+repository = "https://github.com/viperproject/smt-scope"
+readme = "../README.md"
+keywords = ["trace", "smt", "z3", "performance", "axiom-profiler"]
+categories = ["parser-implementations", "development-tools", "development-tools::profiling", "development-tools::debugging", "development-tools::testing"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -27,7 +34,7 @@ roaring = "0.10"
 serde = { version = "1.0.183", features = ["derive"], optional = true }
 regex = { version = "1.10", optional = true }
 ammonia = { version = "4.0.0", optional = true }
-# Convinient macros
+# Convenient macros
 duplicate = "1.0"
 strum = { version = "0.26", features = ["derive"] }
 # For the command line interface

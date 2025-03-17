@@ -1,4 +1,4 @@
-![SMTscope](axiom-profiler-GUI/assets/html/logo_side_small.png?raw=true "SMTscope")
+![SMTScope](smt-scope-gui/assets/html/logo_side_small.png?raw=true "SMTScope")
 
 [Runs online](https://viperproject.github.io/smt-scope/) · [Tutorial](https://github.com/viperproject/smt-scope/wiki/Tutorial)
 
@@ -29,7 +29,7 @@ NOTE: if this takes too long, it is possible to run S<b><sub><sup>MT</sup></sub>
 
 Similarly, if you have a log file which takes too long to load into S<b><sub><sup>MT</sup></sub></b>S<b><sub><sup>COPE</sup></sub></b>, hitting Cancel will cause the tool to work with the portion loaded so far.
 
-To correctly parse the log file, we impose a few [restrictions](smt-log-parser/design-docs/restrictions.md) on the smt2 file given to z3.
+To correctly parse the log file, we impose a few [restrictions](design-docs/restrictions.md) on the smt2 file given to z3.
 
 ## Obtaining Z3 logs from various verification tools that use Z3 (feel free to add more)
 

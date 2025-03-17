@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "smt-log-parser",
-    "axiom-profiler-GUI",
+    "smt-scope-lib",
+    "smt-scope-gui",
 ]
 resolver = "2"
 

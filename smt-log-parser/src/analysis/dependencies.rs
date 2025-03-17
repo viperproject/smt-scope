@@ -7,7 +7,10 @@ use crate::{
     BoxSlice, FxHashMap, TiVec, Z3Parser,
 };
 
-use super::InstGraph;
+use super::{
+    raw::{IndexesInstGraph, NodeKind},
+    InstGraph, RawNodeIndex,
+};
 
 #[derive(Clone)]
 pub struct QuantifierAnalysis(QuantPatVec<QuantPatInfo>);
@@ -44,6 +47,24 @@ impl Deref for QuantifierAnalysis {
 
 impl QuantifierAnalysis {
     pub fn new(parser: &Z3Parser, inst_graph: &InstGraph) -> Self {
+        let mut quant_deps = FxHashMap::<RawNodeIndex, FxHashSet<QuantIdx>>::default();
+        for node in inst_graph.subgraphs.topo_node_indices() {
+            let qdeps = quant_deps.entry(node).or_default();
+            let ig = &inst_graph.raw[node];
+            if let NodeKind::Instantiation(i) = *ig.kind() {
+                if let Some(q) = parser.get_inst(i).match_.kind.quant_idx() {
+                    qdeps.insert(q);
+                    continue;
+                }
+            }
+            let graph = &inst_graph.raw.graph;
+            for parent in graph.neighbors_directed(node.0, petgraph::Direction::Incoming) {
+                let parents = RawNodeIndex(parent);
+                let parent = quant_deps[&parents].clone();
+                quant_deps.get_mut(&node).unwrap().extend(parent);
+            }
+        }
+
         let mut self_ = QuantifierAnalysis(parser.new_quant_pat_vec(|_| QuantPatInfo::default()));
         for data in parser.instantiations_data() {
             let Some(qpat) = data.match_.kind.quant_pat() else {
@@ -87,13 +108,12 @@ impl QuantifierAnalysis {
                     created_by.and_then(|iidx| parser.get_inst(iidx).match_.kind.quant_idx());
                 *direct_dep.enode.entry(created_by).or_default() += 1;
 
-                // Issue 4: storing inst children in all nodes huge memory overhead
-                #[cfg(any())]
                 for &eq in blame.equalities.iter() {
-                    let eq_parents = inst_graph.raw[eq].parents.insts.iter().copied();
-                    let eq_parents =
-                        eq_parents.filter_map(|iidx| parser.get_inst(iidx).match_.kind.quant_idx());
-                    *direct_dep.eqs.entry(eq_parents.collect()).or_default() += 1;
+                    let nidx = eq.index(&inst_graph.raw);
+                    let quants = &quant_deps[&nidx];
+                    let mut quants: BoxSlice<_> = quants.iter().copied().collect();
+                    quants.sort();
+                    *direct_dep.eqs.entry(quants).or_default() += 1;
                 }
             }
         }

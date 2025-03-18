@@ -8,13 +8,18 @@ static ALLOCATOR: cap::Cap<std::alloc::System> = cap::Cap::new(std::alloc::Syste
 
 const MB: u64 = 1024_u64 * 1024_u64;
 
-const FIXED_OVERHEAD: u64 = 64 * MB;
+const FIXED_MEM_OVHD: u64 = 64 * MB;
 
-const PARSER_OVERHEAD: u64 = 3;
-const ANALYSIS_OVERHEAD: u64 = 8;
+const PARSER_MEM_OVHD: f64 = 2.5;
+const ANALYSIS_MEM_OVHD: f64 = 2.;
+
+/// Gives 25 millis per MB (or 25 secs per GB), i.e. at least 40 MB/s.
+const PARSE_MIN_MBS: u64 = 40;
+/// Analysis can take a bit longer than parsing (TODO: reduce this).
+const ANALYSIS_MIN_MBS: u64 = 10;
 
 type ParseData = (u64, Instant);
-type AnalysisData = (u64, Duration, f64);
+type AnalysisData = (u64, f64);
 
 pub(super) fn pre_parse(metadata: std::fs::Metadata, byte_limit: Option<usize>) -> ParseData {
     let start_alloc = ALLOCATOR.allocated() as u64;
@@ -26,7 +31,7 @@ pub(super) fn pre_parse(metadata: std::fs::Metadata, byte_limit: Option<usize>) 
 
     // Limit memory usage to `PARSER_OVERHEAD`x the parse amount + 64MiB. Reduce this if
     // we optimise memory usage more.
-    let mem_limit = start_alloc + parse_bytes * PARSER_OVERHEAD + FIXED_OVERHEAD;
+    let mem_limit = start_alloc + (parse_bytes as f64 * PARSER_MEM_OVHD) as u64 + FIXED_MEM_OVHD;
 
     ALLOCATOR.set_limit(mem_limit as usize).unwrap();
     let out_of = (parse_bytes != file_size).then(|| format!(" / {} MB", file_size / MB));
@@ -45,8 +50,7 @@ pub(super) fn pre_parse(metadata: std::fs::Metadata, byte_limit: Option<usize>) 
 pub(super) fn post_parse(parser: &Z3Parser, (parse_bytes, time): ParseData) -> AnalysisData {
     let elapsed = time.elapsed();
 
-    // Gives 40 millis per MB (or 40 secs per GB), i.e. at least 25 MB/s.
-    let timeout = Duration::from_millis(parse_bytes / (25 * 1024) + 500);
+    let timeout = Duration::from_millis(parse_bytes / (PARSE_MIN_MBS * 1024) + 500);
     assert!(
         elapsed < timeout,
         "Parsing took {elapsed:?}, timeout of {timeout:?}"
@@ -66,21 +70,21 @@ pub(super) fn post_parse(parser: &Z3Parser, (parse_bytes, time): ParseData) -> A
     mem_dbg(parser, DbgFlags::default()).ok();
     // TODO: decrease this
     assert!(
-        mem_size as u64 <= parse_bytes_ovhd * PARSER_OVERHEAD,
-        "Parser takes up more memory than {PARSER_OVERHEAD} * file size!"
+        mem_size as f64 <= parse_bytes_ovhd as f64 * PARSER_MEM_OVHD,
+        "Parser takes up more memory than {PARSER_MEM_OVHD} * file size!"
     );
 
-    (parse_bytes, timeout, actual_ovhd)
+    (parse_bytes, actual_ovhd)
 }
 
 pub(super) fn analysis(
     mut parser: Z3Parser,
-    (parse_bytes, timeout, parse_ovhd): AnalysisData,
+    (parse_bytes, parse_ovhd): AnalysisData,
 ) -> Result<(), String> {
     let middle_alloc = ALLOCATOR.allocated() as u64;
     // Limit memory usage to `ANALYSIS_OVERHEAD`x the parse amount + 64MiB. Reduce this if
     // we optimise memory usage more.
-    let mem_limit = middle_alloc + parse_bytes * ANALYSIS_OVERHEAD + FIXED_OVERHEAD;
+    let mem_limit = middle_alloc + (parse_bytes as f64 * ANALYSIS_MEM_OVHD) as u64 + FIXED_MEM_OVHD;
 
     ALLOCATOR.set_limit(mem_limit as usize).unwrap();
     eprintln!(
@@ -93,10 +97,6 @@ pub(super) fn analysis(
     let now = Instant::now();
     let mut inst_graph = analysis::run_all(&parser).inst_graph;
     let elapsed_ig = now.elapsed();
-    assert!(
-        elapsed_ig < timeout,
-        "Constructing inst graph took longer than timeout"
-    );
 
     let now = Instant::now();
     inst_graph.search_matching_loops(&mut parser);
@@ -117,10 +117,18 @@ pub(super) fn analysis(
     mem_dbg(&inst_graph, DbgFlags::default()).ok();
 
     // TODO: decrease this
-    assert!(elapsed_ml < timeout, "ML search took longer than timeout");
+    let timeout = Duration::from_millis(parse_bytes / (ANALYSIS_MIN_MBS * 1024) + 500);
     assert!(
-        mem_size as u64 <= parse_bytes_ovhd * ANALYSIS_OVERHEAD,
-        "Analysis takes up more memory than {ANALYSIS_OVERHEAD} * file size!"
+        elapsed_ig < timeout,
+        "Constructing inst graph timeout ({elapsed_ig:?} > {timeout:?})"
+    );
+    assert!(
+        elapsed_ml < timeout,
+        "ML search timeout ({elapsed_ml:?} > {timeout:?})"
+    );
+    assert!(
+        mem_size as f64 <= parse_bytes_ovhd as f64 * ANALYSIS_MEM_OVHD,
+        "Analysis takes up more memory than {ANALYSIS_MEM_OVHD} * file size!"
     );
 
     let actual_analysis_ovhd = mem_size as f64 / parse_bytes_ovhd as f64;

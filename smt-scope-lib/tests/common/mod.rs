@@ -35,9 +35,6 @@ pub fn z3_version() -> String {
 }
 
 fn visit_dirs<P: AsRef<Path>>(dir: P, cb: &mut impl FnMut(DirEntry)) -> std::io::Result<()> {
-    let dir = dir.as_ref();
-    let dir = dir.canonicalize()?;
-    eprintln!("Visiting \"{}\"", dir.display());
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();

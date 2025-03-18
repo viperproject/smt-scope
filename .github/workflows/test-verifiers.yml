@@ -29,7 +29,7 @@ jobs:
     - name: Cache cargo build artifacts
       uses: ./.github/actions/cargo-cache
       with:
-        shared-key: "test"
+        shared-key: "test-verifiers"
 
     - uses: actions/checkout@v4
       with:
@@ -50,7 +50,7 @@ jobs:
         version: ${{ matrix.z3version.version }}
         distribution: ${{ matrix.z3version.distribution == '' && 'glibc-2.31' || matrix.z3version.distribution }}
 
-    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test --features display_html --package smt-scope --test smt_verifiers -- parse_smt_logs --exact --nocapture
+    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test --features test_verifiers --package smt-scope --test smt_verifiers -- parse_smt_logs --exact --nocapture
 
     # Failure
     - run: tar -czf failing_logs.tar.bz2 logs/

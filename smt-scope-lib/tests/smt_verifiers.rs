@@ -14,7 +14,7 @@ mod common;
 // }
 
 #[test]
-#[cfg_attr(not(feature = "display_html"), ignore)]
+#[cfg_attr(not(feature = "test_verifiers"), ignore)]
 fn parse_smt_logs() {
     common::parse_logs_in("../smt-logs/smt2", false, false, 2).expect("failed for n logs")
 }

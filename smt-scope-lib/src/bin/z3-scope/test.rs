@@ -31,7 +31,8 @@ pub(super) fn pre_parse(metadata: std::fs::Metadata, byte_limit: Option<usize>) 
 
     // Limit memory usage to `PARSER_OVERHEAD`x the parse amount + 64MiB. Reduce this if
     // we optimise memory usage more.
-    let mem_limit = start_alloc + (parse_bytes as f64 * PARSER_MEM_OVHD) as u64 + FIXED_MEM_OVHD;
+    let mem_limit =
+        start_alloc + (2. * parse_bytes as f64 * PARSER_MEM_OVHD) as u64 + FIXED_MEM_OVHD;
 
     ALLOCATOR.set_limit(mem_limit as usize).unwrap();
     let out_of = (parse_bytes != file_size).then(|| format!(" / {} MB", file_size / MB));
@@ -84,7 +85,8 @@ pub(super) fn analysis(
     let middle_alloc = ALLOCATOR.allocated() as u64;
     // Limit memory usage to `ANALYSIS_OVERHEAD`x the parse amount + 64MiB. Reduce this if
     // we optimise memory usage more.
-    let mem_limit = middle_alloc + (parse_bytes as f64 * ANALYSIS_MEM_OVHD) as u64 + FIXED_MEM_OVHD;
+    let mem_limit =
+        middle_alloc + (3. * parse_bytes as f64 * ANALYSIS_MEM_OVHD) as u64 + FIXED_MEM_OVHD;
 
     ALLOCATOR.set_limit(mem_limit as usize).unwrap();
     eprintln!(

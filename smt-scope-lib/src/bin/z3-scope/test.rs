@@ -130,6 +130,10 @@ pub(super) fn analysis(
 }
 
 fn mem_dbg(d: &impl MemDbg, flags: DbgFlags) -> Result<(), std::fmt::Error> {
+    let Ok(Some(_)) = super::var("SCOPE_MEM_DBG") else {
+        return Ok(());
+    };
+
     struct Wrapper(std::io::Stderr);
     impl core::fmt::Write for Wrapper {
         #[inline(always)]

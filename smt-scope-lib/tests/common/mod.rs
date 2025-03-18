@@ -166,7 +166,11 @@ pub fn parse_logs_in<P: AsRef<Path>>(
         }
     })
     .unwrap();
-    all_smt2.sort_by_key(|e| e.metadata().unwrap().len());
+    if expect_simple_smt2 {
+        all_smt2.sort_by_key(|e| e.metadata().unwrap().len());
+    } else {
+        all_smt2.sort_by_key(|e| e.path());
+    }
 
     std::fs::create_dir_all("../logs").unwrap();
 

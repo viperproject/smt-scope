@@ -1,4 +1,4 @@
-name: Continuous integration
+name: CI (local)
 on:
   push:
     branches: [main]
@@ -25,7 +25,7 @@ jobs:
         shared-key: "clippy"
     - run: cargo clippy -- -D warnings
 
-  test:
+  test-local:
     strategy:
       fail-fast: false
       matrix:

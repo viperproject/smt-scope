@@ -1,4 +1,4 @@
-name: Continuous integration (latest z3)
+name: CI (latest z3)
 on:
   schedule:
     - cron: '0 0 * * *'

@@ -1,4 +1,4 @@
-name: Continuous integration (verifiers)
+name: Continuous integration
 on:
   push:
     branches: [main]

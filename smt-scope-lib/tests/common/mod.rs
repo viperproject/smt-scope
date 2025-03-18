@@ -135,6 +135,7 @@ pub fn parse_logs_in<P: AsRef<Path>>(
     dir: P,
     save_logs: bool,
     expect_simple_smt2: bool,
+    z3_timeout: u8,
 ) -> Result<(), usize> {
     let z3_version = z3_version();
     let mem = std::env::var("SLP_MEMORY_LIMIT_GB")
@@ -150,7 +151,7 @@ pub fn parse_logs_in<P: AsRef<Path>>(
     let parse_limit = mem * MB / (PARSER_OVERHEAD + ANALYSIS_OVERHEAD + 1);
     let args = [
         format!("-memory:{mem}"),
-        "-T:15".to_string(),
+        format!("-T:{z3_timeout}"),
         "smt.random-seed=1".to_string(),
     ];
 

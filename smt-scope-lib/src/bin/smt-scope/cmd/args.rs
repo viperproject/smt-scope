@@ -9,7 +9,6 @@ pub struct Cli {
 
 #[derive(clap::Subcommand)]
 pub enum Commands {
-    #[cfg(feature = "analysis")]
     /// Prints out the nth dependencies of a list of instantiations
     Dependencies {
         /// The path to the smt log file
@@ -39,6 +38,7 @@ pub enum Commands {
         #[arg(short, long, default_value_t = 15.0)]
         timeout: f32,
         /// Whether to print out memory usage information
+        #[cfg(feature = "mem_dbg")]
         #[arg(short, long, default_value_t = false)]
         memory: bool,
     },

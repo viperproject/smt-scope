@@ -10,78 +10,111 @@ This tool supersedes the [Axiom Profiler](https://github.com/viperproject/axiom-
 
 More details of the tool's features can be found in the [README](https://github.com/viperproject/axiom-profiler/blob/master/README.md) of the old tool.
 
-> Note: not all features of the old tool are currently implemented: you may still find it useful to use the old tool.
+## Obtaining a z3 trace
 
-## Obtaining logs from Z3
-
-NOTE: S<b><sub><sup>MT</sup></sub></b>S<b><sub><sup>COPE</sup></sub></b> requires at least version 4.8.5 of z3. To build the latest version of z3 from source follow the instructions at https://github.com/Z3Prover/z3.
+> NOTE: S<b><sub><sup>MT</sup></sub></b>S<b><sub><sup>COPE</sup></sub></b> requires at least version 4.8.5 of [z3](https://github.com/z3prover/z3/releases).
 
 Run Z3 with two extra command-line options:
 
-    z3 trace=true proof=true ./input.smt2
+```
+z3 trace=true proof=true ./input.smt2
+```
 
-This will produce a log file called `./z3.log`.
+This will produce a trace file called `./z3.log`.
 If you want to specify the target filename, you can pass a third option:
 
-    z3 trace=true proof=true trace-file-name=foo.log ./input.smt2
+```
+z3 trace=true proof=true trace-file-name=foo.log ./input.smt2
+```
 
-NOTE: if this takes too long, it is possible to run S<b><sub><sup>MT</sup></sub></b>S<b><sub><sup>COPE</sup></sub></b> with a prefix of a valid log file - you could potentially kill the z3 process and obtain the corresponding partial log. Some users (especially on Windows) have reported that killing z3 can cause a lot of the file contents to disappear; if you observe this problem, it's recommended to copy the log file before killing the process.
+> NOTE: if this takes too long, it is possible to run S<b><sub><sup>MT</sup></sub></b>S<b><sub><sup>COPE</sup></sub></b> with a prefix of a valid trace file - you could potentially kill the z3 process and obtain the corresponding partial trace. Some users (especially on Windows) have reported that killing z3 can cause a lot of the file contents to disappear; if you observe this problem, it's recommended to copy the trace file before killing the process.
 
-Similarly, if you have a log file which takes too long to load into S<b><sub><sup>MT</sup></sub></b>S<b><sub><sup>COPE</sup></sub></b>, hitting Cancel will cause the tool to work with the portion loaded so far.
+Similarly, if you have a trace file which takes too long to load into S<b><sub><sup>MT</sup></sub></b>S<b><sub><sup>COPE</sup></sub></b>, hitting Cancel will cause the tool to work with the portion loaded so far.
 
-To correctly parse the log file, we impose a few [restrictions](design-docs/restrictions.md) on the smt2 file given to z3.
+To correctly parse the trace file, we impose a few [restrictions](design-docs/restrictions.md) on the smt2 file given to z3.
 
-## Obtaining Z3 logs from various verification tools that use Z3 (feel free to add more)
+## Obtaining a trace from various verification tools that use z3 (feel free to add more)
 
 ### Boogie
 
-To obtain a Z3 log with Boogie, use e.g:
+Boogie can forward flags to z3 with `proverOpt:O:...`. For example:
 
-    boogie /vcsCores:1 /proverOpt:O:trace=true /proverOpt:O:proof=true ./file.bpl
+```
+boogie /vcsCores:1 /proverOpt:O:trace=true /proverOpt:O:proof=true ./file.bpl
+```
 
-### Silicon
+Boogie can also dump the `.smt2` file it gives to z3. For example:
 
-To obtain a Z3 log with the Viper symbolic execution verifier (Silicon), use e.g:
+```
+boogie /proverLog:query-@PROC@.smt2 ./file.bpl
+```
 
-    silicon --numberOfParallelVerifiers 1 --z3Args "trace=true proof=true" ./file.vpr
+### Viper (silicon)
+
+Silicon can dump the `.smt2` file it gives to z3. For example:
+
+```
+silicon --numberOfParallelVerifiers 1 --proverLogFile query ./file.vpr
+```
+
+Then use the `z3` commands from [above](#obtaining-a-z3-trace) to generate the trace file from the resulting `.smt2` file.
+
+Silicon can also forward flags to z3 with `--z3Args`, but when verifying multiple methods/functions the traces for each will be overwritten. For example:
+
+```
+silicon --numberOfParallelVerifiers 1 --z3Args "trace=true proof=true" ./file.vpr
+```
 
 If it complains about an unrecognized argument, try escaping the double-quotes. E.g.:
 
-    silicon --numberOfParallelVerifiers 1 --z3Args '"trace=true proof=true"' ./file.vpr
-    
-on Unix-like systems or:
+```
+# Unix-like systems
+silicon --numberOfParallelVerifiers 1 --z3Args '"trace=true proof=true"' ./file.vpr
 
-    silicon --numberOfParallelVerifiers 1 --z3Args """trace=true proof=true""" ./file.vpr
+# Windows
+silicon --numberOfParallelVerifiers 1 --z3Args """trace=true proof=true""" ./file.vpr
+```
 
-in Windows command prompt.
+### Viper (carbon)
 
-### Carbon
+Carbon can forward flags to Boogie with `--boogieOpt`, then use the same flags as listed [there](#boogie). For example:
 
-To obtain a Z3 log with the Viper verification condition generation verifier (Carbon), use e.g:
+```
+carbon --boogieOpt "/vcsCores:1 /proverOpt:O:trace=true /proverOpt:O:proof=true" ./file.vpr
+```
 
-    carbon --print ./file.bpl ./file.vpr
-    boogie /vcsCores:1 /proverOpt:O:trace=true /proverOpt:O:proof=true ./file.bpl
+Carbon can also dump the `.bpl` file it gives to Boogie. For example:
 
-In all cases, the Z3 log should be stored in `./z3.log` (this can also be altered by correspondingly passing z3 the trace-file-name option described above)
+```
+carbon --print ./file.bpl ./file.vpr
+```
 
 ### Dafny
 
 See these instructions in Dafny's wiki: [Investigating slow verification performance](https://github.com/dafny-lang/dafny/wiki/Investigating-slow-verification-performance).
 
+Dafny does not seem to support getting the trace file with the new configuration options, therefore we need to use the old mode. In the old mode flags are directly forwarded to Boogie. For example:
+
 ```
-dafny /compile:0 /print:file.bpl /vcsCores:1 /proverLog:file.smt2 /proverOpt:O:trace-file-name=file.log /proverOpt:O:trace=true /proverOpt:O:proof=true file.dfy
+dafny /compile:0 /vcsCores:1 /proverOpt:O:trace=true /proverOpt:O:proof=true ./file.dfy
 ```
 
-To dump the whole chain of `.dfy -> .bpl -> .smt2 -> .log` files, try using the above command.
+This can be used to get the `.smt2` file (as above, using `/proverLog:query-@PROC@.smt2`). Dafny can also dump the `.bpl` file it gives to Boogie. For example:
+
+```
+dafny /compile:0 /print:file.bpl ./file.dfy
+```
 
 ### FStar
 
 See these instructions in FStar's wiki: [Profiling Z3 queries](https://github.com/FStarLang/FStar/wiki/Profiling-Z3-queries).
 
+Using the `--log_queries` flag should dump the `.smt2` file it gives to z3.
+
 ### VerCors
 
-Use the `--backend-option` flag to pass instructions to the silicon backend:
+VerCors can forward flags to the silicon backend with `--backend-option`, then use the same flags as listed [there](#silicon). For example:
 
 ```
-vercors file.pvl --backend-option --numberOfParallelVerifiers=1 --backend-option --z3Args="trace=true proof=true"
+vercors ./file.pvl --backend-option --numberOfParallelVerifiers=1 --backend-option --z3Args="trace=true proof=true"
 ```

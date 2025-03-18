@@ -6,6 +6,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
+#[cfg(feature = "analysis")]
 use super::{FxHashMap, TiVec};
 
 // BoxSlice
@@ -223,18 +224,22 @@ where
 
 // InternMap
 
+#[cfg(feature = "analysis")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct ValueRef<V: ?Sized + 'static> {
     value: &'static V,
     _marker: core::marker::PhantomData<V>,
 }
 
+#[cfg(feature = "analysis")]
 #[derive(Debug)]
 pub struct InternMap<K: Copy + From<usize>, V: Eq + Hash + ?Sized + 'static> {
+    #[cfg(feature = "analysis")]
     map: FxHashMap<ValueRef<V>, K>,
     interned: TiVec<K, Box<V>>,
 }
 
+#[cfg(feature = "analysis")]
 impl<K: Copy + From<usize>, V: ?Sized + Eq + Hash + 'static> Default for InternMap<K, V> {
     fn default() -> Self {
         Self {
@@ -244,6 +249,7 @@ impl<K: Copy + From<usize>, V: ?Sized + Eq + Hash + 'static> Default for InternM
     }
 }
 
+#[cfg(feature = "analysis")]
 impl<K: Copy + From<usize>, V: ?Sized + Eq + Hash + 'static> InternMap<K, V> {
     pub fn intern(&mut self, v: Box<V>) -> K {
         // SAFETY: `v` is stored in the `interned` vector, behind a `Box` so it
@@ -264,6 +270,7 @@ impl<K: Copy + From<usize>, V: ?Sized + Eq + Hash + 'static> InternMap<K, V> {
     }
 }
 
+#[cfg(feature = "analysis")]
 impl<K: Copy + From<usize>, V: ?Sized + Eq + Hash + 'static> Deref for InternMap<K, V> {
     type Target = TiVec<K, Box<V>>;
     fn deref(&self) -> &Self::Target {

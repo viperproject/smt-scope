@@ -1027,12 +1027,12 @@ impl<'a> DisplayWithCtxt<DisplayCtxt<'a>, ()> for &'a EventKind {
                 write!(f, "(assert {display})")
             }
             EventKind::Push(false) => write!(f, "(push)"),
-            EventKind::Push(true, ..) => Ok(()),
+            EventKind::Push(true, ..) => write!(f, "; CDCL push"),
             EventKind::Pop(false, num) => match num {
                 Some(num) => write!(f, "(pop {})", num.get()),
                 None => write!(f, "(pop)"),
             },
-            EventKind::Pop(true, ..) => Ok(()),
+            EventKind::Pop(true, ..) => write!(f, "; CDCL pop"),
             EventKind::BeginCheck => write!(f, "(check-sat)"),
         }
     }

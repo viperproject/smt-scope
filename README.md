@@ -1,4 +1,4 @@
-![SMTScope](smt-scope-gui/assets/html/logo_side_small.png?raw=true "SMTScope")
+![SMTScope](smt-scope-gui/assets/html/logo_side_small.png "SMTScope")
 
 [Runs online](https://viperproject.github.io/smt-scope/) · [Tutorial](https://github.com/viperproject/smt-scope/wiki/Tutorial)
 
@@ -113,7 +113,7 @@ Using the `--log_queries` flag should dump the `.smt2` file it gives to z3.
 
 ### VerCors
 
-VerCors can forward flags to the silicon backend with `--backend-option`, then use the same flags as listed [there](#silicon). For example:
+VerCors can forward flags to the silicon backend with `--backend-option`, then use the same flags as listed [there](#viper-silicon). For example:
 
 ```
 vercors ./file.pvl --backend-option --numberOfParallelVerifiers=1 --backend-option --z3Args="trace=true proof=true"

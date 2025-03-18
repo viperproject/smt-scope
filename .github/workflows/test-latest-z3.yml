@@ -1,0 +1,45 @@
+name: Continuous integration (latest z3)
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  test-latest-z3:
+    strategy:
+      fail-fast: false
+    # Linux, Processor (CPU): 4, Memory (RAM): 16 GB, Storage (SSD): 14 GB
+    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Cache cargo build artifacts
+      uses: ./.github/actions/cargo-cache
+      with:
+        shared-key: "test"
+
+    - name: Clone z3 latest
+      uses: actions/checkout@v4
+      with:
+        repository: 'Z3Prover/z3'
+        path: 'z3'
+    - name: Install z3 latest
+      working-directory: z3
+      run: |
+        python scripts/mk_make.py
+        cd build
+        make
+        make install
+
+    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test -- --nocapture
+
+    # Failure
+    - run: tar -czf failing_logs.tar.bz2 logs/
+      if: failure()
+    - uses: actions/upload-artifact@v4.4.3
+      if: failure()
+      with:
+        name: "logs_z3_v${{ matrix.z3version.version }}"
+        path: failing_logs.tar.bz2
+        retention-days: 1

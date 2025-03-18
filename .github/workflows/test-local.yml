@@ -1,0 +1,75 @@
+name: Continuous integration
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - run: cargo fmt --check
+
+  clippy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Cache cargo build artifacts
+      uses: ./.github/actions/cargo-cache
+      with:
+        shared-key: "clippy"
+    - run: cargo clippy -- -D warnings
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        z3version:
+          - version: '4.8.7'
+            old: true # required for versions up to `4.8.9`
+          - version: '4.8.17'
+          - version: '4.11.2'
+          - version: '4.12.2'
+          - version: '4.12.4'
+          - version: '4.13.3'
+            distribution: 'glibc-2.35'
+    # Linux, Processor (CPU): 4, Memory (RAM): 16 GB, Storage (SSD): 14 GB
+    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Cache cargo build artifacts
+      uses: ./.github/actions/cargo-cache
+      with:
+        shared-key: "test"
+
+    - name: Install Z3 for older version
+      uses: pavpanchekha/setup-z3@1.2.2 # see GitHub Action "Install Z3"
+      if: ${{ matrix.z3version.old == true }}
+      with:
+        version: ${{ matrix.z3version.version }}
+
+    - name: Install Z3 for newer version
+      uses: pavpanchekha/setup-z3@v1.3 # see GitHub Action "Install Z3"
+      if: ${{ !(matrix.z3version.old == true) }}
+      with:
+        version: ${{ matrix.z3version.version }}
+        distribution: ${{ matrix.z3version.distribution == '' && 'glibc-2.31' || matrix.z3version.distribution }}
+
+    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test -- --nocapture
+
+    # Failure
+    - run: tar -czf failing_logs.tar.bz2 logs/
+      if: failure()
+    - uses: actions/upload-artifact@v4.4.3
+      if: failure()
+      with:
+        name: "logs_z3_v${{ matrix.z3version.version }}"
+        path: failing_logs.tar.bz2
+        retention-days: 1

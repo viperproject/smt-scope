@@ -1,4 +1,4 @@
-name: Continuous integration
+name: Continuous integration (verifiers)
 on:
   push:
     branches: [main]
@@ -7,28 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  format:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    - run: cargo fmt --check
-
-  clippy:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: Setup `Cargo.lock` for caching
-      run: cargo generate-lockfile
-    - name: Cache cargo
-      uses: Swatinem/rust-cache@v2
-      with:
-        shared-key: "clippy"
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - run: cargo clippy -- -D warnings
-
-  test:
+  test-verifiers:
     strategy:
       fail-fast: false
       matrix:
@@ -47,6 +26,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Cache cargo build artifacts
+      uses: ./.github/actions/cargo-cache
+      with:
+        shared-key: "test"
 
     - uses: actions/checkout@v4
       with:
@@ -62,19 +45,12 @@ jobs:
 
     - name: Install Z3 for newer version
       uses: pavpanchekha/setup-z3@v1.3 # see GitHub Action "Install Z3"
-      if: ${{ !(matrix.z3version.old == true) }}
+      if: ${{ !(matrix.z3version.old == true) && !(matrix.z3version.version == 'latest') }}
       with:
         version: ${{ matrix.z3version.version }}
         distribution: ${{ matrix.z3version.distribution == '' && 'glibc-2.31' || matrix.z3version.distribution }}
 
-    - name: Setup `Cargo.lock` for caching
-      run: cargo generate-lockfile
-    - name: Cache cargo
-      uses: Swatinem/rust-cache@v2
-      with:
-        shared-key: "shared"
-        save-if: ${{ github.ref == 'refs/heads/main' }}
-    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test -- --nocapture
+    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test --features display_html --package smt-scope --test smt_verifiers -- parse_smt_logs --exact --nocapture
 
     # Failure
     - run: tar -czf failing_logs.tar.bz2 logs/

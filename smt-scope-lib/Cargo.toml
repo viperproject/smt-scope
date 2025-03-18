@@ -62,8 +62,5 @@ default = ["display", "analysis"]
 display = ["dep:regex"]
 display_html = ["dep:ammonia"]
 analysis = []
-# Tries to catch memory allocation errors, in some cases spends some extra time with test allocations
-# when a crate doesn't support `try_reserve`. Currently some panics may still happen.
-never_panic = []
 mem_dbg = ["dep:mem_dbg", "dep:cap"]
 serde = ["lasso/serialize", "nonmax/serde", "typed-index-collections/serde-std", "num/serde", "petgraph/serde-1"]

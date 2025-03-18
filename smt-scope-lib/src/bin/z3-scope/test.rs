@@ -45,8 +45,8 @@ pub(super) fn pre_parse(metadata: std::fs::Metadata, byte_limit: Option<usize>) 
 pub(super) fn post_parse(parser: &Z3Parser, (parse_bytes, time): ParseData) -> AnalysisData {
     let elapsed = time.elapsed();
 
-    // Gives 100 millis per MB (or 100 secs per GB)
-    let timeout = Duration::from_millis(parse_bytes / (10 * 1024) + 500);
+    // Gives 40 millis per MB (or 40 secs per GB), i.e. at least 25 MB/s.
+    let timeout = Duration::from_millis(parse_bytes / (25 * 1024) + 500);
     assert!(
         elapsed < timeout,
         "Parsing took {elapsed:?}, timeout of {timeout:?}"

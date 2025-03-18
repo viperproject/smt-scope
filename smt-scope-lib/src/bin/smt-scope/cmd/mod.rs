@@ -1,5 +1,4 @@
 mod args;
-#[cfg(feature = "analysis")]
 mod dependencies;
 mod reconstruct;
 mod redundancy;
@@ -11,7 +10,6 @@ use smt_scope::{LogParser, Z3Parser};
 
 pub fn run() -> Result<(), String> {
     match args::Cli::parse().command {
-        #[cfg(feature = "analysis")]
         args::Commands::Dependencies {
             logfile,
             depth,
@@ -21,8 +19,14 @@ pub fn run() -> Result<(), String> {
         args::Commands::Test {
             logfiles,
             timeout,
+            #[cfg(feature = "mem_dbg")]
             memory,
-        } => test::run(logfiles, timeout, memory)?,
+        } => test::run(
+            logfiles,
+            timeout,
+            #[cfg(feature = "mem_dbg")]
+            memory,
+        )?,
         args::Commands::Reconstruct { logfile, clean } => reconstruct::run(logfile, clean)?,
         args::Commands::Redundancy { logfile } => redundancy::run(logfile)?,
     }

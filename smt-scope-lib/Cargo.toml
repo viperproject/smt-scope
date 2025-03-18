@@ -1,6 +1,6 @@
 [package]
 name = "smt-scope"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 resolver = "2"
 # authors = ["Viper Team <smtscope_developers@sympa.ethz.ch>"]
@@ -15,7 +15,7 @@ categories = ["parser-implementations", "development-tools", "development-tools:
 
 [[bin]]
 name = "smt-scope"
-required-features = ["analysis", "display", "mem_dbg"]
+required-features = ["analysis", "display"]
 
 [[bin]]
 name = "z3-scope"

@@ -62,8 +62,19 @@ pub enum PbKind {
 impl ProblemBehaviour {
     pub fn kind_str(&self) -> &'static str {
         match &self.kind {
-            PbKind::MatchingLoop { .. } => "Matching loop",
-            PbKind::Multiplicative { .. } => "Multiplicative",
+            PbKind::MatchingLoop { .. } => "matching loop",
+            PbKind::Multiplicative { .. } => "multiplicative",
+        }
+    }
+
+    pub fn detail(&self) -> String {
+        match &self.kind {
+            PbKind::MatchingLoop { max_len, .. } => format!("{max_len} iters"),
+            PbKind::Multiplicative {
+                multiplicativity, ..
+            } => {
+                format!("{multiplicativity:.1}x")
+            }
         }
     }
 

@@ -116,7 +116,10 @@ pub fn ProblemBehaviours(props: &SummaryPropsInner) -> Html {
 
         let parser = props.parser.parser.borrow();
         let pb: Vec<(yew::virtual_dom::VNode, yew::virtual_dom::VNode)> = pb.errors.iter().map(|pb| {
-            let kind = pb.kind_str();
+            let mut kind = pb.kind_str().to_string();
+            if let Some(r) = kind.get_mut(..1) {
+                r.make_ascii_uppercase();
+            }
             let quants = pb.quant_pats(&parser, &analysis.graph);
             let quants = quants.iter().map(|qpat| html! { <QPat parser={props.parser.clone()} qpat={*qpat} /> });
             let quants = quants.enumerate().map(|(i, q)| {

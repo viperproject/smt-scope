@@ -1,8 +1,11 @@
 #[cfg(all(debug_assertions, feature = "mem_dbg"))]
 mod test;
 
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 use smt_scope::{
-    analysis::{InstGraph, RedundancyAnalysis},
+    analysis::{InstGraph, ProblemBehaviour, ProblemBehaviours, RedundancyAnalysis},
     display_with::{DisplayCtxt, DisplayWithCtxt},
     formatter::TermDisplayContext,
     LogParser, Z3Parser,
@@ -47,12 +50,22 @@ fn is_help(arg: &str) -> bool {
 }
 
 fn main() -> Result<(), String> {
+    let code = run()?;
+    if cfg!(debug_assertions) {
+        Ok(())
+    } else {
+        std::process::exit(code)
+    }
+}
+
+fn run() -> Result<i32, String> {
     let z3_exe = var("SCOPE_Z3_EXE")?.unwrap_or_else(|| "z3".to_string());
     let tracefile = var("SCOPE_TRACE_FILE")?;
+    let dumpfile = var("SCOPE_DUMP_FILE")?.map(PathBuf::from);
 
     let tempdir;
     let tracefile = match tracefile {
-        Some(tracefile) => std::path::PathBuf::from(tracefile),
+        Some(tracefile) => PathBuf::from(tracefile),
         None => {
             tempdir = tempfile::tempdir().unwrap();
             let mut tempdir = tempdir.into_path();
@@ -93,6 +106,7 @@ fn main() -> Result<(), String> {
         eprintln!("Execution:");
         eprintln!("  SCOPE_Z3_EXE: the path to the z3 executable to use (default is \"z3\").");
         eprintln!("  SCOPE_TRACE_FILE: the path to store the z3 trace file (by default a temporary file is used).");
+        eprintln!("  SCOPE_DUMP_FILE: the path to dump json-formatted analysis results (useful when the regular stderr route is not possible).");
         eprintln!();
         eprintln!("Analysis:");
         eprintln!("  SCOPE_SIZE_LIMIT: the maximum number of bytes of the trace to analyse (default is unlimited).");
@@ -103,18 +117,14 @@ fn main() -> Result<(), String> {
     }
     let code = output.code().unwrap_or(128);
     if tracefile.is_file() {
-        analyse(tracefile)?;
+        analyse(tracefile, dumpfile)?;
     } else if cfg!(debug_assertions) {
         return Err("no trace file found".to_string());
     }
-    if cfg!(debug_assertions) {
-        Ok(())
-    } else {
-        std::process::exit(code)
-    }
+    Ok(code)
 }
 
-fn analyse(tracefile: std::path::PathBuf) -> Result<(), String> {
+fn analyse(tracefile: PathBuf, dumpfile: Option<PathBuf>) -> Result<(), String> {
     // Setup
     let byte_limit = var_parsed::<usize>("SCOPE_SIZE_LIMIT")?;
     let line_limit = var_parsed::<usize>("SCOPE_LINE_LIMIT")?;
@@ -136,8 +146,7 @@ fn analyse(tracefile: std::path::PathBuf) -> Result<(), String> {
         return test::analysis(parser, data);
     }
 
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    let mut dumpfile = DumpData::new(dumpfile);
 
     let term_display = &mut None;
     fn ctxt<'a>(
@@ -152,76 +161,110 @@ fn analyse(tracefile: std::path::PathBuf) -> Result<(), String> {
         }
     }
 
+    let redundancy = RedundancyAnalysis::new(&parser);
     let mut graph = InstGraph::new_lite(&parser).map_err(|e| format!("{e:?}"))?;
     let mls = graph.search_matching_loops(&mut parser);
-    if mls.maybe_mls > 0 {
-        let warning = mls
-            .matching_loops
-            .iter()
-            .filter(|ml| ml.graph.is_none())
-            .map(|ml| mls.signatures[ml.sig].qpat);
-        let ctxt = ctxt(&parser, term_display);
-        let warning = warning
-            .map(|idx| idx.with(&ctxt).to_string())
-            .collect::<Vec<_>>();
-        warnings.push(format!(
-            "{} suspicious long repeating chains {warning:?}",
-            mls.maybe_mls
-        ));
-    }
-    if mls.sure_mls > 0 {
-        let error = mls
-            .matching_loops
-            .iter()
-            .filter(|ml| ml.graph.is_some())
-            .map(|ml| mls.signatures[ml.sig].qpat);
-        let ctxt = ctxt(&parser, term_display);
-        let error = error
-            .map(|idx| idx.with(&ctxt).to_string())
-            .collect::<Vec<_>>();
-        errors.push(format!("{} matching loops {error:?}", mls.sure_mls));
-    }
+    let pbs = ProblemBehaviours::find(mls, &redundancy);
 
-    let redundancy = RedundancyAnalysis::new(&parser);
-    let excess = redundancy
-        .per_quant
-        .iter_enumerated()
-        .filter(|(_, data)| data.input_multiplicativity() > 1.0);
-    let (error, warning) =
-        excess.partition::<Vec<_>, _>(|(_, data)| data.input_multiplicativity() >= 2.0);
-    if !warning.is_empty() {
-        let ctxt = ctxt(&parser, term_display);
-        let warning = warning
-            .into_iter()
-            .map(|(idx, _)| idx.with(&ctxt).to_string())
-            .collect::<Vec<_>>();
-        warnings.push(format!(
-            "{} quantifiers with multiplicativity 1.0-2.0 {warning:?}",
-            warning.len()
-        ));
-    }
-    if !error.is_empty() {
-        let ctxt = ctxt(&parser, term_display);
-        let error = error
-            .into_iter()
-            .map(|(idx, _)| idx.with(&ctxt).to_string())
-            .collect::<Vec<_>>();
-        errors.push(format!(
-            "{} quantifiers with multiplicativity >= 2.0 {error:?}",
-            error.len()
-        ));
-    }
+    let ctxt = ctxt(&parser, term_display);
+    let print_problem_behaviour = |pb: &ProblemBehaviour, data: Option<&mut Vec<Data>>| {
+        let kind = pb.kind_str();
+        let mut data = DumpData::add_data(data, kind.to_string());
+        eprint!("{kind} ({}) [", pb.detail());
+        let qpats = pb.quant_pats(&parser, &graph);
+        let mut qpats = qpats.into_iter().map(|idx| idx.with(&ctxt));
+        if let Some(qpat) = qpats.next() {
+            let qpat = qpat.to_string();
+            eprint!("{qpat}");
+            DumpData::add_quant(data.as_deref_mut(), qpat);
+            for qpat in qpats {
+                let qpat = qpat.to_string();
+                eprint!(", {qpat}");
+                DumpData::add_quant(data.as_deref_mut(), qpat);
+            }
+        }
+        eprint!("]");
+    };
 
-    for warning in &warnings {
-        eprintln!("warning: {warning}");
+    for warning in &pbs.warnings {
+        eprint!("z3-scope warning: potential ");
+        print_problem_behaviour(warning, dumpfile.warning());
+        eprintln!();
     }
-    for error in &errors {
-        eprintln!("error: {error}");
+    for error in &pbs.errors {
+        eprintln!("z3-scope error: ");
+        print_problem_behaviour(error, dumpfile.error());
+        eprintln!();
     }
+    dumpfile.dump();
 
-    if errors.is_empty() {
+    if pbs.errors.is_empty() {
         Ok(())
     } else {
         Err("errors found".to_string())
+    }
+}
+
+struct DumpData {
+    reports: Vec<Report>,
+    path: Option<PathBuf>,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+struct Report {
+    warnings: Vec<Data>,
+    errors: Vec<Data>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Data {
+    kind: String,
+    quants: Vec<String>,
+}
+
+impl DumpData {
+    fn new(path: Option<PathBuf>) -> Self {
+        let file = path.as_ref().and_then(|p| std::fs::File::open(p).ok());
+        let mut reports: Vec<_> = file
+            .and_then(|f| serde_json::from_reader(f).ok())
+            .unwrap_or_default();
+        if path.is_some() {
+            reports.push(Report::default());
+        }
+        DumpData { path, reports }
+    }
+    fn dump(self) {
+        let Some(path) = self.path else {
+            return;
+        };
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).ok();
+        }
+        let Ok(file) = std::fs::File::create(path) else {
+            return;
+        };
+        serde_json::to_writer(file, &self.reports).ok();
+    }
+
+    fn warning(&mut self) -> Option<&mut Vec<Data>> {
+        Some(&mut self.reports.last_mut()?.warnings)
+    }
+
+    fn error(&mut self) -> Option<&mut Vec<Data>> {
+        Some(&mut self.reports.last_mut()?.errors)
+    }
+
+    fn add_data(data: Option<&mut Vec<Data>>, kind: String) -> Option<&mut Vec<String>> {
+        let data = data?;
+        let quants = Vec::new();
+        data.push(Data { kind, quants });
+        Some(&mut data.last_mut().unwrap().quants)
+    }
+
+    fn add_quant(data: Option<&mut Vec<String>>, quant: String) {
+        let Some(data) = data else {
+            return;
+        };
+        data.push(quant);
     }
 }

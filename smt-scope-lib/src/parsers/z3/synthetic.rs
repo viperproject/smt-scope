@@ -209,11 +209,11 @@ impl SynthTerms {
         }
     }
 
-    pub(crate) fn new_constant(&mut self, meaning: Meaning) -> Result<SynthIdx> {
+    pub fn new_constant(&mut self, meaning: Meaning) -> Result<SynthIdx> {
         self.insert(AnyTerm::Constant(meaning))
     }
 
-    pub(crate) fn new_input(&mut self, offset: Option<Meaning>) -> Result<SynthIdx> {
+    pub fn new_input(&mut self, offset: Option<Meaning>) -> Result<SynthIdx> {
         let offset = offset.map(|o| self.new_constant(o)).transpose()?;
         let term = SynthTerm {
             kind: SynthTermKind::Input(offset),
@@ -222,7 +222,7 @@ impl SynthTerms {
         self.insert(AnyTerm::Synth(term))
     }
 
-    pub(crate) fn new_variable(&mut self, id: u32) -> Result<SynthIdx> {
+    pub fn new_variable(&mut self, id: u32) -> Result<SynthIdx> {
         let term = SynthTerm {
             kind: SynthTermKind::Variable(id),
             child_ids: Default::default(),
@@ -230,11 +230,7 @@ impl SynthTerms {
         self.insert(AnyTerm::Synth(term))
     }
 
-    pub(crate) fn new_generalised(
-        &mut self,
-        first: Option<TermIdx>,
-        gen: SynthIdx,
-    ) -> Result<SynthIdx> {
+    pub fn new_generalised(&mut self, first: Option<TermIdx>, gen: SynthIdx) -> Result<SynthIdx> {
         let term = SynthTerm {
             kind: SynthTermKind::Generalised(first),
             child_ids: [gen].into_iter().collect(),
@@ -242,7 +238,7 @@ impl SynthTerms {
         self.insert(AnyTerm::Synth(term))
     }
 
-    pub(crate) fn new_synthetic(
+    pub fn new_synthetic(
         &mut self,
         kind: TermKind,
         child_ids: BoxSlice<SynthIdx>,

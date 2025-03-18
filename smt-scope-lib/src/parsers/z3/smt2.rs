@@ -54,11 +54,11 @@ impl EventLog {
         let Some(last) = self.events.pop() else {
             return;
         };
-        let Some(other) = self.events.last_mut() else {
+        let Some(prev) = self.events.last_mut() else {
             return;
         };
-        other.enodes += last.enodes;
-        other.insts += last.insts;
+        prev.enodes += last.enodes;
+        prev.insts += last.insts;
     }
 
     pub(super) fn new_term(
@@ -167,21 +167,14 @@ impl EventLog {
         self.push(EventKind::BeginCheck)
     }
 
-    fn last_line(&mut self) -> Option<&mut Event> {
-        self.events
-            .iter_mut()
-            .rev()
-            .find(|event| event.kind.is_from_source())
-    }
-
     pub(super) fn new_enode(&mut self) {
-        if let Some(last) = self.last_line() {
+        if let Some(last) = self.events.last_mut() {
             last.enodes += 1;
         }
     }
 
     pub(super) fn new_inst(&mut self) {
-        if let Some(last) = self.last_line() {
+        if let Some(last) = self.events.last_mut() {
             last.insts += 1;
         }
     }
@@ -221,7 +214,7 @@ pub enum EventKind {
 }
 
 impl EventKind {
-    fn is_from_source(&self) -> bool {
+    pub fn is_from_source(&self) -> bool {
         !matches!(self, EventKind::Push(true, ..) | EventKind::Pop(true, ..))
     }
 }

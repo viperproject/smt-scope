@@ -1,6 +1,6 @@
 [package]
 name = "smt-scope"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 resolver = "2"
 # authors = ["Viper Team <smtscope_developers@sympa.ethz.ch>"]
@@ -39,7 +39,8 @@ mem_dbg = { version = "0.2.4", features = ["std", "derive"], default-features = 
 petgraph = "0.6.4"
 roaring = "0.10"
 # Printing
-serde = { version = "1.0.183", features = ["derive"], optional = true }
+serde = { version = "1.0.183", features = ["derive"] }
+serde_json = "1.0"
 regex = { version = "1.10", optional = true }
 ammonia = { version = "4.0.0", optional = true }
 # Convenient macros
@@ -53,7 +54,6 @@ cap = { version = "0.1.2", optional = true }
 
 [dev-dependencies]
 memory-stats = "1.1.0"
-serde_json = "1.0"
 rand = "0.8"
 assert_cmd = "2.0.16"
 smt-scope = { path = ".", features = ["mem_dbg", "serde"] }
@@ -67,4 +67,4 @@ analysis = []
 # when a crate doesn't support `try_reserve`. Currently some panics may still happen.
 never_panic = []
 mem_dbg = ["dep:mem_dbg", "dep:cap"]
-serde = ["dep:serde", "lasso/serialize", "nonmax/serde", "typed-index-collections/serde-std", "num/serde", "petgraph/serde-1"]
+serde = ["lasso/serialize", "nonmax/serde", "typed-index-collections/serde-std", "num/serde", "petgraph/serde-1"]

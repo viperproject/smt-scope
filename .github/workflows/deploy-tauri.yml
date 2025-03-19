@@ -1,0 +1,80 @@
+name: CD (tauri)
+on:
+  # Create a stable release when tagging a version.
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  # Create a canary release after CI completes. TODO: change this to only happen when CI passes.
+  workflow_run:
+    branches: [main]
+    workflows: [CI (local)]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+            args: ''
+          - platform: 'macos-latest' # for Intel based macs.
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Export version to github context (on tagged release)
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
+        run: |
+          REF="${{ github.ref }}"
+          echo "VERSION=v${REF#refs/tags/v}" >> $GITHUB_ENV
+      - name: Export version to github context (for alpha builds)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
+        run: echo "VERSION=a$(date -u +'%y-%m-%d-%H-%M')" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v4
+      - name: Cache cargo build artifacts
+        uses: ./.github/actions/cargo-cache
+        with:
+          shared-key: "publish-tauri"
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install target if required
+        if: ${{ startsWith(matrix.args, '--target ') }}
+        run: |
+          TARGET="${{ matrix.args }}"
+          rustup target add "${TARGET#--target }"
+
+      - uses: jetli/trunk-action@v0.5.0
+      - uses: jetli/wasm-bindgen-action@v0.2.0
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt update
+          sudo apt install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        with:
+          tagName: smt-scope-${{ env.VERSION }}
+          releaseName: 'SMTScope ${{ env.VERSION }}'
+          releaseBody: ${{ startsWith(github.ref, 'refs/tags/v') && 'See the assets to download this version' || 'Alpha release with latest changes from main. May contain issues. See the assets to download this version.' }}
+          releaseDraft: false
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          args: ${{ matrix.args }}

@@ -1,4 +1,4 @@
-name: Continuous deployment
+name: CD (github)
 on:
   # Create a stable release when tagging a version.
   push:
@@ -7,29 +7,25 @@ on:
   # Create a canary release after CI completes. TODO: change this to only happen when CI passes.
   workflow_run:
     branches: [main]
-    workflows: [Continuous integration]
+    workflows: [CI (local)]
     types: [completed]
   workflow_dispatch:
 
 jobs:
-  release:
+  publish-github:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
     steps:
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          target: wasm32-unknown-unknown
-
-      - uses: jetli/trunk-action@v0.1.0
-      - uses: jetli/wasm-bindgen-action@v0.1.0
-
       - uses: actions/checkout@v4
       - name: Cache cargo build artifacts
         uses: ./.github/actions/cargo-cache
         with:
-          shared-key: "deploy"
+          shared-key: "publish-github"
+
+      - uses: jetli/trunk-action@v0.5.0
+      - uses: jetli/wasm-bindgen-action@v0.2.0
 
       # The checkout above doesn't fetch tags, so we need to do it manually. The
       # below command does this when a tag is pushed.

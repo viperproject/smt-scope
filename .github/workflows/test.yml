@@ -68,7 +68,7 @@ jobs:
       with:
         shared-key: "shared"
         save-if: ${{ github.ref == 'refs/heads/main' }}
-    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test --workspace -- --nocapture
+    - run: cargo version && SLP_MEMORY_LIMIT_GB=16 cargo test -- --nocapture
 
     # Failure
     - run: tar -czf failing_logs.tar.bz2 logs/

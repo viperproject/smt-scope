@@ -4,6 +4,10 @@ members = [
     "smt-scope-gui",
     "src-tauri",
 ]
+default-members = [
+    "smt-scope-lib",
+    "smt-scope-gui",
+]
 resolver = "2"
 
 [profile.test]

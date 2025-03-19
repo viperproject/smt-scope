@@ -1,4 +1,4 @@
-name: Continuous deployment
+name: Continuous deployment (github)
 on:
   # Create a stable release when tagging a version.
   push:
@@ -12,24 +12,24 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
+  publish-github:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - name: Cache cargo build artifacts
+        uses: ./.github/actions/cargo-cache
+        with:
+          shared-key: "publish-github"
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           target: wasm32-unknown-unknown
 
       - uses: jetli/trunk-action@v0.1.0
       - uses: jetli/wasm-bindgen-action@v0.1.0
-
-      - uses: actions/checkout@v4
-      - name: Cache cargo build artifacts
-        uses: ./.github/actions/cargo-cache
-        with:
-          shared-key: "deploy"
 
       # The checkout above doesn't fetch tags, so we need to do it manually. The
       # below command does this when a tag is pushed.

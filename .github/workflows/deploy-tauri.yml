@@ -1,0 +1,71 @@
+name: Continuous deployment (tauri)
+on:
+  # Create a stable release when tagging a version.
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  # Create a canary release after CI completes. TODO: change this to only happen when CI passes.
+  workflow_run:
+    branches: [main]
+    workflows: [Continuous integration]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  publish-tauri:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+            args: '--target aarch64-apple-darwin'
+          - platform: 'macos-latest' # for Intel based macs.
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache cargo build artifacts
+        uses: ./.github/actions/cargo-cache
+        with:
+          shared-key: "publish-tauri"
+
+      # - name: setup node
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: lts/*
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          apt update
+          apt install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Export version to github context (on tagged release)
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        run: echo "VERSION=v${${{ github.ref }}#refs/tags/v}" >> $GITHUB_ENV
+      - name: Export version to github context (for alpha builds)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: echo "VERSION=a$(date -u +'%y-%m-%d-%H-%M')" >> $GITHUB_ENV
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        with:
+          tagName: smt-scope-${{ env.VERSION }}
+          releaseName: 'SMTScope ${{ env.VERSION }}'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: true
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          args: ${{ matrix.args }}

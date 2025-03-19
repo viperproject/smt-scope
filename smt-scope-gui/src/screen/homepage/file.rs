@@ -4,10 +4,9 @@ use gloo::file::File;
 use gloo_net::http::Response;
 use serde::{Deserialize, Serialize};
 use smt_scope::{
-    parsers::{AsyncBufferRead, AsyncParser, ParseState, ReaderState, StreamParser},
+    parsers::{AsyncParser, ParseState, ReaderState, StreamParser},
     LogParser, Z3Parser,
 };
-use wasm_bindgen::JsCast;
 use wasm_streams::ReadableStream;
 use wasm_timer::Instant;
 use web_sys::DataTransfer;
@@ -146,12 +145,15 @@ impl PartialEq for ParseInfo {
 }
 
 impl Homepage {
+    #[cfg(not(feature = "tauri"))]
     const BROWSER_MEM_LIMIT: usize = 2 * 1024 * 1024 * 1024;
-    const MAX_PARSE_BYTES: usize = Self::BROWSER_MEM_LIMIT / 2;
+    #[cfg(feature = "tauri")]
+    const BROWSER_MEM_LIMIT: usize = usize::MAX;
 
     pub(super) fn file_drag(registerer: &GlobalCallbacks, link: &Scope<Self>) -> [CallbackRef; 3] {
         /// Detects if a file is being dragged over the window
         fn file_drag(event: &DragEvent) -> bool {
+            log::warn!("drag event: {:?}", event);
             event
                 .data_transfer()
                 .as_ref()
@@ -248,13 +250,10 @@ impl Homepage {
         let stop_loading = self.stop_loading.clone();
         let link = link.clone();
 
-        match response
-            .body()
-            .map(|body| ReadableStream::from_raw(body).try_into_async_read())
-        {
+        match response.body().map(readable_stream_to_async_read) {
             Some(Ok(stream)) => {
                 link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
-                let parser = Z3Parser::from_async(stream.buffer());
+                let parser = Z3Parser::from_async(stream);
                 wasm_bindgen_futures::spawn_local(async move {
                     Self::parse_async(parser, stop_loading, size, link, None).await
                 });
@@ -293,11 +292,10 @@ impl Homepage {
         log::debug!("Selected file \"{}\"", file_info.name);
         // Turn into stream
         let blob: &web_sys::Blob = file.as_ref();
-        let stream = ReadableStream::from_raw(blob.stream().unchecked_into());
-        match stream.try_into_async_read() {
+        match readable_stream_to_async_read(blob.stream()) {
             Ok(stream) => {
                 link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
-                let parser = Z3Parser::from_async(stream.buffer());
+                let parser = Z3Parser::from_async(stream);
                 wasm_bindgen_futures::spawn_local(async move {
                     Self::parse_async(parser, stop_loading, file_info.size, link, None).await
                 });
@@ -313,8 +311,8 @@ impl Homepage {
                             return;
                         }
                     };
-                    let remaining_memory =
-                        Self::BROWSER_MEM_LIMIT - text_data.len() - 64 * 1024 * 1024;
+                    let memory_use = text_data.len() + 64 * 1024 * 1024;
+                    let remaining_memory = Self::BROWSER_MEM_LIMIT.saturating_sub(memory_use);
 
                     log::debug!("Parsing \"{}\"", file_info.name);
                     link.send_message(HomepageM::LoadingState(LoadingState::StartParsing));
@@ -346,14 +344,10 @@ impl Homepage {
         stop_loading: Rc<RefCell<bool>>,
         size: Option<u64>,
         link: Scope<Self>,
-        use_mem_limit: Option<usize>,
+        remaining_memory: Option<usize>,
     ) {
-        let limited_by_async = use_mem_limit.is_some_and(|l| l < Self::MAX_PARSE_BYTES);
-        let use_mem_limit = if limited_by_async {
-            use_mem_limit.unwrap()
-        } else {
-            Self::MAX_PARSE_BYTES
-        };
+        let limited_by_async = remaining_memory.is_some();
+        let use_mem_limit = remaining_memory.unwrap_or(Self::BROWSER_MEM_LIMIT);
 
         let finished = loop {
             let mut lines_to_read = 100_000;
@@ -383,11 +377,14 @@ impl Homepage {
         let stop_loading = *stop_loading.borrow();
         match finished {
             ParseState::Paused(..) if !stop_loading => {
+                #[cfg(not(feature = "tauri"))]
                 let addendum = if limited_by_async {
                     ", use Chrome or Firefox to increase this limit"
                 } else {
                     " due to browser memory limit"
                 };
+                #[cfg(feature = "tauri")]
+                let addendum = " due to memory limit";
                 let message = OmniboxMessage {
                     message: format!(
                         "Stopped parsing at {}MB{addendum}",
@@ -414,4 +411,35 @@ impl Homepage {
             stop_loading,
         ))
     }
+}
+
+fn readable_stream_to_async_read(
+    stream: wasm_streams::readable::sys::ReadableStream,
+) -> Result<impl futures::AsyncBufRead, (js_sys::Error, ReadableStream)> {
+    use smt_scope::parsers::AsyncBufferRead;
+    let stream = ReadableStream::from_raw(stream);
+    // return stream.try_into_async_read().map(|b| b.buffer());
+    let stream = stream.try_into_stream()?;
+
+    use futures::{stream::TryStreamExt, StreamExt};
+    use wasm_bindgen::JsCast;
+    fn js_to_string(js_value: &wasm_bindgen::JsValue) -> Option<String> {
+        use wasm_bindgen::UnwrapThrowExt;
+        js_value.as_string().or_else(|| {
+            js_sys::Object::try_from(js_value)
+                .map(|js_object| js_object.to_string().as_string().unwrap_throw())
+        })
+    }
+    fn js_to_io_error(js_value: wasm_bindgen::JsValue) -> std::io::Error {
+        let message = js_to_string(&js_value).unwrap_or_else(|| "Unknown error".to_string());
+        std::io::Error::new(std::io::ErrorKind::Other, message)
+    }
+    let stream = stream
+        .map(|s| {
+            s.map(|s| s.unchecked_into::<js_sys::Uint8Array>().to_vec())
+                .map_err(js_to_io_error)
+        })
+        .into_async_read();
+    // TODO: this buffer isn't necessary, but it seems to speed things up slightly?
+    Ok(stream.buffer())
 }

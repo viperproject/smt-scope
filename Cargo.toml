@@ -2,6 +2,7 @@
 members = [
     "smt-scope-lib",
     "smt-scope-gui",
+    "src-tauri",
 ]
 resolver = "2"
 

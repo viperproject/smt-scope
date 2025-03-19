@@ -25,6 +25,7 @@ jobs:
             args: '--target x86_64-apple-darwin'
           - platform: 'ubuntu-22.04'
             args: ''
+            leader: true
           - platform: 'windows-latest'
             args: ''
 
@@ -39,7 +40,18 @@ jobs:
       - name: Export version to github context (for alpha builds)
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         shell: bash
-        run: echo "VERSION=a$(date -u +'%y-%m-%d-%H-%M')" >> $GITHUB_ENV
+        run: echo "VERSION=a$(date -u +'%y-%m-%d-%H%M')" >> $GITHUB_ENV
+
+      - name: Create an alpha release
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') && matrix.leader == true }}
+        uses: viperproject/create-nightly-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: smt-scope-${{ env.VERSION }}
+          release_name: 'SMTScope ${{ env.VERSION }}'
+          body: 'Alpha release with latest changes from main. May contain issues. See the assets to download this version.'
+          keep_num: 2
 
       - uses: actions/checkout@v4
       - name: Cache cargo build artifacts
@@ -74,7 +86,7 @@ jobs:
         with:
           tagName: smt-scope-${{ env.VERSION }}
           releaseName: 'SMTScope ${{ env.VERSION }}'
-          releaseBody: ${{ startsWith(github.ref, 'refs/tags/v') && 'See the assets to download this version' || 'Alpha release with latest changes from main. May contain issues. See the assets to download this version.' }}
+          releaseBody: 'See the assets to download this version'
           releaseDraft: false
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
           args: ${{ matrix.args }}

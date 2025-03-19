@@ -12,13 +12,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Setup `Cargo.lock` for caching
-      run: cargo generate-lockfile
-    - name: Cache cargo
-      uses: Swatinem/rust-cache@v2
+    - name: Cache cargo build artifacts
+      uses: ./.github/actions/cargo-cache
       with:
         shared-key: "all-features"
-        save-if: ${{ github.ref == 'refs/heads/main' }}
 
     - run: cargo install cargo-all-features
     - name: Check all lib features

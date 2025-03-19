@@ -1,0 +1,18 @@
+name: 'Cache cargo'
+description: 'Generates a lockfile and caches the cargo directory'
+inputs:
+  shared-key:
+    description: 'A key to identify the cache'
+    required: true
+    type: string
+runs:
+  using: "composite"
+  steps:
+    - name: Setup `Cargo.lock` for caching
+      run: cargo generate-lockfile
+      shell: bash
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ inputs.shared-key }}
+        save-if: ${{ github.event_name != 'pull_request' }}

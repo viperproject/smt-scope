@@ -22,7 +22,7 @@ futures = "0.3"
 yew-router = "0.17.0"
 scraper = "0.17.1"
 getrandom = { version = "0.2", features = ["js"] }
-smt-scope = { path = "../smt-scope-lib", features = ["display_html", "never_panic", "serde", "mem_dbg"] }
+smt-scope = { path = "../smt-scope-lib", features = ["display_html", "serde", "mem_dbg"] }
 petgraph = "0.6.4"
 viz-js = "3.1.0"
 wasm-streams = "0.4.0"

@@ -46,6 +46,23 @@ pub fn HomepageHints() -> Html {
 
 #[function_component]
 pub fn HomepageScreen() -> Html {
+    #[cfg(not(feature = "tauri"))]
+    let chanel_select = html! {<ChanelSelect />};
+    #[cfg(feature = "tauri")]
+    let chanel_select = html! {};
+    html! {
+        <div class="home-page"><div class="home-page-center">
+            <div class="home-page-title">
+                <img src="html/logo_square.png" class="logo" /></div>
+            <HomepageHints />
+            {chanel_select}
+        // Can add a footer here
+        </div><a href="#" target="_blank" class="footer">{""}</a></div>
+    }
+}
+
+#[function_component]
+fn ChanelSelect() -> Html {
     let version = crate::version();
     let is_canary = version.is_none();
 
@@ -164,23 +181,17 @@ pub fn HomepageScreen() -> Html {
     });
     let set_hover = Callback::from(move |_| fieldset_hover_state.set(true));
     html! {
-        <div class="home-page"><div class="home-page-center">
-            <div class="home-page-title">
-                <img src="html/logo_square.png" class="logo" /></div>
-            <HomepageHints />
-            <div class="channel-select">
-                <div>{switch_text}</div>
-                <fieldset>
-                    <input type="radio" name="chan" id="chan_stable" checked={!is_canary} />
-                    <label for="chan_stable" onclick={stable} onmousemove={set_hover}>{"stable"}</label>
-                    <input type="radio" name="chan" id="chan_canary" checked={is_canary} />
-                    <label for="chan_canary" onclick={canary}>{"canary"}</label>
-                    {fieldset_hover}
-                    <div class="highlight"></div>
-                </fieldset>
-            </div>
-        // Can add a footer here
-        </div><a href="#" target="_blank" class="footer">{""}</a></div>
+        <div class="channel-select">
+            <div>{switch_text}</div>
+            <fieldset>
+                <input type="radio" name="chan" id="chan_stable" checked={!is_canary} />
+                <label for="chan_stable" onclick={stable} onmousemove={set_hover}>{"stable"}</label>
+                <input type="radio" name="chan" id="chan_canary" checked={is_canary} />
+                <label for="chan_canary" onclick={canary}>{"canary"}</label>
+                {fieldset_hover}
+                <div class="highlight"></div>
+            </fieldset>
+        </div>
     }
 }
 

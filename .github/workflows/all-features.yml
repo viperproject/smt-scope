@@ -21,4 +21,11 @@ jobs:
         save-if: ${{ github.ref == 'refs/heads/main' }}
 
     - run: cargo install cargo-all-features
-    - run: RUSTFLAGS="-D warnings" cargo check-all-features --release
+    - name: Check all lib features
+      run: |
+        cd smt-scope-lib
+        RUSTFLAGS="-D warnings" cargo check-all-features --release
+    - name: Check all gui features
+      run: |
+        cd smt-scope-gui
+        RUSTFLAGS="-D warnings" cargo check-all-features --release

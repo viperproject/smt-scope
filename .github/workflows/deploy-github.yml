@@ -44,14 +44,13 @@ jobs:
           keep_files: true
       # Also update the versioned link.
       - if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        run: cd smt-scope-gui && trunk build --release --public-url /${{ github.event.repository.name }}/${{  github.ref_name }}/
+        run: cd smt-scope-gui && trunk build --release --public-url /${{ github.event.repository.name }}/${{ github.ref_name }}/
       - uses: peaceiris/actions-gh-pages@v3
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./smt-scope-gui/dist
-          destination_dir: ${{  github.ref_name }}
-          keep_files: true
+          destination_dir: ${{ github.ref_name }}
 
       # Build the canary release and update the canary link.
       - if: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
@@ -62,4 +61,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./smt-scope-gui/dist
           destination_dir: canary
-          keep_files: true

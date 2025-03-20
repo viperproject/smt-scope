@@ -347,7 +347,7 @@ impl Homepage {
         remaining_memory: Option<usize>,
     ) {
         let limited_by_async = remaining_memory.is_some();
-        let use_mem_limit = remaining_memory.unwrap_or(Self::BROWSER_MEM_LIMIT);
+        let use_mem_limit = remaining_memory.unwrap_or(Self::BROWSER_MEM_LIMIT) / 2;
 
         let finished = loop {
             let mut lines_to_read = 100_000;
@@ -378,13 +378,9 @@ impl Homepage {
         match finished {
             ParseState::Paused(..) if !stop_loading => {
                 #[cfg(not(feature = "tauri"))]
-                let addendum = if limited_by_async {
-                    ", use Chrome or Firefox to increase this limit"
-                } else {
-                    " due to browser memory limit"
-                };
+                let addendum = " due to browser memory limit";
                 #[cfg(feature = "tauri")]
-                let addendum = " due to memory limit";
+                let addendum = " due to WASM memory limit";
                 let message = OmniboxMessage {
                     message: format!(
                         "Stopped parsing at {}MB{addendum}",

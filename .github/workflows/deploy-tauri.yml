@@ -31,25 +31,25 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     steps:
+      # Set the `VERSION` environment variable, used in naming the release.
       - name: Export version to github context (on tagged release)
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         shell: bash
-        run: |
-          REF="${{ github.ref }}"
-          echo "VERSION=v${REF#refs/tags/v}" >> $GITHUB_ENV
+        run: REF="${{ github.ref }}" && echo "VERSION=${REF#refs/tags/v}" >> $GITHUB_ENV
       - name: Export version to github context (for alpha builds)
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         shell: bash
-        run: echo "VERSION=a$(date -u +'%y-%m-%d-%H%M')" >> $GITHUB_ENV
+        run: echo "VERSION=$(date -u +'%y-%m-%d-%H%M')-alpha" >> $GITHUB_ENV
 
+      # In alpha mode, create a prerelease and delete old prereleases.
       - name: Create an alpha release
         if: ${{ !startsWith(github.ref, 'refs/tags/v') && matrix.leader == true }}
         uses: viperproject/create-nightly-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: smt-scope-${{ env.VERSION }}
-          release_name: 'SMTScope ${{ env.VERSION }}'
+          tag_name: v${{ env.VERSION }}
+          release_name: 'SMTScope-${{ env.VERSION }}'
           body: 'Alpha release with latest changes from main. May contain issues. See the assets to download this version.'
           keep_num: 2
 
@@ -58,6 +58,20 @@ jobs:
         uses: ./.github/actions/cargo-cache
         with:
           shared-key: "publish-tauri"
+
+      # Check that the tauri version in tauri.conf.json matches the tag (in release mode).
+      - name: Load tauri version from tauri.conf.json
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
+        run: |
+          echo 'TAURI_CONF<<EOF' >> $GITHUB_ENV
+          cat src-tauri/tauri.conf.json >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+      - name: Error if tauri version not set correctly
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && fromJson(env.TAURI_CONF).version != env.VERSION }}
+        run: |
+          echo "Tauri version in tauri.conf.json does not match the tag. Please update it to ${{ env.VERSION }}."
+          exit 1
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -71,6 +85,8 @@ jobs:
           rustup target add "${TARGET#--target }"
 
       - uses: jetli/trunk-action@v0.5.0
+        with:
+          version: v0.21.9
       - uses: jetli/wasm-bindgen-action@v0.2.0
 
       - name: install dependencies (ubuntu only)
@@ -84,9 +100,28 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
-          tagName: smt-scope-${{ env.VERSION }}
-          releaseName: 'SMTScope ${{ env.VERSION }}'
-          releaseBody: 'See the assets to download this version'
+          tagName: v${{ env.VERSION }}
+          releaseName: 'SMTScope-${{ env.VERSION }}'
+          # Only set in the case of a tagged release (the body is set above for an alpha release).
+          releaseBody: |
+            '## Linux
+
+            [.rpm Installer](https://github.com/viperproject/smt-scope/releases/download/v${{ env.VERSION }}/SMTScope-${{ env.VERSION }}-1.x86_64.rpm) (e.g. Fedora, CentOS)
+            [.deb Installer](https://github.com/viperproject/smt-scope/releases/download/v${{ env.VERSION }}/SMTScope_${{ env.VERSION }}_amd64.deb) (e.g. Debian, Ubuntu)
+            [AppImage](https://github.com/viperproject/smt-scope/releases/download/v${{ env.VERSION }}/SMTScope_${{ env.VERSION }}_amd64.AppImage) (cross-distro but larger)
+
+            ## MacOS (Apple)
+
+            [App](https://github.com/viperproject/smt-scope/releases/download/v${{ env.VERSION }}/SMTScope_aarch64.app.tar.gz) · [Installer](https://github.com/viperproject/smt-scope/releases/download/v${{ env.VERSION }}/SMTScope_${{ env.VERSION }}_aarch64.dmg)
+
+            ## MacOS (Intel)
+
+            [App](https://github.com/viperproject/smt-scope/releases/download/v${{ env.VERSION }}/SMTScope_x64.app.tar.gz) · [Installer](https://github.com/viperproject/smt-scope/releases/download/v${{ env.VERSION }}/SMTScope_${{ env.VERSION }}_x64.dmg)
+
+            ## Windows
+
+            [.exe Installer](https://github.com/viperproject/smt-scope/releases/download/v${{ env.VERSION }}/SMTScope_${{ env.VERSION }}_x64-setup.exe) · [.msi Installer](https://github.com/viperproject/smt-scope/releases/download/v${{ env.VERSION }}/SMTScope_${{ env.VERSION }}_x64_en-US.msi)
+            '
           releaseDraft: false
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
           args: ${{ matrix.args }}

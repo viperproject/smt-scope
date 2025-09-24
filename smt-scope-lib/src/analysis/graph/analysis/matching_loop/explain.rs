@@ -55,10 +55,10 @@ impl MlExplainer {
         ml_out: &MlOutput,
         parser: &mut Z3Parser,
         leaf: InstIdx,
-        gen: GenIdx,
+        gidx: GenIdx,
     ) -> bool {
         let leaf_info = &ml_out.node_to_ml[&leaf];
-        let mut above = leaf_info.walk_gen(&ml_out.node_to_ml, gen);
+        let mut above = leaf_info.walk_gen(&ml_out.node_to_ml, gidx);
 
         let Some(above1) = above.next() else {
             self.error = true;
@@ -73,7 +73,7 @@ impl MlExplainer {
         let above2 = above2.prev;
 
         // Add the leaf instantiation
-        let recurring = self.add_inst(ml_out, parser, above2, gen);
+        let recurring = self.add_inst(ml_out, parser, above2, gidx);
 
         // Add others between as well as their deps
         let mut others1 = MlOutput::others_between(&ml_out.topo, above1, leaf);
@@ -85,7 +85,7 @@ impl MlExplainer {
         self.add_others(ml_out, parser, others1, others2);
 
         // Add the leaf deps
-        self.add_inst_deps(ml_out, parser, above1, gen, recurring);
+        self.add_inst_deps(ml_out, parser, above1, gidx, recurring);
 
         self.error
     }
@@ -109,10 +109,10 @@ impl MlExplainer {
                     .tree_above
                     .iter()
                     .find(|&above| others2.remove(&above.prev))?;
-                if let Some(gen) = other2_link.gen {
-                    Some((other1, other2_link.prev, gen, Vec::new()))
+                if let Some(gidx) = other2_link.gidx {
+                    Some((other1, other2_link.prev, gidx, Vec::new()))
                 } else {
-                    debug_assert!(false, "No gen for other2_link");
+                    debug_assert!(false, "No gidx for other2_link");
                     None
                 }
             })
@@ -130,14 +130,14 @@ impl MlExplainer {
         // ancestors before descendants.
         others.sort_by_key(|(other1, ..)| *other1);
 
-        for (_, other2, gen, rec) in &mut others {
-            let recurring = self.add_inst(ml_out, parser, *other2, *gen);
+        for (_, other2, gidx, rec) in &mut others {
+            let recurring = self.add_inst(ml_out, parser, *other2, *gidx);
             *rec = recurring;
         }
 
         let others_rev = Vec::from(others).into_iter().rev();
-        for (other1, _, gen, recurring) in others_rev {
-            self.add_inst_deps(ml_out, parser, other1, gen, recurring);
+        for (other1, _, gidx, recurring) in others_rev {
+            self.add_inst_deps(ml_out, parser, other1, gidx, recurring);
         }
     }
 
@@ -146,7 +146,7 @@ impl MlExplainer {
         ml_out: &MlOutput,
         parser: &mut Z3Parser,
         prev: InstIdx,
-        gen: GenIdx,
+        gidx: GenIdx,
     ) -> Vec<(usize, Option<usize>, u32)> {
         let prev_info = &ml_out.node_to_ml[&prev];
 
@@ -172,11 +172,11 @@ impl MlExplainer {
 
         let mut recurring = Vec::new();
 
-        let gen = &ml_out.gens[gen];
-        assert_eq!(gen.len(), prev_info.blames.len());
-        for (blame_idx, (blame, gen)) in prev_info.blames.iter().zip(gen.iter()).enumerate() {
+        let gidx = &ml_out.gens[gidx];
+        assert_eq!(gidx.len(), prev_info.blames.len());
+        for (blame_idx, (blame, gidx)) in prev_info.blames.iter().zip(gidx.iter()).enumerate() {
             // If it wasn't generalised it means that it's fixed
-            let fixed_enode = parser.as_tidx(gen.enode);
+            let fixed_enode = parser.as_tidx(gidx.enode);
 
             let mut next_rec = None;
             let mut inserted = false;
@@ -187,7 +187,7 @@ impl MlExplainer {
                     .map(MLGraphNode::FixedENode)
                     .unwrap_or_else(|| {
                         next_rec = Some(self.rec_count);
-                        MLGraphNode::RecurringENode(gen.enode.into(), RecurrenceKind::Intermediate)
+                        MLGraphNode::RecurringENode(gidx.enode.into(), RecurrenceKind::Intermediate)
                     });
                 self.graph.add_node(data)
             });
@@ -209,9 +209,9 @@ impl MlExplainer {
                 }
             }
 
-            assert_eq!(blame.equalities.len(), gen.equalities.len());
+            assert_eq!(blame.equalities.len(), gidx.equalities.len());
             let blame_eqs = blame.equalities.iter().copied();
-            let gen_eqs = gen.equalities.iter().copied();
+            let gen_eqs = gidx.equalities.iter().copied();
             for (eq_idx, ((eqidx, _, _), (from, to))) in blame_eqs.zip(gen_eqs).enumerate() {
                 let from_to = parser.as_tidx(from).zip(parser.as_tidx(to));
                 let equalities = if from_to.is_some() {
@@ -266,21 +266,21 @@ impl MlExplainer {
         ml_out: &MlOutput,
         parser: &Z3Parser,
         leaf: InstIdx,
-        gen: GenIdx,
+        gidx: GenIdx,
         recurring: Vec<(usize, Option<usize>, u32)>,
     ) {
         let leaf_info = &ml_out.node_to_ml[&leaf];
-        let gen = &ml_out.gens[gen];
-        assert_eq!(gen.len(), leaf_info.blames.len());
+        let gidx = &ml_out.gens[gidx];
+        assert_eq!(gidx.len(), leaf_info.blames.len());
 
         for (blame_idx, eq_idx, rec_idx) in recurring {
             let rec_kind = RecurrenceKind::Output(rec_idx);
 
             let blame = &leaf_info.blames[blame_idx];
-            let gen = &gen[blame_idx];
+            let gidx = &gidx[blame_idx];
             if let Some(eq_idx) = eq_idx {
                 let (eqidx, _, _) = blame.equalities[eq_idx];
-                let (from, to) = gen.equalities[eq_idx];
+                let (from, to) = gidx.equalities[eq_idx];
                 let mut added = false;
                 let eq = *self.recurring_equalities.entry(eqidx).or_insert_with(|| {
                     added = true;
@@ -310,7 +310,7 @@ impl MlExplainer {
                 let mut added = false;
                 let enode = *self.enodes.entry(blame.enode).or_insert_with(|| {
                     added = true;
-                    let data = MLGraphNode::RecurringENode(gen.enode.into(), rec_kind);
+                    let data = MLGraphNode::RecurringENode(gidx.enode.into(), rec_kind);
                     self.graph.add_node(data)
                 });
                 self.add_hidden_edge(enode, Some((false, rec_idx)));

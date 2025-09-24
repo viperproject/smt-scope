@@ -51,7 +51,7 @@ pub struct MatchingLoop {
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone)]
 pub struct MlGraph {
-    pub gen: GenIdx,
+    pub gidx: GenIdx,
     /// Set to `true` if we failed at some point during the graph construction.
     /// The graph is likely incomplete in this case and we should warn the user.
     pub graph_incomplete: bool,

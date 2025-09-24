@@ -40,6 +40,13 @@ impl ENodeBlame {
             _ => None,
         }
     }
+
+    pub fn proof(&self) -> Option<ProofIdx> {
+        match self {
+            Self::Proof(proof) => Some(*proof),
+            _ => None,
+        }
+    }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]

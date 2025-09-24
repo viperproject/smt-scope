@@ -19,19 +19,21 @@ fn hints() -> Vec<Html> {
 #[function_component]
 pub fn HomepageHints() -> Html {
     let new_features = new_features();
-    let new_features = (!new_features.is_empty())
-        .then(|| {
+    let new_features = if !new_features.is_empty() {
+        {
             html! {
                 <div class="home-page-hints">
                     <div class="tagline">{"New!"}</div>
                     <ul>{for new_features}</ul>
                 </div>
             }
-        })
-        .unwrap_or_default();
+        }
+    } else {
+        Default::default()
+    };
     let hints = hints();
-    let hints = (!hints.is_empty())
-        .then(|| {
+    let hints = if !hints.is_empty() {
+        {
             let random = (js_sys::Math::random() * hints.len() as f64).floor() as usize;
             html! {
                 <div class="home-page-hints">
@@ -39,8 +41,10 @@ pub fn HomepageHints() -> Html {
                     <div class="hint">{hints[random].clone()}</div>
                 </div>
             }
-        })
-        .unwrap_or_default();
+        }
+    } else {
+        Default::default()
+    };
     html! {<>{new_features}{hints}</>}
 }
 
@@ -161,7 +165,7 @@ fn ChanelSelect() -> Html {
             let onmouseleave = Callback::from(move |_| {
                 noderef_clone.cast::<web_sys::Element>().unwrap().class_list().remove_1("hover").unwrap();
             });
-            let class = (!is_canary && this_version_index == i).then_some("current").unwrap_or_default();
+            let class = if !is_canary && this_version_index == i { "current" } else { Default::default() };
             html! {
                 <><input type="radio" name="chan" id={id.clone()} /><label ref={noderef} {class} for={id} {onclick} {onmousemove} {onmouseleave}>{version}</label></>
             }

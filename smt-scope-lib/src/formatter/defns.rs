@@ -157,7 +157,7 @@ impl TermDisplayContext {
                 .matches(haystack)
                 .into_iter()
                 .map(|idx| &self.regex_matchers[idx])
-                .filter(|td| !td.matcher.children.is_some_and(|c| c != children));
+                .filter(|td| td.matcher.children.is_none_or(|c| c == children));
             // Fallback match in case of no matches which specify exact children
             let first = matches.next();
             let mut matches = first.iter().copied().chain(matches);

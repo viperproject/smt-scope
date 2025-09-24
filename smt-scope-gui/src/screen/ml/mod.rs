@@ -27,7 +27,7 @@ pub struct MatchingLoopProps {
 
 pub enum MatchingLoop {
     Loading,
-    Loaded(MatchingLoopLoaded),
+    Loaded(Box<MatchingLoopLoaded>),
 }
 
 pub enum MatchingLoopM {
@@ -41,7 +41,7 @@ impl Screen for MatchingLoop {
 
     fn create(link: &Scope<Self>, props: &Self::Properties) -> Self {
         if let Some(data) = &props.analysis.borrow().graph.analysis.ml_data {
-            Self::Loaded(MatchingLoopLoaded::new(link, props, data))
+            Self::Loaded(Box::new(MatchingLoopLoaded::new(link, props, data)))
         } else {
             let link = link.clone();
             Timeout::new(1, move || {
@@ -70,7 +70,7 @@ impl Screen for MatchingLoop {
                 let analysis = &mut *analysis;
                 let data = analysis.graph.search_matching_loops(&mut parser);
                 analysis.pb = ProblemBehaviours::find(data, &props.parser.summary.redundancy);
-                *self = Self::Loaded(MatchingLoopLoaded::new(link, props, data));
+                *self = Self::Loaded(Box::new(MatchingLoopLoaded::new(link, props, data)));
                 true
             }
             MatchingLoopM::Choose(idx) => {
@@ -85,10 +85,13 @@ impl Screen for MatchingLoop {
     }
 
     fn view(&self, _link: &Scope<Self>, _props: &Self::Properties) -> Html {
-        let Self::Loaded(MatchingLoopLoaded {
+        let Self::Loaded(mll) = self else {
+            return html! {};
+        };
+        let MatchingLoopLoaded {
             rendering: Some(rendering),
             ..
-        }) = self
+        } = &**mll
         else {
             return html! {};
         };

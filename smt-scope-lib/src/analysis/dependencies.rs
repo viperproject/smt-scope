@@ -151,7 +151,7 @@ impl QuantifierAnalysis {
         for (qpat, data) in self.iter_enumerated() {
             initial[qpat.quant].extend(data.keys());
         }
-        while !steps.is_some_and(|steps| steps == 0) {
+        while steps.is_none_or(|steps| steps != 0) {
             if !self.calculate_transitive_one(&mut initial) {
                 break;
             }

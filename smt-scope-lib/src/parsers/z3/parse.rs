@@ -536,10 +536,10 @@ impl Z3LogParser for Z3Parser {
             a.yields.try_reserve(1)?;
             a.yields.push(enode);
             let idx = a.idx;
-            debug_assert!(!self.insts.insts[idx]
+            debug_assert!(self.insts.insts[idx]
                 .kind
                 .z3_generation()
-                .is_some_and(|g| g != z3_gen));
+                .is_none_or(|g| g == z3_gen));
         }
         Ok(())
     }

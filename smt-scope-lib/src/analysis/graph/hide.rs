@@ -8,6 +8,9 @@ use super::{
     InstGraph, RawNodeIndex,
 };
 
+type PathToRoot<'a, T> = EdgeFiltered<Reversed<&'a DiGraph<Node, EdgeKind, RawIx>>, T>;
+type PathToLeaf<'a, T> = EdgeFiltered<&'a DiGraph<Node, EdgeKind, RawIx>, T>;
+
 impl RawInstGraph {
     pub fn reset_visibility_to(&mut self, hidden: bool) -> bool {
         let state = if hidden {
@@ -128,10 +131,8 @@ impl RawInstGraph {
     pub fn path_to_root_graph(
         &self,
         longest: bool,
-    ) -> EdgeFiltered<
-        Reversed<&DiGraph<Node, EdgeKind, RawIx>>,
-        impl Fn(ReversedEdgeReference<EdgeReference<EdgeKind, RawIx>>) -> bool + '_,
-    > {
+    ) -> PathToRoot<'_, impl Fn(ReversedEdgeReference<EdgeReference<EdgeKind, RawIx>>) -> bool + '_>
+    {
         let f = move |depth: &Node| {
             if longest {
                 depth.fwd_depth.max
@@ -150,10 +151,7 @@ impl RawInstGraph {
     pub fn path_to_leaf_graph(
         &self,
         longest: bool,
-    ) -> EdgeFiltered<
-        &DiGraph<Node, EdgeKind, RawIx>,
-        impl Fn(EdgeReference<EdgeKind, RawIx>) -> bool + '_,
-    > {
+    ) -> PathToLeaf<'_, impl Fn(EdgeReference<EdgeKind, RawIx>) -> bool + '_> {
         let f = move |depth: &Node| {
             if longest {
                 depth.bwd_depth.max

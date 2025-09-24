@@ -241,7 +241,7 @@ impl FiltersState {
         let classes: Vec<_> = self
             .filter_chain()
             .map(|(idx, no_effect, _)| {
-                (no_effect && !self.edit_filter.is_some_and(|i| idx == i)).then_some("no-effect")
+                (no_effect && self.edit_filter.is_none_or(|i| idx != i)).then_some("no-effect")
             })
             .collect();
         let elements: Vec<_> = self.filter_chain().map(|(idx, _, filter)| {

@@ -198,7 +198,7 @@ impl Component for DraggableList {
 
             let external_class = self.drag.is_none().then(|| ctx.props().classes.get(idx).copied().flatten()).flatten();
 
-            let draggable = !ctx.props().no_drag.is_some_and(|no_drag| no_drag == idx);
+            let draggable = ctx.props().no_drag.is_none_or(|no_drag| no_drag != idx);
             let placeholder = NodeRef::default();
             let mut class = vec!["no-hover"];
             if self.drag.is_some_and(|d| d.idx == idx) {

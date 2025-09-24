@@ -383,7 +383,7 @@ mod wrapper {
             let mut lines_per_check = initial_lines_per_check;
             // How many lines until the next time check?
             let mut next_check = lines_per_check;
-            let max_lpc = lines_per_check.checked_mul(2).unwrap_or(usize::MAX);
+            let max_lpc = lines_per_check.saturating_mul(2);
             let mut start = Instant::now();
             let mut last_check_time = start;
             add_await([self.process_until(move |p, rs| {
@@ -398,9 +398,8 @@ mod wrapper {
                             if check_delta < MAX_LINES_PER_TIME_VARIATION {
                                 lines_per_check = 1;
                             } else {
-                                let check_delta = check_delta
-                                    .checked_mul(MAX_LINES_PER_TIME_VARIATION)
-                                    .unwrap_or(u128::MAX);
+                                let check_delta =
+                                    check_delta.saturating_mul(MAX_LINES_PER_TIME_VARIATION);
                                 // How much smaller is `lines_per_check` than it
                                 // should be?
                                 let under_approx = (time_left / check_delta)
@@ -410,7 +409,7 @@ mod wrapper {
                                 // Do rounding up division to make sure
                                 // `over_approx > 1` as soon as `check_delta >
                                 // time_left`.
-                                let over_approx = (check_delta + time_left - 1) / time_left;
+                                let over_approx = check_delta.div_ceil(time_left);
                                 // How much larger is `lines_per_check` than it
                                 // should be?
                                 let over_approx =

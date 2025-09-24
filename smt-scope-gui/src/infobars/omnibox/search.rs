@@ -149,9 +149,11 @@ impl SuggestionResults {
                 } else {
                     "can-hover"
                 };
-                let scroll_into_view = highlighted
-                    .then(|| scroll_into_view.clone())
-                    .unwrap_or_default();
+                let scroll_into_view = if highlighted {
+                    scroll_into_view.clone()
+                } else {
+                    Default::default()
+                };
                 let highlighted_name =
                     HighlightedString(&entry.search_text, self.indices(e)).into_html();
                 let pre_text = Some(&entry.pre_text).filter(|s| !s.is_empty()).map(|s| {

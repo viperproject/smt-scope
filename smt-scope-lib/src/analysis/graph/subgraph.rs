@@ -192,7 +192,7 @@ impl<'a, N, E, Ix: IndexType> IntoNeighborsDirected for &'a SubgraphStartNodes<'
         self.graph.neighbors_directed(n, d)
     }
 }
-impl<'a, N, E, Ix: IndexType> Visitable for &'a SubgraphStartNodes<'_, N, E, Ix> {
+impl<N, E, Ix: IndexType> Visitable for &SubgraphStartNodes<'_, N, E, Ix> {
     type Map = FxHashSet<NodeIndex<Ix>>;
     fn visit_map(&self) -> Self::Map {
         FxHashSet::default()

@@ -429,7 +429,11 @@ pub enum ProofReach {
 
 impl ProofReach {
     pub fn if_(self, cond: bool) -> Self {
-        cond.then_some(self).unwrap_or_default()
+        if cond {
+            self
+        } else {
+            Default::default()
+        }
     }
 
     pub fn proves_false(self) -> bool {

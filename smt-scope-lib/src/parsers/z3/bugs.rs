@@ -118,7 +118,7 @@ impl Z3Parser {
 
     fn check_eq_if(&self, from: ENodeIdx, to: ENodeIdx) -> bool {
         let term = &self[self[from].owner];
-        if !term.app_name().is_some_and(|n| &self[n] == "if") || term.child_ids.len() != 3 {
+        if term.app_name().is_none_or(|n| &self[n] != "if") || term.child_ids.len() != 3 {
             return false;
         }
         let Some(lit) = self.lits.get_assign(term.child_ids[0], &self.stack) else {

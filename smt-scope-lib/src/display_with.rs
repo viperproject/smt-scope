@@ -603,7 +603,7 @@ impl<'a: 'b, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a AnyTe
     }
 }
 
-impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a SynthTermKind {
+impl<'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &SynthTermKind {
     fn fmt_with(
         self,
         f: &mut fmt::Formatter<'_>,
@@ -711,7 +711,7 @@ impl VarNames {
     }
 }
 
-impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a TermKind {
+impl<'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &TermKind {
     fn fmt_with(
         self,
         f: &mut fmt::Formatter<'_>,

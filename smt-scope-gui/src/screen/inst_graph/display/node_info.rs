@@ -421,11 +421,19 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
             Direct(_, EdgeKind::EqualityCongruence) => "Equality Congruence".to_string(),
             Direct(_, EdgeKind::TEqualitySimple { forward }) => format!(
                 "Simple {}Equality",
-                (!forward).then_some("Reverse ").unwrap_or_default()
+                if !forward {
+                    "Reverse "
+                } else {
+                    Default::default()
+                }
             ),
             Direct(_, EdgeKind::TEqualityTransitive { forward }) => format!(
                 "Transitive {}Equality",
-                (!forward).then_some("Reverse ").unwrap_or_default()
+                if !forward {
+                    "Reverse "
+                } else {
+                    Default::default()
+                }
             ),
             Direct(_, EdgeKind::ProofStep) => "Proof Step".to_string(),
             Direct(_, EdgeKind::YieldProof) => "Instantiation Proof Step".to_string(),

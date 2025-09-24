@@ -170,9 +170,11 @@ impl CommandSearchResults {
             } else {
                 "can-hover"
             };
-            let scroll_into_view = highlighted
-                .then(|| scroll_into_view.clone())
-                .unwrap_or_default();
+            let scroll_into_view = if highlighted {
+                scroll_into_view.clone()
+            } else {
+                Default::default()
+            };
 
             let onmousedown = i.map(onmousedown);
             let start = command.idx * query_len;

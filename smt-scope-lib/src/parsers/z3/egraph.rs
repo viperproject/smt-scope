@@ -107,8 +107,7 @@ impl EGraph {
     }
 
     pub fn get_enode(&mut self, term: TermIdx, stack: &Stack) -> Result<ENodeIdx> {
-        self.get_tte(term, stack)
-            .ok_or_else(|| Error::UnknownEnode(term))
+        self.get_tte(term, stack).ok_or(Error::UnknownEnode(term))
     }
 
     pub fn get_enode_imm(&self, term: TermIdx, stack: &Stack) -> Option<ENodeIdx> {

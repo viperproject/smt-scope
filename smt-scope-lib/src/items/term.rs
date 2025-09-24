@@ -6,7 +6,6 @@ use crate::{BoxSlice, Error, FxHashMap, IString, NonMaxU32, Result, StringTable}
 use super::{QuantIdx, TermIdx};
 
 /// A Z3 term and associated data.
-
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Term {

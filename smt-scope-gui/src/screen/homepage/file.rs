@@ -428,7 +428,7 @@ fn readable_stream_to_async_read(
     }
     fn js_to_io_error(js_value: wasm_bindgen::JsValue) -> std::io::Error {
         let message = js_to_string(&js_value).unwrap_or_else(|| "Unknown error".to_string());
-        std::io::Error::new(std::io::ErrorKind::Other, message)
+        std::io::Error::other(message)
     }
     let stream = stream
         .map(|s| {

@@ -7,7 +7,7 @@ use super::defns;
 #[derive(serde::Serialize, serde::Deserialize)]
 struct TermDisplayContext<'a> {
     string_matchers: StringMatchers<'a>,
-    regex_matchers: Cow<'a, Vec<defns::TermDisplay>>,
+    regex_matchers: Cow<'a, [defns::TermDisplay]>,
     fallback: Cow<'a, defns::FallbackFormatter>,
 }
 
@@ -45,7 +45,7 @@ impl<'de> serde::Deserialize<'de> for defns::TermDisplayContext {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-struct RegexMatcher<'a>(Cow<'a, String>);
+struct RegexMatcher<'a>(Cow<'a, str>);
 
 impl serde::Serialize for defns::RegexMatcher {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

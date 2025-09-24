@@ -187,7 +187,7 @@ impl Terms {
     pub(super) fn quant(&self, quant: TermIdx) -> Result<QuantIdx> {
         self[quant]
             .quant_idx()
-            .ok_or_else(|| Error::UnknownQuantifierIdx(quant))
+            .ok_or(Error::UnknownQuantifierIdx(quant))
     }
 
     pub(super) fn new_meaning(&mut self, mut tidx: TermIdx, meaning: Meaning) -> Result<TermIdx> {
@@ -232,7 +232,7 @@ impl Terms {
             .terms
             .iter_enumerated()
             .rev()
-            .find(|(_, term)| !term.app_name().is_some_and(|name| &strings[*name] == "="));
+            .find(|(_, term)| term.app_name().is_none_or(|name| &strings[*name] != "="));
         let last_term = last_non_eq.filter(|(_, term)| {
             term.app_name().is_some_and(|name| &strings[*name] == "or")
                 && term.child_ids.len() == 2

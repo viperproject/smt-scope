@@ -2,6 +2,7 @@ use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
+#[allow(dead_code)]
 #[derive(Properties, PartialEq)]
 pub struct UsizeInputProps {
     pub label: AttrValue,

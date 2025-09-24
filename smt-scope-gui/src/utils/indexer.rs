@@ -1,6 +1,7 @@
 use material_yew::icon::MatIcon;
 use yew::prelude::*;
 
+#[allow(dead_code)]
 #[derive(Properties, PartialEq)]
 pub struct IndexerProps {
     pub label: AttrValue,
@@ -9,10 +10,12 @@ pub struct IndexerProps {
     pub max: usize,
 }
 
+#[allow(dead_code)]
 pub struct Indexer {
     index: usize,
 }
 
+#[allow(dead_code)]
 pub enum Msg {
     Decrement,
     Increment,

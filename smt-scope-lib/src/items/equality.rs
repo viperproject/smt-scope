@@ -160,7 +160,7 @@ impl TransitiveExpl {
             to,
         }
     }
-    pub fn all(&self, fwd: bool) -> TransitiveExplIter {
+    pub fn all(&self, fwd: bool) -> TransitiveExplIter<'_> {
         let iter = self.path.iter().copied();
         if fwd {
             TransitiveExplIter::Forward(iter)

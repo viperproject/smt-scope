@@ -68,7 +68,7 @@ fn run() -> Result<i32, String> {
         Some(tracefile) => PathBuf::from(tracefile),
         None => {
             tempdir = tempfile::tempdir().unwrap();
-            let mut tempdir = tempdir.into_path();
+            let mut tempdir = tempdir.path().to_path_buf();
             tempdir.push("z3.log");
             tempdir
         }

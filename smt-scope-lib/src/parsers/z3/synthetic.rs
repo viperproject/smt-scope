@@ -199,7 +199,7 @@ impl SynthTerms {
         self.tidx_to_dstidx(sidx).err()
     }
 
-    pub(crate) fn index<'a>(&'a self, terms: &'a Terms, idx: SynthIdx) -> &AnyTerm {
+    pub(crate) fn index<'a>(&'a self, terms: &'a Terms, idx: SynthIdx) -> &'a AnyTerm {
         match self.tidx_to_dstidx(idx) {
             Ok(idx) => &self.synth_terms[idx],
             Err(tidx) => {

@@ -15,11 +15,11 @@ impl RcAnalysis {
         Self(Rc::new(RefCell::new(data)))
     }
 
-    pub fn borrow(&self) -> std::cell::Ref<AnalysisData> {
+    pub fn borrow(&self) -> std::cell::Ref<'_, AnalysisData> {
         self.0.borrow()
     }
 
-    pub fn borrow_mut(&self) -> std::cell::RefMut<AnalysisData> {
+    pub fn borrow_mut(&self) -> std::cell::RefMut<'_, AnalysisData> {
         self.0.borrow_mut()
     }
 }

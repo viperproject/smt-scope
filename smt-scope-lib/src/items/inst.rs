@@ -131,7 +131,7 @@ impl MatchKind {
         }
     }
 
-    pub fn quant_and_enodes(&self) -> Option<(QuantIdx, BoundVars<ENodeIdx>)> {
+    pub fn quant_and_enodes(&self) -> Option<(QuantIdx, BoundVars<'_, ENodeIdx>)> {
         match self {
             Self::MBQI { quant, bound_terms }
             | Self::Quantifier {

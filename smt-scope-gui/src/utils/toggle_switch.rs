@@ -2,6 +2,7 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_hooks::UseToggleHandle;
 
+#[allow(dead_code)]
 #[derive(Properties, PartialEq)]
 pub struct ToggleSwitchProps {
     pub label: AttrValue,

@@ -292,7 +292,7 @@ impl CdclTree {
     }
 
     /// Returns an iterator over all of the dead branches explored by the solver.
-    pub fn dead_branches(&self) -> impl Iterator<Item = DeadBranch> + '_ {
+    pub fn dead_branches(&self) -> impl Iterator<Item = DeadBranch<'_>> + '_ {
         self.cdcl
             .iter_enumerated()
             .filter_map(|(cidx, cdcl)| match &cdcl.kind {

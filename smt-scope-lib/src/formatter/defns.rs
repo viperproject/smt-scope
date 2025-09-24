@@ -168,7 +168,7 @@ impl TermDisplayContext {
     }
 
     #[cfg(feature = "serde")]
-    pub(super) fn to_parts(&self) -> TermDisplayContextParts {
+    pub(super) fn to_parts(&self) -> TermDisplayContextParts<'_> {
         (&self.string_matchers, &self.regex_matchers, &self.fallback)
     }
     #[cfg(feature = "serde")]

@@ -63,6 +63,7 @@ display = ["dep:regex"]
 display_html = ["dep:ammonia"]
 analysis = []
 mem_dbg = ["dep:mem_dbg", "dep:cap"]
+offset_of_enum = ["mem_dbg/offset_of_enum"]
 serde = ["lasso/serialize", "nonmax/serde", "typed-index-collections/serde-std", "num/serde", "petgraph/serde-1"]
 # Feature to enable the integration test that runs on all smt2 files in
 # smt-logs. Disabled by default.

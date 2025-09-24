@@ -21,8 +21,8 @@ jobs:
     - name: Check all lib features
       run: |
         cd smt-scope-lib
-        RUSTFLAGS="-D warnings" cargo check-all-features --release
+        RUSTFLAGS="-D warnings" cargo check-all-features -- --release
     - name: Check all gui features
       run: |
         cd smt-scope-gui
-        RUSTFLAGS="-D warnings" cargo check-all-features --release
+        RUSTFLAGS="-D warnings" cargo check-all-features -- --release

@@ -1,6 +1,8 @@
 mod example;
 mod file;
 mod screen;
+#[cfg(not(feature = "tauri"))]
+mod version;
 
 use std::{cell::RefCell, rc::Rc, sync::Mutex};
 

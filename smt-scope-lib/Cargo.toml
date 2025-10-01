@@ -63,8 +63,15 @@ display = ["dep:regex"]
 display_html = ["dep:ammonia"]
 analysis = []
 mem_dbg = ["dep:mem_dbg", "dep:cap"]
+# The code which derives the MemDbg stuff incorrectly places
+# `#[cfg_attr(feature = "offset_of_enum", ...)]` in this crate. We add this
+# dummy feature to avoid a warning for that. Should not be used.
 offset_of_enum = ["mem_dbg/offset_of_enum"]
 serde = ["lasso/serialize", "nonmax/serde", "typed-index-collections/serde-std", "num/serde", "petgraph/serde-1"]
 # Feature to enable the integration test that runs on all smt2 files in
 # smt-logs. Disabled by default.
 test_verifiers = []
+
+# See above regarding `offset_of_enum`.
+[package.metadata.cargo-all-features]
+denylist = ["offset_of_enum"]

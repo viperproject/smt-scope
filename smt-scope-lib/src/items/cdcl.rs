@@ -1,7 +1,7 @@
 #[cfg(feature = "mem_dbg")]
 use mem_dbg::{MemDbg, MemSize};
 
-use super::{CdclIdx, InstIdx, LitIdx, StackIdx, TermIdx, TheoryKind};
+use super::{CdclIdx, ENodeIdx, InstIdx, LitIdx, StackIdx, TermIdx, TheoryKind};
 
 /// A boolean term which has been assigned either true or false.
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
@@ -9,7 +9,15 @@ use super::{CdclIdx, InstIdx, LitIdx, StackIdx, TermIdx, TheoryKind};
 pub struct Literal {
     pub term: Assignment,
     pub frame: StackIdx,
+    // Same as for `enode` below. We assume that if the equality was assigned
+    // during an instantiation then that instantiation is to blame for the
+    // assignment.
     pub iblame: Option<InstIdx>,
+    // Ideally we would work backwards from the assignment to figure out
+    // everyone to blame for it. Unfortunately due to z3 issues (see comment of
+    // `parse_bool_literal`) we cannot do this. Instead we assume that the
+    // creator of the corresponding enode (if there is one) is to blame.
+    pub enode: Option<ENodeIdx>,
     pub justification: Justification,
 }
 

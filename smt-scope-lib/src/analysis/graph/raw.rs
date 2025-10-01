@@ -161,8 +161,16 @@ impl RawInstGraph {
             match eq {
                 EqualityExpl::Root { .. } => (),
                 EqualityExpl::Literal { eq, .. } => {
-                    if let Some(iidx) = parser[*eq].iblame {
-                        self_.add_edge(iidx, (idx, None), EdgeKind::EqualityFact)
+                    let literal = &parser[*eq];
+                    if let Some(enode) = literal.enode {
+                        self_.add_edge(enode, (idx, None), EdgeKind::EqualityFact)
+                    }
+                    if let Some(iidx) = literal.iblame {
+                        let enode_blame =
+                            literal.enode.and_then(|enode| parser[enode].blame.inst());
+                        if enode_blame.is_none_or(|enode_blame| enode_blame != iidx) {
+                            self_.add_edge(iidx, (idx, None), EdgeKind::EqualityProof)
+                        }
                     }
                 }
                 EqualityExpl::Congruence { uses, .. } => {
@@ -637,6 +645,8 @@ pub enum EdgeKind {
     BlameEq { pattern_term: u16, eq_order: u16 },
     /// ENode -> GivenEquality (`EqualityExpl::Literal`)
     EqualityFact,
+    /// Instantiation -> GivenEquality (`EqualityExpl::Literal`)
+    EqualityProof,
     /// TransEquality -> GivenEquality (`EqualityExpl::Congruence`)
     EqualityCongruence,
     /// GivenEquality -> TransEquality (`TransitiveExplSegmentKind::Leaf`)

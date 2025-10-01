@@ -418,6 +418,7 @@ impl<'a, 'b> EdgeInfo<'a, 'b> {
             }
             Direct(_, EdgeKind::BlameEq { .. }) => "Blame Equality".to_string(),
             Direct(_, EdgeKind::EqualityFact) => "Equality Fact".to_string(),
+            Direct(_, EdgeKind::EqualityProof) => "Equality Proof".to_string(),
             Direct(_, EdgeKind::EqualityCongruence) => "Equality Congruence".to_string(),
             Direct(_, EdgeKind::TEqualitySimple { forward }) => format!(
                 "Simple {}Equality",

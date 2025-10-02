@@ -117,6 +117,7 @@ impl TryFrom<SubFormatterConst<'_>> for SubFormatter {
                 SubFormatter::String(data)
             }
             SubFormatterConst::Single(s) => SubFormatter::Single {
+                path: s.path.into(),
                 index: s.index,
                 bind_power: s.bind_power,
             },
@@ -127,9 +128,16 @@ impl TryFrom<SubFormatterConst<'_>> for SubFormatter {
     }
 }
 
+impl From<[Option<ChildIndex>; 8]> for ChildPath {
+    fn from(path: [Option<ChildIndex>; 8]) -> Self {
+        ChildPath(path.into_iter().filter_map(|p| p).collect())
+    }
+}
+
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubFormatterSingle {
+    pub path: [Option<ChildIndex>; 8],
     pub index: ChildIndex,
     /// How strongly does the surrounding context bind the child?
     pub bind_power: BindPowerPair,
@@ -162,6 +170,7 @@ impl TryFrom<SubFormatterRepeatConst<'_>> for SubFormatterRepeat {
         let right_sep = String::from(sub.right_sep);
         let right_sep = right_sep.parse::<Formatter>()?;
         Ok(Self {
+            path: sub.range.path.into(),
             from: sub.range.from,
             to: sub.range.to,
             left_sep,
@@ -200,6 +209,7 @@ impl SubFormatterRepeatSeparator<'static> {
 
 #[derive(Debug)]
 pub struct ChildRange {
+    pub path: [Option<ChildIndex>; 8],
     pub from: ChildIndex,
     pub to: ChildIndex,
 }

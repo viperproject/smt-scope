@@ -777,7 +777,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResu
                 let mut children = data.children();
                 for index in path.get() {
                     let child = get_child(*index, children)?;
-                    children = &ctxt.parser[children[child]].child_ids();
+                    children = ctxt.parser[children[child]].child_ids();
                 }
                 Some(children)
             }

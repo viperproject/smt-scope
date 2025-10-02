@@ -130,7 +130,7 @@ impl TryFrom<SubFormatterConst<'_>> for SubFormatter {
 
 impl From<[Option<ChildIndex>; 8]> for ChildPath {
     fn from(path: [Option<ChildIndex>; 8]) -> Self {
-        ChildPath(path.into_iter().filter_map(|p| p).collect())
+        ChildPath(path.into_iter().flatten().collect())
     }
 }
 

@@ -55,6 +55,10 @@ impl Z3Parser {
 
     fn parse_existing_enode(&mut self, id: &str) -> Result<ENodeIdx> {
         let idx = self.parse_existing_app(id)?;
+        self.get_existing_enode(idx)
+    }
+
+    fn get_existing_enode(&mut self, idx: TermIdx) -> Result<ENodeIdx> {
         let res = self.egraph.get_enode(idx, &self.stack);
         let can_error =
             self.version_info.is_ge_version(4, 8, 9) && self.version_info.is_le_version(4, 11, 2);
@@ -285,7 +289,7 @@ impl Z3Parser {
     fn parse_literal<'a>(
         &mut self,
         l: &mut impl Iterator<Item = &'a str>,
-    ) -> Result<Option<Assignment>> {
+    ) -> Result<Option<(Assignment, Option<ENodeIdx>)>> {
         let Some(lit) = l.next() else {
             return Ok(None);
         };
@@ -300,7 +304,8 @@ impl Z3Parser {
             _ => (lit, true),
         };
         let literal = self.parse_existing_app(lit)?;
-        Ok(Some(Assignment { literal, value }))
+        let enode = self.get_existing_enode(literal).ok();
+        Ok(Some((Assignment { literal, value }, enode)))
     }
 
     /// When logging `assign` z3 prints some literals as their "bool var idx"
@@ -559,6 +564,9 @@ impl Z3LogParser for Z3Parser {
 
                     let eq = self.lits.get_assign(self[eq].owner, &self.stack);
                     let eq = eq.ok_or(E::UnknownEqLit)?;
+                    // The equality must have been assigned to true
+                    // TODO: why is this not always true?
+                    // debug_assert!(self[eq].term.value);
                     EqualityExpl::Literal { from, eq, to }
                 }
                 "cg" => {
@@ -714,7 +722,7 @@ impl Z3LogParser for Z3Parser {
                 let mut rewrite_of = None;
                 for word in l.by_ref() {
                     let term = self.parse_existing_app(word)?;
-                    if let Ok(enode) = self.egraph.get_enode(term, &self.stack) {
+                    if let Ok(enode) = self.get_existing_enode(term) {
                         if let Some(rewrite_of) = rewrite_of {
                             return Err(E::NonRewriteAxiomInvalidEnode(rewrite_of));
                         }
@@ -827,8 +835,8 @@ impl Z3LogParser for Z3Parser {
         let created_by = self.insts.active_inst();
         let iidx = created_by.as_ref().map(|a| a.idx);
 
-        let assign = self.parse_literal(&mut l)?.ok_or(E::UnexpectedNewline)?;
-        let lit = self.lits.new_literal(assign, iidx, &self.stack)?;
+        let (assign, enode) = self.parse_literal(&mut l)?.ok_or(E::UnexpectedNewline)?;
+        let lit = self.lits.new_literal(assign, iidx, enode, &self.stack)?;
         let mut justification = l.next().ok_or(E::UnexpectedNewline)?;
         let decision = justification == "decision";
         if decision {
@@ -933,7 +941,7 @@ impl Z3LogParser for Z3Parser {
         self.comm.curr().last_line_kind = LineKind::Conflict;
 
         let mut cut = Vec::new();
-        while let Some(assignment) = self.parse_literal(&mut l)? {
+        while let Some((assignment, _)) = self.parse_literal(&mut l)? {
             cut.try_reserve(1)?;
             cut.push(assignment);
         }

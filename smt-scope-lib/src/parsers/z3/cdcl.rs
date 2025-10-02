@@ -6,8 +6,8 @@ use typed_index_collections::TiSlice;
 
 use crate::{
     items::{
-        Assignment, Cdcl, CdclBacklink, CdclIdx, CdclKind, Conflict, InstIdx, Justification,
-        JustificationKind, LitIdx, Literal, StackIdx, TermIdx,
+        Assignment, Cdcl, CdclBacklink, CdclIdx, CdclKind, Conflict, ENodeIdx, InstIdx,
+        Justification, JustificationKind, LitIdx, Literal, StackIdx, TermIdx,
     },
     Error, FxHashMap, Result, TiVec,
 };
@@ -39,6 +39,7 @@ impl Literals {
         &mut self,
         term: Assignment,
         iblame: Option<InstIdx>,
+        enode: Option<ENodeIdx>,
         stack: &Stack,
     ) -> Result<LitIdx> {
         let frame = stack.active_frame();
@@ -46,6 +47,7 @@ impl Literals {
             term,
             frame,
             iblame,
+            enode,
             justification: Default::default(),
         };
         self.literals.try_reserve(1)?;

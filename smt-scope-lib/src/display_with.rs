@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt};
 
 use crate::{
     formatter::{
-        BindPowerPair, ChildIndex, MatchResult, SubFormatter, TermDisplayContext,
+        BindPowerPair, ChildIndex, ChildPath, MatchResult, SubFormatter, TermDisplayContext,
         DEFAULT_BIND_POWER, QUANT_BIND,
     },
     items::*,
@@ -769,14 +769,26 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResu
                         .and_then(|c| c.get(idx.get() as usize).map(|c| c.as_str()))
                 }
             };
-            fn get_child(index: ChildIndex, data: &DisplayData) -> Option<usize> {
-                if index.0.is_negative() {
-                    data.children()
+            fn get_children<'a>(
+                path: &ChildPath,
+                ctxt: &DisplayCtxt<'a>,
+                data: &DisplayData<'a>,
+            ) -> Option<&'a [SynthIdx]> {
+                let mut children = data.children();
+                for index in path.get() {
+                    let child = get_child(*index, children)?;
+                    children = ctxt.parser[children[child]].child_ids();
+                }
+                Some(children)
+            }
+            fn get_child(index: ChildIndex, children: &[SynthIdx]) -> Option<usize> {
+                if index.get().is_negative() {
+                    children
                         .len()
-                        .checked_sub(index.0.wrapping_abs() as u32 as usize)
+                        .checked_sub(index.get().wrapping_abs() as u32 as usize)
                 } else {
-                    let index = index.0 as usize;
-                    (index < data.children().len()).then_some(index)
+                    let index = index.get() as usize;
+                    (index < children.len()).then_some(index)
                 }
             }
             fn write_formatter<'b, 's>(
@@ -817,25 +829,37 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResu
                             };
                             write!(f, "{capture}")?;
                         }
-                        SubFormatter::Single { index, bind_power } => {
-                            let Some(child) = get_child(*index, data) else {
+                        SubFormatter::Single {
+                            path,
+                            index,
+                            bind_power,
+                        } => {
+                            let Some(children) = get_children(path, ctxt, data) else {
                                 continue;
                             };
-                            let child = data.children()[child];
+                            let Some(child) = get_child(*index, children) else {
+                                continue;
+                            };
+                            let child = children[child];
                             data.with_inner_bind_power(*bind_power, |data| {
                                 display_child(f, child, ctxt, data)
                             })?;
                         }
                         SubFormatter::Repeat(r) => {
+                            let Some(children) = get_children(&r.path, ctxt, data) else {
+                                continue;
+                            };
                             let (Some(from), Some(to)) =
-                                (get_child(r.from, data), get_child(r.to, data))
+                                (get_child(r.from, children), get_child(r.to, children))
                             else {
                                 continue;
                             };
-                            if !r.from.0.is_negative() && r.to.0.is_negative() && from > to {
+                            if !r.from.get().is_negative() && r.to.get().is_negative() && from > to
+                            {
                                 continue;
                             }
-                            if r.from.0.is_negative() && !r.to.0.is_negative() && from < to {
+                            if r.from.get().is_negative() && !r.to.get().is_negative() && from < to
+                            {
                                 continue;
                             }
                             let forwards = from <= to;
@@ -864,7 +888,7 @@ impl<'a, 'b> DisplayWithCtxt<DisplayCtxt<'b>, DisplayData<'b>> for &'a MatchResu
                                 if is_final {
                                     bind_power.right = r.right;
                                 }
-                                let child = data.children()[child];
+                                let child = children[child];
                                 data.with_inner_bind_power(bind_power, |data| {
                                     display_child(f, child, ctxt, data)
                                 })?;

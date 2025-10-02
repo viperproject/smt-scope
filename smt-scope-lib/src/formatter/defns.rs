@@ -433,6 +433,7 @@ impl BindPowerPair {
 pub enum SubFormatter {
     String(String),
     Single {
+        path: ChildPath,
         index: ChildIndex,
         /// How strongly does the surrounding context bind the child?
         bind_power: BindPowerPair,
@@ -444,6 +445,7 @@ pub enum SubFormatter {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubFormatterRepeat {
+    pub path: ChildPath,
     pub from: ChildIndex,
     pub to: ChildIndex,
     pub left_sep: Formatter,
@@ -455,5 +457,21 @@ pub struct SubFormatterRepeat {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChildPath(pub(super) Vec<ChildIndex>);
+
+impl ChildPath {
+    pub fn get(&self) -> &[ChildIndex] {
+        &self.0
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ChildIndex(pub i32);
+pub struct ChildIndex(pub(super) nonmax::NonMaxI32);
+
+impl ChildIndex {
+    pub const fn get(&self) -> i32 {
+        self.0.get()
+    }
+}

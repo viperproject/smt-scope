@@ -23,13 +23,14 @@ macro_rules! unwrap {
 
 pub const QUANT_BIND: BindPowerPair = unwrap!(BindPowerPair::parse("-6,12")).1;
 
-pub const DEFAULT_FORMATTER: FormatterConst<'static> =
-    unwrap!(FormatterConst::parse("$-8$${0}$$(#0:-1|4|8|4$(|, |))$$-4$"));
-// pub const DEFAULT: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("/(?:.|\\n)*/", "$-8$${0}$$(#0:-1|4|8|4$(|, |))$$-4$"));
+pub const DEFAULT_FORMATTER: FormatterConst<'static> = unwrap!(FormatterConst::parse(
+    "$-8$${0}$$(#0..-1|4|8|4$(|, |))$$-4$"
+));
+// pub const DEFAULT: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("/(?:.|\\n)*/", "$-8$${0}$$(#0..-1|4|8|4$(|, |))$$-4$"));
 
 pub const TRIGGER: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse(
     "pattern",
-    "$-8${ $(#0:-1|4|8|4$, )$ }$-8$"
+    "$-8${ $(#0..-1|4|8|4$, )$ }$-8$"
 ));
 
 pub const UNARY_OP: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse(
@@ -42,7 +43,7 @@ pub const NEG: TermDisplayConst<'static> =
 /// e.g. `(>= _ _)` into `(and (= _ _) (< _ _))`, or `(=> _ _)` into `(or (not _) _)`.
 pub const BINARY_OP: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse(
     "/=|\\+|-|\\*|/|<|>|(?:and)|(?:or)|(?:<=)|(?:>=)|(?:=>)/",
-    "$10$$(#0:-1|9|-16|9$| ${0}$ |)$$10$"
+    "$10$$(#0..-1|9|-16|9$| ${0}$ |)$$10$"
 ));
 pub const IF: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse(
     "if",
@@ -52,12 +53,12 @@ pub const IF: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse(
 // pub const SLOT_TEST: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse("slot", "$-8$&$[#0|9,-16]$[$[#1|4,4]$]$-8$"));
 
 pub const S_EXPRESSION: FormatterConst<'static> =
-    unwrap!(FormatterConst::parse("$-1$(${0}$$(#0:-1|1$ | |)$)$-1$"));
+    unwrap!(FormatterConst::parse("$-1$(${0}$$(#0..-1|1$ | |)$)$-1$"));
 pub const S_EXPRESSION_LEAF: TermDisplayConst<'static> =
     unwrap!(TermDisplayConst::parse("(/.*/)", "$-1$${0}$$-1$"));
 pub const S_EXPRESSION_PATTERN: TermDisplayConst<'static> = unwrap!(TermDisplayConst::parse(
     "pattern",
-    "$-1$:pattern ($(#0:-1|1$| |)$)$-1$"
+    "$-1$:pattern ($(#0..-1|1$| |)$)$-1$"
 ));
 
 impl TermDisplayContext {

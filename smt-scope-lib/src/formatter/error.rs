@@ -74,6 +74,7 @@ pub enum FormatterError {
     MissingRange,
     MissingControl(&'static str),
     TooManyControl(char),
+    TooManyChildren,
     UnexpectedPair,
     IncorrectControl,
     InvalidNumber,
@@ -89,6 +90,7 @@ impl FormatterError {
             MissingRange => [()][error as usize],
             MissingControl(_) => [()][error as usize],
             TooManyControl(_) => [()][error as usize],
+            TooManyChildren => [()][error as usize],
             UnexpectedPair => [()][error as usize],
             IncorrectControl => [()][error as usize],
             InvalidNumber => [()][error as usize],
@@ -129,6 +131,12 @@ impl<'a> ParseErrorConst<'a, FormatterError> {
         Self {
             s: split.remainder(),
             kind: FormatterError::TooManyControl(split.control()),
+        }
+    }
+    pub(super) const fn too_many_children(s: &'a str) -> Self {
+        Self {
+            s,
+            kind: FormatterError::TooManyChildren,
         }
     }
     pub(super) const fn unexpected_pair(s: &'a str) -> Self {

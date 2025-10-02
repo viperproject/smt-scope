@@ -76,10 +76,13 @@ impl DeParseTrait for &'_ SubFormatter {
     fn deparse(self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             SubFormatter::String(s) => write!(f, "{}", duplicate_character(s, CONTROL_CHARACTER)),
-            SubFormatter::Single { index, bind_power } => write!(
+            SubFormatter::Single {
+                path,
+                index,
+                bind_power,
+            } => write!(
                 f,
-                "{CONTROL_CHARACTER}[#{}{SEPARATOR_CHARACTER}{}]{CONTROL_CHARACTER}",
-                index.0,
+                "{CONTROL_CHARACTER}[#{path}{index}{SEPARATOR_CHARACTER}{}]{CONTROL_CHARACTER}",
                 DeParse(bind_power)
             ),
             SubFormatter::Repeat(r) => {
@@ -108,12 +111,13 @@ impl DeParseTrait for &'_ BindPowerPair {
 
 impl DeParseTrait for &'_ SubFormatterRepeat {
     fn deparse(self, f: &mut fmt::Formatter) -> fmt::Result {
-        let from = self.from.0;
-        let to = self.to.0;
+        let path = &self.path;
+        let from = self.from;
+        let to = self.to;
         let left = self.left as i32;
         let middle = DeParse(&self.middle);
         let right = self.right as i32;
-        write!(f, "#{from}:{to}{SEPARATOR_CHARACTER}{left}{SEPARATOR_CHARACTER}{middle}{SEPARATOR_CHARACTER}{right}{CONTROL_CHARACTER}")?;
+        write!(f, "#{path}{from}..{to}{SEPARATOR_CHARACTER}{left}{SEPARATOR_CHARACTER}{middle}{SEPARATOR_CHARACTER}{right}{CONTROL_CHARACTER}")?;
         let left_sep =
             duplicate_character(&DeParse(&self.left_sep).to_string(), SEPARATOR_CHARACTER);
         write!(f, "{left_sep}")?;
@@ -126,5 +130,20 @@ impl DeParseTrait for &'_ SubFormatterRepeat {
             duplicate_character(&DeParse(&self.right_sep).to_string(), SEPARATOR_CHARACTER);
         write!(f, "{right_sep}")?;
         Ok(())
+    }
+}
+
+impl fmt::Display for ChildPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for p in &self.0 {
+            write!(f, "{p}:")?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for ChildIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

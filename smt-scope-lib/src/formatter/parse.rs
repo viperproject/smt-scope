@@ -58,25 +58,41 @@ macro_rules! panic {
 // Const parsing
 
 impl ChildIndex {
-    pub const fn parse(s: &str, hash_prefix: bool) -> ResultFormatterConst<'_, Self> {
-        let s = if hash_prefix {
-            let tail = ConstOperations::strip_prefix(s, '#');
-            map_opt!(tail, Err(ParseErrorConst::missing_hash(s)))
-        } else {
-            s
-        };
+    pub const fn parse(s: &str) -> ResultFormatterConst<'_, ([Option<Self>; 8], Self)> {
+        let tail = ConstOperations::strip_prefix(s, '#');
+        let s = map_opt!(tail, Err(ParseErrorConst::missing_hash(s)));
+        let rest = ConstOperations::split(s, ':');
+        let (_, mut last, mut rest) = rest.next::<false>();
+        let mut path: [Option<ChildIndex>; 8] = [None; 8];
+        let mut idx = 0;
+        while let Some(split) = rest {
+            path[idx] = Some(map_res!(Self::parse_single(last)));
+            idx += 1;
+            if idx >= 8 {
+                return Err(ParseErrorConst::too_many_children(s));
+            }
+            (_, last, rest) = split.next::<false>();
+        }
+        Ok((path, map_res!(Self::parse_single(last))))
+    }
+
+    pub const fn parse_single(s: &str) -> ResultFormatterConst<'_, Self> {
         let index = map_res!(ConstOperations::parse_i32(s));
+        let index = map_opt!(
+            nonmax::NonMaxI32::new(index),
+            Err(ParseErrorConst::invalid_number(s))
+        );
         Ok(Self(index))
     }
 }
 
 impl ChildRange {
     pub const fn parse(s: &str) -> ResultFormatterConst<'_, Self> {
-        let split = ConstOperations::split_first(s, ':');
+        let split = ConstOperations::split_2_first(s, '.', '.');
         let (from, to) = map_opt!(split, Err(ParseErrorConst::missing_range(s)));
-        let from = map_res!(ChildIndex::parse(from, true));
-        let to = map_res!(ChildIndex::parse(to, false));
-        Ok(ChildRange { from, to })
+        let (path, from) = map_res!(ChildIndex::parse(from));
+        let to = map_res!(ChildIndex::parse_single(to));
+        Ok(ChildRange { path, from, to })
     }
 }
 
@@ -96,15 +112,20 @@ impl BindPowerPair {
 }
 
 impl SubFormatterSingle {
+    // `#x:y:a|n,m`
     pub const fn parse(s: &str) -> ResultFormatterConst<'_, Self> {
         let split = ConstOperations::split(s, SEPARATOR_CHARACTER);
         let (_, index, split) = split.next::<false>();
-        let index = map_res!(ChildIndex::parse(index, true));
+        let (path, index) = map_res!(ChildIndex::parse(index));
         let bind_power = map_opt!(
             split => map_res!(BindPowerPair::parse(split.remainder())).1,
             BindPowerPair::symmetric(DEFAULT_BIND_POWER)
         );
-        Ok(Self { index, bind_power })
+        Ok(Self {
+            path,
+            index,
+            bind_power,
+        })
     }
 }
 
@@ -113,7 +134,7 @@ impl<'a> SubFormatterRepeatConst<'a> {
         let split = ConstOperations::split(s, CONTROL_CHARACTER);
         let (_, left, sep) = split.next::<false>();
 
-        // $(`a:b|n|m,o,|p`$
+        // $(`#x:y:a..b|n|m,o,|p`$
         let left = ConstOperations::split(left, SEPARATOR_CHARACTER);
         let (_, range, split) = left.next::<false>();
         let range = map_res!(ChildRange::parse(range));
@@ -367,7 +388,7 @@ impl<'a> TermDisplayConst<'a> {
 impl FromStr for ChildIndex {
     type Err = FormatterParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::parse(s, true)?)
+        Ok(Self::parse_single(s)?)
     }
 }
 
@@ -587,6 +608,11 @@ impl ConstOperations {
         let split = Self::split(s, sep);
         let (_, last, split) = split.prev::<false>();
         map_opt!(split => (last, split.remainder()))
+    }
+    const fn split_2_first(s: &'_ str, sep1: char, sep2: char) -> Option<(&'_ str, &'_ str)> {
+        let split = Self::split_2(s, sep1, sep2);
+        let (_, first, split) = split.next::<false>();
+        map_opt!(split => (first, split.remainder()))
     }
 
     const fn parse_i32(full: &str) -> ResultFormatterConst<'_, i32> {

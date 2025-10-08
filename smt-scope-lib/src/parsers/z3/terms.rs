@@ -153,6 +153,7 @@ impl<K: From<usize> + Copy, V: HasTermId> TermStorage<K, V> {
 pub struct Terms {
     pub(super) app_terms: TermStorage<TermIdx, Term>,
     pub(super) proof_terms: TermStorage<ProofIdx, ProofStep>,
+    pub(super) named_asserts: NamedAsserts,
 
     meanings: FxHashMap<TermIdx, Meaning>,
     pub(super) bug: TermsBug,
@@ -272,6 +273,59 @@ impl Terms {
             .into_result()
             .map_err(Error::UnknownId)
     }
+
+    pub(super) fn new_proof(&mut self, pidx: ProofIdx, strings: &StringTable) -> Result<()> {
+        let proof = &self[pidx];
+        if !proof.kind.is_asserted() {
+            return Ok(());
+        }
+        let ridx = proof.result;
+        let result = &self[ridx];
+        match result.child_ids.len() {
+            0 => {
+                if let Some(implication) = self.named_asserts.seen.remove(&ridx) {
+                    self.named_asserts.named.try_reserve(1)?;
+                    self.named_asserts.named.push((pidx, implication));
+                }
+            }
+            2 if result
+                .app_name()
+                .is_some_and(|name| &strings[*name] == "=>") =>
+            {
+                let lidx = result.child_ids[0];
+                let lhs = &self[lidx];
+                if lhs.app_name().is_some() && lhs.child_ids.is_empty() {
+                    self.named_asserts.seen.try_reserve(1)?;
+                    self.named_asserts.seen.insert(lidx, pidx);
+                }
+            }
+            _ => (),
+        };
+        Ok(())
+    }
+}
+
+/// Named assertions are required to get an unsat core. They are given to z3 as
+/// follows: `(assert (! my_assertion :named my_name))`. This is turned into:
+/// ```smt2
+/// (declare-const my_name Bool)
+/// (assert (=> my_name my_assertion))
+/// (assert my_name)
+/// ```
+/// Unfortunately from the log we cannot differentiate between the user writing
+/// the above directly or using `:named`, so we treat both the same (unlike z3
+/// which differentiates the two).
+///
+/// When we see the first line:\
+/// `[mk-proof] #_ asserted (=> my_name #_)`\
+/// we store it under `seen`. Then when we see the second line:\
+/// `[mk-proof] #_ asserted my_name`\
+/// we look it up in `seen` and move it to `named`.
+#[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
+#[derive(Debug, Default)]
+pub struct NamedAsserts {
+    pub seen: FxHashMap<TermIdx, ProofIdx>,
+    pub named: Vec<(ProofIdx, ProofIdx)>,
 }
 
 impl std::ops::Index<TermIdx> for Terms {

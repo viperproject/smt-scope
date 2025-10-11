@@ -245,7 +245,7 @@ impl<'a> MlAnalysis<'a> {
 #[derive(Debug)]
 pub struct MlNodeInfo {
     pub ml_sig: MlSigIdx,
-    pub ast_size: Option<NonMaxU64>,
+    pub ast_size: Vec<Option<NonMaxU64>>,
     pub roots: Option<NonMaxU64>,
     pub blames: Box<[CollectedBlame]>,
 
@@ -591,12 +591,16 @@ impl MlNodeInfo {
     }
 
     pub fn ge_ast_size(&self, other: &Self) -> bool {
-        match (self.ast_size, other.ast_size) {
-            (Some(ss), Some(os)) => ss >= os,
-            (Some(_), None) => false,
-            (None, Some(_)) => true,
-            (None, None) => true,
-        }
+        assert_eq!(self.ast_size.len(), other.ast_size.len());
+        self.ast_size
+            .iter()
+            .zip(&other.ast_size)
+            .all(|(ss, os)| match (ss, os) {
+                (Some(ss), Some(os)) => ss >= os,
+                (Some(_), None) => false,
+                (None, Some(_)) => true,
+                (None, None) => true,
+            })
     }
 }
 

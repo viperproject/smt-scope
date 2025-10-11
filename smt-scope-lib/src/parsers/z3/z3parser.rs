@@ -226,17 +226,14 @@ impl Z3Parser {
         &self,
         iidx: InstIdx,
         cached: &mut FxHashMap<TermIdx, AstSize>,
-    ) -> std::option::Option<NonMaxU64> {
+    ) -> Vec<std::option::Option<NonMaxU64>> {
         let bound_terms = self[self[iidx].match_]
             .kind
             .bound_terms(|e| self[e].owner, |t| t);
-        let mut sum = NonMaxU64::ZERO;
-        for bt in bound_terms {
-            let size = self.ast_size(bt, cached).unwrap();
-            let size = sum.get().saturating_add(size?.get());
-            sum = NonMaxU64::new(size)?;
-        }
-        Some(sum)
+        bound_terms
+            .into_iter()
+            .map(|&bt| self.ast_size(bt, cached).unwrap())
+            .collect()
     }
 
     pub fn new_quant_pat_vec<T>(&self, f: impl Fn(QuantPat) -> T) -> QuantPatVec<T> {

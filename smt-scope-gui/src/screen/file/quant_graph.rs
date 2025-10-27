@@ -70,7 +70,7 @@ impl QuantPetGraph {
         // Add per-quantifier nodes
 
         for (quant, data) in log_info.quants.0 .0.iter_enumerated() {
-            let non_zero = || data.iter_enumerated().filter(|(_, c)| **c > 0);
+            let non_zero = || data.iter_enumerated().filter(|(_, c)| c.normal > 0);
             let pats_with_insts = non_zero().count();
             let kind = match pats_with_insts {
                 0 => continue,
@@ -84,7 +84,7 @@ impl QuantPetGraph {
                 _ => QuantKind::Full,
             };
 
-            let quant_count = non_zero().map(|(_, c)| *c).sum::<usize>();
+            let quant_count = non_zero().map(|(_, c)| c.normal).sum::<usize>();
             let percent = (100. * quant_count as f64) / total;
             max_percent = max_percent.max(percent);
             let node = QuantNode {
@@ -97,6 +97,7 @@ impl QuantPetGraph {
             reverse_quant.insert(quant, qn);
 
             for (pat, &count) in non_zero() {
+                let count = count.normal;
                 let percent = node.percent * (count as f64 / quant_count as f64);
                 let qpat = QuantPat { quant, pat };
                 let data = &quants[qpat];

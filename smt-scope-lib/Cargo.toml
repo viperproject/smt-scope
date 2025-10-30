@@ -1,6 +1,6 @@
 [package]
 name = "smt-scope"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 resolver = "2"
 # authors = ["Viper Team <smtscope_developers@sympa.ethz.ch>"]

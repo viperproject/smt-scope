@@ -245,7 +245,8 @@ impl<'a> MlAnalysis<'a> {
 #[derive(Debug)]
 pub struct MlNodeInfo {
     pub ml_sig: MlSigIdx,
-    pub ast_size: Option<NonMaxU64>,
+    pub ast_size: Vec<Option<NonMaxU64>>,
+    pub roots: Option<NonMaxU64>,
     pub blames: Box<[CollectedBlame]>,
 
     pub tree_above: Vec<MlLinkInfo>,
@@ -508,9 +509,14 @@ impl MlNodeInfo {
         Self {
             ml_sig,
             ast_size: parser.inst_ast_size(iidx, cached),
+            roots: None,
             tree_above: Default::default(),
             blames: Self::blames(parser, iidx).collect(),
         }
+    }
+
+    fn roots(&self) -> NonMaxU64 {
+        self.roots.unwrap()
     }
 
     pub fn root_above(&self, min_ml: u32, min_sc: u32) -> impl Iterator<Item = &MlLinkInfo> + '_ {
@@ -585,24 +591,30 @@ impl MlNodeInfo {
     }
 
     pub fn ge_ast_size(&self, other: &Self) -> bool {
-        match (self.ast_size, other.ast_size) {
-            (Some(ss), Some(os)) => ss >= os,
-            (Some(_), None) => false,
-            (None, Some(_)) => true,
-            (None, None) => true,
-        }
+        assert_eq!(self.ast_size.len(), other.ast_size.len());
+        self.ast_size
+            .iter()
+            .zip(&other.ast_size)
+            .all(|(ss, os)| match (ss, os) {
+                (Some(ss), Some(os)) => ss >= os,
+                (Some(_), None) => false,
+                (None, Some(_)) => true,
+                (None, None) => true,
+            })
     }
 }
 
 #[cfg_attr(feature = "mem_dbg", derive(MemSize, MemDbg))]
 #[derive(Debug, Default, Clone)]
 pub struct MlAnalysisInfo {
+    roots: FxHashSet<ENodeIdx>,
     ancestors: FxHashSet<InstIdx>,
     banned: FxHashSet<InstIdx>,
 }
 
 impl MlAnalysisInfo {
     fn extend(&mut self, incoming: &Self) {
+        self.roots.extend(incoming.roots.iter().copied());
         for banned in incoming.banned.iter() {
             self.ancestors.remove(banned);
         }
@@ -646,6 +658,14 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
         Self::Value: 'n,
     {
         let mut curr = MlAnalysisInfo::default();
+        if let Some(eidx) = graph.raw[idx].kind().enode() {
+            if let Some(pidx) = self.inner.parser[eidx].blame.proof() {
+                if self.inner.parser[pidx].kind.is_asserted() {
+                    curr.roots.insert(eidx);
+                }
+            }
+        }
+
         for (_, info) in from_all() {
             curr.extend(info);
         }
@@ -656,10 +676,14 @@ impl TopoAnalysis<true, false> for MlAnalysis<'_> {
         let Some(mut curr_info) = self.node_to_ml.remove(&iidx) else {
             return curr;
         };
+        curr_info.roots = Some(NonMaxU64::new(curr.roots.len() as u64).unwrap());
 
         curr.filter(|prev_iidx| {
             let prev_info = self.node_to_ml.get_mut(&prev_iidx).unwrap();
-            if prev_info.ml_sig == curr_info.ml_sig && curr_info.ge_ast_size(prev_info) {
+            if prev_info.ml_sig == curr_info.ml_sig
+                && curr_info.ge_ast_size(prev_info)
+                && curr_info.roots() == prev_info.roots()
+            {
                 let mut gidx = None;
                 let mut parent = None;
                 let mut max_ungen_depth = 0;

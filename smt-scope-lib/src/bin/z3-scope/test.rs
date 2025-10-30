@@ -11,7 +11,7 @@ const MB: u64 = 1024_u64 * 1024_u64;
 const FIXED_MEM_OVHD: u64 = 64 * MB;
 
 const PARSER_MEM_OVHD: f64 = 2.5;
-const ANALYSIS_MEM_OVHD: f64 = 2.;
+const ANALYSIS_MEM_OVHD: f64 = 2.5;
 
 /// Gives 25 millis per MB (or 25 secs per GB), i.e. at least 40 MB/s.
 const PARSE_MIN_MBS: u64 = 40;

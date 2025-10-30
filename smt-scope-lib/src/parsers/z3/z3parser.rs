@@ -230,9 +230,8 @@ impl Z3Parser {
         let bound_terms = self[self[iidx].match_]
             .kind
             .bound_terms(|e| self[e].owner, |t| t);
-        bound_terms
-            .into_iter()
-            .map(|&bt| self.ast_size(bt, cached).unwrap())
+        IntoIterator::into_iter(bound_terms)
+            .map(|bt| self.ast_size(bt, cached).unwrap())
             .collect()
     }
 

@@ -202,6 +202,15 @@ impl<K> Default for FxHashSet<K> {
         Self(fxhash::FxHashSet::default())
     }
 }
+impl<K> PartialEq for FxHashSet<K>
+where
+    fxhash::FxHashSet<K>: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
+    }
+}
+impl<K> Eq for FxHashSet<K> where fxhash::FxHashSet<K>: Eq {}
 impl<K: Eq + std::hash::Hash> FromIterator<K> for FxHashSet<K> {
     fn from_iter<T: IntoIterator<Item = K>>(iter: T) -> Self {
         Self(fxhash::FxHashSet::from_iter(iter))

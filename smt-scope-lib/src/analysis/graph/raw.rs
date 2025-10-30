@@ -123,10 +123,12 @@ impl RawInstGraph {
 
         // Add instantiation blamed edges
         for (idx, inst) in parser.insts.insts.iter_enumerated() {
-            for (i, blame) in parser.insts.matches[inst.match_]
-                .pattern_matches()
-                .enumerate()
-            {
+            let match_ = &parser.insts.matches[inst.match_];
+            // if let Some(blame) = match_.kind.quant_idx().and_then(|qidx| parser[qidx].blame) {
+            //     self_.add_edge(blame, idx, EdgeKind::AssertedQuant);
+            // }
+
+            for (i, blame) in match_.pattern_matches().enumerate() {
                 let pattern_term = i as u16;
                 self_.add_edge(blame.enode, idx, EdgeKind::Blame { pattern_term });
                 for (i, eq) in blame.equalities.iter().enumerate() {

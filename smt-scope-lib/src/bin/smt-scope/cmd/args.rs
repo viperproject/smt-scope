@@ -56,4 +56,9 @@ pub enum Commands {
         /// The path to the smt log file
         logfile: std::path::PathBuf,
     },
+    /// Print the UNSAT e-core
+    Ecore {
+        /// The path to the smt log file
+        logfile: std::path::PathBuf,
+    },
 }

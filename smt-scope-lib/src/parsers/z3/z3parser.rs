@@ -263,6 +263,25 @@ impl Z3Parser {
     pub(super) fn bound(&self, match_: &MatchKind, qvar: NonMaxU32) -> Option<TermIdx> {
         match_.bound_term(|e| &self[e], qvar)
     }
+
+    fn named_proofs(&self) -> &FxHashMap<ProofIdx, Option<ProofIdx>> {
+        &self.terms.named_asserts.named
+    }
+
+    /// See explanation at `NamedAsserts` struct. If `pidx` is a named assertion
+    /// then it was transformed into an implication, where the lhs is a named
+    /// variable. This returns the assertion corresponding to that variable.
+    pub fn named_assert_to_variable(&self, pidx: ProofIdx) -> Option<ProofIdx> {
+        self.named_proofs().get(&pidx).and_then(|opt| *opt)
+    }
+
+    /// See explanation at `NamedAsserts` struct. Returns true if `pidx` is a
+    /// named variable.
+    pub fn is_named_variable(&self, pidx: ProofIdx) -> bool {
+        self.named_proofs()
+            .get(&pidx)
+            .is_some_and(|opt| opt.is_none())
+    }
 }
 
 impl Index<TermIdx> for Z3Parser {

@@ -22,6 +22,9 @@ mod z3parser;
 
 pub use z3parser::*;
 
+#[derive(Debug)]
+pub enum Never {}
+
 fn split_ascii_space(line: &str) -> impl Iterator<Item = &str> {
     fn to_str(s: &[u8]) -> &str {
         unsafe { core::str::from_utf8_unchecked(s) }

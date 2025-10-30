@@ -34,12 +34,29 @@ impl SynthTerms {
             if depth == 0 {
                 return Ok(None);
             }
-            let child_ids = smaller_term.child_ids.iter().zip(&*larger_term.child_ids);
-            let child_ids = child_ids
-                .map(|(&sc, &lc)| self.generalise_first(table, sc, lc, depth - 1))
-                .collect::<Result<Option<_>>>()?;
-            if let Some(child_ids) = child_ids {
-                return self.new_synthetic(smaller_term.kind(), child_ids).map(Some);
+            let mut child_ids = Vec::new();
+            child_ids.try_reserve_exact(smaller_term.child_ids.len())?;
+            for i in 0..smaller_term.child_ids.len() {
+                let sc = smaller_term.child_ids[i];
+                let lc = larger_term.child_ids[i];
+                let gen = self.generalise_first(table, sc, lc, depth - 1)?;
+                let Some(gen) = gen else {
+                    // recursion limit reached
+                    break;
+                };
+                // We don't generalise up on the first pass, since the
+                // generalisation might be wrong at this point and we don't want
+                // to generalise up incorrectly.
+                // if self.is_generalised_by::<true>(table, smaller, larger, gen) {
+                //     return Ok(Some(gen));
+                // }
+                child_ids.push(gen);
+            }
+            // all children generalized successfully, but none generalise up to current
+            if child_ids.len() == smaller_term.child_ids.len() {
+                return self
+                    .new_synthetic(smaller_term.kind(), child_ids.into())
+                    .map(Some);
             }
         } else {
             // If the meanings are some and equal, then the TermIdx should've
@@ -166,12 +183,17 @@ impl SynthTerms {
                     let mut child_ids = Vec::new();
                     child_ids.try_reserve_exact(smaller_term.child_ids.len())?;
                     for i in 0..smaller_term.child_ids.len() {
-                        let smaller = smaller_term.child_ids[i];
-                        let larger = larger_term.child_ids[i];
+                        let sc = smaller_term.child_ids[i];
+                        let lc = larger_term.child_ids[i];
                         let gen = self.index(table, gen).child_ids()[i];
-                        let Some(new) = self.generalise_second(table, smaller, larger, gen)? else {
+                        let Some(new) = self.generalise_second(table, sc, lc, gen)? else {
                             return Ok(None);
                         };
+                        if self.is_generalised_by::<false>(table, smaller, larger, new) {
+                            // this child generalises up to current term, discard
+                            // current term and push this generalisation up
+                            return Ok(Some(new));
+                        }
                         child_ids.push(new);
                     }
                     self.new_synthetic(term_kind, child_ids.into()).map(Some)

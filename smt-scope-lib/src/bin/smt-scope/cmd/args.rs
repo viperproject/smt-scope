@@ -61,4 +61,9 @@ pub enum Commands {
         /// The path to the smt log file
         logfile: std::path::PathBuf,
     },
+    /// Run evaluation mode which times automatic analysis
+    Eval {
+        /// The path to the smt log file
+        logfile: std::path::PathBuf,
+    },
 }

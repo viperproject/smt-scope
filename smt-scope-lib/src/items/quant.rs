@@ -19,6 +19,7 @@ pub struct Quantifier {
     pub num_vars: NonMaxU32,
     pub term: TermIdx,
     pub vars: Option<VarNames>,
+    pub blame: Option<ProofIdx>,
 }
 
 impl Quantifier {

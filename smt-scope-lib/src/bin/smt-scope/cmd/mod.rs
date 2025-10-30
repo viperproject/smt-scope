@@ -1,5 +1,6 @@
 mod args;
 mod dependencies;
+mod ecore;
 mod reconstruct;
 mod redundancy;
 mod stats;
@@ -29,6 +30,7 @@ pub fn run() -> Result<(), String> {
         )?,
         args::Commands::Reconstruct { logfile, clean } => reconstruct::run(logfile, clean)?,
         args::Commands::Redundancy { logfile } => redundancy::run(logfile)?,
+        args::Commands::Ecore { logfile } => ecore::run(logfile)?,
     }
 
     Ok(())

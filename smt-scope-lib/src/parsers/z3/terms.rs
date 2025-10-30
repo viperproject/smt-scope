@@ -8,7 +8,7 @@ use crate::{
     error::Either,
     items::{
         InstProofLink, InstantiationKind, Meaning, ProofIdx, ProofStep, ProofStepKind, QuantIdx,
-        Term, TermId, TermIdToIdxMap, TermIdx, TermKind,
+        Quantifier, Term, TermId, TermIdToIdxMap, TermIdx, TermKind,
     },
     Error, FxHashMap, Result, StringTable, TiVec,
 };
@@ -274,18 +274,41 @@ impl Terms {
             .map_err(Error::UnknownId)
     }
 
-    pub(super) fn new_proof(&mut self, pidx: ProofIdx, strings: &StringTable) -> Result<()> {
+    pub(super) fn new_proof(
+        &mut self,
+        quants: &mut TiVec<QuantIdx, Quantifier>,
+        pidx: ProofIdx,
+        strings: &StringTable,
+    ) -> Result<()> {
         let proof = &self[pidx];
         if !proof.kind.is_asserted() {
             return Ok(());
         }
         let ridx = proof.result;
+
+        // Mark any quantifiers in the asserted term as blaming this proof step.
+        self.app_terms.ast_walk::<super::Never>(ridx, |_, term| {
+            if term.has_var().is_some() {
+                return Ok(&[]);
+            }
+            if let TermKind::Quant(qidx) = term.kind() {
+                // TODO: how to handle multiple blames here? Currently we use
+                // the latest one only.
+                // debug_assert!(quants[qidx].blame.is_none());
+                quants[qidx].blame = Some(pidx);
+            }
+            Ok(&term.child_ids)
+        });
+
         let result = &self[ridx];
         match result.child_ids.len() {
             0 => {
                 if let Some(implication) = self.named_asserts.seen.remove(&ridx) {
-                    self.named_asserts.named.try_reserve(1)?;
-                    self.named_asserts.named.push((pidx, implication));
+                    self.named_asserts.named.try_reserve(2)?;
+                    let old = self.named_asserts.named.insert(implication, Some(pidx));
+                    debug_assert!(old.is_none());
+                    let old = self.named_asserts.named.insert(pidx, None);
+                    debug_assert!(old.is_none());
                 }
             }
             2 if result
@@ -325,7 +348,12 @@ impl Terms {
 #[derive(Debug, Default)]
 pub struct NamedAsserts {
     pub seen: FxHashMap<TermIdx, ProofIdx>,
-    pub named: Vec<(ProofIdx, ProofIdx)>,
+    /// Mapping from `assertion -> Some(name)` or `name -> None`. That is,
+    /// if a `ProofIdx` is in this map it's either a named assertion or the
+    /// boolean name variable itself. To differentiate the two, the named
+    /// assertion variable has an entry in the hashmap with `Some(name)`, while
+    /// the name variable has an entry with `None`.
+    pub named: FxHashMap<ProofIdx, Option<ProofIdx>>,
 }
 
 impl std::ops::Index<TermIdx> for Terms {

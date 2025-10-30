@@ -234,6 +234,7 @@ impl Z3Parser {
             term: tidx,
             kind,
             vars: None,
+            blame: None,
         };
         self.quantifiers.raw.try_reserve(1)?;
         let qidx2 = self.quantifiers.push_and_get_key(q);
@@ -457,7 +458,8 @@ impl Z3LogParser for Z3Parser {
             frame: self.stack.active_frame(),
         };
         let proof_idx = self.terms.proof_terms.new_term(proof_step)?;
-        self.terms.new_proof(proof_idx, &self.strings)?;
+        self.terms
+            .new_proof(&mut self.quantifiers, proof_idx, &self.strings)?;
         self.egraph
             .new_proof(result, proof_idx, &self.terms, &self.stack)?;
         self.events.new_proof_step(

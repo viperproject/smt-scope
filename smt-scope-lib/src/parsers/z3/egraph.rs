@@ -595,16 +595,13 @@ impl Equalities {
     }
 }
 
-pub type TransEqSimpleWalker<'a, F> = TransEqStopWalker<'a, Never, F>;
+pub type TransEqSimpleWalker<'a, F> = TransEqStopWalker<'a, super::Never, F>;
 
 pub struct TransEqStopWalker<'a, E, F: FnMut(&'a EqualityExpl, bool) -> core::result::Result<(), E>>
 {
     equalities: &'a Equalities,
     simple: F,
 }
-
-#[derive(Debug)]
-pub enum Never {}
 
 impl<'a, E, F: FnMut(&'a EqualityExpl, bool) -> core::result::Result<(), E>> EqualityWalker<'a>
     for TransEqStopWalker<'a, E, F>

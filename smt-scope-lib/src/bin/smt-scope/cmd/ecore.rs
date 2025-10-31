@@ -35,6 +35,7 @@ pub fn run(logfile: PathBuf) -> Result<(), String> {
             print!("{name}");
         };
 
+        let mut printed = FxHashSet::default();
         let (mut expected, mut seen) = (FxHashSet::default(), FxHashSet::default());
         for anc in ancs.iter(graph) {
             let pidx = match *inst_graph.raw.graph[anc].kind() {
@@ -50,6 +51,10 @@ pub fn run(logfile: PathBuf) -> Result<(), String> {
                 _ => continue,
             };
             if !parser[pidx].kind.is_asserted() {
+                continue;
+            }
+            // May have duplicates due to the handling of instantiations
+            if !printed.insert(pidx) {
                 continue;
             }
 

@@ -1,6 +1,6 @@
 DIRNAME="$(realpath "$(dirname "$0")")"
-OUTPUT_DIR="${OUTPUT_DIR:-$DIRNAME/data}"
-mkdir -p "$OUTPUT_DIR"
+DATA_DIR="${DATA_DIR:-$DIRNAME/data}"
+mkdir -p "$DATA_DIR"
 
 SMT2_DIR="$DIRNAME/smt-logs/smt2"
 
@@ -15,7 +15,7 @@ export TIMEOUT=5
 
 while read -r file; do
     FILE="${file#"$SMT2_DIR/"}"
-    OUTPUT="$OUTPUT_DIR/${FILE%.*}"
+    OUTPUT="$DATA_DIR/${FILE%.*}"
 
     [[ "$2" == "lt" && "$3" < "$FILE" ]] && continue || true
     [[ "$2" == "ge" && "$3" > "$FILE" ]] && continue || true
@@ -24,7 +24,7 @@ while read -r file; do
     [ -s "$OUTPUT.data" ] && echo "[.log] EXISTS $FILE" && continue || true
 
     # [ "$FILE" == "silicon/silver/src/test/resources/quantifiedpermissions/misc/functions-01.smt2" ] || continue
-    cd "$OUTPUT_DIR"
+    cd "$DATA_DIR"
     exec 3>&1 4>&2
     Z3_TIME=$(TIMEFORMAT="%R"; { time "$SMT2_DIR/z3.sh" "$file" 1>&3 2>&4; } 2>&1)
     exec 3>&- 4>&-

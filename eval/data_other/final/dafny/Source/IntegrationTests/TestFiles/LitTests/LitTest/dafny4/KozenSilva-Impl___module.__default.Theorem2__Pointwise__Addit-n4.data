@@ -1,0 +1,117 @@
+[LOGFILE] KozenSilva-Impl___module.__default.Theorem2__Pointwise__Addit-n4-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 857197b 0.062s
+[tool] dummy
+[Parse] 1542us
+[tool] smt-scope
+[Parse] 6255us
+[Graph] 2113us
+[Analysis] 1470us
+[Stats] 0 mbqi, 408 ts, 0 axiom, 317 quant, 4938 proof, 1460 ntp, 15 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 8 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 20 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q9{0}] 4 0
+[QuantInstCount] unknown.0:0{0}[q11{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q12{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q14{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q15{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q16{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q18{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q20{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q21{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q23{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q24{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q25{0}] 0 0
+[QuantInstCount] KozenSilvadfy.121:16{0}[q26{0}] 0 0
+[QuantInstCount] KozenSilvadfy.121:16{0}[q27{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q29{0}] 16 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q30{0}] 18 0
+[QuantInstCount] unknown.0:0{0}[q32{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q33{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q35{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q36{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q37{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q39{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q41{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.217:18{0}[q42{0}] 8 0
+[QuantInstCount] unknown.0:0{0}[q43{0}] 0 0
+[QuantInstCount] KozenSilvadfy.121:16{0}[q44{0}] 16 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q45{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q46{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q48{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q49{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.214:18{0}[q51{0}] 12 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q52{0}] 5 0
+[QuantInstCount] KozenSilvadfy.15:29{0}[q53{0}] 10 0
+[QuantInstCount] KozenSilvadfy.15:29{0}[q54{0}] 24 0
+[QuantInstCount] KozenSilvadfy.15:29{0}[q55{0}] 24 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q56{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q57{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q59{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q60{0}] 8 0
+[QuantInstCount] unknown.0:0{0}[q61{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q62{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q70{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q71{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q72{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q73{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q75{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q76{0}] 0 0
+[QuantInstCount] KozenSilvadfy.121:16{0}[q78{0}] 0 0
+[QuantInstCount] KozenSilvadfy.121:16{0}[q79{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q81{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q82{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q84{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q85{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q87{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q88{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q89{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q90{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.289:14{0}[q92{0}] 8 0
+[QuantInstCount] unknown.0:0{0}[q93{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q94{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.228:14{0}[q96{0}] 10 0
+[QuantInstCount] unknown.0:0{0}[q114{0}] 20 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q116{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q118{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q154{0}] 3 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q156{0}] 6 0
+[QuantInstCount] unknown.0:0{0}[q158{0}] 22 0
+[QuantInstCount] KozenSilvadfy.121:16{0}[q160{0}] 16 0
+[QuantInstCount] unknown.0:0{0}[q162{0}] 1 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q164{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q166{0}] 12 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q168{0}] 5 0
+[QuantInstCount] unknown.0:0{0}[q170{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q172{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q174{0}] 0 0
+[QuantInstCount] KozenSilvadfy.121:16{0}[q176{0}] 22 0
+[QuantInstCount] unknown.0:0{0}[q178{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q180{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q182{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q184{0}] 8 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q186{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q188{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q190{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q192{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q194{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q196{0}] 0 0
+[QuantInstCount] KozenSilvadfy.126:16{0}[q198{0}] 0 0
+[QuantInstCount] KozenSilvadfy.126:16{0}[q199{0}] 0 0
+[QuantInstCount] KozenSilvadfy.126:16{0}[q202{0}] 4 0
+[QuantInstCount] KozenSilvadfy.126:16{0}[q204{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q207{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q208{0}] 0 0
+[QuantInstCount] KozenSilvadfy.20:20{0}[q209{0}] 0 0
+[tool] axiom-profiler
+[Parse] 276ms
+[Graph] 1ms
+[Analysis] Err 5ms Sequence contains no matching element
+[Loops] 0 true, 0 false

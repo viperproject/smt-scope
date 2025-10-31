@@ -1,0 +1,15 @@
+[LOGFILE] problem_U87_sol1-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 14970b 0.043s
+[tool] dummy
+[Parse] 64us
+[tool] smt-scope
+[Parse] 322us
+[Graph] 62us
+[Analysis] 26us
+[Stats] 0 mbqi, 25 ts, 0 axiom, 0 quant, 138 proof, 28 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 30ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

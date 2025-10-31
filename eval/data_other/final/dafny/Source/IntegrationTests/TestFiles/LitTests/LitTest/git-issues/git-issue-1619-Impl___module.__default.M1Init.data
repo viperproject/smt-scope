@@ -1,0 +1,108 @@
+[LOGFILE] git-issue-1619-Impl___module.__default.M1Init-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 504532b 0.053s
+[tool] dummy
+[Parse] 756us
+[tool] smt-scope
+[Parse] 2690us
+[Graph] 874us
+[Analysis] 398us
+[Stats] 0 mbqi, 290 ts, 0 axiom, 33 quant, 2444 proof, 642 ntp, 39 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q9{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q11{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q12{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q13{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q13{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q14{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q15{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q15{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q17{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q19{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q20{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q22{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.217:18{0}[q23{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1225:15{0}[q24{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1225:15{0}[q25{0}] 4 0
+[QuantInstCount] DafnyPreludebpl.214:18{0}[q27{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1124:15{0}[q28{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1124:15{0}[q29{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q31{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q32{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q33{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q35{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.53:15{0}[q37{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.54:15{0}[q38{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q39{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q46{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q47{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q48{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q49{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.204:15{0}[q51{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.204:15{0}[q52{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q54{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q55{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1131:15{0}[q56{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1131:15{0}[q57{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q59{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q60{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q61{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q63{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q75{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q77{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q86{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q88{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q107{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q109{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q111{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q113{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q113{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q115{0}] 6 0
+[QuantInstCount] unknown.0:0{0}[q117{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q119{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q121{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q123{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.204:15{0}[q125{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q127{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q129{0}] 1 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q131{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q133{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q135{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q137{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q139{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q141{0}] 0 0
+[QuantInstCount] gitissue1619dfy.48:19{0}[q145{0}] 0 0
+[QuantInstCount] gitissue1619dfy.48:19{0}[q146{0}] 0 0
+[QuantInstCount] gitissue1619dfy.48:19{0}[q147{0}] 6 0
+[QuantInstCount] gitissue1619dfy.48:19{0}[q149{0}] 0 0
+[QuantInstCount] gitissue1619dfy.48:19{0}[q158{0}] 0 0
+[QuantInstCount] gitissue1619dfy.48:19{0}[q162{0}] 0 0
+[QuantInstCount] gitissue1619dfy.49:13{0}[q164{0}] 7 0
+[QuantInstCount] gitissue1619dfy.49:13{1}[q164{1}] 0 0
+[QuantInstCount] gitissue1619dfy.49:13{2}[q164{2}] 0 0
+[QuantInstCount] gitissue1619dfy.49:13{0}[q166{0}] 0 0
+[QuantInstCount] gitissue1619dfy.49:13{1}[q166{1}] 0 0
+[QuantInstCount] gitissue1619dfy.49:13{2}[q166{2}] 0 0
+[QuantInstCount] gitissue1619dfy.48:19{0}[q168{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q172{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q173{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q175{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q176{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q178{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q178{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q179{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q179{1}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 145ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

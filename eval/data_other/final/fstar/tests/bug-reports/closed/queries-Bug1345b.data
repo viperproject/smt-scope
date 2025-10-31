@@ -1,0 +1,110 @@
+[LOGFILE] queries-Bug1345b-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 246670b 0.047s
+[tool] dummy
+[Parse] 557us
+[tool] smt-scope
+[Parse] 2454us
+[Graph] 696us
+[Analysis] 322us
+[Stats] 0 mbqi, 148 ts, 2 axiom, 41 quant, 2251 proof, 515 ntp, 3 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 2
+[QuantInstCount] k!41{0}[q3{0}] 13 0
+[QuantInstCount] k!47{0}[q4{0}] 0 0
+[QuantInstCount] k!56{0}[q6{0}] 0 0
+[QuantInstCount] k!56{0}[q7{0}] 0 0
+[QuantInstCount] k!71{0}[q12{0}] 0 0
+[QuantInstCount] k!71{0}[q13{0}] 0 0
+[QuantInstCount] k!72{0}[q15{0}] 0 0
+[QuantInstCount] k!72{0}[q16{0}] 0 0
+[QuantInstCount] k!73{0}[q18{0}] 0 0
+[QuantInstCount] k!73{0}[q19{0}] 0 0
+[QuantInstCount] k!76{0}[q21{0}] 0 0
+[QuantInstCount] k!76{0}[q22{0}] 0 0
+[QuantInstCount] k!77{0}[q24{0}] 0 0
+[QuantInstCount] k!77{0}[q25{0}] 0 0
+[QuantInstCount] constructor_distinct_FString_const{0}[q27{0}] 0 0
+[QuantInstCount] constructor_distinct_FString_const{0}[q28{0}] 0 0
+[QuantInstCount] projection_inverse_FString_const_proj_0{0}[q30{0}] 0 0
+[QuantInstCount] constructor_distinct_Tm_arrow{0}[q31{0}] 0 0
+[QuantInstCount] constructor_distinct_Tm_arrow{0}[q32{0}] 0 0
+[QuantInstCount] projection_inverse_Tm_arrow_id{0}[q34{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxInt{0}[q35{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxInt{0}[q36{0}] 3 0
+[QuantInstCount] projection_inverse_BoxInt_proj_0{0}[q38{0}] 3 0
+[QuantInstCount] constructor_distinct_BoxBool{0}[q39{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxBool{0}[q40{0}] 0 0
+[QuantInstCount] projection_inverse_BoxBool_proj_0{0}[q42{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxString{0}[q43{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxString{0}[q44{0}] 0 0
+[QuantInstCount] projection_inverse_BoxString_proj_0{0}[q46{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxReal{0}[q47{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxReal{0}[q48{0}] 0 0
+[QuantInstCount] projection_inverse_BoxReal_proj_0{0}[q50{0}] 0 0
+[QuantInstCount] k!346{0}[q51{0}] 0 0
+[QuantInstCount] k!352{0}[q52{0}] 0 0
+[QuantInstCount] k!356{0}[q53{0}] 0 0
+[QuantInstCount] __prelude_valid_intro{0}[q54{0}] 0 0
+[QuantInstCount] __prelude_valid_intro{0}[q55{0}] 0 0
+[QuantInstCount] k!56{0}[q107{0}] 0 0
+[QuantInstCount] k!59{0}[q109{0}] 0 0
+[QuantInstCount] k!59{1}[q109{1}] 0 0
+[QuantInstCount] unit_inversion{0}[q111{0}] 0 0
+[QuantInstCount] unit_inversion{0}[q112{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q114{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q115{0}] 0 0
+[QuantInstCount] typing_Prims.hasEq{0}[q117{0}] 0 0
+[QuantInstCount] typing_Prims.hasEq{0}[q118{0}] 11 0
+[QuantInstCount] typing_Bug1345b.t{0}[q120{0}] 0 0
+[QuantInstCount] typing_Bug1345b.t{0}[q121{0}] 1 0
+[QuantInstCount] refinement_kinding_Tm_refine_7e0b9b2dbca36eab00de093c1b701c6d{0}[q123{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_f1ecc6ab6882a651504f328937700647{0}[q124{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_f1ecc6ab6882a651504f328937700647{0}[q125{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_7e0b9b2dbca36eab00de093c1b701c6d{0}[q127{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_7e0b9b2dbca36eab00de093c1b701c6d{0}[q128{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_774ba3f728d91ead8ef40be66c9802e5{0}[q130{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_774ba3f728d91ead8ef40be66c9802e5{0}[q131{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_73f210ca6e0061ed4a3150f69b8f33bf{0}[q133{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_542f9d4f129664613f2483a6c88bc7c2{0}[q134{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_542f9d4f129664613f2483a6c88bc7c2{0}[q135{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_414d0a9f578ab0048252f8c8f552b99f{0}[q137{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_0766302b68bb44ab7aff8c4d8be0b46f{0}[q138{0}] 0 0
+[QuantInstCount] int_typing{0}[q139{0}] 3 0
+[QuantInstCount] int_inversion{0}[q140{0}] 0 0
+[QuantInstCount] int_inversion{0}[q141{0}] 0 0
+[QuantInstCount] haseqTm_refine_7e0b9b2dbca36eab00de093c1b701c6d{0}[q143{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q145{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q148{0}] 0 0
+[QuantInstCount] equation_Bug1345b.t{0}[q150{0}] 1 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q151{0}] 0 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q152{0}] 0 0
+[QuantInstCount] Prims_pretyping_f8666440faa91836cc5a13998af863fc{0}[q154{0}] 0 0
+[QuantInstCount] Prims_pretyping_f8666440faa91836cc5a13998af863fc{0}[q155{0}] 1 0
+[QuantInstCount] Prims_pretyping_ae567c2fb75be05905677af440075565{0}[q157{0}] 0 0
+[QuantInstCount] Prims_pretyping_ae567c2fb75be05905677af440075565{0}[q158{0}] 1 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q176{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q182{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_7e0b9b2dbca36eab00de093c1b701c6d{0}[q184{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_774ba3f728d91ead8ef40be66c9802e5{0}[q186{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_73f210ca6e0061ed4a3150f69b8f33bf{0}[q188{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_542f9d4f129664613f2483a6c88bc7c2{0}[q190{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_414d0a9f578ab0048252f8c8f552b99f{0}[q192{0}] 2 0
+[QuantInstCount] refinement_interpretation_Tm_refine_0766302b68bb44ab7aff8c4d8be0b46f{0}[q194{0}] 0 0
+[QuantInstCount] int_inversion{0}[q196{0}] 1 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q198{0}] 0 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q200{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of.1{0}[q202{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of.1{1}[q202{1}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q204{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q206{0}] 0 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q208{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_83b8d03b3ffd2c28394fed8b3e5b7021{0}[q212{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_83b8d03b3ffd2c28394fed8b3e5b7021{0}[q213{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_83b8d03b3ffd2c28394fed8b3e5b7021{0}[q216{0}] 1 0
+[tool] axiom-profiler
+[Parse] 161ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

@@ -1,0 +1,93 @@
+[LOGFILE] ExportVerify-Impl__Client__Revealing.__default.M-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 189860b 0.047s
+[tool] dummy
+[Parse] 454us
+[tool] smt-scope
+[Parse] 1967us
+[Graph] 612us
+[Analysis] 321us
+[Stats] 0 mbqi, 171 ts, 0 axiom, 31 quant, 1923 proof, 342 ntp, 7 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 3 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 2 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 2 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 1 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q8{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q9{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q11{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q12{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q14{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q15{0}] 2 0
+[QuantInstCount] typeInv:MapType0TypeInv0{0}[q20{0}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv1{0}[q21{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q22{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.608:15{0}[q23{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q24{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.608:15{0}[q26{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q28{0}] 4 0
+[QuantInstCount] DafnyPreludebpl.111:30{0}[q29{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q30{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q31{0}] 0 0
+[QuantInstCount] ExportVerifydfy.28:11{0}[q32{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.217:18{0}[q33{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.557:15{0}[q34{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.557:15{0}[q35{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.554:18{0}[q37{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.554:18{0}[q38{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q40{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q41{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q43{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q44{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.179:15{0}[q46{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.179:15{0}[q47{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.214:18{0}[q49{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q50{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q51{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q52{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q57{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q58{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q60{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.112:15{0}[q61{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q62{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.289:14{0}[q63{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.290:14{0}[q64{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.228:14{0}[q65{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.229:14{0}[q66{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q108{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q110{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.179:15{0}[q112{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q114{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q116{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q118{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q120{0}] 0 0
+[QuantInstCount] ctor:MapType0Type{0}[q122{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q124{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q126{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:1{0}[q128{0}] 0 0
+[QuantInstCount] ExportVerifydfy.30:12{0}[q130{0}] 0 0
+[QuantInstCount] ExportVerifydfy.23:10{0}[q131{0}] 0 0
+[QuantInstCount] ExportVerifydfy.31:19{0}[q132{0}] 0 0
+[QuantInstCount] ExportVerifydfy.30:12{0}[q133{0}] 0 0
+[QuantInstCount] ExportVerifydfy.23:10{0}[q135{0}] 0 0
+[QuantInstCount] ExportVerifydfy.31:19{0}[q137{0}] 0 0
+[QuantInstCount] ExportVerifydfy.30:12{0}[q142{0}] 0 0
+[QuantInstCount] ExportVerifydfy.23:10{0}[q144{0}] 0 0
+[QuantInstCount] ExportVerifydfy.31:19{0}[q146{0}] 0 0
+[QuantInstCount] ExportVerifydfy.30:12{0}[q148{0}] 0 0
+[QuantInstCount] ExportVerifydfy.23:10{0}[q150{0}] 0 0
+[QuantInstCount] ExportVerifydfy.31:19{0}[q152{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q157{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q158{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q159{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 109ms
+[Graph] 1ms
+[Analysis] 87ms
+[Loops] 2 true, 0 false
+[OneLoop] 3 repetitions, true-loop, DafnyPreludebpl.554:18[#469]
+[OneLoop] 3 repetitions, true-loop, DafnyPreludebpl.557:15[#441]

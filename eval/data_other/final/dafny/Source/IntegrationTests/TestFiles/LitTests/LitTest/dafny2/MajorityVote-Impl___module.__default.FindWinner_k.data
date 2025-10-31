@@ -1,0 +1,117 @@
+[LOGFILE] MajorityVote-Impl___module.__default.FindWinner_k-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 3993523b 0.132s
+[tool] dummy
+[Parse] 5783us
+[tool] smt-scope
+[Parse] 20927us
+[Graph] 7405us
+[Analysis] 4115us
+[Stats] 0 mbqi, 2750 ts, 0 axiom, 393 quant, 16495 proof, 5070 ntp, 286 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 2 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 2 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 9 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q9{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q11{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q12{0}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv0{0}[q17{0}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv1{0}[q18{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q19{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.608:15{0}[q20{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q21{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.608:15{0}[q23{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q25{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q26{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q27{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q28{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q29{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.217:18{0}[q31{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.557:15{0}[q32{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.557:15{0}[q33{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.554:18{0}[q35{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.554:18{0}[q36{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q38{0}] 87 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q39{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q40{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q42{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q43{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.214:18{0}[q45{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q46{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q47{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1124:15{0}[q49{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1124:15{0}[q50{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q52{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q53{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q54{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q56{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q58{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q59{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.53:15{0}[q61{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.54:15{0}[q62{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q63{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q67{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q68{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q70{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q71{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1647:14{0}[q73{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1647:14{0}[q74{0}] 69 0
+[QuantInstCount] DafnyPreludebpl.204:15{0}[q76{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.204:15{0}[q77{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q79{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q80{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1131:15{0}[q81{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1131:15{0}[q82{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.289:14{0}[q84{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q85{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q86{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q87{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q89{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.228:14{0}[q91{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q121{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q123{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q141{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q144{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q146{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q148{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q150{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q152{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q154{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q156{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q158{0}] 3 0
+[QuantInstCount] unknown.0:0{0}[q160{0}] 41 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q162{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q164{0}] 95 0
+[QuantInstCount] DafnyPreludebpl.204:15{0}[q166{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q168{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q170{0}] 1 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q172{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q174{0}] 0 0
+[QuantInstCount] ctor:MapType0Type{0}[q176{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q178{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q180{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:1{0}[q182{0}] 0 0
+[QuantInstCount] MajorityVotedfy.205:3{0}[q184{0}] 0 0
+[QuantInstCount] MajorityVotedfy.205:3{0}[q185{0}] 0 0
+[QuantInstCount] MajorityVotedfy.205:3{0}[q186{0}] 0 0
+[QuantInstCount] MajorityVotedfy.205:3{0}[q188{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q190{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q191{0}] 36 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q193{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q194{0}] 35 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q196{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q197{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q199{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q200{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q202{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q203{0}] 0 0
+[tool] axiom-profiler
+[Parse] 760ms
+[Graph] 3ms
+[Analysis] Err 20ms Index was outside the bounds of the array.
+[Loops] 0 true, 0 false

@@ -1,0 +1,66 @@
+[LOGFILE] ComputationsLoop2-Impl___module.__default.Test-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 1187289b 0.076s
+[tool] dummy
+[Parse] 2393us
+[tool] smt-scope
+[Parse] 10411us
+[Graph] 3310us
+[Analysis] 3002us
+[Stats] 0 mbqi, 627 ts, 0 axiom, 509 quant, 7770 proof, 1635 ntp, 6 cdcl,
+[Loops] 2 true, 0 false
+[OneLoop] 14 repetitions, true-loop, ComputationsLoop2dfy.9:16{0}[q90{0}] -> ComputationsLoop2dfy.4:16{0}[q88{0}]
+[OneLoop] 14 repetitions, true-loop, ComputationsLoop2dfy.4:16{0}[q88{0}] -> ComputationsLoop2dfy.9:16{0}[q90{0}]
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 2 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q8{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q9{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q11{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q12{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q14{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q15{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q16{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q18{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q19{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q21{0}] 70 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q22{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q23{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q24{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q25{0}] 2 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q27{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q28{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q30{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q31{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q33{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q34{0}] 34 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q35{0}] 35 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q42{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q43{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q44{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q45{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q47{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q48{0}] 0 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q80{0}] 50 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q82{0}] 50 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q84{0}] 100 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q86{0}] 100 0
+[QuantInstCount] ComputationsLoop2dfy.4:16{0}[q88{0}] 34 0
+[QuantInstCount] ComputationsLoop2dfy.9:16{0}[q90{0}] 32 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q92{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q94{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q96{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q98{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q100{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q102{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q104{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 410ms
+[Graph] 1ms
+[Analysis] 16ms
+[Loops] 0 true, 0 false

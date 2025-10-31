@@ -1,0 +1,34 @@
+[LOGFILE] problem_U15_sol2-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 311793497b 5.061s
+[tool] dummy
+[Parse] 400972us
+[tool] smt-scope
+[Parse] 3754293us
+[Graph] 322742us
+[Analysis] 265347us
+[Stats] 0 mbqi, 50304 ts, 0 axiom, 32947 quant, 315233 proof, 178 ntp, 13 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 2 k!23{0}[q100{0}] 177x k!24{0}[q102{0}] 31.41025641025641x
+[QuantInstCount] k!19{0}[q98{0}] 177 0
+[QuantInstCount] k!23{0}[q100{0}] 31329 0
+[QuantInstCount] k!24{0}[q102{0}] 1225 0
+[QuantInstCount] k!25{0}[q104{0}] 1 0
+[QuantInstCount] k!26{0}[q106{0}] 0 0
+[QuantInstCount] k!27{0}[q108{0}] 177 0
+[QuantInstCount] k!28{0}[q110{0}] 35 0
+[QuantInstCount] k!36{0}[q112{0}] 0 0
+[QuantInstCount] k!36{0}[q113{0}] 0 0
+[QuantInstCount] k!36{0}[q117{0}] 3 0
+[QuantInstCount] k!36{1}[q117{1}] 0 0
+[QuantInstCount] k!36{0}[q120{0}] 0 0
+[QuantInstCount] k!36{1}[q120{1}] 0 0
+[QuantInstCount] k!36{0}[q123{0}] 0 0
+[QuantInstCount] k!36{0}[q124{0}] 0 0
+[QuantInstCount] k!36{0}[q126{0}] 0 0
+[QuantInstCount] k!36{0}[q127{0}] 0 0
+[QuantInstCount] k!36{0}[q129{0}] 0 0
+[QuantInstCount] k!36{0}[q130{0}] 0 0
+[tool] axiom-profiler
+[Parse] 108625ms
+[Graph] 77ms
+[Analysis] Err 68ms Sequence contains no matching element
+[Loops] 0 true, 0 false

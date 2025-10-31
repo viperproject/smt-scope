@@ -1,0 +1,17 @@
+[LOGFILE] problem_C9a-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 16670b 0.045s
+[tool] dummy
+[Parse] 73us
+[tool] smt-scope
+[Parse] 355us
+[Graph] 61us
+[Analysis] 49us
+[Stats] 0 mbqi, 18 ts, 0 axiom, 0 quant, 142 proof, 26 ntp, 4 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] k!20{0}[q15{0}] 0 0
+[QuantInstCount] k!20{0}[q16{0}] 0 0
+[tool] axiom-profiler
+[Parse] 30ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

@@ -1,0 +1,25 @@
+[LOGFILE] problem_U38-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 1912861b 5.039s
+[tool] dummy
+[Parse] 3244us
+[tool] smt-scope
+[Parse] 11390us
+[Graph] 4369us
+[Analysis] 4260us
+[Stats] 0 mbqi, 812 ts, 0 axiom, 1014 quant, 6793 proof, 605 ntp, 490 cdcl,
+[Loops] 3 true, 0 false
+[OneLoop] 8 repetitions, true-loop, k!27{0}[q41{0}]
+[ExtraLoop] 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+[OneLoop] 5 repetitions, true-loop, k!27{0}[q41{0}]
+[ExtraLoop] 5 5 5 5 5 5 5 5 5 5 5 5 4 4 4 4 4 4 4 4 4 4 4 3 3 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2
+[OneLoop] 4 repetitions, true-loop, k!27{0}[q41{0}]
+[ExtraLoop] 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 3 3 3 3 3 3 3 3 3 3 3 3 2 2 2 2 2 2 2 2 2 2 2
+[Branching] 0 
+[QuantInstCount] k!19{0}[q35{0}] 247 0
+[QuantInstCount] k!20{0}[q37{0}] 247 0
+[QuantInstCount] k!26{0}[q39{0}] 260 0
+[QuantInstCount] k!27{0}[q41{0}] 260 0
+[tool] axiom-profiler
+[Parse] 427ms
+[Graph] 2ms
+[Analysis] 17ms
+[Loops] 0 true, 0 false

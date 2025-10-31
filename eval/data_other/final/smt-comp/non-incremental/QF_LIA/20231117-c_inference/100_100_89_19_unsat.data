@@ -1,0 +1,15 @@
+[LOGFILE] 100_100_89_19_unsat-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 115557290b 4.382s
+[tool] dummy
+[Parse] 196259us
+[tool] smt-scope
+[Parse] 795401us
+[Graph] 696434us
+[Analysis] 116071us
+[Stats] 0 mbqi, 232490 ts, 0 axiom, 0 quant, 863793 proof, 21739 ntp, 8158 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 28742ms
+[Graph] 165ms
+[Analysis] 1113ms
+[Loops] 0 true, 0 false

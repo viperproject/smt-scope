@@ -1,0 +1,48 @@
+[LOGFILE] main-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 59692b 0.047s
+[tool] dummy
+[Parse] 170us
+[tool] smt-scope
+[Parse] 746us
+[Graph] 210us
+[Analysis] 98us
+[Stats] 0 mbqi, 20 ts, 0 axiom, 20 quant, 820 proof, 170 ntp, 10 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] quant-u-12581{0}[q24{0}] 4 0
+[QuantInstCount] quant-u-12582{0}[q25{0}] 0 0
+[QuantInstCount] quant-u-12587{0}[q26{0}] 0 0
+[QuantInstCount] quant-u-12587{0}[q27{0}] 4 0
+[QuantInstCount] quant-u-12588{0}[q29{0}] 0 0
+[QuantInstCount] quant-u-12588{0}[q30{0}] 4 0
+[QuantInstCount] quant-u-12583{0}[q32{0}] 0 0
+[QuantInstCount] quant-u-12584{0}[q33{0}] 0 0
+[QuantInstCount] quant-u-12589{0}[q34{0}] 0 0
+[QuantInstCount] quant-u-12589{0}[q35{0}] 0 0
+[QuantInstCount] quant-u-12590{0}[q37{0}] 0 0
+[QuantInstCount] quant-u-12590{0}[q38{0}] 0 0
+[QuantInstCount] quant-u-12585{0}[q40{0}] 0 0
+[QuantInstCount] quant-u-12586{0}[q41{0}] 0 0
+[QuantInstCount] quant-u-12591{0}[q42{0}] 0 0
+[QuantInstCount] quant-u-12591{0}[q43{0}] 4 0
+[QuantInstCount] quant-u-12592{0}[q45{0}] 0 0
+[QuantInstCount] quant-u-12592{0}[q46{0}] 4 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 9) to show a single one.
+[Parse] 52ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

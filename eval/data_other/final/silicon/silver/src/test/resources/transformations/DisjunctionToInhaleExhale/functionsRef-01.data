@@ -1,0 +1,69 @@
+[LOGFILE] functionsRef-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 57648b 0.048s
+[tool] dummy
+[Parse] 192us
+[tool] smt-scope
+[Parse] 741us
+[Graph] 217us
+[Analysis] 81us
+[Stats] 0 mbqi, 39 ts, 0 axiom, 0 quant, 779 proof, 164 ntp, 3 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] quant-u-22793{0}[q24{0}] 0 0
+[QuantInstCount] quant-u-22794{0}[q25{0}] 0 0
+[QuantInstCount] quant-u-22799{0}[q26{0}] 0 0
+[QuantInstCount] quant-u-22799{0}[q27{0}] 0 0
+[QuantInstCount] quant-u-22800{0}[q29{0}] 0 0
+[QuantInstCount] quant-u-22795{0}[q30{0}] 0 0
+[QuantInstCount] quant-u-22796{0}[q31{0}] 0 0
+[QuantInstCount] quant-u-22801{0}[q32{0}] 0 0
+[QuantInstCount] quant-u-22801{0}[q33{0}] 0 0
+[QuantInstCount] quant-u-22802{0}[q35{0}] 0 0
+[QuantInstCount] quant-u-22797{0}[q36{0}] 0 0
+[QuantInstCount] quant-u-22798{0}[q37{0}] 0 0
+[QuantInstCount] k!185{0}[q38{0}] 0 0
+[QuantInstCount] k!187{0}[q39{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q40{0}] 0 0
+[QuantInstCount] k!185{0}[q41{0}] 0 0
+[QuantInstCount] k!187{0}[q43{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q45{0}] 0 0
+[QuantInstCount] k!209{0}[q47{0}] 0 0
+[QuantInstCount] k!211{0}[q48{0}] 0 0
+[QuantInstCount] quant-u-22804{0}[q49{0}] 0 0
+[QuantInstCount] k!211{0}[q50{0}] 0 0
+[QuantInstCount] quant-u-22804{0}[q52{0}] 0 0
+[QuantInstCount] quant-u-22805{0}[q54{0}] 0 0
+[QuantInstCount] quant-u-22805{0}[q55{0}] 0 0
+[QuantInstCount] quant-u-22806{0}[q57{0}] 0 0
+[QuantInstCount] k!185{0}[q74{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q75{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q77{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q83{0}] 0 0
+[QuantInstCount] k!211{0}[q85{0}] 0 0
+[QuantInstCount] quant-u-22804{0}[q87{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@23@13@23@65-aux{0}[q89{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@23@13@23@65-aux{0}[q90{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@23@13@23@65{0}[q92{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@23@13@23@65{0}[q93{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@23@13@23@65{0}[q94{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@23@13@23@65-aux{0}[q96{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@23@13@23@65-aux{0}[q97{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 51ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

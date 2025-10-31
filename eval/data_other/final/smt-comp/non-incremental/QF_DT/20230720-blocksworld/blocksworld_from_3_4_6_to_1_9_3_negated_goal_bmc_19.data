@@ -1,0 +1,20 @@
+[LOGFILE] blocksworld_from_3_4_6_to_1_9_3_negated_goal_bmc_19-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 382496205b 5.039s
+[tool] dummy
+[Parse] 379812us
+[tool] smt-scope
+[Parse] 682860us
+[Graph] 623257us
+[Analysis] 89777us
+[Stats] 0 mbqi, 25685 ts, 25621 axiom, 0 quant, 157979 proof, 94290 ntp, 44329 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 12776
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 12776
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 23
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 23
+[QuantInstCount] constructor_accessor_axiom{0}[q4{0}] 0 23
+[tool] axiom-profiler
+[Parse] Err 9‰ 2431ms
+[Graph] 288ms
+[Analysis] 44ms
+[Loops] 0 true, 0 false

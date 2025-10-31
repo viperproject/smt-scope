@@ -1,0 +1,68 @@
+[LOGFILE] flag_loopdep_simple.i_AllErrorsAtOnce_Iteration8_0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 5991125b 0.177s
+[tool] dummy
+[Parse] 7876us
+[tool] smt-scope
+[Parse] 22609us
+[Graph] 6554us
+[Analysis] 2397us
+[Stats] 35 mbqi, 2228 ts, 0 axiom, 1 quant, 15197 proof, 3869 ntp, 1973 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] k!46{MBQI}[q89{MBQI}] 17 0
+[QuantInstCount] k!70{0}[q91{0}] 0 0
+[QuantInstCount] k!75{0}[q92{0}] 0 0
+[QuantInstCount] k!81{0}[q93{0}] 0 0
+[QuantInstCount] k!87{0}[q94{0}] 0 0
+[QuantInstCount] k!92{0}[q95{0}] 0 0
+[QuantInstCount] k!96{0}[q96{0}] 0 0
+[QuantInstCount] k!102{0}[q97{0}] 0 0
+[QuantInstCount] k!107{0}[q98{0}] 0 0
+[QuantInstCount] k!114{0}[q99{0}] 0 0
+[QuantInstCount] k!119{0}[q100{0}] 0 0
+[QuantInstCount] k!125{0}[q101{0}] 0 0
+[QuantInstCount] k!131{0}[q102{0}] 0 0
+[QuantInstCount] k!135{0}[q103{0}] 0 0
+[QuantInstCount] k!140{0}[q104{0}] 0 0
+[QuantInstCount] k!146{0}[q105{0}] 0 0
+[QuantInstCount] k!151{0}[q106{0}] 0 0
+[QuantInstCount] k!156{0}[q107{0}] 0 0
+[QuantInstCount] k!161{0}[q108{0}] 0 0
+[QuantInstCount] k!167{0}[q109{0}] 0 0
+[QuantInstCount] k!173{0}[q110{0}] 0 0
+[QuantInstCount] k!179{0}[q111{0}] 0 0
+[QuantInstCount] k!187{0}[q112{0}] 0 0
+[QuantInstCount] k!195{0}[q113{0}] 0 0
+[QuantInstCount] k!205{0}[q114{0}] 0 0
+[QuantInstCount] k!210{0}[q115{0}] 0 0
+[QuantInstCount] k!216{0}[q116{0}] 0 0
+[QuantInstCount] k!222{0}[q117{0}] 0 0
+[QuantInstCount] k!227{0}[q118{0}] 0 0
+[QuantInstCount] k!234{0}[q119{0}] 0 0
+[QuantInstCount] k!239{0}[q120{0}] 0 0
+[QuantInstCount] k!244{0}[q121{0}] 0 0
+[QuantInstCount] k!250{0}[q122{0}] 0 0
+[QuantInstCount] k!256{0}[q123{0}] 0 0
+[QuantInstCount] k!264{0}[q124{0}] 0 0
+[QuantInstCount] k!269{0}[q125{0}] 0 0
+[QuantInstCount] k!276{0}[q126{0}] 0 0
+[QuantInstCount] k!281{0}[q127{0}] 0 0
+[QuantInstCount] k!287{0}[q128{0}] 0 0
+[QuantInstCount] k!293{0}[q129{0}] 0 0
+[QuantInstCount] k!298{0}[q130{0}] 0 0
+[QuantInstCount] k!304{0}[q131{0}] 0 0
+[QuantInstCount] k!309{0}[q132{0}] 0 0
+[QuantInstCount] k!320{0}[q133{0}] 0 0
+[QuantInstCount] k!327{0}[q134{0}] 0 0
+[QuantInstCount] k!45{0}[q135{0}] 0 0
+[QuantInstCount] k!45{MBQI}[q136{MBQI}] 11 0
+[QuantInstCount] k!45{0}[q136{0}] 0 0
+[QuantInstCount] k!45{0}[q138{0}] 0 0
+[QuantInstCount] k!45{MBQI}[q139{MBQI}] 7 0
+[QuantInstCount] k!45{0}[q139{0}] 1 0
+[tool] axiom-profiler
+[Parse] 851ms
+[Graph] 3ms
+[Analysis] 23ms
+[Loops] 0 true, 0 false

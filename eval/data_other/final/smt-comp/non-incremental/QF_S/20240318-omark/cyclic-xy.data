@@ -1,0 +1,15 @@
+[LOGFILE] cyclic-xy-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 451230831b 5.037s
+[tool] dummy
+[Parse] 142417us
+[tool] smt-scope
+[Parse] 199258us
+[Graph] 15160us
+[Analysis] 6351us
+[Stats] 0 mbqi, 12848 ts, 0 axiom, 0 quant, 61991 proof, 2697 ntp, 24455 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 11878ms
+[Graph] 8ms
+[Analysis] 62ms
+[Loops] 0 true, 0 false

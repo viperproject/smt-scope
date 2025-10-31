@@ -1,0 +1,89 @@
+[LOGFILE] functionsRef-00-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 84153b 0.051s
+[tool] dummy
+[Parse] 256us
+[tool] smt-scope
+[Parse] 965us
+[Graph] 305us
+[Analysis] 137us
+[Stats] 0 mbqi, 83 ts, 0 axiom, 2 quant, 1013 proof, 207 ntp, 5 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] quant-u-22793{0}[q32{0}] 0 0
+[QuantInstCount] quant-u-22794{0}[q33{0}] 0 0
+[QuantInstCount] quant-u-22799{0}[q36{0}] 0 0
+[QuantInstCount] quant-u-22799{0}[q37{0}] 0 0
+[QuantInstCount] quant-u-22800{0}[q39{0}] 0 0
+[QuantInstCount] quant-u-22795{0}[q41{0}] 1 0
+[QuantInstCount] quant-u-22796{0}[q42{0}] 0 0
+[QuantInstCount] quant-u-22801{0}[q45{0}] 0 0
+[QuantInstCount] quant-u-22801{0}[q46{0}] 1 0
+[QuantInstCount] quant-u-22802{0}[q48{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q50{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q51{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52{0}[q53{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q54{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52{0}[q55{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q56{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q58{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52{0}[q59{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q60{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q62{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52{0}[q63{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q64{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q66{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52{0}[q67{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@13@11@18@57-aux{0}[q68{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52-aux{0}[q69{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@13@11@18@57-aux{0}[q71{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@13@11@18@57{0}[q73{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@13@11@18@57{0}[q74{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52{0}[q76{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@13@11@18@57{0}[q77{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@15@30@16@52{0}[q78{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@13@11@18@57{0}[q80{0}] 0 0
+[QuantInstCount] quant-u-22797{0}[q82{0}] 0 0
+[QuantInstCount] quant-u-22798{0}[q83{0}] 0 0
+[QuantInstCount] k!450{0}[q84{0}] 0 0
+[QuantInstCount] k!452{0}[q85{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q86{0}] 0 0
+[QuantInstCount] k!450{0}[q87{0}] 0 0
+[QuantInstCount] k!452{0}[q89{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q91{0}] 0 0
+[QuantInstCount] k!474{0}[q93{0}] 0 0
+[QuantInstCount] k!476{0}[q94{0}] 0 0
+[QuantInstCount] quant-u-22804{0}[q95{0}] 0 0
+[QuantInstCount] k!476{0}[q96{0}] 0 0
+[QuantInstCount] quant-u-22804{0}[q98{0}] 0 0
+[QuantInstCount] k!450{0}[q102{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q103{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q105{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q110{0}] 0 0
+[QuantInstCount] k!476{0}[q112{0}] 0 0
+[QuantInstCount] quant-u-22804{0}[q114{0}] 0 0
+[QuantInstCount] quant-u-22803{0}[q116{0}] 0 0
+[QuantInstCount] k!476{0}[q118{0}] 0 0
+[QuantInstCount] quant-u-22804{0}[q120{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/transformations/DisjunctionToInhaleExhale/functionsRef.vpr@13@11@18@57-aux{0}[q125{0}] 0 0
+[QuantInstCount] quant-u-22805{0}[q126{0}] 0 0
+[QuantInstCount] quant-u-22805{0}[q127{0}] 0 0
+[QuantInstCount] quant-u-22806{0}[q129{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 4) to show a single one.
+[Parse] 68ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

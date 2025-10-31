@@ -4,4 +4,4 @@ Cargo.lock
 .vscode/
 /logs*/
 .ipynb_checkpoints/
-/eval/data_other/
+/eval/data_other/github/

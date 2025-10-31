@@ -1,0 +1,88 @@
+[LOGFILE] exists-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 118009b 0.057s
+[tool] dummy
+[Parse] 317us
+[tool] smt-scope
+[Parse] 1340us
+[Graph] 430us
+[Analysis] 233us
+[Stats] 0 mbqi, 51 ts, 4 axiom, 6 quant, 1573 proof, 296 ntp, 36 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 2
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 2
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] quant-u-8212{0}[q24{0}] 2 0
+[QuantInstCount] quant-u-8213{0}[q25{0}] 2 0
+[QuantInstCount] quant-u-8214{0}[q26{0}] 1 0
+[QuantInstCount] quant-u-8215{0}[q27{0}] 1 0
+[QuantInstCount] quant-u-8216{0}[q28{0}] 0 0
+[QuantInstCount] quant-u-8217{0}[q29{0}] 0 0
+[QuantInstCount] k!174{0}[q30{0}] 0 0
+[QuantInstCount] quant-u-8226{0}[q31{0}] 0 0
+[QuantInstCount] quant-u-8226{0}[q32{0}] 0 0
+[QuantInstCount] k!183{0}[q34{0}] 0 0
+[QuantInstCount] quant-u-8227{0}[q35{0}] 0 0
+[QuantInstCount] quant-u-8227{0}[q36{0}] 0 0
+[QuantInstCount] quant-u-8218{0}[q38{0}] 0 0
+[QuantInstCount] quant-u-8219{0}[q39{0}] 0 0
+[QuantInstCount] k!202{0}[q40{0}] 0 0
+[QuantInstCount] quant-u-8228{0}[q41{0}] 0 0
+[QuantInstCount] quant-u-8228{0}[q42{0}] 0 0
+[QuantInstCount] k!211{0}[q44{0}] 0 0
+[QuantInstCount] quant-u-8229{0}[q45{0}] 0 0
+[QuantInstCount] k!211{0}[q46{0}] 0 0
+[QuantInstCount] quant-u-8229{0}[q48{0}] 0 0
+[QuantInstCount] quant-u-8220{0}[q50{0}] 0 0
+[QuantInstCount] quant-u-8221{0}[q51{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q53{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q54{0}] 0 0
+[QuantInstCount] quant-u-8231{0}[q56{0}] 0 0
+[QuantInstCount] quant-u-8231{0}[q57{0}] 0 0
+[QuantInstCount] quant-u-8222{0}[q59{0}] 0 0
+[QuantInstCount] quant-u-8223{0}[q60{0}] 0 0
+[QuantInstCount] quant-u-8232{0}[q62{0}] 0 0
+[QuantInstCount] quant-u-8232{0}[q65{0}] 0 0
+[QuantInstCount] quant-u-8233{0}[q67{0}] 0 0
+[QuantInstCount] quant-u-8233{0}[q68{0}] 0 0
+[QuantInstCount] quant-u-8224{0}[q70{0}] 0 0
+[QuantInstCount] quant-u-8225{0}[q71{0}] 0 0
+[QuantInstCount] k!283{0}[q72{0}] 0 0
+[QuantInstCount] quant-u-8234{0}[q73{0}] 0 0
+[QuantInstCount] quant-u-8234{0}[q74{0}] 0 0
+[QuantInstCount] k!292{0}[q76{0}] 0 0
+[QuantInstCount] quant-u-8235{0}[q77{0}] 0 0
+[QuantInstCount] k!292{0}[q78{0}] 0 0
+[QuantInstCount] quant-u-8235{0}[q80{0}] 0 0
+[QuantInstCount] k!174{0}[q95{0}] 0 0
+[QuantInstCount] quant-u-8226{0}[q97{0}] 0 0
+[QuantInstCount] k!202{0}[q103{0}] 0 0
+[QuantInstCount] quant-u-8228{0}[q105{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q113{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q115{0}] 0 0
+[QuantInstCount] quant-u-8231{0}[q117{0}] 0 0
+[QuantInstCount] quant-u-8231{0}[q119{0}] 0 0
+[QuantInstCount] k!283{0}[q126{0}] 0 0
+[QuantInstCount] quant-u-8234{0}[q128{0}] 0 0
+[QuantInstCount] quant-u-8226{0}[q132{0}] 0 0
+[QuantInstCount] k!202{0}[q134{0}] 0 0
+[QuantInstCount] quant-u-8228{0}[q136{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q138{0}] 0 0
+[QuantInstCount] k!283{0}[q140{0}] 0 0
+[QuantInstCount] quant-u-8234{0}[q142{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 35) to show a single one.
+[Parse] 80ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

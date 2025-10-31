@@ -1,0 +1,58 @@
+[LOGFILE] git-issue-851-CheckWellformed__ExampleA.__default.BadGhos-n0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 242135b 0.049s
+[tool] dummy
+[Parse] 467us
+[tool] smt-scope
+[Parse] 1814us
+[Graph] 552us
+[Analysis] 283us
+[Stats] 0 mbqi, 172 ts, 0 axiom, 38 quant, 1708 proof, 431 ntp, 17 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 5 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 5 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 3 0
+[QuantInstCount] unknown.0:0{1}[q8{1}] 0 0
+[QuantInstCount] gitissue851dfy.9:21{0}[q9{0}] 0 0
+[QuantInstCount] gitissue851dfy.9:21{0}[q10{0}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv0{0}[q15{0}] 1 0
+[QuantInstCount] typeInv:MapType0TypeInv1{0}[q16{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q17{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q18{0}] 4 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q25{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.217:18{0}[q26{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q27{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q27{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q28{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q28{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q30{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q34{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q35{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q37{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q38{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.291:14{0}[q39{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.230:14{0}[q40{0}] 0 0
+[QuantInstCount] gitissue851dfy.9:21{0}[q70{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q76{0}] 5 0
+[QuantInstCount] unknown.0:0{1}[q76{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q78{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q80{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q82{0}] 0 0
+[QuantInstCount] ctor:MapType0Type{0}[q84{0}] 1 0
+[QuantInstCount] gitissue851dfy.13:19{0}[q86{0}] 1 0
+[QuantInstCount] gitissue851dfy.13:19{0}[q88{0}] 1 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q90{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q92{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:1{0}[q94{0}] 0 0
+[QuantInstCount] gitissue851dfy.17:9{0}[q102{0}] 2 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 103ms
+[Graph] 1ms
+[Analysis] 16ms
+[Loops] 0 true, 0 false

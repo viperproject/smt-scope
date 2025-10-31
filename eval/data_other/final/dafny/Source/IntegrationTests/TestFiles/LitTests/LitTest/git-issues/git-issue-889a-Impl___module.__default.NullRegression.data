@@ -1,0 +1,50 @@
+[LOGFILE] git-issue-889a-Impl___module.__default.NullRegression-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 150808b 0.047s
+[tool] dummy
+[Parse] 337us
+[tool] smt-scope
+[Parse] 1367us
+[Graph] 501us
+[Analysis] 214us
+[Stats] 0 mbqi, 130 ts, 0 axiom, 15 quant, 1302 proof, 271 ntp, 8 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 1 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 1 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q8{1}] 1 0
+[QuantInstCount] typeInv:MapType0TypeInv0{0}[q12{0}] 1 0
+[QuantInstCount] typeInv:MapType0TypeInv1{0}[q13{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q14{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q15{0}] 6 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q16{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q17{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q18{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q18{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q19{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q19{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q21{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q22{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q26{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q27{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q29{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q30{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q56{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q56{1}] 1 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q58{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q60{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q62{0}] 0 0
+[QuantInstCount] ctor:MapType0Type{0}[q64{0}] 1 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q66{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q68{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:1{0}[q70{0}] 0 0
+[tool] axiom-profiler
+[Parse] 81ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

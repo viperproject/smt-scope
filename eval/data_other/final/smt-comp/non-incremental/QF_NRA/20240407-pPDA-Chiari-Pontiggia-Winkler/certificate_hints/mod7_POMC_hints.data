@@ -1,0 +1,15 @@
+[LOGFILE] mod7_POMC_hints-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 5931355b 0.217s
+[tool] dummy
+[Parse] 10939us
+[tool] smt-scope
+[Parse] 45162us
+[Graph] 6361us
+[Analysis] 3236us
+[Stats] 0 mbqi, 1521 ts, 0 axiom, 0 quant, 91544 proof, 1005 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 1645ms
+[Graph] 2ms
+[Analysis] 20ms
+[Loops] 0 true, 0 false

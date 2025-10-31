@@ -1,0 +1,15 @@
+[LOGFILE] call_ret_loop_2_POMC_hints-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 724656b 0.942s
+[tool] dummy
+[Parse] 1516us
+[tool] smt-scope
+[Parse] 10415us
+[Graph] 619us
+[Analysis] 402us
+[Stats] 0 mbqi, 338 ts, 0 axiom, 0 quant, 4151 proof, 49 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 208ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

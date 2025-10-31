@@ -1,0 +1,34 @@
+[LOGFILE] 0014-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 151147958b 5.046s
+[tool] dummy
+[Parse] 172681us
+[tool] smt-scope
+[Parse] 614746us
+[Graph] 306536us
+[Analysis] 65105us
+[Stats] 0 mbqi, 83610 ts, 1616 axiom, 0 quant, 538194 proof, 62085 ntp, 12308 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 191
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 107
+[QuantInstCount] constructor_accessor_axiom{0}[q4{0}] 0 107
+[QuantInstCount] constructor_accessor_axiom{0}[q5{0}] 0 107
+[QuantInstCount] constructor_accessor_axiom{0}[q6{0}] 0 107
+[QuantInstCount] constructor_accessor_axiom{0}[q7{0}] 0 80
+[QuantInstCount] constructor_accessor_axiom{0}[q8{0}] 0 80
+[QuantInstCount] constructor_accessor_axiom{0}[q9{0}] 0 83
+[QuantInstCount] constructor_accessor_axiom{0}[q10{0}] 0 83
+[QuantInstCount] constructor_accessor_axiom{0}[q11{0}] 0 83
+[QuantInstCount] constructor_accessor_axiom{0}[q12{0}] 0 84
+[QuantInstCount] constructor_accessor_axiom{0}[q13{0}] 0 84
+[QuantInstCount] constructor_accessor_axiom{0}[q14{0}] 0 84
+[QuantInstCount] constructor_accessor_axiom{0}[q15{0}] 0 84
+[QuantInstCount] constructor_accessor_axiom{0}[q16{0}] 0 84
+[QuantInstCount] constructor_accessor_axiom{0}[q17{0}] 0 84
+[QuantInstCount] constructor_accessor_axiom{0}[q18{0}] 0 84
+[tool] axiom-profiler
+[Parse] Err 484‰ 17390ms
+[Graph] 391ms
+[Analysis] 1876ms
+[Loops] 0 true, 0 false

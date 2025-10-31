@@ -1,0 +1,18 @@
+[LOGFILE] corridor_001_k2_F-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 604800b 0.055s
+[tool] dummy
+[Parse] 1326us
+[tool] smt-scope
+[Parse] 4724us
+[Graph] 1616us
+[Analysis] 775us
+[Stats] 0 mbqi, 1627 ts, 0 axiom, 0 quant, 4268 proof, 281 ntp, 187 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 8) to show a single one.
+[Parse] 180ms
+[Graph] 2ms
+[Analysis] 20ms
+[Loops] 0 true, 0 false

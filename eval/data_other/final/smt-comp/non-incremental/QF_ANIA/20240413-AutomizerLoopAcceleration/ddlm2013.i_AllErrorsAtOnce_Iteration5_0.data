@@ -1,0 +1,15 @@
+[LOGFILE] ddlm2013.i_AllErrorsAtOnce_Iteration5_0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 125541b 20.825s
+[tool] dummy
+[Parse] 349us
+[tool] smt-scope
+[Parse] 1335us
+[Graph] 421us
+[Analysis] 234us
+[Stats] 0 mbqi, 192 ts, 0 axiom, 0 quant, 1627 proof, 73 ntp, 6 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 69ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

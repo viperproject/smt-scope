@@ -1,0 +1,84 @@
+[LOGFILE] LetExpr-CheckWellformed___module.__default.F__good-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 294933b 0.054s
+[tool] dummy
+[Parse] 698us
+[tool] smt-scope
+[Parse] 2822us
+[Graph] 850us
+[Analysis] 497us
+[Stats] 0 mbqi, 201 ts, 0 axiom, 108 quant, 2359 proof, 480 ntp, 4 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 3 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 3 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 1 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q9{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q11{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q12{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q13{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q14{0}] 5 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q15{0}] 4 0
+[QuantInstCount] unknown.0:0{0}[q17{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q18{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q20{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q21{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q23{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q24{0}] 0 0
+[QuantInstCount] LetExprdfy.298:17{0}[q26{0}] 0 0
+[QuantInstCount] LetExprdfy.298:17{0}[q27{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q29{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q30{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.182:15{0}[q32{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.182:15{0}[q33{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.214:18{0}[q35{0}] 3 0
+[QuantInstCount] unknown.0:0{0}[q36{0}] 5 0
+[QuantInstCount] unknown.0:0{0}[q37{0}] 5 0
+[QuantInstCount] LetExprdfy.250:28{0}[q38{0}] 4 0
+[QuantInstCount] LetExprdfy.250:28{0}[q39{0}] 9 0
+[QuantInstCount] LetExprdfy.250:28{0}[q40{0}] 9 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q41{0}] 10 0
+[QuantInstCount] LetExprdfy.250:28{0}[q42{0}] 0 0
+[QuantInstCount] LetExprdfy.250:28{0}[q43{0}] 9 0
+[QuantInstCount] LetExprdfy.250:28{0}[q45{0}] 0 0
+[QuantInstCount] LetExprdfy.250:28{0}[q46{0}] 9 0
+[QuantInstCount] unknown.0:0{0}[q48{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q49{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q57{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q58{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q59{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q60{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q62{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.391:15{0}[q63{0}] 4 0
+[QuantInstCount] LetExprdfy.298:17{0}[q64{0}] 0 0
+[QuantInstCount] LetExprdfy.298:17{0}[q65{0}] 0 0
+[QuantInstCount] LetExprdfy.250:28{0}[q67{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q68{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q69{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.228:14{0}[q70{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.230:14{0}[q71{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q84{0}] 5 0
+[QuantInstCount] unknown.0:0{0}[q118{0}] 5 0
+[QuantInstCount] unknown.0:0{0}[q120{0}] 0 0
+[QuantInstCount] LetExprdfy.298:17{0}[q122{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q124{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.182:15{0}[q126{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q128{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q130{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q132{0}] 5 0
+[QuantInstCount] LetExprdfy.298:17{0}[q134{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q136{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q138{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q140{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q142{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q144{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q146{0}] 0 0
+[tool] axiom-profiler
+[Parse] 148ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

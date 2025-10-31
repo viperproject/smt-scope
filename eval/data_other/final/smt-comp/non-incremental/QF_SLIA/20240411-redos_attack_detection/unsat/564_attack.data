@@ -1,0 +1,17 @@
+[LOGFILE] 564_attack-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 12260b 0.044s
+[tool] dummy
+[Parse] 59us
+[tool] smt-scope
+[Parse] 293us
+[Graph] 31us
+[Analysis] 26us
+[Stats] 0 mbqi, 30 ts, 0 axiom, 0 quant, 61 proof, 4 ntp, 12 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[tool] axiom-profiler
+[Parse] 27ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

@@ -1,0 +1,15 @@
+[LOGFILE] lyndon-schuetzenberg-3-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 85984478b 5.038s
+[tool] dummy
+[Parse] 87464us
+[tool] smt-scope
+[Parse] 287442us
+[Graph] 61536us
+[Analysis] 20386us
+[Stats] 0 mbqi, 43071 ts, 0 axiom, 0 quant, 235024 proof, 1008 ntp, 1106 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 13349ms
+[Graph] 22ms
+[Analysis] 191ms
+[Loops] 0 true, 0 false

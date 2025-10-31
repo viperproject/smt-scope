@@ -1,0 +1,72 @@
+[LOGFILE] 0113-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 551772b 0.061s
+[tool] dummy
+[Parse] 1023us
+[tool] smt-scope
+[Parse] 4075us
+[Graph] 1462us
+[Analysis] 735us
+[Stats] 0 mbqi, 254 ts, 74 axiom, 74 quant, 3755 proof, 1007 ntp, 111 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 37
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 37
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 1 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 10 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 1 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 4 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] quant-u-10514{0}[q24{0}] 14 0
+[QuantInstCount] quant-u-10515{0}[q25{0}] 8 0
+[QuantInstCount] quant-u-10516{0}[q26{0}] 0 0
+[QuantInstCount] quant-u-10516{1}[q26{1}] 0 0
+[QuantInstCount] quant-u-10516{0}[q27{0}] 0 0
+[QuantInstCount] quant-u-10516{1}[q27{1}] 0 0
+[QuantInstCount] quant-u-10517{0}[q29{0}] 0 0
+[QuantInstCount] quant-u-10517{0}[q30{0}] 0 0
+[QuantInstCount] quant-u-10516{0}[q44{0}] 12 0
+[QuantInstCount] quant-u-10516{1}[q44{1}] 3 0
+[QuantInstCount] quant-u-10517{0}[q46{0}] 11 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q48{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q49{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q51{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q52{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q54{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q55{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q57{0}] 4 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q60{0}] 4 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q62{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q65{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q66{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85_precondition{0}[q68{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85_precondition{0}[q69{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q73{0}] 1 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85_precondition{0}[q75{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q77{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q80{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q81{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q83{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q84{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q86{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q87{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85_precondition{0}[q89{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85_precondition{0}[q90{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q94{0}] 1 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85_precondition{0}[q96{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85-aux{0}[q98{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q101{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q102{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q104{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/all/issues/silicon/0113.vpr@22@11@22@85{0}[q105{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 4) to show a single one.
+[Parse] Err 124‰ 1301ms
+[Graph] 2ms
+[Analysis] 16ms
+[Loops] 0 true, 0 false

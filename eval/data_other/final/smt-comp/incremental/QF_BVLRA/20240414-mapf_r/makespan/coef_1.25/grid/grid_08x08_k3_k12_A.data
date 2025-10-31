@@ -1,0 +1,17 @@
+[LOGFILE] grid_08x08_k3_k12_A-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 252116165b 5.042s
+[tool] dummy
+[Parse] 438196us
+[tool] smt-scope
+[Parse] 1423730us
+[Graph] 636330us
+[Analysis] 219746us
+[Stats] 0 mbqi, 594078 ts, 0 axiom, 0 quant, 728048 proof, 45060 ntp, 117906 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[tool] axiom-profiler
+[Parse] 60545ms
+[Graph] 315ms
+[Analysis] 3359ms
+[Loops] 0 true, 0 false

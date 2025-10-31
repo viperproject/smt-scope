@@ -1,0 +1,20 @@
+[LOGFILE] blocksworld_from_0_13_3_to_14_2_0_negated_goal_bmc_24-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 369806436b 5.038s
+[tool] dummy
+[Parse] 368122us
+[tool] smt-scope
+[Parse] 661232us
+[Graph] 793052us
+[Analysis] 78681us
+[Stats] 0 mbqi, 20989 ts, 16338 axiom, 0 quant, 174437 proof, 105291 ntp, 31628 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 8127
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 8127
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 28
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 28
+[QuantInstCount] constructor_accessor_axiom{0}[q4{0}] 0 28
+[tool] axiom-profiler
+[Parse] Err 15‰ 2302ms
+[Graph] 284ms
+[Analysis] Err 12ms Sequence contains no matching element
+[Loops] 0 true, 0 false

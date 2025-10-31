@@ -1,0 +1,15 @@
+[LOGFILE] virus_obs_POMC_no_hints-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 216946839b 5.044s
+[tool] dummy
+[Parse] 363911us
+[tool] smt-scope
+[Parse] 1523798us
+[Graph] 393538us
+[Analysis] 134849us
+[Stats] 0 mbqi, 124419 ts, 0 axiom, 0 quant, 2846460 proof, 52395 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 57609ms
+[Graph] 82ms
+[Analysis] 661ms
+[Loops] 0 true, 0 false

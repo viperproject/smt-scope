@@ -1,0 +1,41 @@
+[LOGFILE] axiom_call_func-00-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 38443b 0.046s
+[tool] dummy
+[Parse] 119us
+[tool] smt-scope
+[Parse] 564us
+[Graph] 136us
+[Analysis] 60us
+[Stats] 0 mbqi, 12 ts, 0 axiom, 0 quant, 612 proof, 113 ntp, 3 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapTodTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.dTo$SnapTod{0}[q13{0}] 0 0
+[QuantInstCount] k!128{0}[q14{0}] 0 0
+[QuantInstCount] k!132{0}[q15{0}] 0 0
+[QuantInstCount] k!132{0}[q16{0}] 0 0
+[QuantInstCount] k!132{0}[q18{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q20{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q22{0}] 0 0
+[QuantInstCount] quant-u-12631{0}[q49{0}] 0 0
+[QuantInstCount] quant-u-12632{0}[q50{0}] 0 0
+[QuantInstCount] quant-u-12633{0}[q53{0}] 0 0
+[QuantInstCount] quant-u-12633{0}[q54{0}] 0 0
+[QuantInstCount] quant-u-12634{0}[q56{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 40ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

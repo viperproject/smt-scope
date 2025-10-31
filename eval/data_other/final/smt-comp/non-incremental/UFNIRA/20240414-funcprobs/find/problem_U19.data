@@ -1,0 +1,23 @@
+[LOGFILE] problem_U19-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 235342425b 5.039s
+[tool] dummy
+[Parse] 118431us
+[tool] smt-scope
+[Parse] 266446us
+[Graph] 72486us
+[Analysis] 35053us
+[Stats] 4 mbqi, 24455 ts, 0 axiom, 5203 quant, 120140 proof, 18500 ntp, 1816 cdcl,
+[Loops] 0 true, 1 false
+[OneLoop] 17 repetitions, false-loop, k!24{0}[q44{0}]
+[ExtraLoop] 16 8 7 7 7 6 6 6
+[Branching] 1 k!19{0}[q40{0}] 46.625x
+[QuantInstCount] k!19{MBQI}[q40{MBQI}] 1 0
+[QuantInstCount] k!19{0}[q40{0}] 5067 0
+[QuantInstCount] k!23{MBQI}[q42{MBQI}] 2 0
+[QuantInstCount] k!23{0}[q42{0}] 27 0
+[QuantInstCount] k!24{MBQI}[q44{MBQI}] 1 0
+[QuantInstCount] k!24{0}[q44{0}] 109 0
+[tool] axiom-profiler
+[Parse] Err 790‰ 220367ms
+[Graph] 27ms
+[Analysis] Err 15ms Sequence contains no matching element
+[Loops] 0 true, 0 false

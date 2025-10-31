@@ -1,0 +1,22 @@
+[LOGFILE] problem_U16-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 196848068b 5.075s
+[tool] dummy
+[Parse] 339462us
+[tool] smt-scope
+[Parse] 1474172us
+[Graph] 1333307us
+[Analysis] 516751us
+[Stats] 6 mbqi, 312829 ts, 0 axiom, 86589 quant, 1245658 proof, 532 ntp, 76 cdcl,
+[Loops] 0 true, 1 false
+[OneLoop] 5 repetitions, false-loop, k!22{0}[q29{0}]
+[ExtraLoop] 5 5 5 5 5
+[Branching] 2 k!18{0}[q26{0}] 249.1936416184971x k!22{0}[q29{0}] 18.4x
+[QuantInstCount] k!19{MBQI}[q23{MBQI}] 2 0
+[QuantInstCount] k!18{MBQI}[q26{MBQI}] 2 0
+[QuantInstCount] k!18{0}[q26{0}] 86221 0
+[QuantInstCount] k!22{MBQI}[q29{MBQI}] 2 0
+[QuantInstCount] k!22{0}[q29{0}] 368 0
+[tool] axiom-profiler
+[Parse] 51695ms
+[Graph] 315ms
+[Analysis] 1876ms
+[Loops] 0 true, 0 false

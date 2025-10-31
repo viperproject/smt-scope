@@ -1,0 +1,33 @@
+[LOGFILE] problem_U82-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 162757278b 5.065s
+[tool] dummy
+[Parse] 261565us
+[tool] smt-scope
+[Parse] 1351521us
+[Graph] 1072489us
+[Analysis] 557438us
+[Stats] 0 mbqi, 194924 ts, 0 axiom, 62690 quant, 863524 proof, 583 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 2 k!31{0}[q125{0}] 68.28381374722838x k!32{0}[q127{0}] 69.03325942350332x
+[QuantInstCount] k!20{0}[q108{0}] 140 0
+[QuantInstCount] k!22{0}[q110{0}] 0 0
+[QuantInstCount] k!22{0}[q111{0}] 0 0
+[QuantInstCount] k!25{0}[q113{0}] 140 0
+[QuantInstCount] k!26{0}[q115{0}] 0 0
+[QuantInstCount] k!26{1}[q115{1}] 0 0
+[QuantInstCount] k!26{0}[q116{0}] 0 0
+[QuantInstCount] k!26{1}[q116{1}] 0 0
+[QuantInstCount] k!28{0}[q118{0}] 140 0
+[QuantInstCount] k!29{0}[q120{0}] 140 0
+[QuantInstCount] k!30{0}[q122{0}] 0 0
+[QuantInstCount] k!30{1}[q122{1}] 0 0
+[QuantInstCount] k!30{0}[q123{0}] 0 0
+[QuantInstCount] k!30{1}[q123{1}] 0 0
+[QuantInstCount] k!31{0}[q125{0}] 30796 0
+[QuantInstCount] k!32{0}[q127{0}] 31134 0
+[QuantInstCount] k!38{0}[q129{0}] 110 0
+[QuantInstCount] k!38{1}[q129{1}] 90 0
+[tool] axiom-profiler
+[Parse] 42172ms
+[Graph] 230ms
+[Analysis] 1068ms
+[Loops] 0 true, 0 false

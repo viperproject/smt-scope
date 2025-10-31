@@ -1,0 +1,47 @@
+[LOGFILE] libb-00-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 39255b 0.045s
+[tool] dummy
+[Parse] 121us
+[tool] smt-scope
+[Parse] 613us
+[Graph] 132us
+[Analysis] 68us
+[Stats] 0 mbqi, 12 ts, 0 axiom, 0 quant, 598 proof, 119 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] quant-u-12605{0}[q32{0}] 0 0
+[QuantInstCount] quant-u-12606{0}[q33{0}] 0 0
+[QuantInstCount] quant-u-12611{0}[q34{0}] 0 0
+[QuantInstCount] quant-u-12611{0}[q35{0}] 0 0
+[QuantInstCount] quant-u-12612{0}[q37{0}] 0 0
+[QuantInstCount] quant-u-12612{0}[q38{0}] 0 0
+[QuantInstCount] quant-u-12607{0}[q43{0}] 0 0
+[QuantInstCount] quant-u-12608{0}[q44{0}] 0 0
+[QuantInstCount] quant-u-12613{0}[q45{0}] 0 0
+[QuantInstCount] quant-u-12613{0}[q46{0}] 0 0
+[QuantInstCount] quant-u-12614{0}[q48{0}] 0 0
+[QuantInstCount] quant-u-12614{0}[q49{0}] 0 0
+[QuantInstCount] quant-u-12609{0}[q54{0}] 0 0
+[QuantInstCount] quant-u-12610{0}[q55{0}] 0 0
+[QuantInstCount] quant-u-12615{0}[q56{0}] 0 0
+[QuantInstCount] quant-u-12615{0}[q57{0}] 0 0
+[QuantInstCount] quant-u-12616{0}[q59{0}] 0 0
+[QuantInstCount] quant-u-12616{0}[q60{0}] 0 0
+[tool] axiom-profiler
+[Parse] 37ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

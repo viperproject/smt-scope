@@ -1,0 +1,157 @@
+[LOGFILE] queries-Bug3227-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 281296b 0.049s
+[tool] dummy
+[Parse] 640us
+[tool] smt-scope
+[Parse] 2716us
+[Graph] 823us
+[Analysis] 380us
+[Stats] 0 mbqi, 229 ts, 4 axiom, 0 quant, 2896 proof, 655 ntp, 3 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 4
+[QuantInstCount] k!41{0}[q3{0}] 0 0
+[QuantInstCount] k!47{0}[q4{0}] 0 0
+[QuantInstCount] k!56{0}[q6{0}] 0 0
+[QuantInstCount] k!56{0}[q7{0}] 0 0
+[QuantInstCount] k!71{0}[q12{0}] 0 0
+[QuantInstCount] k!71{0}[q13{0}] 0 0
+[QuantInstCount] k!72{0}[q15{0}] 0 0
+[QuantInstCount] k!72{0}[q16{0}] 0 0
+[QuantInstCount] k!73{0}[q18{0}] 0 0
+[QuantInstCount] k!73{0}[q19{0}] 0 0
+[QuantInstCount] k!76{0}[q21{0}] 0 0
+[QuantInstCount] k!76{0}[q22{0}] 0 0
+[QuantInstCount] k!77{0}[q24{0}] 0 0
+[QuantInstCount] k!77{0}[q25{0}] 0 0
+[QuantInstCount] constructor_distinct_FString_const{0}[q27{0}] 0 0
+[QuantInstCount] constructor_distinct_FString_const{0}[q28{0}] 0 0
+[QuantInstCount] projection_inverse_FString_const_proj_0{0}[q30{0}] 0 0
+[QuantInstCount] constructor_distinct_Tm_arrow{0}[q31{0}] 0 0
+[QuantInstCount] constructor_distinct_Tm_arrow{0}[q32{0}] 0 0
+[QuantInstCount] projection_inverse_Tm_arrow_id{0}[q34{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxInt{0}[q35{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxInt{0}[q36{0}] 0 0
+[QuantInstCount] projection_inverse_BoxInt_proj_0{0}[q38{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxBool{0}[q39{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxBool{0}[q40{0}] 0 0
+[QuantInstCount] projection_inverse_BoxBool_proj_0{0}[q42{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxString{0}[q43{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxString{0}[q44{0}] 0 0
+[QuantInstCount] projection_inverse_BoxString_proj_0{0}[q46{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxReal{0}[q47{0}] 0 0
+[QuantInstCount] constructor_distinct_BoxReal{0}[q48{0}] 0 0
+[QuantInstCount] projection_inverse_BoxReal_proj_0{0}[q50{0}] 0 0
+[QuantInstCount] k!346{0}[q51{0}] 0 0
+[QuantInstCount] k!352{0}[q52{0}] 0 0
+[QuantInstCount] k!356{0}[q53{0}] 0 0
+[QuantInstCount] __prelude_valid_intro{0}[q54{0}] 0 0
+[QuantInstCount] __prelude_valid_intro{0}[q55{0}] 0 0
+[QuantInstCount] k!56{0}[q107{0}] 0 0
+[QuantInstCount] k!59{0}[q109{0}] 0 0
+[QuantInstCount] k!59{1}[q109{1}] 0 0
+[QuantInstCount] unit_inversion{0}[q112{0}] 0 0
+[QuantInstCount] unit_inversion{0}[q113{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q115{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q116{0}] 0 0
+[QuantInstCount] typing_Prims.hasEq{0}[q118{0}] 0 0
+[QuantInstCount] typing_Prims.hasEq{0}[q119{0}] 0 0
+[QuantInstCount] token_correspondence_Bug3227.box@tok{0}[q121{0}] 0 0
+[QuantInstCount] token_correspondence_Bug3227.box@tok{1}[q121{1}] 0 0
+[QuantInstCount] subterm_ordering_Bug3227.Mkbox{0}[q122{0}] 0 0
+[QuantInstCount] subterm_ordering_Bug3227.Mkbox{0}[q123{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_f1ecc6ab6882a651504f328937700647{0}[q125{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_f1ecc6ab6882a651504f328937700647{0}[q126{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_73f210ca6e0061ed4a3150f69b8f33bf{0}[q128{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_414d0a9f578ab0048252f8c8f552b99f{0}[q129{0}] 0 0
+[QuantInstCount] projection_inverse_Bug3227.Mkbox_x{0}[q130{0}] 0 0
+[QuantInstCount] projection_inverse_Bug3227.Mkbox_a{0}[q131{0}] 0 0
+[QuantInstCount] kinding_Bug3227.box@tok{0}[q132{0}] 0 0
+[QuantInstCount] kinding_Bug3227.box@tok{0}[q133{0}] 0 0
+[QuantInstCount] fuel_guarded_inversion_Bug3227.box{0}[q135{0}] 0 0
+[QuantInstCount] fuel_guarded_inversion_Bug3227.box{0}[q136{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q139{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q142{0}] 0 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q144{0}] 0 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q145{0}] 0 0
+[QuantInstCount] data_typing_intro_Bug3227.Mkbox@tok{0}[q147{0}] 0 0
+[QuantInstCount] data_typing_intro_Bug3227.Mkbox@tok{0}[q148{0}] 0 0
+[QuantInstCount] data_elim_Bug3227.Mkbox{0}[q150{0}] 0 0
+[QuantInstCount] data_elim_Bug3227.Mkbox{0}[q151{0}] 0 0
+[QuantInstCount] constructor_distinct_Bug3227.box{0}[q153{0}] 0 0
+[QuantInstCount] constructor_distinct_Bug3227.box{0}[q154{0}] 0 0
+[QuantInstCount] constructor_distinct_Bug3227.Mkbox{0}[q156{0}] 0 0
+[QuantInstCount] constructor_distinct_Bug3227.Mkbox{0}[q157{0}] 0 0
+[QuantInstCount] Prims_pretyping_f8666440faa91836cc5a13998af863fc{0}[q159{0}] 0 0
+[QuantInstCount] Prims_pretyping_f8666440faa91836cc5a13998af863fc{0}[q160{0}] 0 0
+[QuantInstCount] Bug3227_pretyping_ab2d992669ae33a9898bb6f2883221ee{0}[q162{0}] 0 0
+[QuantInstCount] Bug3227_pretyping_ab2d992669ae33a9898bb6f2883221ee{0}[q163{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q178{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q187{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_73f210ca6e0061ed4a3150f69b8f33bf{0}[q189{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_414d0a9f578ab0048252f8c8f552b99f{0}[q191{0}] 0 0
+[QuantInstCount] fuel_guarded_inversion_Bug3227.box{0}[q193{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q195{0}] 0 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q197{0}] 0 0
+[QuantInstCount] data_typing_intro_Bug3227.Mkbox@tok{0}[q199{0}] 0 0
+[QuantInstCount] data_elim_Bug3227.Mkbox{0}[q201{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of.1{0}[q203{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of.1{1}[q203{1}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q205{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q207{0}] 0 0
+[QuantInstCount] fuel_guarded_inversion_Bug3227.box{0}[q209{0}] 0 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q211{0}] 0 0
+[QuantInstCount] data_typing_intro_Bug3227.Mkbox@tok{0}[q213{0}] 0 0
+[QuantInstCount] @query.1{0}[q219{0}] 0 0
+[QuantInstCount] @query.1{0}[q222{0}] 0 0
+[QuantInstCount] @query.1{0}[q230{0}] 0 0
+[QuantInstCount] unit_inversion{0}[q234{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q236{0}] 0 0
+[QuantInstCount] typing_Prims.subtype_of{0}[q237{0}] 0 0
+[QuantInstCount] typing_Prims.hasEq{0}[q239{0}] 0 0
+[QuantInstCount] token_correspondence_Bug3227.box2@tok{0}[q241{0}] 0 0
+[QuantInstCount] token_correspondence_Bug3227.box2@tok{1}[q241{1}] 0 0
+[QuantInstCount] subterm_ordering_Bug3227.Box2{0}[q242{0}] 0 0
+[QuantInstCount] subterm_ordering_Bug3227.Box2{0}[q243{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_f1ecc6ab6882a651504f328937700647{0}[q245{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_73f210ca6e0061ed4a3150f69b8f33bf{0}[q247{0}] 0 0
+[QuantInstCount] refinement_interpretation_Tm_refine_414d0a9f578ab0048252f8c8f552b99f{0}[q248{0}] 0 0
+[QuantInstCount] projection_inverse_Bug3227.Box2_x{0}[q249{0}] 0 0
+[QuantInstCount] projection_inverse_Bug3227.Box2_a{0}[q250{0}] 0 0
+[QuantInstCount] kinding_Bug3227.box2@tok{0}[q251{0}] 0 0
+[QuantInstCount] kinding_Bug3227.box2@tok{0}[q252{0}] 0 0
+[QuantInstCount] fuel_guarded_inversion_Bug3227.box2{0}[q254{0}] 0 0
+[QuantInstCount] fuel_guarded_inversion_Bug3227.box2{0}[q255{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q258{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q260{0}] 0 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q262{0}] 0 0
+[QuantInstCount] defn_equation_Prims.subtype_of{0}[q263{0}] 0 0
+[QuantInstCount] data_typing_intro_Bug3227.Box2@tok{0}[q265{0}] 0 0
+[QuantInstCount] data_typing_intro_Bug3227.Box2@tok{0}[q266{0}] 0 0
+[QuantInstCount] data_elim_Bug3227.Box2{0}[q268{0}] 0 0
+[QuantInstCount] data_elim_Bug3227.Box2{0}[q269{0}] 0 0
+[QuantInstCount] constructor_distinct_Bug3227.box2{0}[q271{0}] 0 0
+[QuantInstCount] constructor_distinct_Bug3227.box2{0}[q272{0}] 0 0
+[QuantInstCount] constructor_distinct_Bug3227.Box2{0}[q274{0}] 0 0
+[QuantInstCount] constructor_distinct_Bug3227.Box2{0}[q275{0}] 0 0
+[QuantInstCount] Prims_pretyping_f8666440faa91836cc5a13998af863fc{0}[q277{0}] 0 0
+[QuantInstCount] Bug3227_pretyping_58a361357a2a4d36f399e2c8e891856c{0}[q279{0}] 0 0
+[QuantInstCount] Bug3227_pretyping_58a361357a2a4d36f399e2c8e891856c{0}[q280{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q295{0}] 0 0
+[QuantInstCount] fuel_guarded_inversion_Bug3227.box2{0}[q307{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q309{0}] 0 0
+[QuantInstCount] data_typing_intro_Bug3227.Box2@tok{0}[q312{0}] 0 0
+[QuantInstCount] data_elim_Bug3227.Box2{0}[q314{0}] 0 0
+[QuantInstCount] equation_Prims.subtype_of{0}[q316{0}] 0 0
+[QuantInstCount] fuel_guarded_inversion_Bug3227.box2{0}[q318{0}] 0 0
+[QuantInstCount] data_typing_intro_Bug3227.Box2@tok{0}[q320{0}] 0 0
+[QuantInstCount] @query.1{0}[q326{0}] 0 0
+[QuantInstCount] @query.1{0}[q328{0}] 0 0
+[QuantInstCount] @query.1{0}[q334{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 170ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

@@ -1,0 +1,127 @@
+[LOGFILE] COST-verif-comp-2011-4-FloydCycleDetect-Impl___module.Node.Le-n10-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 2695902b 0.099s
+[tool] dummy
+[Parse] 4610us
+[tool] smt-scope
+[Parse] 17376us
+[Graph] 5491us
+[Analysis] 4010us
+[Stats] 0 mbqi, 1250 ts, 0 axiom, 1072 quant, 13302 proof, 5020 ntp, 84 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 1 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 80 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q8{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q9{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q11{0}] 42 0
+[QuantInstCount] unknown.0:0{0}[q12{0}] 56 0
+[QuantInstCount] unknown.0:0{0}[q13{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q13{1}] 56 0
+[QuantInstCount] typeInv:MapType0TypeInv0{0}[q17{0}] 1 0
+[QuantInstCount] typeInv:MapType0TypeInv1{0}[q18{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q19{0}] 57 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q20{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q21{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q22{0}] 152 0
+[QuantInstCount] DafnyPreludebpl.240:11{0}[q23{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.238:15{0}[q24{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.240:11{0}[q25{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.238:15{0}[q27{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.217:18{0}[q29{0}] 56 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q30{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q31{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q33{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.129:19{0}[q34{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q35{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.129:19{0}[q37{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q39{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q40{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q42{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q43{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q45{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q45{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q46{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q46{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q48{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q49{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.534:15{0}[q51{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q52{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q53{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.214:18{0}[q55{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.299:11{0}[q56{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.297:15{0}[q57{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.299:11{0}[q58{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.297:15{0}[q60{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.41:15{0}[q62{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.42:15{0}[q63{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q64{0}] 57 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q65{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q66{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q71{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q72{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.195:15{0}[q74{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.195:15{0}[q75{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q77{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q78{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q80{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q81{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.289:14{0}[q82{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.228:14{0}[q83{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.238:15{0}[q104{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.129:19{0}[q109{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.129:19{0}[q111{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.297:15{0}[q121{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q137{0}] 82 0
+[QuantInstCount] DafnyPreludebpl.238:15{0}[q139{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q141{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q143{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.129:19{0}[q145{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q147{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q149{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q151{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q151{1}] 56 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q153{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.534:15{0}[q155{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q157{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.297:15{0}[q159{0}] 2 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q161{0}] 28 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q163{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.195:15{0}[q165{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.136:18{0}[q167{0}] 46 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q169{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q171{0}] 0 0
+[QuantInstCount] ctor:MapType0Type{0}[q173{0}] 1 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q175{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q177{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:1{0}[q179{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q181{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q182{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.277:5{0}[q183{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q184{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q185{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q186{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q187{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q189{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q191{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.277:5{0}[q193{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q195{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q197{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q200{0}] 57 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q202{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.240:11{0}[q205{0}] 57 0
+[QuantInstCount] DafnyPreludebpl.299:11{0}[q206{0}] 2 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q207{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q208{0}] 57 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q210{0}] 0 0
+[QuantInstCount] COSTverifcomp20114FloydCycleDetectdfy.133:12{0}[q211{0}] 57 0
+[QuantInstCount] DafnyPreludebpl.299:11{0}[q213{0}] 55 0
+[tool] axiom-profiler
+[Parse] 637ms
+[Graph] 2ms
+[Analysis] Err 6ms Sequence contains no matching element
+[Loops] 0 true, 0 false

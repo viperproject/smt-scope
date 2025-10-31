@@ -1,0 +1,128 @@
+[LOGFILE] Celebrity-Impl___module.__default.FindCelebrity0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 159700b 0.045s
+[tool] dummy
+[Parse] 381us
+[tool] smt-scope
+[Parse] 1641us
+[Graph] 538us
+[Analysis] 247us
+[Stats] 0 mbqi, 244 ts, 0 axiom, 0 quant, 1639 proof, 257 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q8{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q9{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.240:11{0}[q10{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.238:15{0}[q11{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.240:11{0}[q12{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.238:15{0}[q14{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.217:18{0}[q16{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q17{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q17{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q17{2}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q18{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q18{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q18{2}] 0 0
+[QuantInstCount] unknown.0:0{0}[q19{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q20{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q20{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q20{2}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q22{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q22{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q22{2}] 0 0
+[QuantInstCount] unknown.0:0{0}[q24{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.214:18{0}[q26{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.299:11{0}[q27{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.297:15{0}[q28{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.299:11{0}[q29{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.297:15{0}[q31{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q33{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q33{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q33{2}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q34{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q34{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q34{2}] 0 0
+[QuantInstCount] unknown.0:0{0}[q35{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q36{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q36{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q36{2}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q38{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q38{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q38{2}] 0 0
+[QuantInstCount] unknown.0:0{0}[q40{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.41:15{0}[q42{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.42:15{0}[q43{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q44{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q51{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q52{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q53{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q54{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.195:15{0}[q56{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.195:15{0}[q57{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q59{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q60{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q60{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q60{2}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q61{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q61{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q61{2}] 0 0
+[QuantInstCount] unknown.0:0{0}[q62{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q63{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q63{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q63{2}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q65{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q65{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q65{2}] 0 0
+[QuantInstCount] unknown.0:0{0}[q67{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.238:15{0}[q78{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q83{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q85{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.297:15{0}[q89{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q93{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q95{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q113{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q115{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.238:15{0}[q117{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q119{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q119{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q119{2}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q121{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q121{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q121{2}] 0 0
+[QuantInstCount] unknown.0:0{0}[q123{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.297:15{0}[q125{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q127{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q127{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q127{2}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q129{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q129{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q129{2}] 0 0
+[QuantInstCount] unknown.0:0{0}[q131{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q133{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.195:15{0}[q135{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q137{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q137{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q137{2}] 0 0
+[QuantInstCount] Celebritydfy.12:10{0}[q139{0}] 0 0
+[QuantInstCount] Celebritydfy.12:10{1}[q139{1}] 0 0
+[QuantInstCount] Celebritydfy.12:10{2}[q139{2}] 0 0
+[QuantInstCount] unknown.0:0{0}[q141{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q143{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q145{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q147{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q149{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q151{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q153{0}] 0 0
+[QuantInstCount] Celebritydfy.16:19{0}[q155{0}] 0 0
+[QuantInstCount] Celebritydfy.16:19{0}[q156{0}] 0 0
+[tool] axiom-profiler
+[Parse] 117ms
+[Graph] 1ms
+[Analysis] 16ms
+[Loops] 0 true, 0 false

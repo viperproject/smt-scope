@@ -1,0 +1,86 @@
+[LOGFILE] termination_2-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 165219b 0.056s
+[tool] dummy
+[Parse] 473us
+[tool] smt-scope
+[Parse] 1868us
+[Graph] 622us
+[Analysis] 336us
+[Stats] 0 mbqi, 41 ts, 0 axiom, 62 quant, 2226 proof, 373 ntp, 74 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToListWellFoundedOrder<Val>To$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.ListWellFoundedOrder<Val>To$SnapToListWellFoundedOrder<Val>{0}[q13{0}] 0 0
+[QuantInstCount] $Snap.$SnapToWellFoundedOrder<List<Val>>To$Snap{0}[q14{0}] 0 0
+[QuantInstCount] $Snap.WellFoundedOrder<List<Val>>To$SnapToWellFoundedOrder<List<Val>>{0}[q15{0}] 0 0
+[QuantInstCount] $Snap.$SnapToList<Val>To$Snap{0}[q16{0}] 0 0
+[QuantInstCount] $Snap.List<Val>To$SnapToList<Val>{0}[q17{0}] 0 0
+[QuantInstCount] $Snap.$SnapToValTo$Snap{0}[q18{0}] 0 0
+[QuantInstCount] $Snap.ValTo$SnapToVal{0}[q19{0}] 0 0
+[QuantInstCount] k!184{0}[q20{0}] 4 0
+[QuantInstCount] k!188{0}[q21{0}] 4 0
+[QuantInstCount] k!193{0}[q22{0}] 17 0
+[QuantInstCount] k!201{0}[q23{0}] 15 0
+[QuantInstCount] k!201{1}[q23{1}] 0 0
+[QuantInstCount] k!201{2}[q23{2}] 0 0
+[QuantInstCount] k!206{0}[q24{0}] 17 0
+[QuantInstCount] k!212{0}[q25{0}] 0 0
+[QuantInstCount] k!212{0}[q26{0}] 0 0
+[QuantInstCount] k!216{0}[q28{0}] 2 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q29{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q31{0}] 0 0
+[QuantInstCount] k!212{0}[q56{0}] 0 0
+[QuantInstCount] quant-u-13569{0}[q58{0}] 0 0
+[QuantInstCount] quant-u-13570{0}[q59{0}] 0 0
+[QuantInstCount] quant-u-13577{0}[q60{0}] 0 0
+[QuantInstCount] quant-u-13577{0}[q61{0}] 0 0
+[QuantInstCount] quant-u-13578{0}[q63{0}] 0 0
+[QuantInstCount] quant-u-13579{0}[q64{0}] 0 0
+[QuantInstCount] quant-u-13579{0}[q65{0}] 0 0
+[QuantInstCount] quant-u-13580{0}[q67{0}] 0 0
+[QuantInstCount] quant-u-13580{0}[q68{0}] 0 0
+[QuantInstCount] quant-u-13571{0}[q70{0}] 0 0
+[QuantInstCount] quant-u-13572{0}[q71{0}] 0 0
+[QuantInstCount] quant-u-13581{0}[q72{0}] 0 0
+[QuantInstCount] quant-u-13581{0}[q73{0}] 0 0
+[QuantInstCount] quant-u-13582{0}[q75{0}] 0 0
+[QuantInstCount] quant-u-13583{0}[q76{0}] 0 0
+[QuantInstCount] quant-u-13583{0}[q77{0}] 0 0
+[QuantInstCount] quant-u-13584{0}[q79{0}] 0 0
+[QuantInstCount] quant-u-13584{0}[q80{0}] 0 0
+[QuantInstCount] quant-u-13573{0}[q82{0}] 0 0
+[QuantInstCount] quant-u-13574{0}[q83{0}] 0 0
+[QuantInstCount] quant-u-13585{0}[q84{0}] 0 0
+[QuantInstCount] quant-u-13585{0}[q85{0}] 0 0
+[QuantInstCount] quant-u-13586{0}[q87{0}] 0 0
+[QuantInstCount] quant-u-13587{0}[q88{0}] 0 0
+[QuantInstCount] quant-u-13587{0}[q89{0}] 0 0
+[QuantInstCount] quant-u-13588{0}[q91{0}] 0 0
+[QuantInstCount] quant-u-13588{0}[q92{0}] 0 0
+[QuantInstCount] quant-u-13575{0}[q94{0}] 0 0
+[QuantInstCount] quant-u-13576{0}[q95{0}] 0 0
+[QuantInstCount] quant-u-13589{0}[q96{0}] 0 0
+[QuantInstCount] quant-u-13589{0}[q97{0}] 0 0
+[QuantInstCount] quant-u-13590{0}[q99{0}] 0 0
+[QuantInstCount] quant-u-13591{0}[q100{0}] 0 0
+[QuantInstCount] quant-u-13591{0}[q101{0}] 0 0
+[QuantInstCount] quant-u-13592{0}[q103{0}] 0 0
+[QuantInstCount] quant-u-13592{0}[q104{0}] 0 0
+[QuantInstCount] k!212{0}[q149{0}] 3 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 41) to show a single one.
+[Parse] 94ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

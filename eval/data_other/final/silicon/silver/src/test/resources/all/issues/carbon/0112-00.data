@@ -1,0 +1,90 @@
+[LOGFILE] 0112-00-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 145245b 0.053s
+[tool] dummy
+[Parse] 410us
+[tool] smt-scope
+[Parse] 1646us
+[Graph] 516us
+[Analysis] 245us
+[Stats] 0 mbqi, 84 ts, 14 axiom, 0 quant, 1904 proof, 403 ntp, 28 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 7
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 7
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] quant-u-12272{0}[q32{0}] 0 0
+[QuantInstCount] quant-u-12273{0}[q33{0}] 0 0
+[QuantInstCount] quant-u-12304{0}[q34{0}] 0 0
+[QuantInstCount] quant-u-12304{0}[q35{0}] 0 0
+[QuantInstCount] quant-u-12305{0}[q37{0}] 0 0
+[QuantInstCount] quant-u-12304{0}[q40{0}] 0 0
+[QuantInstCount] quant-u-12307{0}[q42{0}] 0 0
+[QuantInstCount] quant-u-12307{0}[q43{0}] 0 0
+[QuantInstCount] quant-u-12308{0}[q45{0}] 0 0
+[QuantInstCount] quant-u-12274{0}[q47{0}] 0 0
+[QuantInstCount] quant-u-12275{0}[q48{0}] 0 0
+[QuantInstCount] quant-u-12309{0}[q49{0}] 0 0
+[QuantInstCount] quant-u-12309{0}[q50{0}] 0 0
+[QuantInstCount] quant-u-12310{0}[q52{0}] 0 0
+[QuantInstCount] quant-u-12309{0}[q55{0}] 0 0
+[QuantInstCount] quant-u-12276{0}[q57{0}] 0 0
+[QuantInstCount] quant-u-12277{0}[q58{0}] 0 0
+[QuantInstCount] quant-u-12278{0}[q61{0}] 0 0
+[QuantInstCount] quant-u-12279{0}[q62{0}] 0 0
+[QuantInstCount] quant-u-12312{0}[q63{0}] 0 0
+[QuantInstCount] quant-u-12282{0}[q65{0}] 0 0
+[QuantInstCount] quant-u-12283{0}[q66{0}] 0 0
+[QuantInstCount] quant-u-12315{0}[q67{0}] 0 0
+[QuantInstCount] quant-u-12315{0}[q68{0}] 0 0
+[QuantInstCount] quant-u-12316{0}[q70{0}] 0 0
+[QuantInstCount] quant-u-12315{0}[q73{0}] 0 0
+[QuantInstCount] quant-u-12286{0}[q75{0}] 0 0
+[QuantInstCount] quant-u-12287{0}[q76{0}] 0 0
+[QuantInstCount] quant-u-12318{0}[q79{0}] 0 0
+[QuantInstCount] quant-u-12318{0}[q80{0}] 0 0
+[QuantInstCount] quant-u-12319{0}[q82{0}] 0 0
+[QuantInstCount] quant-u-12288{0}[q84{0}] 0 0
+[QuantInstCount] quant-u-12289{0}[q85{0}] 0 0
+[QuantInstCount] quant-u-12290{0}[q88{0}] 0 0
+[QuantInstCount] quant-u-12291{0}[q89{0}] 0 0
+[QuantInstCount] quant-u-12320{0}[q92{0}] 0 0
+[QuantInstCount] quant-u-12320{0}[q93{0}] 0 0
+[QuantInstCount] quant-u-12321{0}[q95{0}] 0 0
+[QuantInstCount] quant-u-12292{0}[q97{0}] 0 0
+[QuantInstCount] quant-u-12293{0}[q98{0}] 0 0
+[QuantInstCount] quant-u-12296{0}[q101{0}] 0 0
+[QuantInstCount] quant-u-12297{0}[q102{0}] 0 0
+[QuantInstCount] quant-u-12322{0}[q103{0}] 0 0
+[QuantInstCount] quant-u-12322{0}[q104{0}] 0 0
+[QuantInstCount] quant-u-12323{0}[q106{0}] 0 0
+[QuantInstCount] quant-u-12322{0}[q109{0}] 0 0
+[QuantInstCount] quant-u-12325{0}[q111{0}] 0 0
+[QuantInstCount] quant-u-12325{0}[q112{0}] 0 0
+[QuantInstCount] quant-u-12326{0}[q114{0}] 0 0
+[QuantInstCount] quant-u-12298{0}[q116{0}] 0 0
+[QuantInstCount] quant-u-12299{0}[q117{0}] 0 0
+[QuantInstCount] quant-u-12327{0}[q118{0}] 0 0
+[QuantInstCount] quant-u-12330{0}[q120{0}] 0 0
+[QuantInstCount] quant-u-12330{0}[q121{0}] 0 0
+[QuantInstCount] quant-u-12331{0}[q123{0}] 0 0
+[QuantInstCount] quant-u-12302{0}[q125{0}] 0 0
+[QuantInstCount] quant-u-12303{0}[q126{0}] 0 0
+[QuantInstCount] quant-u-12332{0}[q129{0}] 0 0
+[QuantInstCount] quant-u-12332{0}[q130{0}] 0 0
+[QuantInstCount] quant-u-12333{0}[q132{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 17) to show a single one.
+[Parse] 82ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

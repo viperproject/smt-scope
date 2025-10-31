@@ -1,0 +1,75 @@
+[LOGFILE] ordinal-subtraction-underflow-CheckWellformed_-n0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 112967b 0.046s
+[tool] dummy
+[Parse] 294us
+[tool] smt-scope
+[Parse] 1269us
+[Graph] 369us
+[Analysis] 187us
+[Stats] 0 mbqi, 131 ts, 0 axiom, 4 quant, 1260 proof, 214 ntp, 4 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.427:15{0}[q8{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.427:15{1}[q8{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.427:15{0}[q9{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.427:15{1}[q9{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.466:15{0}[q11{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.466:15{0}[q12{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q14{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q15{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.451:15{0}[q16{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.451:15{0}[q17{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.412:15{0}[q19{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.412:15{0}[q20{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.424:15{0}[q22{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.424:15{0}[q23{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.406:15{0}[q25{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.406:15{0}[q26{0}] 2 0
+[QuantInstCount] ordinalsubtractionunderflowdfy.4:38{0}[q28{0}] 0 0
+[QuantInstCount] ordinalsubtractionunderflowdfy.4:38{0}[q29{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q31{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.418:15{0}[q32{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.418:15{0}[q33{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q41{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q42{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q43{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q44{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.414:15{0}[q46{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.414:15{1}[q46{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.414:15{0}[q47{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.414:15{1}[q47{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.455:15{0}[q49{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.455:15{0}[q50{0}] 0 0
+[QuantInstCount] ordinalsubtractionunderflowdfy.4:38{0}[q52{0}] 0 0
+[QuantInstCount] ordinalsubtractionunderflowdfy.4:38{0}[q53{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q55{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.232:14{0}[q56{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.427:15{0}[q88{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.427:15{1}[q88{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.466:15{0}[q90{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.451:15{0}[q92{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.412:15{0}[q94{0}] 0 0
+[QuantInstCount] ordinalsubtractionunderflowdfy.4:38{0}[q96{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.418:15{0}[q98{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q100{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.455:15{0}[q102{0}] 0 0
+[QuantInstCount] ordinalsubtractionunderflowdfy.4:38{0}[q104{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q106{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q108{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q110{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q112{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q114{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q116{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 75ms
+[Graph] 1ms
+[Analysis] 16ms
+[Loops] 0 true, 0 false

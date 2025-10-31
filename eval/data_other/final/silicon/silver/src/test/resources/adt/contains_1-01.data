@@ -1,0 +1,84 @@
+[LOGFILE] contains_1-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 152401b 0.050s
+[tool] dummy
+[Parse] 383us
+[tool] smt-scope
+[Parse] 1593us
+[Graph] 542us
+[Analysis] 269us
+[Stats] 0 mbqi, 59 ts, 0 axiom, 21 quant, 2327 proof, 376 ntp, 13 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToList<Int>To$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.List<Int>To$SnapToList<Int>{0}[q13{0}] 0 0
+[QuantInstCount] $Snap.$SnapToContainsDomain<Int~_Tree<List<Int>>>To$Snap{0}[q14{0}] 0 0
+[QuantInstCount] $Snap.ContainsDomain<Int~_Tree<List<Int>>>To$SnapToContainsDomain<Int~_Tree<List<Int>>>{0}[q15{0}] 0 0
+[QuantInstCount] $Snap.$SnapToTree<List<Int>>To$Snap{0}[q16{0}] 0 0
+[QuantInstCount] $Snap.Tree<List<Int>>To$SnapToTree<List<Int>>{0}[q17{0}] 0 0
+[QuantInstCount] $Snap.$SnapToContainsDomain<Tree<List<Int>>~_Tree<List<Int>>>To$Snap{0}[q18{0}] 0 0
+[QuantInstCount] $Snap.ContainsDomain<Tree<List<Int>>~_Tree<List<Int>>>To$SnapToContainsDomain<Tree<List<Int>>~_Tree<List<Int>>>{0}[q19{0}] 0 0
+[QuantInstCount] $Snap.$SnapToContainsDomain<List<Int>~_List<Int>>To$Snap{0}[q20{0}] 0 0
+[QuantInstCount] $Snap.ContainsDomain<List<Int>~_List<Int>>To$SnapToContainsDomain<List<Int>~_List<Int>>{0}[q21{0}] 0 0
+[QuantInstCount] $Snap.$SnapToContainsTransitivityDomainTo$Snap{0}[q22{0}] 0 0
+[QuantInstCount] $Snap.ContainsTransitivityDomainTo$SnapToContainsTransitivityDomain{0}[q23{0}] 0 0
+[QuantInstCount] $Snap.$SnapToContainsDomain<List<Int>~_Tree<List<Int>>>To$Snap{0}[q24{0}] 0 0
+[QuantInstCount] $Snap.ContainsDomain<List<Int>~_Tree<List<Int>>>To$SnapToContainsDomain<List<Int>~_Tree<List<Int>>>{0}[q25{0}] 0 0
+[QuantInstCount] $Snap.$SnapToContainsDomain<Int~_List<Int>>To$Snap{0}[q26{0}] 0 0
+[QuantInstCount] $Snap.ContainsDomain<Int~_List<Int>>To$SnapToContainsDomain<Int~_List<Int>>{0}[q27{0}] 0 0
+[QuantInstCount] k!229{0}[q28{0}] 3 0
+[QuantInstCount] k!233{0}[q29{0}] 3 0
+[QuantInstCount] k!238{0}[q30{0}] 3 0
+[QuantInstCount] k!246{0}[q31{0}] 0 0
+[QuantInstCount] k!246{1}[q31{1}] 0 0
+[QuantInstCount] k!246{2}[q31{2}] 0 0
+[QuantInstCount] k!252{0}[q32{0}] 0 0
+[QuantInstCount] k!256{0}[q33{0}] 1 0
+[QuantInstCount] k!262{0}[q34{0}] 1 0
+[QuantInstCount] k!268{0}[q35{0}] 1 0
+[QuantInstCount] k!273{0}[q36{0}] 1 0
+[QuantInstCount] k!284{0}[q37{0}] 0 0
+[QuantInstCount] k!284{1}[q37{1}] 0 0
+[QuantInstCount] k!284{2}[q37{2}] 0 0
+[QuantInstCount] k!284{3}[q37{3}] 0 0
+[QuantInstCount] k!292{0}[q38{0}] 0 0
+[QuantInstCount] k!292{0}[q39{0}] 0 0
+[QuantInstCount] k!296{0}[q41{0}] 0 0
+[QuantInstCount] k!296{0}[q42{0}] 0 0
+[QuantInstCount] k!300{0}[q44{0}] 0 0
+[QuantInstCount] k!300{0}[q45{0}] 0 0
+[QuantInstCount] k!304{0}[q47{0}] 0 0
+[QuantInstCount] k!304{0}[q48{0}] 0 0
+[QuantInstCount] k!308{0}[q50{0}] 0 0
+[QuantInstCount] k!308{0}[q51{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q53{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q55{0}] 0 0
+[QuantInstCount] k!229{0}[q57{0}] 0 0
+[QuantInstCount] k!252{0}[q98{0}] 0 0
+[QuantInstCount] k!292{0}[q100{0}] 0 0
+[QuantInstCount] k!296{0}[q102{0}] 0 0
+[QuantInstCount] k!300{0}[q104{0}] 0 0
+[QuantInstCount] k!304{0}[q106{0}] 0 0
+[QuantInstCount] k!308{0}[q108{0}] 0 0
+[QuantInstCount] k!252{0}[q149{0}] 3 0
+[QuantInstCount] k!292{0}[q151{0}] 1 0
+[QuantInstCount] k!296{0}[q153{0}] 1 0
+[QuantInstCount] k!300{0}[q155{0}] 1 0
+[QuantInstCount] k!304{0}[q157{0}] 1 0
+[QuantInstCount] k!308{0}[q159{0}] 1 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 10) to show a single one.
+[Parse] 90ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

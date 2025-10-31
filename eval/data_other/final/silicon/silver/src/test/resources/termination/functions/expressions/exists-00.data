@@ -1,0 +1,100 @@
+[LOGFILE] exists-00-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 93510b 0.053s
+[tool] dummy
+[Parse] 251us
+[tool] smt-scope
+[Parse] 1150us
+[Graph] 318us
+[Analysis] 126us
+[Stats] 0 mbqi, 65 ts, 0 axiom, 0 quant, 1178 proof, 277 ntp, 7 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] quant-u-8212{0}[q32{0}] 0 0
+[QuantInstCount] quant-u-8213{0}[q33{0}] 0 0
+[QuantInstCount] quant-u-8214{0}[q36{0}] 0 0
+[QuantInstCount] quant-u-8215{0}[q37{0}] 0 0
+[QuantInstCount] quant-u-8216{0}[q40{0}] 0 0
+[QuantInstCount] quant-u-8217{0}[q41{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@20@5@20@47-aux{0}[q43{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@20@5@20@47{0}[q44{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@20@5@20@47{0}[q45{0}] 0 0
+[QuantInstCount] k!223{0}[q46{0}] 0 0
+[QuantInstCount] quant-u-8226{0}[q47{0}] 0 0
+[QuantInstCount] quant-u-8226{0}[q48{0}] 0 0
+[QuantInstCount] k!232{0}[q50{0}] 0 0
+[QuantInstCount] quant-u-8227{0}[q51{0}] 0 0
+[QuantInstCount] quant-u-8227{0}[q52{0}] 0 0
+[QuantInstCount] k!223{0}[q54{0}] 0 0
+[QuantInstCount] quant-u-8226{0}[q56{0}] 0 0
+[QuantInstCount] quant-u-8226{0}[q60{0}] 0 0
+[QuantInstCount] quant-u-8218{0}[q62{0}] 0 0
+[QuantInstCount] quant-u-8219{0}[q63{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@12@5@12@52-aux{0}[q66{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@12@5@12@52-aux{0}[q67{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@12@5@12@52{0}[q69{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@12@5@12@52{0}[q70{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@12@5@12@52{0}[q72{0}] 0 0
+[QuantInstCount] k!315{0}[q73{0}] 0 0
+[QuantInstCount] quant-u-8228{0}[q74{0}] 0 0
+[QuantInstCount] quant-u-8228{0}[q75{0}] 0 0
+[QuantInstCount] k!324{0}[q77{0}] 0 0
+[QuantInstCount] quant-u-8229{0}[q78{0}] 0 0
+[QuantInstCount] k!324{0}[q79{0}] 0 0
+[QuantInstCount] quant-u-8229{0}[q81{0}] 0 0
+[QuantInstCount] k!315{0}[q83{0}] 0 0
+[QuantInstCount] quant-u-8228{0}[q85{0}] 0 0
+[QuantInstCount] k!315{0}[q89{0}] 0 0
+[QuantInstCount] quant-u-8228{0}[q91{0}] 0 0
+[QuantInstCount] quant-u-8220{0}[q93{0}] 0 0
+[QuantInstCount] quant-u-8221{0}[q94{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q101{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q102{0}] 0 0
+[QuantInstCount] quant-u-8231{0}[q104{0}] 0 0
+[QuantInstCount] quant-u-8231{0}[q105{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q109{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q111{0}] 0 0
+[QuantInstCount] quant-u-8231{0}[q113{0}] 0 0
+[QuantInstCount] quant-u-8231{0}[q115{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q117{0}] 0 0
+[QuantInstCount] quant-u-8230{0}[q120{0}] 0 0
+[QuantInstCount] quant-u-8231{0}[q122{0}] 0 0
+[QuantInstCount] quant-u-8222{0}[q126{0}] 0 0
+[QuantInstCount] quant-u-8223{0}[q127{0}] 0 0
+[QuantInstCount] quant-u-8232{0}[q137{0}] 0 0
+[QuantInstCount] quant-u-8232{0}[q140{0}] 0 0
+[QuantInstCount] quant-u-8233{0}[q142{0}] 0 0
+[QuantInstCount] quant-u-8233{0}[q143{0}] 0 0
+[QuantInstCount] quant-u-8224{0}[q146{0}] 0 0
+[QuantInstCount] quant-u-8225{0}[q147{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@28@5@28@58-aux{0}[q150{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@28@5@28@58-aux{0}[q151{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@28@5@28@58{0}[q153{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@28@5@28@58{0}[q154{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@28@5@28@58{0}[q156{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/termination/functions/expressions/exists.vpr@28@5@28@58{0}[q157{0}] 0 0
+[QuantInstCount] k!644{0}[q159{0}] 0 0
+[QuantInstCount] quant-u-8234{0}[q160{0}] 0 0
+[QuantInstCount] quant-u-8234{0}[q161{0}] 0 0
+[QuantInstCount] k!653{0}[q163{0}] 0 0
+[QuantInstCount] quant-u-8235{0}[q164{0}] 0 0
+[QuantInstCount] k!653{0}[q165{0}] 0 0
+[QuantInstCount] quant-u-8235{0}[q167{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 6) to show a single one.
+[Parse] 67ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

@@ -1,0 +1,15 @@
+[LOGFILE] in-de42.c_AllErrorsAtOnce_Iteration7_0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 6114391b 5.041s
+[tool] dummy
+[Parse] 11419us
+[tool] smt-scope
+[Parse] 44173us
+[Graph] 10053us
+[Analysis] 3918us
+[Stats] 0 mbqi, 8943 ts, 0 axiom, 0 quant, 17292 proof, 723 ntp, 1380 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 1167ms
+[Graph] 4ms
+[Analysis] 51ms
+[Loops] 0 true, 0 false

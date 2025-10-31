@@ -1,0 +1,27 @@
+[LOGFILE] problem_U43_sol1-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 210554583b 5.072s
+[tool] dummy
+[Parse] 351903us
+[tool] smt-scope
+[Parse] 1827838us
+[Graph] 1378817us
+[Analysis] 1084377us
+[Stats] 0 mbqi, 196880 ts, 0 axiom, 128272 quant, 1241992 proof, 157 ntp, 3 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 2 k!27{0}[q95{0}] 152.8898847631242x k!28{0}[q97{0}] 75.57142857142857x
+[QuantInstCount] k!19{0}[q89{0}] 0 0
+[QuantInstCount] k!20{0}[q91{0}] 0 0
+[QuantInstCount] k!23{0}[q93{0}] 151 0
+[QuantInstCount] k!27{0}[q95{0}] 119407 0
+[QuantInstCount] k!28{0}[q97{0}] 8464 0
+[QuantInstCount] k!29{0}[q99{0}] 4 0
+[QuantInstCount] k!30{0}[q101{0}] 0 0
+[QuantInstCount] k!31{0}[q103{0}] 152 0
+[QuantInstCount] k!32{0}[q105{0}] 92 0
+[QuantInstCount] k!40{0}[q107{0}] 2 0
+[QuantInstCount] k!40{1}[q107{1}] 0 0
+[QuantInstCount] k!40{2}[q107{2}] 0 0
+[tool] axiom-profiler
+[Parse] 60340ms
+[Graph] 276ms
+[Analysis] Err 228ms Sequence contains no matching element
+[Loops] 0 true, 0 false

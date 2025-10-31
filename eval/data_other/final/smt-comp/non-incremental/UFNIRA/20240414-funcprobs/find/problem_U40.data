@@ -1,0 +1,21 @@
+[LOGFILE] problem_U40-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 198327639b 5.070s
+[tool] dummy
+[Parse] 353000us
+[tool] smt-scope
+[Parse] 1573968us
+[Graph] 1112768us
+[Analysis] 965074us
+[Stats] 1 mbqi, 316898 ts, 0 axiom, 45641 quant, 1044299 proof, 19 ntp, 3 cdcl,
+[Loops] 1 true, 0 false
+[OneLoop] 2 repetitions, true-loop, k!22{0}[q9{0}]
+[Branching] 1 k!22{0}[q9{0}] 25.063701263042283x
+[QuantInstCount] k!22{MBQI}[q9{MBQI}] 1 0
+[QuantInstCount] k!22{0}[q9{0}] 45641 0
+[QuantInstCount] k!22{1}[q9{1}] 0 0
+[QuantInstCount] k!22{2}[q9{2}] 0 0
+[QuantInstCount] k!22{3}[q9{3}] 0 0
+[tool] axiom-profiler
+[Parse] 52892ms
+[Graph] 244ms
+[Analysis] Err 359ms Index was outside the bounds of the array.
+[Loops] 0 true, 0 false

@@ -1,0 +1,23 @@
+[LOGFILE] problem_U67-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 76720055b 5.043s
+[tool] dummy
+[Parse] 117170us
+[tool] smt-scope
+[Parse] 518771us
+[Graph] 339347us
+[Analysis] 318714us
+[Stats] 0 mbqi, 96547 ts, 0 axiom, 27565 quant, 389569 proof, 670 ntp, 8968 cdcl,
+[Loops] 3 true, 1 false
+[OneLoop] 5 repetitions, true-loop, k!24{0}[q11{0}]
+[ExtraLoop] 5 2
+[OneLoop] 2 repetitions, true-loop, k!24{0}[q11{0}]
+[OneLoop] 2 repetitions, true-loop, k!24{0}[q11{0}]
+[ExtraLoop] 2
+[OneLoop] 5 repetitions, false-loop, k!24{0}[q11{0}]
+[ExtraLoop] 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+[Branching] 1 k!24{0}[q11{0}] 108.70680628272251x
+[QuantInstCount] k!24{0}[q11{0}] 27565 0
+[tool] axiom-profiler
+[Parse] 16621ms
+[Graph] 91ms
+[Analysis] Err 113ms Index was outside the bounds of the array.
+[Loops] 0 true, 0 false

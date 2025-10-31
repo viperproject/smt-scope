@@ -1,0 +1,15 @@
+[LOGFILE] sha512_block_armv8_loop_inductive_invariantLoopInductive-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 347680988b 5.041s
+[tool] dummy
+[Parse] 144605us
+[tool] smt-scope
+[Parse] 300586us
+[Graph] 91346us
+[Analysis] 19694us
+[Stats] 0 mbqi, 43848 ts, 0 axiom, 0 quant, 196183 proof, 57156 ntp, 6026 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 18973ms
+[Graph] 24ms
+[Analysis] 207ms
+[Loops] 0 true, 0 false

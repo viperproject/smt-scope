@@ -1,0 +1,16 @@
+[LOGFILE] problem_U16_sol1-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 105687217b 5.038s
+[tool] dummy
+[Parse] 116358us
+[tool] smt-scope
+[Parse] 666069us
+[Graph] 7903us
+[Analysis] 3423us
+[Stats] 513 mbqi, 2619 ts, 0 axiom, 0 quant, 15167 proof, 1093 ntp, 6804 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] k!26{MBQI}[q54{MBQI}] 513 0
+[tool] axiom-profiler
+[Parse] 7001ms
+[Graph] 3ms
+[Analysis] 26ms
+[Loops] 0 true, 0 false

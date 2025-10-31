@@ -1,0 +1,16 @@
+[LOGFILE] in-de41.c_AllErrorsAtOnce_Iteration5_0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 9958139b 5.037s
+[tool] dummy
+[Parse] 18142us
+[tool] smt-scope
+[Parse] 64303us
+[Graph] 14682us
+[Analysis] 5348us
+[Stats] 0 mbqi, 13247 ts, 0 axiom, 0 quant, 23949 proof, 1224 ntp, 4179 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 16) to show a single one.
+[Parse] 1749ms
+[Graph] 8ms
+[Analysis] 66ms
+[Loops] 0 true, 0 false

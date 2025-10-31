@@ -1,0 +1,146 @@
+[LOGFILE] Rippling.legacy-Impl___module.__default.P37-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 422445b 0.053s
+[tool] dummy
+[Parse] 888us
+[tool] smt-scope
+[Parse] 3561us
+[Graph] 1115us
+[Analysis] 612us
+[Stats] 0 mbqi, 211 ts, 0 axiom, 118 quant, 3241 proof, 851 ntp, 26 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q8{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q9{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q10{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q12{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q13{0}] 4 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q14{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q15{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q16{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q17{0}] 6 0
+[QuantInstCount] unknown.0:0{0}[q18{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q19{0}] 4 0
+[QuantInstCount] unknown.0:0{0}[q20{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q21{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q23{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q24{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q26{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q27{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q29{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q30{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q32{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q33{0}] 5 0
+[QuantInstCount] unknown.0:0{0}[q35{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q36{0}] 4 0
+[QuantInstCount] unknown.0:0{0}[q39{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q40{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.8:27{0}[q42{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q43{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q43{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q44{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q44{1}] 0 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q46{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q47{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q49{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q50{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q52{0}] 2 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q53{0}] 3 0
+[QuantInstCount] unknown.0:0{0}[q54{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q55{0}] 5 0
+[QuantInstCount] Ripplinglegacydfy.20:20{0}[q57{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.20:20{0}[q58{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q60{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q60{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q61{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q61{1}] 1 0
+[QuantInstCount] unknown.0:0{0}[q63{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q63{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q64{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q64{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q66{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q66{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q67{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q67{1}] 4 0
+[QuantInstCount] unknown.0:0{0}[q69{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q69{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q70{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q70{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q72{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q72{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q73{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q73{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q75{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q75{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q76{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q76{1}] 0 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q78{0}] 3 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q79{0}] 7 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q80{0}] 7 0
+[QuantInstCount] Ripplinglegacydfy.8:27{0}[q81{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.8:27{0}[q82{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q83{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q84{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q85{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q87{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q88{0}] 7 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q90{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q91{0}] 7 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q93{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q94{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.8:27{0}[q96{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.8:27{0}[q97{0}] 1 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q105{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q106{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q107{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q108{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q110{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q111{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.20:20{0}[q113{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.20:20{0}[q114{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q116{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.8:27{0}[q117{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q118{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.20:20{0}[q119{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.20:20{0}[q120{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q140{0}] 4 0
+[QuantInstCount] unknown.0:0{0}[q146{0}] 1 0
+[QuantInstCount] Ripplinglegacydfy.10:28{0}[q188{0}] 7 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q190{0}] 3 0
+[QuantInstCount] unknown.0:0{0}[q192{0}] 2 0
+[QuantInstCount] unknown.0:0{1}[q192{1}] 0 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q194{0}] 3 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q196{0}] 6 0
+[QuantInstCount] Ripplinglegacydfy.20:20{0}[q198{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q200{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q200{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q202{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q202{1}] 1 0
+[QuantInstCount] unknown.0:0{0}[q204{0}] 4 0
+[QuantInstCount] unknown.0:0{1}[q204{1}] 0 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q206{0}] 3 0
+[QuantInstCount] Ripplinglegacydfy.106:16{0}[q208{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q210{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.113:16{0}[q212{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.20:20{0}[q214{0}] 1 0
+[QuantInstCount] Ripplinglegacydfy.20:20{0}[q216{0}] 1 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q218{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q220{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q222{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q224{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q226{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q228{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.487:18{0}[q230{0}] 0 0
+[QuantInstCount] Ripplinglegacydfy.487:18{0}[q231{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 178ms
+[Graph] 1ms
+[Analysis] Err 5ms Sequence contains no matching element
+[Loops] 0 true, 0 false

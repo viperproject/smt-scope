@@ -1,0 +1,15 @@
+[LOGFILE] 0017-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 128983961b 5.046s
+[tool] dummy
+[Parse] 141227us
+[tool] smt-scope
+[Parse] 469996us
+[Graph] 216065us
+[Analysis] 53489us
+[Stats] 0 mbqi, 86781 ts, 0 axiom, 0 quant, 475252 proof, 35936 ntp, 27817 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 16289ms
+[Graph] 54ms
+[Analysis] 395ms
+[Loops] 0 true, 0 false

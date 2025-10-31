@@ -1,0 +1,15 @@
+[LOGFILE] schelling_POMC_no_hints-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 3237430b 5.037s
+[tool] dummy
+[Parse] 6417us
+[tool] smt-scope
+[Parse] 34353us
+[Graph] 3692us
+[Analysis] 2131us
+[Stats] 0 mbqi, 1385 ts, 0 axiom, 0 quant, 36074 proof, 709 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 881ms
+[Graph] 2ms
+[Analysis] 19ms
+[Loops] 0 true, 0 false

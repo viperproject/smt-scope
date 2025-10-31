@@ -1,0 +1,129 @@
+[LOGFILE] opaque-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 668716b 0.096s
+[tool] dummy
+[Parse] 1526us
+[tool] smt-scope
+[Parse] 6018us
+[Graph] 2488us
+[Analysis] 1134us
+[Stats] 0 mbqi, 547 ts, 12 axiom, 171 quant, 7310 proof, 1070 ntp, 313 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 6
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 6
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 3 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 6 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] quant-u-12904{0}[q24{0}] 7 0
+[QuantInstCount] quant-u-12905{0}[q25{0}] 15 0
+[QuantInstCount] quant-u-12930{0}[q26{0}] 0 0
+[QuantInstCount] quant-u-12930{0}[q27{0}] 0 0
+[QuantInstCount] quant-u-12931{0}[q29{0}] 0 0
+[QuantInstCount] quant-u-12932{0}[q30{0}] 0 0
+[QuantInstCount] quant-u-12932{0}[q31{0}] 8 0
+[QuantInstCount] quant-u-12933{0}[q33{0}] 0 0
+[QuantInstCount] quant-u-12906{0}[q34{0}] 6 0
+[QuantInstCount] quant-u-12907{0}[q35{0}] 6 0
+[QuantInstCount] quant-u-12934{0}[q36{0}] 0 0
+[QuantInstCount] quant-u-12934{0}[q37{0}] 6 0
+[QuantInstCount] quant-u-12935{0}[q39{0}] 0 0
+[QuantInstCount] quant-u-12935{0}[q40{0}] 6 0
+[QuantInstCount] quant-u-12908{0}[q42{0}] 7 0
+[QuantInstCount] quant-u-12909{0}[q43{0}] 18 0
+[QuantInstCount] quant-u-12936{0}[q44{0}] 0 0
+[QuantInstCount] quant-u-12936{0}[q45{0}] 7 0
+[QuantInstCount] quant-u-12937{0}[q47{0}] 0 0
+[QuantInstCount] quant-u-12937{0}[q48{0}] 7 0
+[QuantInstCount] quant-u-12910{0}[q50{0}] 1 0
+[QuantInstCount] quant-u-12911{0}[q51{0}] 0 0
+[QuantInstCount] quant-u-12938{0}[q52{0}] 0 0
+[QuantInstCount] quant-u-12938{0}[q53{0}] 1 0
+[QuantInstCount] quant-u-12939{0}[q55{0}] 0 0
+[QuantInstCount] quant-u-12912{0}[q56{0}] 1 0
+[QuantInstCount] quant-u-12913{0}[q57{0}] 1 0
+[QuantInstCount] quant-u-12940{0}[q58{0}] 0 0
+[QuantInstCount] quant-u-12940{0}[q59{0}] 0 0
+[QuantInstCount] quant-u-12941{0}[q61{0}] 0 0
+[QuantInstCount] quant-u-12942{0}[q62{0}] 0 0
+[QuantInstCount] quant-u-12942{0}[q63{0}] 1 0
+[QuantInstCount] quant-u-12943{0}[q65{0}] 0 0
+[QuantInstCount] quant-u-12943{0}[q66{0}] 1 0
+[QuantInstCount] quant-u-12914{0}[q68{0}] 0 0
+[QuantInstCount] quant-u-12915{0}[q69{0}] 0 0
+[QuantInstCount] quant-u-12944{0}[q70{0}] 0 0
+[QuantInstCount] quant-u-12944{0}[q71{0}] 0 0
+[QuantInstCount] quant-u-12945{0}[q73{0}] 0 0
+[QuantInstCount] quant-u-12947{0}[q74{0}] 0 0
+[QuantInstCount] quant-u-12947{0}[q75{0}] 0 0
+[QuantInstCount] quant-u-12948{0}[q77{0}] 0 0
+[QuantInstCount] quant-u-12948{0}[q78{0}] 0 0
+[QuantInstCount] quant-u-12916{0}[q80{0}] 1 0
+[QuantInstCount] quant-u-12917{0}[q81{0}] 1 0
+[QuantInstCount] quant-u-12949{0}[q82{0}] 0 0
+[QuantInstCount] quant-u-12949{0}[q83{0}] 0 0
+[QuantInstCount] quant-u-12950{0}[q85{0}] 0 0
+[QuantInstCount] quant-u-12951{0}[q86{0}] 0 0
+[QuantInstCount] quant-u-12951{0}[q87{0}] 1 0
+[QuantInstCount] quant-u-12952{0}[q89{0}] 0 0
+[QuantInstCount] quant-u-12952{0}[q90{0}] 1 0
+[QuantInstCount] quant-u-12918{0}[q92{0}] 1 0
+[QuantInstCount] quant-u-12919{0}[q93{0}] 4 0
+[QuantInstCount] quant-u-12953{0}[q94{0}] 0 0
+[QuantInstCount] quant-u-12953{0}[q95{0}] 1 0
+[QuantInstCount] quant-u-12954{0}[q97{0}] 0 0
+[QuantInstCount] quant-u-12920{0}[q98{0}] 0 0
+[QuantInstCount] quant-u-12921{0}[q99{0}] 0 0
+[QuantInstCount] quant-u-12955{0}[q100{0}] 0 0
+[QuantInstCount] quant-u-12955{0}[q101{0}] 0 0
+[QuantInstCount] quant-u-12956{0}[q103{0}] 0 0
+[QuantInstCount] quant-u-12922{0}[q104{0}] 1 0
+[QuantInstCount] quant-u-12923{0}[q105{0}] 2 0
+[QuantInstCount] quant-u-12958{0}[q106{0}] 0 0
+[QuantInstCount] quant-u-12958{0}[q107{0}] 0 0
+[QuantInstCount] quant-u-12959{0}[q109{0}] 0 0
+[QuantInstCount] quant-u-12960{0}[q110{0}] 0 0
+[QuantInstCount] quant-u-12960{0}[q111{0}] 1 0
+[QuantInstCount] quant-u-12961{0}[q113{0}] 0 0
+[QuantInstCount] quant-u-12961{0}[q114{0}] 1 0
+[QuantInstCount] quant-u-12924{0}[q116{0}] 6 0
+[QuantInstCount] quant-u-12925{0}[q117{0}] 16 0
+[QuantInstCount] quant-u-12962{0}[q118{0}] 0 0
+[QuantInstCount] quant-u-12962{0}[q119{0}] 6 0
+[QuantInstCount] quant-u-12963{0}[q121{0}] 0 0
+[QuantInstCount] quant-u-12963{0}[q122{0}] 6 0
+[QuantInstCount] quant-u-12926{0}[q124{0}] 0 0
+[QuantInstCount] quant-u-12927{0}[q125{0}] 0 0
+[QuantInstCount] quant-u-12964{0}[q126{0}] 0 0
+[QuantInstCount] quant-u-12964{0}[q127{0}] 0 0
+[QuantInstCount] quant-u-12965{0}[q129{0}] 0 0
+[QuantInstCount] quant-u-12928{0}[q130{0}] 1 0
+[QuantInstCount] quant-u-12929{0}[q131{0}] 2 0
+[QuantInstCount] quant-u-12966{0}[q132{0}] 0 0
+[QuantInstCount] quant-u-12966{0}[q133{0}] 0 0
+[QuantInstCount] quant-u-12967{0}[q135{0}] 0 0
+[QuantInstCount] quant-u-12968{0}[q136{0}] 0 0
+[QuantInstCount] quant-u-12968{0}[q137{0}] 1 0
+[QuantInstCount] quant-u-12969{0}[q139{0}] 0 0
+[QuantInstCount] quant-u-12969{0}[q140{0}] 1 0
+[QuantInstCount] quant-u-12930{0}[q203{0}] 5 0
+[QuantInstCount] quant-u-12940{0}[q205{0}] 1 0
+[QuantInstCount] quant-u-12944{0}[q207{0}] 0 0
+[QuantInstCount] quant-u-12949{0}[q209{0}] 1 0
+[QuantInstCount] quant-u-12955{0}[q211{0}] 0 0
+[QuantInstCount] quant-u-12958{0}[q213{0}] 1 0
+[QuantInstCount] quant-u-12964{0}[q215{0}] 0 0
+[QuantInstCount] quant-u-12966{0}[q217{0}] 1 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 104) to show a single one.
+[Parse] Err 582‰ 1302ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

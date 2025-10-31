@@ -1,0 +1,80 @@
+[LOGFILE] encoding-adts-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 965096b 0.077s
+[tool] dummy
+[Parse] 1580us
+[tool] smt-scope
+[Parse] 4946us
+[Graph] 1612us
+[Analysis] 738us
+[Stats] 0 mbqi, 484 ts, 0 axiom, 180 quant, 4970 proof, 1109 ntp, 91 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapTolistTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.listTo$SnapTolist{0}[q13{0}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q14{0}] 0 0
+[QuantInstCount] prog.construct_over_destruct_Cons{0}[q15{0}] 0 0
+[QuantInstCount] prog.construct_over_destruct_Cons{1}[q15{1}] 0 0
+[QuantInstCount] prog.construct_over_destruct_Cons{0}[q16{0}] 14 0
+[QuantInstCount] prog.construct_over_destruct_Cons{1}[q16{1}] 18 0
+[QuantInstCount] prog.type_of_Cons{0}[q18{0}] 0 0
+[QuantInstCount] prog.type_existence{0}[q19{0}] 20 0
+[QuantInstCount] prog.type_is_Nil{0}[q20{0}] 3 0
+[QuantInstCount] prog.type_is_Nil{1}[q20{1}] 57 0
+[QuantInstCount] prog.type_IsElem{0}[q21{0}] 41 0
+[QuantInstCount] prog.type_IsElem{1}[q21{1}] 19 0
+[QuantInstCount] prog.type_existence{0}[q22{0}] 0 0
+[QuantInstCount] prog.type_is_Nil{0}[q24{0}] 0 0
+[QuantInstCount] prog.type_is_Nil{1}[q24{1}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q26{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q28{0}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q30{0}] 0 0
+[QuantInstCount] prog.type_of_Cons{0}[q32{0}] 0 0
+[QuantInstCount] prog.type_existence{0}[q34{0}] 0 0
+[QuantInstCount] prog.type_is_Nil{0}[q36{0}] 0 0
+[QuantInstCount] prog.type_is_Nil{1}[q36{1}] 0 0
+[QuantInstCount] prog.type_IsElem{0}[q38{0}] 0 0
+[QuantInstCount] prog.type_IsElem{1}[q38{1}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q40{0}] 0 0
+[QuantInstCount] prog.type_of_Cons{0}[q42{0}] 0 0
+[QuantInstCount] prog.type_existence{0}[q44{0}] 1 0
+[QuantInstCount] prog.type_is_Nil{0}[q46{0}] 1 0
+[QuantInstCount] prog.type_is_Nil{1}[q46{1}] 0 0
+[QuantInstCount] prog.type_IsElem{0}[q48{0}] 1 0
+[QuantInstCount] prog.type_IsElem{1}[q48{1}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q66{0}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q84{0}] 3 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99-aux{0}[q86{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99-aux{0}[q87{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99-aux{0}[q89{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99-aux{0}[q90{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99-aux{0}[q92{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99-aux{0}[q93{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99{0}[q95{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99{1}[q95{1}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99{2}[q95{2}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99{0}[q96{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99{1}[q96{1}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99{2}[q96{2}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99{0}[q99{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99{1}[q99{1}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@78@12@79@99{2}[q99{2}] 2 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@82@12@83@85-aux{0}[q101{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@82@12@83@85-aux{0}[q102{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/silver/src/test/resources/examples/vmcai2016/encoding-adts.vpr@82@12@83@85{0}[q104{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 39) to show a single one.
+[Parse] Err 599‰ 1301ms
+[Graph] 1ms
+[Analysis] 16ms
+[Loops] 0 true, 0 false

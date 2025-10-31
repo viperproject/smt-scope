@@ -1,0 +1,166 @@
+[LOGFILE] git-issue-1250-Impl___module.__default.Eleven-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 1705600b 0.093s
+[tool] dummy
+[Parse] 2967us
+[tool] smt-scope
+[Parse] 12430us
+[Graph] 4532us
+[Analysis] 2981us
+[Stats] 0 mbqi, 562 ts, 0 axiom, 640 quant, 8982 proof, 3071 ntp, 101 cdcl,
+[Loops] 2 true, 0 false
+[OneLoop] 7 repetitions, true-loop, gitissue1250dfy.20:16{0}[q211{0}]
+[OneLoop] 7 repetitions, true-loop, gitissue1250dfy.20:16{0}[q211{0}]
+[Branching] 3 unknown.0:0{0}[q70{0}] 2.0444444444444443x gitissue1250dfy.20:16{0}[q201{0}] 1.8333333333333333x gitissue1250dfy.20:16{0}[q211{0}] 1.8181818181818181x
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 27 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 35 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q8{0}] 0 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q9{0}] 0 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q11{0}] 0 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q12{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.670:15{0}[q14{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q15{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q15{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q16{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q16{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q17{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q18{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q18{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q20{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q20{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q22{0}] 0 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q24{0}] 0 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q25{0}] 8 0
+[QuantInstCount] unknown.0:0{0}[q27{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q28{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q30{0}] 13 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q31{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q32{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q32{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q33{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q33{1}] 0 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q35{0}] 0 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q36{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q38{0}] 32 0
+[QuantInstCount] unknown.0:0{0}[q39{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q40{0}] 4 0
+[QuantInstCount] unknown.0:0{0}[q42{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q43{0}] 0 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q45{0}] 22 0
+[QuantInstCount] DafnyPreludebpl.787:15{0}[q46{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.787:15{0}[q47{0}] 0 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q49{0}] 0 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q50{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q52{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q53{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q54{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q56{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q58{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q59{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.214:18{0}[q61{0}] 6 0
+[QuantInstCount] unknown.0:0{0}[q62{0}] 9 0
+[QuantInstCount] unknown.0:0{0}[q63{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q64{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q65{0}] 5 0
+[QuantInstCount] unknown.0:0{0}[q66{0}] 5 0
+[QuantInstCount] unknown.0:0{0}[q67{0}] 14 0
+[QuantInstCount] unknown.0:0{0}[q68{0}] 14 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q69{0}] 25 0
+[QuantInstCount] unknown.0:0{0}[q70{0}] 92 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q71{0}] 26 0
+[QuantInstCount] unknown.0:0{0}[q73{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q76{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q79{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q82{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q84{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q85{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q87{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q88{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q90{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q91{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q99{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q100{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q101{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q102{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q104{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q105{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q106{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1647:14{0}[q107{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1647:14{0}[q108{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q110{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q110{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q111{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q111{1}] 0 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q113{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q114{0}] 97 0
+[QuantInstCount] DafnyPreludebpl.783:19{0}[q115{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.783:19{1}[q115{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.780:15{0}[q116{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q117{0}] 11 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q118{0}] 0 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q119{0}] 0 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q120{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.228:14{0}[q122{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q132{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q134{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q149{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q164{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q166{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q169{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q171{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.780:15{0}[q193{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.780:15{0}[q195{0}] 0 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q201{0}] 44 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q203{0}] 28 0
+[QuantInstCount] unknown.0:0{0}[q205{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q205{1}] 1 0
+[QuantInstCount] gitissue1250dfy.13:16{0}[q207{0}] 20 0
+[QuantInstCount] unknown.0:0{0}[q209{0}] 5 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q211{0}] 40 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q213{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q215{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q217{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q219{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q221{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q223{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q225{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q227{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q229{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q231{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q233{0}] 5 0
+[QuantInstCount] unknown.0:0{0}[q235{0}] 14 0
+[QuantInstCount] unknown.0:0{0}[q237{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q237{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.780:15{0}[q239{0}] 2 0
+[QuantInstCount] gitissue1250dfy.20:16{0}[q241{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q243{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q243{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q245{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q247{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q247{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q249{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q251{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q253{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q255{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q257{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q259{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q261{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q263{0}] 14 0
+[QuantInstCount] unknown.0:0{0}[q265{0}] 5 0
+[QuantInstCount] unknown.0:0{0}[q267{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q267{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q268{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q268{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q269{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q270{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.783:19{0}[q272{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.783:19{1}[q272{1}] 0 0
+[tool] axiom-profiler
+[Parse] 476ms
+[Graph] 2ms
+[Analysis] Err 5ms Sequence contains no matching element
+[Loops] 0 true, 0 false

@@ -1,0 +1,58 @@
+[LOGFILE] destructors_1-00-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 46529b 0.046s
+[tool] dummy
+[Parse] 132us
+[tool] smt-scope
+[Parse] 598us
+[Graph] 160us
+[Analysis] 77us
+[Stats] 0 mbqi, 3 ts, 0 axiom, 0 quant, 833 proof, 123 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToTree<Bool>To$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.Tree<Bool>To$SnapToTree<Bool>{0}[q13{0}] 0 0
+[QuantInstCount] $Snap.$SnapToList<Bool>To$Snap{0}[q14{0}] 0 0
+[QuantInstCount] $Snap.List<Bool>To$SnapToList<Bool>{0}[q15{0}] 0 0
+[QuantInstCount] $Snap.$SnapToTree<Int>To$Snap{0}[q16{0}] 0 0
+[QuantInstCount] $Snap.Tree<Int>To$SnapToTree<Int>{0}[q17{0}] 0 0
+[QuantInstCount] k!165{0}[q18{0}] 0 0
+[QuantInstCount] k!169{0}[q19{0}] 0 0
+[QuantInstCount] k!174{0}[q20{0}] 0 0
+[QuantInstCount] k!184{0}[q21{0}] 0 0
+[QuantInstCount] k!184{1}[q21{1}] 0 0
+[QuantInstCount] k!184{2}[q21{2}] 0 0
+[QuantInstCount] k!188{0}[q22{0}] 0 0
+[QuantInstCount] k!192{0}[q23{0}] 0 0
+[QuantInstCount] k!196{0}[q24{0}] 0 0
+[QuantInstCount] k!201{0}[q25{0}] 0 0
+[QuantInstCount] k!212{0}[q26{0}] 0 0
+[QuantInstCount] k!212{1}[q26{1}] 0 0
+[QuantInstCount] k!212{2}[q26{2}] 0 0
+[QuantInstCount] k!212{3}[q26{3}] 0 0
+[QuantInstCount] k!216{0}[q27{0}] 0 0
+[QuantInstCount] k!220{0}[q28{0}] 0 0
+[QuantInstCount] k!224{0}[q29{0}] 0 0
+[QuantInstCount] k!229{0}[q30{0}] 0 0
+[QuantInstCount] k!240{0}[q31{0}] 0 0
+[QuantInstCount] k!240{1}[q31{1}] 0 0
+[QuantInstCount] k!240{2}[q31{2}] 0 0
+[QuantInstCount] k!240{3}[q31{3}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q32{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q34{0}] 0 0
+[QuantInstCount] k!188{0}[q36{0}] 0 0
+[tool] axiom-profiler
+[Parse] 44ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

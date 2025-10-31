@@ -1,0 +1,29 @@
+[LOGFILE] axiom-test_1-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 6459b 0.039s
+[tool] dummy
+[Parse] 35us
+[tool] smt-scope
+[Parse] 212us
+[Graph] 16us
+[Analysis] 11us
+[Stats] 0 mbqi, 0 ts, 0 axiom, 0 quant, 12 proof, 7 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q4{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q5{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q6{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q7{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q8{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q9{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q10{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q11{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q12{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q13{0}] 0 0
+[tool] axiom-profiler
+[Parse] 24ms
+[Graph] 0ms
+[Analysis] 2ms
+[Loops] 0 true, 0 false

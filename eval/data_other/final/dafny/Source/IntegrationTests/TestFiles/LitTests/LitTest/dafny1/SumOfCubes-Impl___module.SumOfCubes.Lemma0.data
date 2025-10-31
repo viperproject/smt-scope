@@ -1,0 +1,97 @@
+[LOGFILE] SumOfCubes-Impl___module.SumOfCubes.Lemma0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 733083b 0.061s
+[tool] dummy
+[Parse] 1355us
+[tool] smt-scope
+[Parse] 5200us
+[Graph] 1716us
+[Analysis] 842us
+[Stats] 0 mbqi, 677 ts, 0 axiom, 81 quant, 4358 proof, 1060 ntp, 38 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 5 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.5:25{0}[q8{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.5:25{0}[q9{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.89:25{0}[q11{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.89:25{0}[q12{0}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv0{0}[q17{0}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv1{0}[q18{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q19{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.608:15{0}[q20{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q21{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.608:15{0}[q23{0}] 4 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q25{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q26{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q27{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.554:18{0}[q28{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.554:18{0}[q29{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.544:13{0}[q31{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.541:15{0}[q32{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.544:13{0}[q33{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.541:15{0}[q35{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.5:25{0}[q37{0}] 8 0
+[QuantInstCount] SumOfCubesdfy.89:25{0}[q38{0}] 18 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q39{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q40{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.5:25{0}[q42{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.5:25{0}[q43{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q45{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q49{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q50{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1647:14{0}[q52{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1647:14{0}[q53{0}] 12 0
+[QuantInstCount] SumOfCubesdfy.89:25{0}[q55{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.89:25{0}[q56{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q58{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q59{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.289:14{0}[q60{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.5:25{0}[q96{0}] 9 0
+[QuantInstCount] SumOfCubesdfy.89:25{0}[q98{0}] 18 0
+[QuantInstCount] DafnyPreludebpl.541:15{0}[q100{0}] 4 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q102{0}] 2 0
+[QuantInstCount] SumOfCubesdfy.5:25{0}[q104{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q106{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.89:25{0}[q108{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q110{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q112{0}] 0 0
+[QuantInstCount] ctor:MapType0Type{0}[q114{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q116{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q118{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:1{0}[q120{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q122{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q123{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q124{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.36:5{0}[q125{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.36:5{0}[q126{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.36:5{0}[q127{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.36:5{0}[q129{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q131{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q133{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q135{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q140{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q142{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q144{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q146{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q148{0}] 0 0
+[QuantInstCount] SumOfCubesdfy.95:23{0}[q150{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.544:13{0}[q155{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.544:13{0}[q156{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q158{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q159{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.544:13{0}[q161{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.544:13{0}[q162{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q163{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q164{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.544:13{0}[q165{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q166{0}] 0 0
+[tool] axiom-profiler
+[Parse] 234ms
+[Graph] 1ms
+[Analysis] 17ms
+[Loops] 0 true, 0 false

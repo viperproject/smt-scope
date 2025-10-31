@@ -1,0 +1,89 @@
+[LOGFILE] ControlStructures-Impl___module.__default.M4-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 168768b 0.046s
+[tool] dummy
+[Parse] 422us
+[tool] smt-scope
+[Parse] 1757us
+[Graph] 557us
+[Analysis] 261us
+[Stats] 0 mbqi, 163 ts, 0 axiom, 11 quant, 1831 proof, 336 ntp, 11 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q9{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q10{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q11{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q12{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q13{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q14{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q15{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q16{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q18{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q19{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q21{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q22{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q24{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q25{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q27{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q27{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q28{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q28{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q30{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q30{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q31{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q31{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q33{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q33{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q34{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q34{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q36{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q36{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q37{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q37{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q39{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q46{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q47{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q48{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q49{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q51{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q52{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q54{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q55{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q57{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q58{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q58{1}] 0 0
+[QuantInstCount] unknown.0:0{2}[q58{2}] 0 0
+[QuantInstCount] unknown.0:0{3}[q58{3}] 0 0
+[QuantInstCount] unknown.0:0{0}[q59{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q59{1}] 1 0
+[QuantInstCount] unknown.0:0{2}[q59{2}] 0 0
+[QuantInstCount] unknown.0:0{3}[q59{3}] 0 0
+[QuantInstCount] unknown.0:0{0}[q96{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q96{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q98{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q98{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q100{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q100{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q102{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q102{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q104{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q106{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q108{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q110{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q112{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q114{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q116{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q118{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 96ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

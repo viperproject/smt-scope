@@ -1,0 +1,15 @@
+[LOGFILE] problem_C12_sol1-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 12535b 0.043s
+[tool] dummy
+[Parse] 58us
+[tool] smt-scope
+[Parse] 268us
+[Graph] 60us
+[Analysis] 25us
+[Stats] 0 mbqi, 18 ts, 0 axiom, 0 quant, 120 proof, 24 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 28ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

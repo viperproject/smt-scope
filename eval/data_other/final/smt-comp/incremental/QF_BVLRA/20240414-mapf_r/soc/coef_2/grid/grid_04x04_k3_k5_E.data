@@ -1,0 +1,18 @@
+[LOGFILE] grid_04x04_k3_k5_E-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 34459138b 0.802s
+[tool] dummy
+[Parse] 61076us
+[tool] smt-scope
+[Parse] 201127us
+[Graph] 71818us
+[Analysis] 23932us
+[Stats] 0 mbqi, 69299 ts, 0 axiom, 0 quant, 145583 proof, 7290 ntp, 13239 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 42) to show a single one.
+[Parse] 6997ms
+[Graph] 36ms
+[Analysis] 300ms
+[Loops] 0 true, 0 false

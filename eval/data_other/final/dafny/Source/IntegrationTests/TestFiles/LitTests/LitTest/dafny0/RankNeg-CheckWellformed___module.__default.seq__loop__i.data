@@ -1,0 +1,118 @@
+[LOGFILE] RankNeg-CheckWellformed___module.__default.seq__loop__i-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 197819b 0.053s
+[tool] dummy
+[Parse] 470us
+[tool] smt-scope
+[Parse] 1900us
+[Graph] 611us
+[Analysis] 318us
+[Stats] 0 mbqi, 155 ts, 0 axiom, 33 quant, 1895 proof, 382 ntp, 3 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 2 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] RankNegdfy.13:16{0}[q8{0}] 0 0
+[QuantInstCount] RankNegdfy.13:16{0}[q9{0}] 0 0
+[QuantInstCount] RankNegdfy.8:16{0}[q11{0}] 0 0
+[QuantInstCount] RankNegdfy.8:16{0}[q12{0}] 0 0
+[QuantInstCount] RankNegdfy.13:16{0}[q14{0}] 0 0
+[QuantInstCount] RankNegdfy.13:16{0}[q15{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q17{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q18{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.1309:15{0}[q19{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1309:15{0}[q20{0}] 0 0
+[QuantInstCount] RankNegdfy.8:16{0}[q22{0}] 0 0
+[QuantInstCount] RankNegdfy.8:16{0}[q23{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q25{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q25{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q26{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q27{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q27{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q29{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q31{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1144:15{0}[q32{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1144:15{0}[q33{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.217:18{0}[q35{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1148:15{0}[q36{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1148:15{0}[q37{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1225:15{0}[q39{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1225:15{0}[q40{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q42{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q43{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.214:18{0}[q45{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1124:15{0}[q46{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1124:15{0}[q47{0}] 4 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q49{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q50{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q51{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q53{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.53:15{0}[q55{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.54:15{0}[q56{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q57{0}] 3 0
+[QuantInstCount] RankNegdfy.8:16{0}[q58{0}] 0 0
+[QuantInstCount] RankNegdfy.13:16{0}[q59{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q66{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q67{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q68{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q69{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1139:15{0}[q71{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.204:15{0}[q72{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.204:15{0}[q73{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q75{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q76{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.1131:15{0}[q77{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1131:15{0}[q78{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.289:14{0}[q80{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q81{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q82{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q83{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q85{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.228:14{0}[q87{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q102{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q104{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q115{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q117{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q140{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q142{0}] 0 0
+[QuantInstCount] RankNegdfy.13:16{0}[q145{0}] 0 0
+[QuantInstCount] RankNegdfy.8:16{0}[q147{0}] 0 0
+[QuantInstCount] RankNegdfy.13:16{0}[q149{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1309:15{0}[q151{0}] 0 0
+[QuantInstCount] RankNegdfy.8:16{0}[q153{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q155{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q155{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.1217:15{0}[q157{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.1148:15{0}[q159{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.176:15{0}[q161{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q163{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.309:15{0}[q165{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q167{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1139:15{0}[q169{0}] 3 0
+[QuantInstCount] DafnyPreludebpl.204:15{0}[q171{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q173{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.252:15{0}[q175{0}] 1 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q177{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q179{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q181{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q183{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q185{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q187{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q189{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q189{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{0}[q190{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.1221:19{1}[q190{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q192{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.311:11{0}[q193{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q195{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.254:11{0}[q196{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 125ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

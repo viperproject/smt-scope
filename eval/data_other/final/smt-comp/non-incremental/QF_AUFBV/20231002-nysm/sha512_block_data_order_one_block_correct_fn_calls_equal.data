@@ -1,0 +1,15 @@
+[LOGFILE] sha512_block_data_order_one_block_correct_fn_calls_equal-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 15767489b 0.457s
+[tool] dummy
+[Parse] 24995us
+[tool] smt-scope
+[Parse] 102142us
+[Graph] 43188us
+[Analysis] 10145us
+[Stats] 0 mbqi, 19123 ts, 0 axiom, 0 quant, 82403 proof, 2 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 4702ms
+[Graph] 9ms
+[Analysis] 89ms
+[Loops] 0 true, 0 false

@@ -1,0 +1,15 @@
+[LOGFILE] 30_30_82_6_sat-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 7057318b 0.404s
+[tool] dummy
+[Parse] 11387us
+[tool] smt-scope
+[Parse] 34322us
+[Graph] 13793us
+[Analysis] 5075us
+[Stats] 0 mbqi, 7885 ts, 0 axiom, 0 quant, 34327 proof, 2736 ntp, 2667 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 1307ms
+[Graph] 4ms
+[Analysis] 52ms
+[Loops] 0 true, 0 false

@@ -1,0 +1,79 @@
+[LOGFILE] complex-fn.rs-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 123458b 0.050s
+[tool] dummy
+[Parse] 319us
+[tool] smt-scope
+[Parse] 1387us
+[Graph] 437us
+[Analysis] 197us
+[Stats] 0 mbqi, 155 ts, 4 axiom, 6 quant, 1442 proof, 272 ntp, 15 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 2
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 2
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$SnapshotMirrors$To$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$SnapshotMirrors$To$SnapTo$SnapshotMirrors${0}[q13{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q16{0}] 0 0
+[QuantInstCount] quant-u-483{0}[q28{0}] 0 0
+[QuantInstCount] quant-u-484{0}[q29{0}] 0 0
+[QuantInstCount] quant-u-485{0}[q30{0}] 1 0
+[QuantInstCount] quant-u-486{0}[q31{0}] 1 0
+[QuantInstCount] quant-u-495{0}[q32{0}] 0 0
+[QuantInstCount] quant-u-495{0}[q33{0}] 1 0
+[QuantInstCount] quant-u-496{0}[q35{0}] 0 0
+[QuantInstCount] quant-u-498{0}[q36{0}] 0 0
+[QuantInstCount] quant-u-498{0}[q37{0}] 1 0
+[QuantInstCount] quant-u-499{0}[q39{0}] 0 0
+[QuantInstCount] quant-u-499{0}[q40{0}] 1 0
+[QuantInstCount] quant-u-487{0}[q42{0}] 0 0
+[QuantInstCount] quant-u-488{0}[q43{0}] 0 0
+[QuantInstCount] quant-u-500{0}[q44{0}] 0 0
+[QuantInstCount] quant-u-500{0}[q45{0}] 0 0
+[QuantInstCount] quant-u-501{0}[q47{0}] 0 0
+[QuantInstCount] quant-u-489{0}[q48{0}] 0 0
+[QuantInstCount] quant-u-490{0}[q49{0}] 0 0
+[QuantInstCount] quant-u-491{0}[q50{0}] 0 0
+[QuantInstCount] quant-u-492{0}[q51{0}] 0 0
+[QuantInstCount] quant-u-503{0}[q52{0}] 0 0
+[QuantInstCount] quant-u-503{0}[q53{0}] 0 0
+[QuantInstCount] quant-u-504{0}[q55{0}] 0 0
+[QuantInstCount] quant-u-506{0}[q56{0}] 0 0
+[QuantInstCount] quant-u-506{0}[q57{0}] 0 0
+[QuantInstCount] quant-u-507{0}[q59{0}] 0 0
+[QuantInstCount] quant-u-493{0}[q60{0}] 0 0
+[QuantInstCount] quant-u-494{0}[q61{0}] 0 0
+[QuantInstCount] quant-u-508{0}[q62{0}] 0 0
+[QuantInstCount] quant-u-508{0}[q63{0}] 0 0
+[QuantInstCount] quant-u-509{0}[q65{0}] 0 0
+[QuantInstCount] quant-u-511{0}[q66{0}] 0 0
+[QuantInstCount] quant-u-511{0}[q67{0}] 0 0
+[QuantInstCount] quant-u-512{0}[q69{0}] 0 0
+[QuantInstCount] quant-u-500{0}[q95{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147-aux{0}[q97{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147-aux{0}[q98{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147_precondition{0}[q100{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147_precondition{0}[q101{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147-aux{0}[q105{0}] 1 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147_precondition{0}[q107{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147-aux{0}[q109{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147_precondition{0}[q111{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147{0}[q115{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147{0}[q116{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147{0}[q118{0}] 0 0
+[QuantInstCount] prog./home/runner/work/smt-logs/smt-logs/viper/viperserver/silicon/src/test/resources/frontends/prusti/complex-fn.rs.vpr@191@11@191@147{0}[q119{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 12) to show a single one.
+[Parse] 89ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

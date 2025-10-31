@@ -1,0 +1,90 @@
+[LOGFILE] SoftwareFoundations-Basics-Impl___module.__default.plus__O__n-n30-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 159309b 0.046s
+[tool] dummy
+[Parse] 383us
+[tool] smt-scope
+[Parse] 1622us
+[Graph] 530us
+[Analysis] 239us
+[Stats] 0 mbqi, 102 ts, 0 axiom, 15 quant, 1664 proof, 352 ntp, 5 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q9{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q10{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q11{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q12{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q13{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q14{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q17{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q18{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q20{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q21{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.138:7{0}[q23{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q24{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q24{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q25{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q25{1}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q27{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q28{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q30{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q31{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q32{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q34{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q34{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q35{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q35{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q37{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q37{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q38{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q38{1}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.138:7{0}[q40{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.138:7{0}[q41{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q42{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q43{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q44{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.138:7{0}[q46{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.138:7{0}[q47{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q55{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q56{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q57{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q58{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q60{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q61{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q63{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q64{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.138:7{0}[q66{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q67{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q80{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q108{0}] 2 0
+[QuantInstCount] unknown.0:0{0}[q110{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q110{1}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q112{0}] 3 0
+[QuantInstCount] unknown.0:0{0}[q114{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q114{1}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.180:16{0}[q116{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q118{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q120{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q122{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q124{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q126{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q128{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q130{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q132{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q134{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.347:17{0}[q136{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.347:17{0}[q137{0}] 0 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.347:17{0}[q140{0}] 1 0
+[QuantInstCount] SoftwareFoundationsBasicsdfy.347:17{0}[q142{0}] 0 0
+[tool] axiom-profiler
+[Parse] 99ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

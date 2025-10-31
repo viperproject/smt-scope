@@ -1,0 +1,102 @@
+[LOGFILE] git-issue-977-Impl___module.__default.Test7-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 412782b 0.053s
+[tool] dummy
+[Parse] 825us
+[tool] smt-scope
+[Parse] 3132us
+[Graph] 1117us
+[Analysis] 534us
+[Stats] 0 mbqi, 435 ts, 0 axiom, 26 quant, 3102 proof, 673 ntp, 9 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 6 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q8{0}] 0 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q9{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q11{0}] 0 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q12{0}] 0 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q13{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q15{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q16{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q17{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q18{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q20{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q21{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q22{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q23{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q24{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q26{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q27{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q30{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q31{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q33{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q34{0}] 4 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q36{0}] 2 0
+[QuantInstCount] gitissue977dfy.146:17{0}[q37{0}] 2 0
+[QuantInstCount] gitissue977dfy.48:24{0}[q38{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q39{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q40{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q42{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q42{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q43{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q43{1}] 0 0
+[QuantInstCount] gitissue977dfy.172:29{0}[q45{0}] 0 0
+[QuantInstCount] gitissue977dfy.172:29{0}[q46{0}] 0 0
+[QuantInstCount] gitissue977dfy.172:29{0}[q48{0}] 0 0
+[QuantInstCount] gitissue977dfy.172:29{0}[q49{0}] 0 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q51{0}] 0 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q52{0}] 0 0
+[QuantInstCount] gitissue977dfy.48:24{0}[q54{0}] 0 0
+[QuantInstCount] gitissue977dfy.48:24{0}[q55{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q56{0}] 0 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q57{0}] 2 0
+[QuantInstCount] gitissue977dfy.146:17{0}[q58{0}] 0 0
+[QuantInstCount] gitissue977dfy.146:17{0}[q59{0}] 0 0
+[QuantInstCount] gitissue977dfy.48:24{0}[q61{0}] 0 0
+[QuantInstCount] gitissue977dfy.48:24{0}[q62{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q70{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q71{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q72{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q73{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q75{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q76{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q78{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q79{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q81{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q82{0}] 0 0
+[QuantInstCount] gitissue977dfy.146:17{0}[q84{0}] 0 0
+[QuantInstCount] gitissue977dfy.146:17{0}[q85{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q87{0}] 0 0
+[QuantInstCount] gitissue977dfy.48:24{0}[q88{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q89{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q107{0}] 0 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q140{0}] 1 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q142{0}] 2 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q144{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q146{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q148{0}] 2 0
+[QuantInstCount] gitissue977dfy.172:29{0}[q150{0}] 0 0
+[QuantInstCount] gitissue977dfy.172:29{0}[q152{0}] 0 0
+[QuantInstCount] gitissue977dfy.50:16{0}[q154{0}] 2 0
+[QuantInstCount] gitissue977dfy.146:17{0}[q156{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q158{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q160{0}] 0 0
+[QuantInstCount] gitissue977dfy.113:20{0}[q162{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q164{0}] 0 0
+[QuantInstCount] gitissue977dfy.146:17{0}[q166{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q168{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q170{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q172{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q174{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q176{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q178{0}] 0 0
+[tool] axiom-profiler
+[Parse] 168ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

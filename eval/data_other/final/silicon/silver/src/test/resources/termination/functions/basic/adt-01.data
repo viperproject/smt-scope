@@ -1,0 +1,103 @@
+[LOGFILE] adt-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 10792755b 0.232s
+[tool] dummy
+[Parse] 10505us
+[tool] smt-scope
+[Parse] 31600us
+[Graph] 7498us
+[Analysis] 17995us
+[Stats] 0 mbqi, 721 ts, 0 axiom, 1960 quant, 18510 proof, 10736 ntp, 975 cdcl,
+[Loops] 2 true, 0 false
+[OneLoop] 97 repetitions, true-loop, prog.numberOfElem{1}[q136{1}]
+[ExtraLoop] 96
+[OneLoop] 96 repetitions, true-loop, prog.numberOfElem{1}[q96{1}]
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapTolistTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.listTo$SnapTolist{0}[q13{0}] 0 0
+[QuantInstCount] $Snap.$SnapToWellFoundedOrder<Int>To$Snap{0}[q14{0}] 0 0
+[QuantInstCount] $Snap.WellFoundedOrder<Int>To$SnapToWellFoundedOrder<Int>{0}[q15{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntWellFoundedOrderTo$Snap{0}[q16{0}] 0 0
+[QuantInstCount] $Snap.IntWellFoundedOrderTo$SnapToIntWellFoundedOrder{0}[q17{0}] 0 0
+[QuantInstCount] prog.integer_ax_dec{0}[q18{0}] 0 0
+[QuantInstCount] prog.integer_ax_dec{0}[q19{0}] 1 0
+[QuantInstCount] prog.integer_ax_bound{0}[q21{0}] 0 0
+[QuantInstCount] prog.integer_ax_bound{0}[q22{0}] 1 0
+[QuantInstCount] prog.eitherConsorNil{0}[q24{0}] 0 0
+[QuantInstCount] prog.eitherConsorNil{1}[q24{1}] 294 0
+[QuantInstCount] prog.numberOfElem{0}[q25{0}] 0 0
+[QuantInstCount] prog.numberOfElem{1}[q25{1}] 0 0
+[QuantInstCount] prog.numberOfElem{2}[q25{2}] 0 0
+[QuantInstCount] prog.numberOfElem{3}[q25{3}] 0 0
+[QuantInstCount] prog.numberOfElem{0}[q26{0}] 0 0
+[QuantInstCount] prog.numberOfElem{1}[q26{1}] 0 0
+[QuantInstCount] prog.numberOfElem{2}[q26{2}] 0 0
+[QuantInstCount] prog.numberOfElem{3}[q26{3}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q28{0}] 0 0
+[QuantInstCount] prog.construct_over_destruct_Cons{0}[q29{0}] 0 0
+[QuantInstCount] prog.construct_over_destruct_Cons{1}[q29{1}] 0 0
+[QuantInstCount] prog.construct_over_destruct_Cons{0}[q30{0}] 0 0
+[QuantInstCount] prog.construct_over_destruct_Cons{1}[q30{1}] 293 0
+[QuantInstCount] prog.type_of_Cons{0}[q32{0}] 0 0
+[QuantInstCount] prog.type_existence{0}[q33{0}] 194 0
+[QuantInstCount] prog.type_is_Nil{0}[q34{0}] 1 0
+[QuantInstCount] prog.type_is_Nil{1}[q34{1}] 196 0
+[QuantInstCount] prog.type_IsElem{0}[q35{0}] 1 0
+[QuantInstCount] prog.type_IsElem{1}[q35{1}] 196 0
+[QuantInstCount] prog.integer_ax_dec{0}[q36{0}] 0 0
+[QuantInstCount] prog.numberOfElem{0}[q38{0}] 0 0
+[QuantInstCount] prog.numberOfElem{1}[q38{1}] 0 0
+[QuantInstCount] prog.numberOfElem{2}[q38{2}] 0 0
+[QuantInstCount] prog.numberOfElem{3}[q38{3}] 0 0
+[QuantInstCount] prog.type_existence{0}[q40{0}] 0 0
+[QuantInstCount] prog.type_is_Nil{0}[q42{0}] 0 0
+[QuantInstCount] prog.type_is_Nil{1}[q42{1}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q44{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q46{0}] 0 0
+[QuantInstCount] prog.integer_ax_dec{0}[q48{0}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q51{0}] 0 0
+[QuantInstCount] prog.type_of_Cons{0}[q53{0}] 0 0
+[QuantInstCount] prog.type_existence{0}[q55{0}] 0 0
+[QuantInstCount] prog.type_is_Nil{0}[q57{0}] 0 0
+[QuantInstCount] prog.type_is_Nil{1}[q57{1}] 0 0
+[QuantInstCount] prog.type_IsElem{0}[q59{0}] 0 0
+[QuantInstCount] prog.type_IsElem{1}[q59{1}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q62{0}] 0 0
+[QuantInstCount] prog.type_of_Cons{0}[q64{0}] 96 0
+[QuantInstCount] prog.type_existence{0}[q66{0}] 97 0
+[QuantInstCount] prog.type_is_Nil{0}[q68{0}] 1 0
+[QuantInstCount] prog.type_is_Nil{1}[q68{1}] 97 0
+[QuantInstCount] prog.type_IsElem{0}[q70{0}] 1 0
+[QuantInstCount] prog.type_IsElem{1}[q70{1}] 97 0
+[QuantInstCount] prog.numberOfElem{0}[q96{0}] 0 0
+[QuantInstCount] prog.numberOfElem{1}[q96{1}] 98 0
+[QuantInstCount] prog.numberOfElem{2}[q96{2}] 1 0
+[QuantInstCount] prog.numberOfElem{3}[q96{3}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q98{0}] 96 0
+[QuantInstCount] quant-u-8266{0}[q100{0}] 0 0
+[QuantInstCount] quant-u-8267{0}[q101{0}] 0 0
+[QuantInstCount] quant-u-8268{0}[q102{0}] 0 0
+[QuantInstCount] quant-u-8268{0}[q103{0}] 0 0
+[QuantInstCount] quant-u-8269{0}[q105{0}] 0 0
+[QuantInstCount] quant-u-8269{0}[q106{0}] 0 0
+[QuantInstCount] prog.numberOfElem{0}[q136{0}] 0 0
+[QuantInstCount] prog.numberOfElem{1}[q136{1}] 198 0
+[QuantInstCount] prog.numberOfElem{2}[q136{2}] 1 0
+[QuantInstCount] prog.numberOfElem{3}[q136{3}] 0 0
+[QuantInstCount] prog.destruct_over_construct_Cons{0}[q138{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 8) to show a single one.
+[Parse] 1224ms
+[Graph] 3ms
+[Analysis] Err 6ms Sequence contains no matching element
+[Loops] 0 true, 0 false

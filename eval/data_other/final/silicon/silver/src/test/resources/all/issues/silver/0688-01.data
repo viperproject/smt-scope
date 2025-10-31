@@ -1,0 +1,51 @@
+[LOGFILE] 0688-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 32021b 0.045s
+[tool] dummy
+[Parse] 104us
+[tool] smt-scope
+[Parse] 529us
+[Graph] 126us
+[Analysis] 50us
+[Stats] 0 mbqi, 11 ts, 0 axiom, 0 quant, 485 proof, 92 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 0 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapToUnitTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.UnitTo$SnapToUnit{0}[q13{0}] 0 0
+[QuantInstCount] $Snap.$SnapToExe67To$Snap{0}[q14{0}] 0 0
+[QuantInstCount] $Snap.Exe67To$SnapToExe67{0}[q15{0}] 0 0
+[QuantInstCount] k!149{0}[q16{0}] 0 0
+[QuantInstCount] prog.LeftUnit67{0}[q17{0}] 0 0
+[QuantInstCount] prog.RightUnit67{0}[q18{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q19{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q21{0}] 0 0
+[QuantInstCount] prog.LeftUnit67{0}[q23{0}] 0 0
+[QuantInstCount] prog.RightUnit67{0}[q25{0}] 0 0
+[QuantInstCount] prog.LeftUnit67{0}[q27{0}] 0 0
+[QuantInstCount] prog.RightUnit67{0}[q29{0}] 0 0
+[QuantInstCount] quant-u-9188{0}[q46{0}] 0 0
+[QuantInstCount] quant-u-9189{0}[q47{0}] 0 0
+[QuantInstCount] quant-u-9192{0}[q48{0}] 0 0
+[QuantInstCount] quant-u-9192{0}[q49{0}] 0 0
+[QuantInstCount] quant-u-9193{0}[q51{0}] 0 0
+[QuantInstCount] quant-u-9194{0}[q52{0}] 0 0
+[QuantInstCount] quant-u-9194{0}[q53{0}] 0 0
+[QuantInstCount] quant-u-9195{0}[q55{0}] 0 0
+[QuantInstCount] quant-u-9195{0}[q56{0}] 0 0
+[QuantInstCount] quant-u-9190{0}[q58{0}] 0 0
+[QuantInstCount] quant-u-9191{0}[q59{0}] 0 0
+[tool] axiom-profiler
+[Parse] 41ms
+[Graph] 1ms
+[Analysis] 13ms
+[Loops] 0 true, 0 false

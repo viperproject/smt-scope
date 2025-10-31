@@ -1,0 +1,142 @@
+[LOGFILE] test_mul_distrib_pass-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 202300b 0.046s
+[tool] dummy
+[Parse] 545us
+[tool] smt-scope
+[Parse] 1966us
+[Graph] 658us
+[Analysis] 297us
+[Stats] 0 mbqi, 196 ts, 0 axiom, 15 quant, 2116 proof, 486 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] prelude_fuel_defaults{0}[q2{0}] 0 0
+[QuantInstCount] prelude_type_id_const_int{0}[q3{0}] 0 0
+[QuantInstCount] prelude_has_type_bool{0}[q4{0}] 0 0
+[QuantInstCount] prelude_as_type{0}[q5{0}] 0 0
+[QuantInstCount] prelude_as_type{0}[q6{0}] 0 0
+[QuantInstCount] prelude_mk_fun{0}[q8{0}] 0 0
+[QuantInstCount] prelude_unbox_box_bool{0}[q9{0}] 0 0
+[QuantInstCount] prelude_unbox_box_int{0}[q10{0}] 0 0
+[QuantInstCount] prelude_box_unbox_bool{0}[q11{0}] 0 0
+[QuantInstCount] prelude_box_unbox_bool{0}[q12{0}] 0 0
+[QuantInstCount] prelude_box_unbox_int{0}[q14{0}] 0 0
+[QuantInstCount] prelude_box_unbox_int{0}[q15{0}] 0 0
+[QuantInstCount] prelude_box_unbox_nat{0}[q17{0}] 0 0
+[QuantInstCount] prelude_box_unbox_nat{0}[q18{0}] 0 0
+[QuantInstCount] prelude_box_unbox_uint{0}[q20{0}] 0 0
+[QuantInstCount] prelude_box_unbox_uint{0}[q21{0}] 0 0
+[QuantInstCount] prelude_box_unbox_sint{0}[q23{0}] 0 0
+[QuantInstCount] prelude_box_unbox_sint{0}[q24{0}] 0 0
+[QuantInstCount] prelude_box_unbox_char{0}[q26{0}] 0 0
+[QuantInstCount] prelude_box_unbox_char{0}[q27{0}] 0 0
+[QuantInstCount] prelude_ext_eq{0}[q29{0}] 0 0
+[QuantInstCount] prelude_nat_clip{0}[q30{0}] 0 0
+[QuantInstCount] prelude_nat_clip{0}[q31{0}] 0 0
+[QuantInstCount] prelude_u_clip{0}[q33{0}] 0 0
+[QuantInstCount] prelude_u_clip{0}[q34{0}] 0 0
+[QuantInstCount] prelude_i_clip{0}[q36{0}] 0 0
+[QuantInstCount] prelude_i_clip{0}[q37{0}] 0 0
+[QuantInstCount] prelude_char_clip{0}[q39{0}] 0 0
+[QuantInstCount] prelude_char_clip{0}[q40{0}] 0 0
+[QuantInstCount] prelude_u_inv{0}[q42{0}] 0 0
+[QuantInstCount] prelude_u_inv{0}[q43{0}] 0 0
+[QuantInstCount] prelude_i_inv{0}[q45{0}] 0 0
+[QuantInstCount] prelude_i_inv{0}[q46{0}] 0 0
+[QuantInstCount] prelude_char_inv{0}[q48{0}] 0 0
+[QuantInstCount] prelude_char_inv{0}[q49{0}] 0 0
+[QuantInstCount] prelude_has_type_int{0}[q51{0}] 0 0
+[QuantInstCount] prelude_has_type_nat{0}[q52{0}] 0 0
+[QuantInstCount] prelude_has_type_nat{0}[q53{0}] 0 0
+[QuantInstCount] prelude_has_type_uint{0}[q55{0}] 0 0
+[QuantInstCount] prelude_has_type_uint{0}[q56{0}] 0 0
+[QuantInstCount] prelude_has_type_sint{0}[q58{0}] 0 0
+[QuantInstCount] prelude_has_type_sint{0}[q59{0}] 0 0
+[QuantInstCount] prelude_has_type_char{0}[q61{0}] 0 0
+[QuantInstCount] prelude_has_type_char{0}[q62{0}] 0 0
+[QuantInstCount] prelude_unbox_int{0}[q64{0}] 0 0
+[QuantInstCount] prelude_unbox_int{0}[q65{0}] 0 0
+[QuantInstCount] prelude_unbox_uint{0}[q67{0}] 0 0
+[QuantInstCount] prelude_unbox_uint{0}[q68{0}] 0 0
+[QuantInstCount] prelude_unbox_sint{0}[q70{0}] 0 0
+[QuantInstCount] prelude_unbox_sint{0}[q71{0}] 0 0
+[QuantInstCount] prelude_add{0}[q73{0}] 0 0
+[QuantInstCount] prelude_add{0}[q74{0}] 2 0
+[QuantInstCount] prelude_sub{0}[q76{0}] 0 0
+[QuantInstCount] prelude_sub{0}[q77{0}] 0 0
+[QuantInstCount] prelude_mul{0}[q79{0}] 0 0
+[QuantInstCount] prelude_mul{0}[q80{0}] 3 0
+[QuantInstCount] prelude_eucdiv{0}[q82{0}] 0 0
+[QuantInstCount] prelude_eucdiv{0}[q83{0}] 0 0
+[QuantInstCount] prelude_eucmod{0}[q85{0}] 0 0
+[QuantInstCount] prelude_eucmod{0}[q86{0}] 0 0
+[QuantInstCount] prelude_mul_nats{0}[q88{0}] 0 0
+[QuantInstCount] prelude_mul_nats{0}[q89{0}] 0 0
+[QuantInstCount] prelude_div_unsigned_in_bounds{0}[q91{0}] 0 0
+[QuantInstCount] prelude_div_unsigned_in_bounds{0}[q92{0}] 0 0
+[QuantInstCount] prelude_mod_unsigned_in_bounds{0}[q94{0}] 0 0
+[QuantInstCount] prelude_mod_unsigned_in_bounds{0}[q95{0}] 0 0
+[QuantInstCount] prelude_bit_xor_u_inv{0}[q97{0}] 0 0
+[QuantInstCount] prelude_bit_xor_u_inv{0}[q98{0}] 0 0
+[QuantInstCount] prelude_bit_xor_i_inv{0}[q100{0}] 0 0
+[QuantInstCount] prelude_bit_xor_i_inv{0}[q101{0}] 0 0
+[QuantInstCount] prelude_bit_or_u_inv{0}[q103{0}] 0 0
+[QuantInstCount] prelude_bit_or_u_inv{0}[q104{0}] 0 0
+[QuantInstCount] prelude_bit_or_i_inv{0}[q106{0}] 0 0
+[QuantInstCount] prelude_bit_or_i_inv{0}[q107{0}] 0 0
+[QuantInstCount] prelude_bit_and_u_inv{0}[q109{0}] 0 0
+[QuantInstCount] prelude_bit_and_u_inv{0}[q110{0}] 0 0
+[QuantInstCount] prelude_bit_and_i_inv{0}[q112{0}] 0 0
+[QuantInstCount] prelude_bit_and_i_inv{0}[q113{0}] 0 0
+[QuantInstCount] prelude_bit_shr_u_inv{0}[q115{0}] 0 0
+[QuantInstCount] prelude_bit_shr_u_inv{0}[q116{0}] 0 0
+[QuantInstCount] prelude_bit_shr_i_inv{0}[q118{0}] 0 0
+[QuantInstCount] prelude_bit_shr_i_inv{0}[q119{0}] 0 0
+[QuantInstCount] prelude_singularmod{0}[q121{0}] 0 0
+[QuantInstCount] prelude_singularmod{0}[q122{0}] 0 0
+[QuantInstCount] prelude_check_decrease_int{0}[q124{0}] 0 0
+[QuantInstCount] prelude_check_decrease_int{0}[q125{0}] 0 0
+[QuantInstCount] prelude_check_decrease_height{0}[q127{0}] 0 0
+[QuantInstCount] prelude_height_lt{0}[q128{0}] 0 0
+[QuantInstCount] internal_crate__tuple__0_box_axiom_definition{0}[q129{0}] 0 0
+[QuantInstCount] internal_crate__tuple__0_unbox_axiom_definition{0}[q130{0}] 0 0
+[QuantInstCount] internal_crate__tuple__0_unbox_axiom_definition{0}[q131{0}] 0 0
+[QuantInstCount] internal_crate__tuple__0_has_type_always_definition{0}[q133{0}] 0 0
+[QuantInstCount] user_crate__mul_distributive_auto_0{0}[q134{0}] 0 0
+[QuantInstCount] internal_ens__mul_distributive_auto._definition{0}[q135{0}] 0 0
+[QuantInstCount] user_crate__mul_distributive_auto_0{0}[q136{0}] 0 0
+[QuantInstCount] internal_ens__mul_distributive_auto._definition{0}[q138{0}] 0 0
+[QuantInstCount] internal_req__test1._definition{0}[q140{0}] 0 0
+[QuantInstCount] internal_req__test1._definition{0}[q141{0}] 0 0
+[QuantInstCount] internal_ens__test1._definition{0}[q143{0}] 0 0
+[QuantInstCount] internal_ens__mul_distributive_auto._definition{0}[q197{0}] 0 0
+[QuantInstCount] prelude_as_type{0}[q201{0}] 0 0
+[QuantInstCount] prelude_nat_clip{0}[q203{0}] 5 0
+[QuantInstCount] prelude_u_clip{0}[q205{0}] 0 0
+[QuantInstCount] prelude_i_clip{0}[q207{0}] 0 0
+[QuantInstCount] prelude_char_clip{0}[q209{0}] 0 0
+[QuantInstCount] prelude_u_inv{0}[q211{0}] 0 0
+[QuantInstCount] prelude_i_inv{0}[q213{0}] 0 0
+[QuantInstCount] prelude_char_inv{0}[q215{0}] 0 0
+[QuantInstCount] prelude_mul_nats{0}[q217{0}] 3 0
+[QuantInstCount] prelude_div_unsigned_in_bounds{0}[q219{0}] 0 0
+[QuantInstCount] prelude_mod_unsigned_in_bounds{0}[q221{0}] 0 0
+[QuantInstCount] prelude_bit_xor_u_inv{0}[q223{0}] 0 0
+[QuantInstCount] prelude_bit_xor_i_inv{0}[q225{0}] 0 0
+[QuantInstCount] prelude_bit_or_u_inv{0}[q227{0}] 0 0
+[QuantInstCount] prelude_bit_or_i_inv{0}[q229{0}] 0 0
+[QuantInstCount] prelude_bit_and_u_inv{0}[q231{0}] 0 0
+[QuantInstCount] prelude_bit_and_i_inv{0}[q233{0}] 0 0
+[QuantInstCount] prelude_bit_shr_u_inv{0}[q235{0}] 0 0
+[QuantInstCount] prelude_bit_shr_i_inv{0}[q237{0}] 0 0
+[QuantInstCount] prelude_check_decrease_int{0}[q239{0}] 0 0
+[QuantInstCount] prelude_check_decrease_height{0}[q241{0}] 0 0
+[QuantInstCount] prelude_height_lt{0}[q243{0}] 0 0
+[QuantInstCount] user_crate__mul_distributive_auto_0{0}[q245{0}] 1 0
+[QuantInstCount] internal_ens__mul_distributive_auto._definition{0}[q247{0}] 1 0
+[QuantInstCount] internal_req__test1._definition{0}[q249{0}] 0 0
+[tool] axiom-profiler
+[Parse] 115ms
+[Graph] 1ms
+[Analysis] 16ms
+[Loops] 0 true, 0 false

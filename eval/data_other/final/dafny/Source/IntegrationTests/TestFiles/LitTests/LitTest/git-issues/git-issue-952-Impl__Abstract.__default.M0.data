@@ -1,0 +1,94 @@
+[LOGFILE] git-issue-952-Impl__Abstract.__default.M0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 219636b 0.050s
+[tool] dummy
+[Parse] 525us
+[tool] smt-scope
+[Parse] 2072us
+[Graph] 631us
+[Analysis] 318us
+[Stats] 0 mbqi, 182 ts, 0 axiom, 22 quant, 2145 proof, 460 ntp, 6 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 1 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 3 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q9{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q10{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q10{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q11{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q11{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q12{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q12{1}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv0{0}[q16{0}] 1 0
+[QuantInstCount] typeInv:MapType0TypeInv1{0}[q17{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q18{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q19{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q20{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q21{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.608:15{0}[q22{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.609:30{0}[q23{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.608:15{0}[q25{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q27{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q28{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q29{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q31{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q32{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.554:18{0}[q34{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.554:18{0}[q35{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q40{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q41{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q43{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q43{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q44{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q44{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q46{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q46{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q47{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q47{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q49{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q49{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q50{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q50{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q52{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q53{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.534:15{0}[q55{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q56{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q57{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q58{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q59{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q61{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q62{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.603:15{0}[q64{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.603:15{0}[q65{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.289:14{0}[q67{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.228:14{0}[q68{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q110{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q112{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q114{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q116{0}] 2 0
+[QuantInstCount] unknown.0:0{1}[q116{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q118{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q118{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q120{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q120{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.606:15{0}[q122{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.534:15{0}[q124{0}] 2 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q126{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.593:12{0}[q128{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q130{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q132{0}] 0 0
+[QuantInstCount] ctor:MapType0Type{0}[q134{0}] 1 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q136{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q138{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:1{0}[q140{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 3) to show a single one.
+[Parse] 120ms
+[Graph] 1ms
+[Analysis] Err 5ms Sequence contains no matching element
+[Loops] 0 true, 0 false

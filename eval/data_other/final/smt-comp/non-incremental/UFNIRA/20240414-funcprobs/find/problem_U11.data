@@ -1,0 +1,17 @@
+[LOGFILE] problem_U11-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 18074b 0.045s
+[tool] dummy
+[Parse] 74us
+[tool] smt-scope
+[Parse] 395us
+[Graph] 66us
+[Analysis] 33us
+[Stats] 1 mbqi, 32 ts, 0 axiom, 0 quant, 151 proof, 18 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] k!20{MBQI}[q9{MBQI}] 1 0
+[QuantInstCount] k!20{0}[q9{0}] 0 0
+[tool] axiom-profiler
+[Parse] 33ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

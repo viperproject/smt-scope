@@ -1,0 +1,15 @@
+[LOGFILE] sha512_block_armv8_one_block_correct_fn_calls_equal_no_rewrite-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 142078188b 6.048s
+[tool] dummy
+[Parse] 252007us
+[tool] smt-scope
+[Parse] 871608us
+[Graph] 633767us
+[Analysis] 214395us
+[Stats] 0 mbqi, 851586 ts, 0 axiom, 0 quant, 500699 proof, 2 ntp, 1 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 37685ms
+[Graph] 624ms
+[Analysis] 5073ms
+[Loops] 0 true, 0 false

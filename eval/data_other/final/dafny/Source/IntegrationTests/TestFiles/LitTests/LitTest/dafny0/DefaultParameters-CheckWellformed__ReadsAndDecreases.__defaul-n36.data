@@ -1,0 +1,90 @@
+[LOGFILE] DefaultParameters-CheckWellformed__ReadsAndDecreases.__defaul-n36-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 191937b 0.048s
+[tool] dummy
+[Parse] 444us
+[tool] smt-scope
+[Parse] 1778us
+[Graph] 592us
+[Analysis] 250us
+[Stats] 0 mbqi, 199 ts, 0 axiom, 2 quant, 1860 proof, 337 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q8{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q9{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.253:20{0}[q11{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.253:20{0}[q12{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q14{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q15{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q17{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q18{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q19{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q21{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q21{1}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv0{0}[q25{0}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv1{0}[q26{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q27{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.108:29{0}[q28{0}] 1 0
+[QuantInstCount] DafnyPreludebpl.102:29{0}[q29{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q30{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.217:18{0}[q31{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q32{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q33{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.253:20{0}[q35{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.253:20{0}[q36{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q38{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q38{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q39{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q39{1}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q41{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q42{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q43{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q44{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q46{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q47{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q49{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.253:20{0}[q50{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q51{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q55{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q56{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q58{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q59{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.109:15{0}[q61{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.103:18{0}[q62{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q63{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q64{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.289:14{0}[q66{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q67{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q68{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.228:14{0}[q70{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q114{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.253:20{0}[q116{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q118{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q120{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q122{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.253:20{0}[q124{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q126{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q126{1}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q128{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.290:18{0}[q130{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q132{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q134{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.285:18{0}[q136{0}] 0 0
+[QuantInstCount] DefaultParametersdfy.258:20{0}[q138{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q140{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q142{0}] 0 0
+[QuantInstCount] ctor:MapType0Type{0}[q144{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q146{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q148{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:1{0}[q150{0}] 0 0
+[tool] axiom-profiler
+[Parse] 116ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

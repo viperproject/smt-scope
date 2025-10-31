@@ -1,0 +1,45 @@
+[LOGFILE] CalcExample-Impl___module.__default.DifferentStyleProof-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 409716b 0.051s
+[tool] dummy
+[Parse] 607us
+[tool] smt-scope
+[Parse] 2208us
+[Graph] 707us
+[Analysis] 318us
+[Stats] 0 mbqi, 394 ts, 0 axiom, 11 quant, 1908 proof, 324 ntp, 19 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 0 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 0 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 6 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q8{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q9{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv0{0}[q16{0}] 0 0
+[QuantInstCount] typeInv:MapType1TypeInv1{0}[q17{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q18{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q19{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.289:14{0}[q21{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q40{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q42{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q44{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:1{0}[q46{0}] 0 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q48{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q50{0}] 0 0
+[QuantInstCount] ctor:MapType1Type{0}[q52{0}] 0 0
+[QuantInstCount] CalcExampledfy.13:18{0}[q54{0}] 0 0
+[QuantInstCount] CalcExampledfy.13:18{1}[q54{1}] 0 0
+[QuantInstCount] CalcExampledfy.13:18{0}[q55{0}] 0 0
+[QuantInstCount] CalcExampledfy.13:18{1}[q55{1}] 0 0
+[QuantInstCount] CalcExampledfy.13:18{0}[q56{0}] 0 0
+[QuantInstCount] CalcExampledfy.13:18{1}[q56{1}] 3 0
+[QuantInstCount] CalcExampledfy.13:18{0}[q60{0}] 0 0
+[QuantInstCount] CalcExampledfy.13:18{1}[q60{1}] 2 0
+[tool] axiom-profiler
+[Parse] 117ms
+[Graph] 1ms
+[Analysis] 15ms
+[Loops] 0 true, 0 false

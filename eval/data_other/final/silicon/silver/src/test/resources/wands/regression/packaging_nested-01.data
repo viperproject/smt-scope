@@ -1,0 +1,50 @@
+[LOGFILE] packaging_nested-01-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 53368b 0.051s
+[tool] dummy
+[Parse] 165us
+[tool] smt-scope
+[Parse] 771us
+[Graph] 206us
+[Analysis] 85us
+[Stats] 0 mbqi, 20 ts, 2 axiom, 2 quant, 745 proof, 138 ntp, 29 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q2{0}] 0 1
+[QuantInstCount] constructor_accessor_axiom{0}[q3{0}] 0 1
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q4{0}] 0 0
+[QuantInstCount] $Snap.IntTo$SnapToInt{0}[q5{0}] 2 0
+[QuantInstCount] $Snap.$SnapToBoolTo$Snap{0}[q6{0}] 0 0
+[QuantInstCount] $Snap.BoolTo$SnapToBool{0}[q7{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$RefTo$Snap{0}[q8{0}] 0 0
+[QuantInstCount] $Snap.$RefTo$SnapTo$Ref{0}[q9{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q10{0}] 0 0
+[QuantInstCount] $Snap.$PermTo$SnapTo$Perm{0}[q11{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$MWSFTo$Snap{0}[q12{0}] 0 0
+[QuantInstCount] $Snap.$MWSFTo$SnapTo$MWSF{0}[q13{0}] 0 0
+[QuantInstCount] $Snap.$SnapToIntTo$Snap{0}[q14{0}] 0 0
+[QuantInstCount] $Snap.$SnapTo$PermTo$Snap{0}[q16{0}] 0 0
+[QuantInstCount] quant-u-25302{0}[q38{0}] 0 0
+[QuantInstCount] quant-u-25303{0}[q39{0}] 0 0
+[QuantInstCount] quant-u-25304{0}[q40{0}] 0 0
+[QuantInstCount] quant-u-25305{0}[q41{0}] 0 0
+[QuantInstCount] quant-u-25302{0}[q42{0}] 0 0
+[QuantInstCount] quant-u-25306{0}[q45{0}] 0 0
+[QuantInstCount] quant-u-25307{0}[q46{0}] 0 0
+[QuantInstCount] quant-u-25302{0}[q47{0}] 0 0
+[QuantInstCount] quant-u-25304{0}[q48{0}] 0 0
+[QuantInstCount] quant-u-25308{0}[q52{0}] 0 0
+[QuantInstCount] quant-u-25309{0}[q53{0}] 0 0
+[QuantInstCount] quant-u-25309{0}[q54{0}] 0 0
+[QuantInstCount] quant-u-25309{0}[q57{0}] 0 0
+[QuantInstCount] quant-u-25310{0}[q59{0}] 0 0
+[QuantInstCount] quant-u-25308{0}[q60{0}] 0 0
+[QuantInstCount] quant-u-25311{0}[q61{0}] 0 0
+[QuantInstCount] quant-u-25311{0}[q64{0}] 0 0
+[QuantInstCount] quant-u-25311{0}[q66{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 8) to show a single one.
+[Parse] Err 771‰ 1302ms
+[Graph] 1ms
+[Analysis] 14ms
+[Loops] 0 true, 0 false

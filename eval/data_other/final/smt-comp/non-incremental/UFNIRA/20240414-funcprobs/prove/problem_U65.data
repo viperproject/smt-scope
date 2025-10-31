@@ -1,0 +1,16 @@
+[LOGFILE] problem_U65-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 176447100b 5.074s
+[tool] dummy
+[Parse] 316648us
+[tool] smt-scope
+[Parse] 1449175us
+[Graph] 1231123us
+[Analysis] 645320us
+[Stats] 0 mbqi, 249180 ts, 0 axiom, 70169 quant, 1034911 proof, 17 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 1 k!21{0}[q9{0}] 227.084142394822x
+[QuantInstCount] k!21{0}[q9{0}] 70169 0
+[tool] axiom-profiler
+[Parse] 48554ms
+[Graph] 264ms
+[Analysis] Err 302ms Index was outside the bounds of the array.
+[Loops] 0 true, 0 false

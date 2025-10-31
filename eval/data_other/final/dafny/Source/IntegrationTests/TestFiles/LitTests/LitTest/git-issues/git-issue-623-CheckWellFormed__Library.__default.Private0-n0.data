@@ -1,0 +1,61 @@
+[LOGFILE] git-issue-623-CheckWellFormed__Library.__default.Private0-n0-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 100964b 0.047s
+[tool] dummy
+[Parse] 271us
+[tool] smt-scope
+[Parse] 1144us
+[Graph] 325us
+[Analysis] 174us
+[Stats] 0 mbqi, 55 ts, 0 axiom, 12 quant, 1198 proof, 241 ntp, 3 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[QuantInstCount] constructor_accessor_axiom{0}[q0{0}] 0 0
+[QuantInstCount] constructor_accessor_axiom{0}[q1{0}] 0 0
+[QuantInstCount] typeInv:U_2_bool{0}[q2{0}] 1 0
+[QuantInstCount] cast:U_2_bool{0}[q3{0}] 1 0
+[QuantInstCount] typeInv:U_2_int{0}[q4{0}] 0 0
+[QuantInstCount] cast:U_2_int{0}[q5{0}] 0 0
+[QuantInstCount] typeInv:U_2_real{0}[q6{0}] 0 0
+[QuantInstCount] cast:U_2_real{0}[q7{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q8{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q9{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q9{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q10{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q10{1}] 0 0
+[QuantInstCount] typeInv:MapType0TypeInv0{0}[q14{0}] 1 0
+[QuantInstCount] typeInv:MapType0TypeInv1{0}[q15{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q16{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q17{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.168:18{0}[q18{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q19{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q19{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q20{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q20{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q22{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q22{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q23{0}] 0 0
+[QuantInstCount] unknown.0:0{1}[q23{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q25{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q26{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.167:18{0}[q28{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q32{0}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q33{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q35{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q36{0}] 0 0
+[QuantInstCount] unknown.0:0{0}[q38{0}] 1 0
+[QuantInstCount] unknown.0:0{0}[q66{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q66{1}] 0 0
+[QuantInstCount] unknown.0:0{0}[q68{0}] 1 0
+[QuantInstCount] unknown.0:0{1}[q68{1}] 0 0
+[QuantInstCount] DafnyPreludebpl.156:1{0}[q70{0}] 0 0
+[QuantInstCount] mapAx0:MapType0Select{0}[q72{0}] 0 0
+[QuantInstCount] mapAx1:MapType0Select:0{0}[q74{0}] 0 0
+[QuantInstCount] ctor:MapType0Type{0}[q76{0}] 1 0
+[QuantInstCount] mapAx0:MapType1Select{0}[q78{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:0{0}[q80{0}] 0 0
+[QuantInstCount] mapAx1:MapType1Select:1{0}[q82{0}] 0 0
+[tool] axiom-profiler
+This log file contains multiple checks; they will be merged and displayed as one, but the data could be invalid, confusing, or both. Use /c:N (for 1 <= N <= 2) to show a single one.
+[Parse] 75ms
+[Graph] 1ms
+[Analysis] Err 5ms Sequence contains no matching element
+[Loops] 0 true, 0 false

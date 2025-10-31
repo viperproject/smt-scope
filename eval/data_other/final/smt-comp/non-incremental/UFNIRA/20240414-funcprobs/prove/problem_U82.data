@@ -1,0 +1,33 @@
+[LOGFILE] problem_U82-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 169423167b 5.058s
+[tool] dummy
+[Parse] 262464us
+[tool] smt-scope
+[Parse] 1108829us
+[Graph] 1179875us
+[Analysis] 453611us
+[Stats] 0 mbqi, 209302 ts, 0 axiom, 67893 quant, 936835 proof, 719 ntp, 2 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 2 k!31{0}[q130{0}] 183x k!32{0}[q132{0}] 183x
+[QuantInstCount] k!20{0}[q113{0}] 183 0
+[QuantInstCount] k!22{0}[q115{0}] 0 0
+[QuantInstCount] k!22{0}[q116{0}] 0 0
+[QuantInstCount] k!25{0}[q118{0}] 183 0
+[QuantInstCount] k!26{0}[q120{0}] 0 0
+[QuantInstCount] k!26{1}[q120{1}] 0 0
+[QuantInstCount] k!26{0}[q121{0}] 0 0
+[QuantInstCount] k!26{1}[q121{1}] 0 0
+[QuantInstCount] k!28{0}[q123{0}] 183 0
+[QuantInstCount] k!29{0}[q125{0}] 183 0
+[QuantInstCount] k!30{0}[q127{0}] 0 0
+[QuantInstCount] k!30{1}[q127{1}] 0 0
+[QuantInstCount] k!30{0}[q128{0}] 0 0
+[QuantInstCount] k!30{1}[q128{1}] 0 0
+[QuantInstCount] k!31{0}[q130{0}] 33489 0
+[QuantInstCount] k!32{0}[q132{0}] 33489 0
+[QuantInstCount] k!38{0}[q134{0}] 151 0
+[QuantInstCount] k!38{1}[q134{1}] 32 0
+[tool] axiom-profiler
+[Parse] 38845ms
+[Graph] 229ms
+[Analysis] Err 287ms Index was outside the bounds of the array.
+[Loops] 0 true, 0 false

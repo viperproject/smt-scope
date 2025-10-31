@@ -1,0 +1,29 @@
+[LOGFILE] problem_C11-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 232396586b 5.070s
+[tool] dummy
+[Parse] 362310us
+[tool] smt-scope
+[Parse] 2226530us
+[Graph] 1200180us
+[Analysis] 1022350us
+[Stats] 4 mbqi, 163334 ts, 0 axiom, 103704 quant, 1004487 proof, 179 ntp, 3 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 2 k!23{0}[q97{0}] 89.55315315315315x k!24{0}[q99{0}] 61.23076923076923x
+[QuantInstCount] k!19{0}[q95{0}] 128 0
+[QuantInstCount] k!23{0}[q97{0}] 99404 0
+[QuantInstCount] k!24{0}[q99{0}] 3980 0
+[QuantInstCount] k!25{0}[q101{0}] 0 0
+[QuantInstCount] k!26{0}[q103{0}] 0 0
+[QuantInstCount] k!27{MBQI}[q105{MBQI}] 1 0
+[QuantInstCount] k!27{0}[q105{0}] 127 0
+[QuantInstCount] k!28{MBQI}[q107{MBQI}] 1 0
+[QuantInstCount] k!28{0}[q107{0}] 63 0
+[QuantInstCount] k!32{0}[q109{0}] 1 0
+[QuantInstCount] k!33{MBQI}[q111{MBQI}] 1 0
+[QuantInstCount] k!33{0}[q111{0}] 1 0
+[QuantInstCount] k!36{MBQI}[q113{MBQI}] 1 0
+[QuantInstCount] k!36{0}[q113{0}] 0 0
+[tool] axiom-profiler
+[Parse] 69348ms
+[Graph] 204ms
+[Analysis] 718ms
+[Loops] 0 true, 0 false

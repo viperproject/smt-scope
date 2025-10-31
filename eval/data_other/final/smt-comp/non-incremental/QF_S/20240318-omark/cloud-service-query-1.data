@@ -1,0 +1,15 @@
+[LOGFILE] cloud-service-query-1-fHash-8b0f5f01be7f6e1ae00b3225b4b3f75fd9690a7caf1801d7204002e4a2346df6.log 240911535b 5.037s
+[tool] dummy
+[Parse] 234217us
+[tool] smt-scope
+[Parse] 584553us
+[Graph] 76689us
+[Analysis] 50776us
+[Stats] 0 mbqi, 252258 ts, 0 axiom, 0 quant, 106788 proof, 7661 ntp, 78443 cdcl,
+[Loops] 0 true, 0 false
+[Branching] 0 
+[tool] axiom-profiler
+[Parse] 22913ms
+[Graph] 89ms
+[Analysis] 1089ms
+[Loops] 0 true, 0 false

@@ -10,6 +10,10 @@ This tool supersedes the [Axiom Profiler](https://github.com/viperproject/axiom-
 
 More details of the tool's features can be found in the [README](https://github.com/viperproject/axiom-profiler/blob/master/README.md) of the old tool.
 
+## Other SMT solvers
+
+Only z3 is currently supported. We would like to add support for other solvers: if you are a developer of such a solver, get in touch.
+
 ## Obtaining a z3 trace
 
 > NOTE: S<b><sub><sup>MT</sup></sub></b>S<b><sub><sup>COPE</sup></sub></b> requires at least version 4.8.5 of [z3](https://github.com/z3prover/z3/releases).
